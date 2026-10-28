@@ -32,13 +32,14 @@ try {
     $assert($response->getStatusCode()===500 && json_decode($response->getContent(),true)['code']==='ACCOUNT_BANNED', 'Banned login must remain denied with a machine-readable code');
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
-    $request = Illuminate\Http\Request::create('/api/v1/user/info');
+    $request = Illuminate\Http\Request::create('/api/v10/me');
     $request->headers->set('Accept','application/json');
-    $request->headers->set('Authorization',$token);
+    $request->headers->set('Authorization','Bearer '.$token);
     $response = $kernel->handle($request);
-    $data = json_decode($response->getContent(),true)['data'];
-    $assert($response->getStatusCode()===200 && $data['account_status']['state']==='banned', 'Existing session must receive current suspension state');
-    $assert($data['u']==20 && $data['d']==30, 'Account usage counters must be exposed accurately');
+    $assert($response->getStatusCode()===403 && !isset(json_decode($response->getContent(),true)['data']), 'A suspended existing session must be denied by V10');
+    $status=$service->forUser($user);
+    $assert($status['state']==='banned' && !$status['is_available'], 'Suspension remains authoritative for an existing session');
+    $assert($user->fresh()->u===20 && $user->fresh()->d===30, 'Rejected reads must preserve usage counters');
     echo "Account status: {$checks} checks passed\n";
 } finally {
     if ($auth) $auth->removeAllSession();

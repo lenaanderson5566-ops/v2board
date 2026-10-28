@@ -988,6 +988,9 @@
     "footer": "Cho trải nghiệm AI thuận tiện hơn."
   },
   "pricing": {
+    "couponAvailableSaving": "Có thể giảm tối đa {{amount}}",
+    "couponAvailable": "Chọn phiếu giảm giá khả dụng",
+    "estimatedSubtotal": "Tạm tính",
     "claimLimit": "Mỗi tài khoản nhận mỗi phiếu một lần",
     "priceDetails": "Chi tiết giá",
     "monthlyBaseline": "Giá tháng × {{months}} tháng",

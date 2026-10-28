@@ -165,5 +165,73 @@ try {
  $assert($result['amount']===1010 && $result['currency']==='CNY','EPay QR signed amount reaches shared settlement');
  $params['money']='0.01';
  $assert($qr->notify($params)===false,'EPay QR rejects altered signed amount');
+
+ $gateway=App\Models\Payment::create(['name'=>'Audit MGate','payment'=>'MGate','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['mgate_app_id'=>'audit-app','mgate_app_secret'=>'audit-key','mgate_source_currency'=>'CNY']]);
+ $gatewayOrder=App\Models\Order::create(['user_id'=>$user->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>1000,'payment_id'=>$gateway->id,'status'=>0]);
+ $mgateNotify=function($amount,$currency='CNY')use($gateway,$gatewayOrder){
+     $params=['out_trade_no'=>$gatewayOrder->trade_no,'trade_no'=>'mgate-fixture','app_id'=>'audit-app','source_currency'=>$currency];
+     if ($amount !== null) $params['total_amount']=$amount;
+     ksort($params);$params['sign']=md5(http_build_query($params).'audit-key');
+     return (new App\Services\Actions\Guest\PaymentActions())->notify('MGate',$gateway->uuid,Request::create('/','POST',$params));
+ };
+ foreach ([[null,'CNY'],['1','CNY'],['1000','USD']] as $args) {
+     try {$mgateNotify(...$args);throw new RuntimeException('Incomplete MGate settlement accepted');}
+     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($gatewayOrder->fresh()->status===0,'MGate missing/mismatched amount and currency preserve pending order');}
+ }
+ $assert($mgateNotify('1000')==='success' && $gatewayOrder->fresh()->status===1,'Exact signed MGate amount settles');
+ $assert($mgateNotify('1000')==='success','MGate duplicate callback remains idempotent');
+ $key=openssl_pkey_new(['private_key_bits'=>2048]);$public=openssl_pkey_get_details($key)['key'];
+ $alipay=App\Models\Payment::create(['name'=>'Audit Alipay','payment'=>'AlipayF2F','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['app_id'=>'audit-app','private_key'=>'fixture','public_key'=>preg_replace('/-----[^-]+-----|\s+/','',$public)]]);
+ $alipayOrder=App\Models\Order::create(['user_id'=>$user->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>1000,'payment_id'=>$alipay->id,'status'=>0]);
+ $alipayNotify=function($amount,$appId='audit-app')use($alipay,$alipayOrder,$key){
+     $params=['trade_status'=>'TRADE_SUCCESS','app_id'=>$appId,'out_trade_no'=>$alipayOrder->trade_no,'trade_no'=>'alipay-fixture','total_amount'=>$amount];
+     ksort($params);$pairs=[];foreach($params as $name=>$value)$pairs[]=$name.'='.$value;
+     openssl_sign(implode('&',$pairs),$signature,$key,OPENSSL_ALGO_SHA256);$params['sign']=base64_encode($signature);$params['sign_type']='RSA2';
+     return (new App\Services\Actions\Guest\PaymentActions())->notify('AlipayF2F',$alipay->uuid,Request::create('/','POST',$params));
+ };
+ foreach ([['0.01','audit-app'],['10.00','different-app']] as $args) {
+     try {$alipayNotify(...$args);throw new RuntimeException('Wrong Alipay amount or merchant accepted');}
+     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($alipayOrder->fresh()->status===0,'Alipay requires exact amount and configured app even with a valid provider signature');}
+ }
+ $assert($alipayNotify('10.00')==='success' && $alipayOrder->fresh()->status===1,'Signed Alipay exact amount settles');
+ DB::table('v2_exchange_rate')->where('id',1)->update(['usd_cny_micros'=>7200000,'quoted_at'=>time(),'fetched_at'=>time()]);
+ foreach (App\Services\PaymentQuote::LEGACY_STRIPE as $provider) {
+     $channel=App\Models\Payment::create(['name'=>'Audit '.$provider,'payment'=>$provider,'currency'=>'CNY','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['currency'=>'USD','stripe_sk_live'=>'sk_test_fixture','stripe_webhook_key'=>'whsec_legacy','payment_method'=>'cards']]);
+     $legacy=App\Models\Order::create(['user_id'=>$user->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>1000,'handling_amount'=>0,'payment_id'=>$channel->id,'status'=>0]);
+     $quote=App\Services\PaymentQuote::make($legacy,$channel);
+     $assert($quote['payment_amount']===139 && $quote['payment_currency']==='USD','Legacy Stripe uses an immutable CNY/USD settlement quote');
+     App\Services\OrderPaymentHistory::select($legacy,$channel,$quote);
+     $stripeConfig=$channel->config+['id'=>$channel->id,'uuid'=>$channel->uuid];
+     $outgoing=App\Services\LegacyStripeSettlement::payment(['currency'=>'USD','total_amount'=>$quote['payment_amount']],$stripeConfig);
+     $assert($outgoing===['amount'=>139,'currency'=>'usd'],'Outgoing Stripe request uses exact saved minor units');
+     $sourceData=['id'=>'src_fixture','amount'=>139,'currency'=>'usd','metadata'=>['out_trade_no'=>$legacy->trade_no,'user_id'=>$legacy->user_id]];
+     $source=\Stripe\StripeObject::constructFrom($sourceData);
+     $assert(App\Services\LegacyStripeSettlement::source($source,$stripeConfig)['amount']===139,'Chargeable source is checked against the selected channel and snapshot');
+     foreach ([['amount'=>1],['currency'=>'cny'],['metadata'=>['out_trade_no'=>$legacy->trade_no,'user_id'=>$legacy->user_id+1]]] as $invalid) {
+         try {App\Services\LegacyStripeSettlement::source(\Stripe\StripeObject::constructFrom(array_replace($sourceData,$invalid)),$stripeConfig);throw new RuntimeException('Invalid chargeable source accepted');}
+         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$checks++;}
+     }
+     $legacyNotify=function($amount,$currency='usd',$captured=true,$valid=true)use($provider,$channel,$legacy,$app){
+         $type=$provider==='StripeALL'?'payment_intent.succeeded':'charge.succeeded';
+         $payload=json_encode(['id'=>'evt_legacy','object'=>'event','type'=>$type,'data'=>['object'=>['object'=>$provider==='StripeALL'?'payment_intent':'charge','id'=>'legacy-fixture','status'=>'succeeded','paid'=>true,'captured'=>$captured,'amount'=>$amount,'amount_received'=>$amount,'amount_captured'=>$amount,'currency'=>$currency,'metadata'=>['out_trade_no'=>$legacy->trade_no,'user_id'=>$legacy->user_id]]]]);
+         $timestamp=time();$signature=hash_hmac('sha256',$timestamp.'.'.$payload,$valid?'whsec_legacy':'wrong');
+         $request=Request::create('/','POST',[],[],[],['HTTP_STRIPE_SIGNATURE'=>"t=$timestamp,v1=$signature"],$payload);
+         $previous=$app->make('request');$app->instance('request',$request);
+         try {return (new App\Services\Actions\Guest\PaymentActions())->notify($provider,$channel->uuid,$request);}
+         finally {$app->instance('request',$previous);}
+     };
+     foreach ([[1,'usd',true,true],[139,'cny',true,true],[139,'usd',true,false]] as $args) {
+         try {$legacyNotify(...$args);throw new RuntimeException('Invalid legacy Stripe settlement accepted');}
+         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($legacy->fresh()->status===0,'Legacy Stripe rejects signed mismatched amount/currency and invalid signatures');}
+     }
+     if ($provider!=='StripeALL') $assert($legacyNotify(139,'usd',false)==='success' && $legacy->fresh()->status===0,'Uncaptured Stripe authorization does not settle');
+     DB::table('v2_exchange_rate')->where('id',1)->update(['usd_cny_micros'=>9000000]);
+     $assert(App\Services\PaymentQuote::make($legacy,$channel)['payment_amount']===139,'Changing current rates does not change a claimed legacy quote');
+     $assert($legacyNotify(139)==='success' && $legacy->fresh()->status===1,'Exact legacy Stripe snapshot settles');
+     $assert($legacyNotify(139)==='success','Legacy Stripe callback is idempotent');
+     $assert(App\Services\LegacyStripeSettlement::source($source,$stripeConfig)===null,'Settled source replay does not create another charge');
+     DB::table('v2_exchange_rate')->where('id',1)->update(['usd_cny_micros'=>7200000]);
+ }
+
  echo "Audit security regression: $checks checks passed\n";
 } finally {if($adminAuth)$adminAuth->removeAllSession();if($userAuth)$userAuth->removeAllSession();if($auth)$auth->removeAllSession();DB::rollBack();}

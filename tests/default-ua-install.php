@@ -4,7 +4,8 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use Illuminate\Support\Facades\DB;
 
 $sql = file_get_contents(__DIR__.'/../database/install.sql');
-$sql = substr($sql, strpos($sql, '/* Default exact-match UA blacklist.'));
+if (!preg_match('/CREATE TABLE IF NOT EXISTS `v2_risk_blacklist_ua_hash`.*?ON DUPLICATE KEY UPDATE `value` = `value`;/s', $sql, $section)) throw new RuntimeException('Missing default UA SQL');
+$sql = $section[0];
 $sql = str_replace('`v2_risk_blacklist_ua_hash`', '`test_default_ua_install`', $sql);
 $sql = str_replace('CREATE TABLE IF NOT EXISTS', 'CREATE TEMPORARY TABLE IF NOT EXISTS', $sql);
 $run = function () use ($sql) {

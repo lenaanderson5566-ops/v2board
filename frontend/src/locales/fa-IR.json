@@ -990,6 +990,9 @@
     "footer": "برای تجربه روان‌تر با هوش مصنوعی."
   },
   "pricing": {
+    "couponAvailableSaving": "تخفیف قابل استفاده تا {{amount}}",
+    "couponAvailable": "انتخاب کوپن قابل استفاده",
+    "estimatedSubtotal": "جمع جزء تخمینی",
     "claimLimit": "هر کوپن یک بار برای هر حساب",
     "priceDetails": "جزئیات قیمت",
     "monthlyBaseline": "قیمت ماهانه × {{months}} ماه",

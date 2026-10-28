@@ -262,7 +262,7 @@ $assert(DB::table('v2_mail_event')->where('provider','ses')->count()===1,'Reject
 
 // Save actual config via fake filesystem; ensure encryption marker is persisted, no plaintext output.
 $fileRoot=Illuminate\Support\Facades\File::getFacadeRoot();$artisanRoot=Illuminate\Support\Facades\Artisan::getFacadeRoot();$savedConfig='';
-Illuminate\Support\Facades\File::shouldReceive('put')->once()->andReturnUsing(function($path,$content) use(&$savedConfig) {$savedConfig=$content;return strlen($content);});
+Illuminate\Support\Facades\File::shouldReceive('replace')->once()->andReturnUsing(function($path,$content,$mode) use(&$savedConfig) {$savedConfig=$content;});
 Illuminate\Support\Facades\Artisan::shouldReceive('call')->with('config:cache')->once()->andReturn(0);
 $saveRequest=new class extends App\Http\Requests\Admin\ConfigSave { public function validated($key=null,$default=null) {return ['email_provider'=>'smtp','email_password'=>'NEW_SMTP_PRIVATE'];} };
 (new App\Http\Controllers\V1\Admin\ConfigController)->save($saveRequest);

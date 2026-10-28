@@ -6,6 +6,8 @@
 namespace App\Payments;
 
 class AlipayF2F {
+    private array $config;
+
     public function __construct($config)
     {
         $this->config = $config;
@@ -63,7 +65,7 @@ class AlipayF2F {
 
     public function notify($params)
     {
-        if ($params['trade_status'] !== 'TRADE_SUCCESS') return false;
+        if (($params['trade_status'] ?? '') !== 'TRADE_SUCCESS' || ($params['app_id'] ?? null) !== ($this->config['app_id'] ?? null)) return false;
         $gateway = new \Library\AlipayF2F();
         $gateway->setAppId($this->config['app_id']);
         $gateway->setPrivateKey($this->config['private_key']); // 可以是路径，也可以是密钥内容
@@ -75,7 +77,9 @@ class AlipayF2F {
                  */
                 return [
                     'trade_no' => $params['out_trade_no'],
-                    'callback_no' => $params['trade_no']
+                    'callback_no' => $params['trade_no'],
+                    'amount' => \App\Services\Money::parseMinor($params['total_amount'] ?? null),
+                    'currency' => 'CNY'
                 ];
             } else {
                 /**

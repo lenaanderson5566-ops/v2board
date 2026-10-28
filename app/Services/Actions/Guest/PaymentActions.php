@@ -52,18 +52,7 @@ class PaymentActions
         }
         if ($order->status !== 0 && $method !== 'PaytaroQR') return true;
         $payment = \App\Models\Payment::where('uuid', $uuid)->where('payment', $method)->firstOrFail();
-        $snapshot = $order->payment_snapshot['channels'][(string)$payment->id] ?? null;
-        if (!$snapshot && !isset($order->payment_snapshot['channels']) && (int)$order->payment_id === (int)$payment->id
-            && isset($order->payment_snapshot['uuid'], $order->payment_snapshot['provider'])) $snapshot = $order->payment_snapshot;
-        if (!$snapshot && (isset($order->payment_snapshot['channels']) || (int)$order->payment_id !== (int)$payment->id)) abort(500, 'channel mismatch');
-        if ($snapshot && ($snapshot['uuid'] !== $uuid || $snapshot['provider'] !== $method)) abort(500, 'channel mismatch');
-        if (in_array($method, ['EPay', 'Paytaro', 'PaytaroQR', 'StripeCheckout'], true) || array_key_exists('amount', $verified)) {
-            $expected = $snapshot['payment_amount'] ?? ((int)$order->total_amount + (int)($snapshot['handling_amount'] ?? $order->handling_amount));
-            if (!isset($verified['amount'], $verified['currency']) || !is_int($verified['amount'])
-                || $verified['amount'] !== $expected || strtoupper($verified['currency']) !== ($snapshot['payment_currency'] ?? ($order->currency ?: 'CNY'))) {
-                abort(500, 'payment amount mismatch');
-            }
-        }
+        $snapshot = \App\Services\PaymentSettlement::validate($order, $payment, $verified);
         if ($order->status !== 0) return true;
         $context = ['payment_id' => $payment->id, 'payment_snapshot' => null];
         if ($snapshot) {

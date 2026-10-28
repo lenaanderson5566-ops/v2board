@@ -13,6 +13,7 @@ import {
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     couponsAvailable: true,
+    couponPeriods: [] as string[],
     request: vi.fn(),
     navigate: vi.fn(),
     plans: [] as any[],
@@ -53,7 +54,7 @@ vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
     useData: (path: string) => ({
         data:
-            path === "user/coupon/wallet" ? (mocks.couponsAvailable ? [{id:7,name:"SAVE",discountPercent:10,expiresAt:"2030-01-01T00:00:00Z",status:"available",planIds:[],billingPeriods:[]}] : []) : path === "user/coupon/offers" ? [] : path === "user/comm/config"
+            path === "user/coupon/wallet" ? (mocks.couponsAvailable ? [{id:7,name:"SAVE",discountPercent:10,expiresAt:"2030-01-01T00:00:00Z",status:"available",planIds:[],billingPeriods:mocks.couponPeriods}] : []) : path === "user/coupon/offers" ? [] : path === "user/comm/config"
                 ? { coupons_available: mocks.couponsAvailable }
                 : path === "user/plan/fetch"
                   ? mocks.plans
@@ -113,6 +114,7 @@ const order = {
 };
 beforeEach(() => {
     mocks.couponsAvailable = true;
+    mocks.couponPeriods = [];
     mocks.request.mockReset();
     mocks.navigate.mockReset();
     mocks.plans = [plan];
@@ -198,9 +200,8 @@ it("shows the actual available period and lets users review their selection befo
     fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
-    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
+    fireEvent.click(screen.getByLabelText("我的优惠券", { selector: "summary" }));
     fireEvent.click(screen.getByRole("radio", { name: /SAVE/ }));
-    fireEvent.click(screen.getByRole("button", { name: "确认选择" }));
     expect(screen.getByText("优惠金额")).toBeTruthy();
     expect(screen.getByText("couponEstimate{}")).toBeTruthy();
     expect(screen.getByText("−¥3.00")).toBeTruthy();
@@ -736,4 +737,34 @@ it("puts the connection action before receipt details after successful payment",
     expect(action.getAttribute("href")).toBe("#/subscribe");
     expect(action.compareDocumentPosition(receipt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
+});
+
+it.each([
+    {periods: [], optOut: false, discount: true},
+    {periods: ["quarterly"], optOut: false, discount: false},
+    {periods: [], optOut: true, discount: false},
+])("preserves valid choices across cycle changes without submitting an incompatible coupon: %j", async ({periods, optOut, discount}) => {
+    mocks.couponPeriods = periods;
+    mocks.request.mockResolvedValue({data:"created-order"});
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", {name:"subscribe{}"}));
+    fireEvent.click(screen.getByLabelText("我的优惠券", {selector:"summary"}));
+    fireEvent.click(screen.getByRole("radio", {name:/SAVE/}));
+    if (optOut) {
+        fireEvent.click(screen.getByLabelText("我的优惠券", {selector:"summary"}));
+        fireEvent.click(screen.getByRole("radio", {name:"不使用优惠券"}));
+    }
+    fireEvent.click(screen.getByRole("radio", {name:/年付/}));
+    expect(screen.getByText(discount ? "¥27.00" : "¥30.00", {selector:".purchase-footer-total strong"})).toBeTruthy();
+    if (!discount) {
+        fireEvent.click(screen.getByRole("radio", {name:/季付/}));
+        expect(screen.getByText("¥9.00", {selector:".purchase-footer-total strong"})).toBeTruthy();
+        fireEvent.click(screen.getByRole("radio", {name:/年付/}));
+    }
+    expect(screen.getByText("Basic · 年付")).toBeTruthy();
+    expect(screen.getByText(discount ? "couponEstimate{}" : "estimatedSubtotal{}")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name:"创建订单并继续"}));
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
+        plan_id:1, period:"year_price", ...(discount ? {wallet_coupon_id:7} : {}),
+    }));
 });

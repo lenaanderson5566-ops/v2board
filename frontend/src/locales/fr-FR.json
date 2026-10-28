@@ -990,6 +990,9 @@
     "footer": "Pour une expérience plus fluide avec l’IA."
   },
   "pricing": {
+    "couponAvailableSaving": "Économies disponibles jusqu’à {{amount}}",
+    "couponAvailable": "Choisir un coupon disponible",
+    "estimatedSubtotal": "Sous-total estimé",
     "claimLimit": "Une réclamation par coupon par compte",
     "priceDetails": "Répartition des prix",
     "monthlyBaseline": "Prix mensuel × {{months}} mois",

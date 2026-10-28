@@ -109,7 +109,11 @@ try {
         if (!str_starts_with($machineRoute->uri(),'api/v10/server/')) continue;
         foreach (array_diff($machineRoute->methods(),['HEAD','OPTIONS']) as $machineMethod) {
             // Enrollment has its own one-time credential and requires an empty JSON object.
-            $machineBody=$machineRoute->uri()==='api/v10/server/enrollments/redeem' ? [] : ['user'=>['id'=>$user->id,'is_admin'=>1]];
+            $machineBody=match ($machineRoute->uri()) {
+                'api/v10/server/enrollments/redeem'=>[],
+                'api/v10/server/enrollments/progress'=>['action'=>'status'],
+                default=>['user'=>['id'=>$user->id,'is_admin'=>1]],
+            };
             [$machineDenied,$machineProblem]=$call($machineMethod,'/'.$machineRoute->uri(),$machineBody,'Bearer '.$otherAuth['auth_data']);
             $assert($machineDenied->getStatusCode()===401 && !isset($machineProblem['data']),'Account JWT cannot authenticate machine route: '.$machineRoute->uri());
         }
@@ -236,7 +240,7 @@ try {
     $assert($r->getStatusCode()===200 && $j['data']['kind']==='redirect','Checkout redirect contract '.json_encode($j));
     $assert((int)App\Payments\V10TestPayment::$lastOrder['total_amount']===1050 && App\Payments\V10TestPayment::$lastOrder['stripe_token']==='test-card-token','Checkout fee and payment token reach provider');
     $assert($order->fresh()->payment_id===$payment->id && $order->fresh()->handling_amount===50 && $order->fresh()->status===0,'Checkout persists fee without prematurely activating');
-    $notifyBody=['signature'=>'local-test-signature','orderNumber'=>$order->trade_no];
+    $notifyBody=['signature'=>'local-test-signature','orderNumber'=>$order->trade_no,'amount'=>1050,'currency'=>'CNY'];
     [$bad,$problem]=$call('POST','/api/v10/webhooks/payments/MGate/'.$payment->uuid,$notifyBody);
     $assert($bad->getStatusCode()>=400 && $order->fresh()->status===0,'Callback cannot choose a different provider for channel');
     [$r,$j]=$call('POST','/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,$notifyBody);
@@ -258,7 +262,7 @@ try {
     $free=Order::create(['user_id'=>$user->id,'plan_id'=>$plan->id,'period'=>'month_price','trade_no'=>'v10-'.Str::random(16),'total_amount'=>0,'status'=>0,'type'=>2]);
     [$r,$j]=$call('POST','/api/v10/me/orders/'.$free->trade_no.'/payments',['paymentMethodId'=>0],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['kind']==='confirmed' && $free->fresh()->status===1,'Zero-amount checkout '.json_encode($j));
-    [$r,$j]=$call('GET','/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid.'?'.http_build_query(['signature'=>'local-test-signature','orderNumber'=>$old]));
+    [$r,$j]=$call('GET','/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid.'?'.http_build_query(['signature'=>'local-test-signature','orderNumber'=>$old,'amount'=>1050,'currency'=>'CNY']));
     $assert($r->getStatusCode()===200 && $r->getContent()==='success' && Order::where('trade_no',$old)->value('status')===2,'Late GET callback cannot activate replaced order');
     [$r,$j]=$call('POST','/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,['signature'=>'invalid','orderNumber'=>$order->trade_no]);
     $assert($r->getStatusCode()>=400 && $r->getContent()==='fail','Invalid provider signature uses native failure');

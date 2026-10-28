@@ -5,6 +5,8 @@ use Stripe\Stripe;
 use App\Models\User;
 
 class StripeALL {
+    private array $config;
+
     public function __construct($config)
     {
         $this->config = $config;
@@ -15,7 +17,7 @@ class StripeALL {
         return [
             'currency' => [
                 'label' => '货币单位',
-                'description' => '请使用符合ISO 4217标准的三位字母，例如GBP',
+                'description' => '请使用符合ISO 4217标准的三位字母，CNY 或 USD',
                 'type' => 'input',
             ],
             'stripe_sk_live' => [
@@ -38,11 +40,8 @@ class StripeALL {
     
     public function pay($order)
     {
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            throw new abort('Currency conversion API failed', 500);
-        }
+        $settlement = \App\Services\LegacyStripeSettlement::payment($order, $this->config);
+        $currency = $settlement['currency'];
         //jump url
         $jumpUrl = null;
         $actionType = 0;
@@ -55,7 +54,7 @@ class StripeALL {
         ]);
         // 准备支付意图的基础参数
         $params = [
-            'amount' => floor($order['total_amount'] * $exchange),
+            'amount' => $settlement['amount'],
             'currency' => $currency,
             'confirm' => true,
             'payment_method' => $stripePaymentMethod->id,
@@ -113,7 +112,7 @@ class StripeALL {
                 [
                     'price_data' => [
                         'currency' => $currency,
-                        'unit_amount' => floor($order['total_amount'] * $exchange),
+                        'unit_amount' => $settlement['amount'],
                         'product_data' => [
                             'name' => 'user-#' . $order['user_id'] . '-' . substr($order['trade_no'], -8),
                         ]
@@ -141,10 +140,10 @@ class StripeALL {
         try {
             $event = \Stripe\Webhook::constructEvent(
                 request()->getContent() ?: json_encode($_POST),
-                $_SERVER['HTTP_STRIPE_SIGNATURE'],
+                request()->header('Stripe-Signature', ''),
                 $this->config['stripe_webhook_key']
             );
-        } catch (\Stripe\Error\SignatureVerification $e) {
+        } catch (\Stripe\Exception\SignatureVerificationException | \UnexpectedValueException $e) {
             abort(400);
         }
         switch ($event->type) {
@@ -158,71 +157,38 @@ class StripeALL {
                     $tradeNo = $metaData->out_trade_no;
                     return [
                         'trade_no' => $tradeNo,
-                        'callback_no' => $object->id
+                        'callback_no' => $object->id,
+                        'amount' => \App\Services\Money::parseMinorUnits($object->amount_received ?? null),
+                        'currency' => strtoupper((string)($object->currency ?? ''))
                     ];
                 }
                 break;
             case 'checkout.session.completed':
                     $object = $event->data->object;
-                    if ($object->payment_status === 'paid') {
+                    if (($object->payment_status ?? '') === 'paid') {
                         return [
                             'trade_no' => $object->client_reference_id,
-                            'callback_no' => $object->payment_intent
+                            'callback_no' => $object->payment_intent,
+                            'amount' => \App\Services\Money::parseMinorUnits($object->amount_total ?? null),
+                            'currency' => strtoupper((string)($object->currency ?? ''))
                         ];
                     }
                     break;
                 case 'checkout.session.async_payment_succeeded':
                     $object = $event->data->object;
+                    if (($object->payment_status ?? '') !== 'paid') return 'success';
                     return [
                         'trade_no' => $object->client_reference_id,
-                        'callback_no' => $object->payment_intent
+                        'callback_no' => $object->payment_intent,
+                            'amount' => \App\Services\Money::parseMinorUnits($object->amount_total ?? null),
+                            'currency' => strtoupper((string)($object->currency ?? ''))
                     ];
                     break;
             default:
-                throw new abort('webhook events are not supported');
+                return 'success';
         }
         return('success');
     }
-    // 货币转换 API
-    private function exchange($from, $to)
-    {
-        try {
-            $url = "https://api.exchangerate-api.com/v4/latest/{$from}";
-            $result = file_get_contents($url);
-            $result = json_decode($result, true);
-
-            // 如果转换成功，返回结果
-            if (isset($result['rates'][$to])) {
-                return $result['rates'][$to];
-            } else {
-                throw new \Exception("First currency API fails");
-            }
-        } catch (\Exception $e) {
-            // 如果API失败，调用第二个API
-            return $this->backupExchange($from, $to);
-        }
-    }
-
-    // 第二个货币转换 API 方法
-    private function backupExchange($from, $to)
-    {
-        try {
-            $url = "https://api.frankfurter.app/latest?from={$from}&to={$to}";
-            $result = file_get_contents($url);
-            $result = json_decode($result, true);
-
-            // 如果转换成功，返回结果
-            if (isset($result['rates'][$to])) {
-                return $result['rates'][$to];
-            } else {
-                throw new \Exception("Second currency API fails");
-            }
-        } catch (\Exception $e) {
-            // 如果所有API都失败，抛出异常
-            throw new \Exception("All currency conversion APIs fail");
-        }
-    }
-    // 从user中获取email
     private function getUserEmail($userId)
     {
         $user = User::find($userId);

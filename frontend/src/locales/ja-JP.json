@@ -988,6 +988,9 @@
     "footer": "AIをもっと快適に使うために。"
   },
   "pricing": {
+    "couponAvailableSaving": "クーポンで最大 {{amount}} 割引",
+    "couponAvailable": "利用可能なクーポンを選択",
+    "estimatedSubtotal": "小計（概算）",
     "claimLimit": "各クーポンは1アカウントにつき1回",
     "priceDetails": "料金の内訳",
     "monthlyBaseline": "月額料金 × {{months}}か月",

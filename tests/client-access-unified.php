@@ -21,7 +21,8 @@ try {
     $assert(!$service->frontendPolicies()['cmfa']['enabled'], 'Recommendations use effective access');
     $service->updateStrategies([['client_type'=>'flclash','min_version'=>'0.8.0']]);
     $assert(RiskSetting::where('key','client_access_unified')->exists(), 'First save imports legacy policy');
-    $assert(ClientStrategy::where('is_enabled',1)->pluck('client_type')->all() === ['flclash'], 'Migration does not broaden access');
+    $assert(ClientStrategy::where('is_enabled',1)->where('client_type','!=','fastai')->pluck('client_type')->all() === ['flclash'], 'Migration does not broaden legacy client access');
+    $assert($service->isEnabled('fastai'), 'Dedicated client keeps its independent admission policy');
     config(['v2board.subscription_ua_whitelist'=>['mihomo']]);
     $assert($service->isEnabled('flclash') && !$service->isEnabled('mihomo'), 'Retired whitelist no longer overrides saved policy');
     $service->updateStrategies([['client_type'=>'sing-box','is_enabled'=>true]]);

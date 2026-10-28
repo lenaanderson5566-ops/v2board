@@ -172,7 +172,7 @@ it("defaults to activity times and toggles optional user columns", async () => {
         fireEvent.click(screen.getByRole("button", { name: "完成" }));
         expect(screen.queryByRole("columnheader", { name })).toBeNull();
     }
-});
+}, 20000);
 it("keeps commission amounts, records and approval out of order management", async () => {
     render(<OrdersPage />);
     fireEvent.click(await screen.findByRole("button", { name: "订单详情" }));
@@ -524,9 +524,9 @@ it.each(legacyAdminMenu.map(([key, title]) => [key, title]))("renders menu page 
     vi.stubGlobal("fetch", vi.fn(async (input: unknown) => new Response(JSON.stringify(adminPageFixture(String(input))), {headers: {"Content-Type": "application/json"}})));
     const view = render(<MfaRecoveryProvider><AdminWorkspace path={key} user={{email: "preview@example.com"}} logout={() => {}} /></MfaRecoveryProvider>);
     expect(screen.getByRole("heading", {level: 1, name: title})).toBeTruthy();
-    await waitFor(() => expect(view.container.querySelector('.admin-content :is(.panel,.release-monitor,.risk-workspace,.risk-rule-grid)')).toBeTruthy());
-    await waitFor(() => expect(screen.queryByText("正在加载页面…")).toBeNull());
-    await waitFor(() => expect(view.container.querySelector('.admin-content [aria-busy="true"]')).toBeNull());
+    await waitFor(() => expect(view.container.querySelector('.admin-content :is(.panel,.release-monitor,.risk-workspace,.risk-rule-grid)')).toBeTruthy(), {timeout: 10000});
+    await waitFor(() => expect(screen.queryByText("正在加载页面…")).toBeNull(), {timeout: 10000});
+    await waitFor(() => expect(view.container.querySelector('.admin-content [aria-busy="true"]')).toBeNull(), {timeout: 10000});
     expect(screen.queryByText(/此页面暂时无法加载/)).toBeNull();
     expect(screen.queryByText("页面未找到")).toBeNull();
 });

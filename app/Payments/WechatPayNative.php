@@ -6,6 +6,8 @@ use Omnipay\Omnipay;
 use Omnipay\WechatPay\Helper;
 
 class WechatPayNative {
+    private array $config;
+
     public function __construct($config)
     {
         $this->config = $config;
@@ -56,8 +58,7 @@ class WechatPayNative {
         }
         return [
             'type' => 0,
-            'data' => $response['code_url'],
-            'custom_result' => '<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>'
+            'data' => $response['code_url']
         ];
     }
 
@@ -72,13 +73,16 @@ class WechatPayNative {
             'request_params' => request()->getContent() ?: json_encode($_POST)
         ])->send();
 
-        if (!$response->isPaid()) {
+        if (!$response->isPaid() || ($data['appid'] ?? null) !== ($this->config['app_id'] ?? null) || ($data['mch_id'] ?? null) !== ($this->config['mch_id'] ?? null) || strtoupper((string)($data['fee_type'] ?? 'CNY')) !== 'CNY') {
             return('FAIL');
         }
 
         return [
             'trade_no' => $data['out_trade_no'],
-            'callback_no' => $data['transaction_id']
+            'callback_no' => $data['transaction_id'],
+            'amount' => \App\Services\Money::parseMinorUnits($data['total_fee'] ?? null),
+            'currency' => 'CNY',
+            'custom_result' => '<xml><return_code><![CDATA[SUCCESS]]></return_code><return_msg><![CDATA[OK]]></return_msg></xml>'
         ];
     }
 }

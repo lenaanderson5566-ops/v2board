@@ -327,15 +327,21 @@ function localeForTest() {
     return i18n.resolvedLanguage;
 }
 
-it("formats scheduled reset timestamps to the minute with an explicit timezone", async () => {
+it("formats scheduled reset timestamps in the selected display zone", async () => {
     const { minuteDate } = await import("./credit-copy");
+    const { setDisplayTimeZone } = await import("./timezone");
     await i18n.changeLanguage("zh-CN");
-    const output = minuteDate(
-        Date.parse("2026-10-07T13:51:37Z") / 1000,
-        "Asia/Shanghai",
-    );
-    expect(output).toContain("21:51");
-    expect(output).not.toContain("21:51:37");
-    expect(output).toContain("GMT+8");
-    expect(minuteDate(null)).toBe("—");
+    const at = Date.parse("2026-10-07T13:51:37Z") / 1000;
+    try {
+        setDisplayTimeZone("Asia/Shanghai");
+        const output = minuteDate(at);
+        expect(output).toContain("21:51");
+        expect(output).not.toContain("21:51:37");
+        expect(output).toContain("GMT+8");
+        setDisplayTimeZone("UTC");
+        expect(minuteDate(at, "Asia/Shanghai")).toContain("13:51");
+        expect(minuteDate(null)).toBe("—");
+    } finally {
+        setDisplayTimeZone(null);
+    }
 });

@@ -41,5 +41,5 @@ $route=app('router')->getRoutes()->match(Request::create('/api/v10/public/banner
 $assert(strpos($route->getActionName(),'GuestBannerController@getPublicBannerImagesName')!==false,'Image route does not match');
 $oldImage=new Banner(['image_url'=>'/api/v1/guest/banner/image/'.$name]);
 $assert($oldImage->image_url==='/api/v10/public/banner-images/'.$name,'Existing banner image URL must follow the new route');
-$assert(in_array('admin',app('router')->getRoutes()->match(Request::create('/api/v1/'.config('v2board.secure_path','admin').'/banner/fetch'))->gatherMiddleware()),'Banner management lacks admin authorization');
+$assert(in_array('admin',app('router')->getRoutes()->match(Request::create('/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key')))).'/banner/fetch'))->gatherMiddleware()),'Banner management lacks admin authorization');
 echo "PASS: $checks banner checks\n";

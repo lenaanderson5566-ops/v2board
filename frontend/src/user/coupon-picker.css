@@ -1,0 +1,114 @@
+.checkout-coupon {
+    border-block: 1px solid var(--line);
+    font-size: 13px;
+}
+.checkout-coupon > summary {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 48px;
+    cursor: pointer;
+    list-style: none;
+}
+.checkout-coupon > summary::-webkit-details-marker {
+    display: none;
+}
+.checkout-coupon > summary > svg {
+    flex-shrink: 0;
+}
+.checkout-coupon-heading {
+    flex-shrink: 0;
+}
+.checkout-coupon-summary {
+    display: grid;
+    gap: 2px;
+    margin-inline-start: auto;
+    color: var(--brand);
+    text-align: end;
+    overflow-wrap: anywhere;
+    min-width: 0;
+}
+.checkout-coupon-name {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+.checkout-coupon[open] > summary > svg:last-child {
+    transform: rotate(180deg);
+}
+.checkout-coupon-options {
+    max-height: 240px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 3px 3px 8px;
+}
+.purchase-selection .checkout-coupon-option {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 8px;
+    margin: 2px 0;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--ink);
+}
+.checkout-coupon-option.is-selected {
+    background: var(--brand-soft);
+}
+.checkout-coupon-option.is-disabled {
+    color: var(--text-secondary);
+    cursor: default;
+}
+.purchase-selection .checkout-coupon-option input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    min-height: 18px;
+    padding: 0;
+    flex-shrink: 0;
+    margin: 0;
+    accent-color: var(--brand);
+}
+.checkout-coupon-option > span {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.checkout-coupon-option strong {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+}
+.checkout-coupon-option small {
+    display: block;
+    font-size: 11px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+.checkout-coupon-saving {
+    margin-inline-start: auto;
+    color: var(--brand);
+    text-align: end;
+}
+.checkout-coupon-unavailable > summary {
+    padding: 12px 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+}
+.checkout-coupon > summary:focus-visible,
+.checkout-coupon-unavailable > summary:focus-visible,
+.checkout-coupon-option:focus-within {
+    outline: 2px solid var(--brand);
+    outline-offset: 1px;
+}
+@media (max-width: 400px) {
+    .checkout-coupon-option {
+        flex-wrap: wrap;
+    }
+    .checkout-coupon-option .checkout-coupon-saving {
+        flex-basis: 100%;
+        padding-inline-start: 28px;
+        text-align: start;
+    }
+}

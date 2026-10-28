@@ -988,6 +988,9 @@
     "footer": "더 편리한 AI 사용을 위해."
   },
   "pricing": {
+    "couponAvailableSaving": "쿠폰으로 최대 {{amount}} 할인",
+    "couponAvailable": "사용 가능한 쿠폰 선택",
+    "estimatedSubtotal": "예상 소계",
     "claimLimit": "계정당 각 쿠폰 1회 수령",
     "priceDetails": "가격 내역",
     "monthlyBaseline": "월 요금 × {{months}}개월",

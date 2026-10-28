@@ -9,6 +9,8 @@ use Stripe\Source;
 use Stripe\Stripe;
 
 class StripeAlipay {
+    private array $config;
+
     public function __construct($config)
     {
         $this->config = $config;
@@ -37,14 +39,11 @@ class StripeAlipay {
 
     public function pay($order)
     {
-        $currency = $this->config['currency'];
-        $exchange = $this->exchange('CNY', strtoupper($currency));
-        if (!$exchange) {
-            abort(500, __('Currency conversion has timed out, please try again later'));
-        }
+        $settlement = \App\Services\LegacyStripeSettlement::payment($order, $this->config);
+        $currency = $settlement['currency'];
         Stripe::setApiKey($this->config['stripe_sk_live']);
         $source = Source::create([
-            'amount' => floor($order['total_amount'] * $exchange),
+            'amount' => $settlement['amount'],
             'currency' => $currency,
             'type' => 'alipay',
             'statement_descriptor' => $order['trade_no'],
@@ -72,25 +71,21 @@ class StripeAlipay {
         try {
             $event = \Stripe\Webhook::constructEvent(
                 request()->getContent() ?: json_encode($_POST),
-                $_SERVER['HTTP_STRIPE_SIGNATURE'],
+                request()->header('Stripe-Signature', ''),
                 $this->config['stripe_webhook_key']
             );
-        } catch (\Stripe\Error\SignatureVerification $e) {
+        } catch (\Stripe\Exception\SignatureVerificationException | \UnexpectedValueException $e) {
             abort(400);
         }
         switch ($event->type) {
             case 'source.chargeable':
                 $object = $event->data->object;
-                \Stripe\Charge::create([
-                    'amount' => $object->amount,
-                    'currency' => $object->currency,
-                    'source' => $object->id,
-                    'metadata' => json_decode($object->metadata, true)
-                ]);
+                $charge = \App\Services\LegacyStripeSettlement::source($object, $this->config);
+                if ($charge) \Stripe\Charge::create($charge, ['idempotency_key'=>'source-'.hash('sha256', $this->config['uuid'].':'.$object->id)]);
                 break;
             case 'charge.succeeded':
                 $object = $event->data->object;
-                if ($object->status === 'succeeded') {
+                if ($object->status === 'succeeded' && ($object->paid ?? false) && ($object->captured ?? false)) {
                     if (!isset($object->metadata->out_trade_no) && !isset($object->source->metadata)) {
                         return('order error');
                     }
@@ -98,7 +93,9 @@ class StripeAlipay {
                     $tradeNo = $metaData->out_trade_no;
                     return [
                         'trade_no' => $tradeNo,
-                        'callback_no' => $object->id
+                        'callback_no' => $object->id,
+                        'amount' => \App\Services\Money::parseMinorUnits($object->amount_captured ?? $object->amount ?? null),
+                        'currency' => strtoupper((string)($object->currency ?? ''))
                     ];
                 }
                 break;
@@ -108,10 +105,4 @@ class StripeAlipay {
         return('success');
     }
 
-    private function exchange($from, $to)
-    {
-        $result = file_get_contents('https://api.exchangerate.host/latest?symbols=' . $to . '&base=' . $from);
-        $result = json_decode($result, true);
-        return $result['rates'][$to];
-    }
 }

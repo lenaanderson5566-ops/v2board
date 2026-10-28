@@ -990,6 +990,9 @@
     "footer": "Untuk pengalaman yang lebih lancar dengan AI."
   },
   "pricing": {
+    "couponAvailableSaving": "Hemat hingga {{amount}} dengan kupon",
+    "couponAvailable": "Pilih kupon yang tersedia",
+    "estimatedSubtotal": "Perkiraan subtotal",
     "claimLimit": "Satu klaim per kupon per akun",
     "priceDetails": "Rincian harga",
     "monthlyBaseline": "Harga bulanan × {{months}} bulan",

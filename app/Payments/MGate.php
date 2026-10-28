@@ -43,7 +43,7 @@ class MGate
         if (empty($this->config['mgate_app_id']) || empty($this->config['mgate_app_secret'])) {
             abort(500, 'MGate：请填写APPID和AppSecret');
         }
-        // Preserve the supplied adapter protocol: amounts are passed through in cents.
+        abort_unless(strtoupper((string)($this->config['mgate_source_currency'] ?? 'CNY')) === strtoupper((string)($order['currency'] ?? 'CNY')) || empty($this->config['mgate_source_currency']), 422, 'MGate currency does not match the saved quote');
         $params = [
             'out_trade_no' => $order['trade_no'],
             'total_amount' => $order['total_amount'],
@@ -93,7 +93,11 @@ class MGate
         if (!is_string($sign) || !preg_match('/^[a-f0-9]{32}$/i', $sign) || empty($params['out_trade_no']) || empty($params['trade_no'])) return false;
         unset($params['sign']);
         if (!hash_equals($this->signature($params), strtolower($sign))) return false;
-        if (isset($params['app_id']) && (string) $params['app_id'] !== (string) ($this->config['mgate_app_id'] ?? '')) return false;
-        return ['trade_no' => $params['out_trade_no'], 'callback_no' => $params['trade_no']];
+        if (!isset($params['app_id']) || (string)$params['app_id'] !== (string)($this->config['mgate_app_id'] ?? '')) return false;
+        try { $amount = \App\Services\Money::parseMinorUnits($params['total_amount'] ?? null); }
+        catch (\InvalidArgumentException $e) { return false; }
+        $currency = strtoupper((string)($params['source_currency'] ?? 'CNY'));
+        if ($currency !== 'CNY' || $currency !== strtoupper((string)(($this->config['mgate_source_currency'] ?? '') ?: 'CNY'))) return false;
+        return ['trade_no'=>$params['out_trade_no'], 'callback_no'=>$params['trade_no'], 'amount'=>$amount, 'currency'=>$currency];
     }
 }

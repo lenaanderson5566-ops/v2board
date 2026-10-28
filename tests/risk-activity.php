@@ -13,7 +13,7 @@ $decode=function($r){return json_decode($r->getContent(),true);};
 DB::beginTransaction();
 $key=null;
 try {
- $u=User::query()->firstOrFail();
+ $u=User::create(['email'=>'risk-activity-'.bin2hex(random_bytes(5)).'@example.com','password'=>'fixture','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
  $key='ALIVE_IP_USER_'.$u->id; $old=Cache::get($key);
  $u->t=time(); $u->balance=12345; $u->save();
  Cache::put($key,['test-node'=>['aliveips'=>['192.0.2.1_1','192.0.2.1_1','192.0.2.2_1']]],60);

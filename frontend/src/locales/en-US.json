@@ -990,6 +990,9 @@
     "footer": "AI application setup and support"
   },
   "pricing": {
+    "couponAvailableSaving": "Available savings up to {{amount}}",
+    "couponAvailable": "Choose an available coupon",
+    "estimatedSubtotal": "Estimated subtotal",
     "claimLimit": "One claim per coupon per account",
     "priceDetails": "Price breakdown",
     "monthlyBaseline": "Monthly price × {{months}} months",

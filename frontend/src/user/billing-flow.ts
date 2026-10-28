@@ -1,4 +1,5 @@
 import type { Row } from "../shared/api";
+import type { V10WalletCoupon } from "../shared/v10-types";
 export const billingPeriods: Record<string, string> = {
     month_price: "月付",
     quarter_price: "季付",
@@ -112,4 +113,27 @@ export function purchaseQuote(plan: Row, period: string, percent = 0) {
         couponSaving,
         subtotal: amount - couponSaving,
     };
+}
+
+const couponBillingPeriods: Record<string, string> = {
+    month_price: "monthly",
+    quarter_price: "quarterly",
+    half_year_price: "semiannual",
+    year_price: "annual",
+    two_year_price: "biennial",
+    three_year_price: "triennial",
+    onetime_price: "credits",
+    reset_price: "reset",
+};
+export function usablePurchaseCoupon(
+    coupon: V10WalletCoupon,
+    planId: number,
+    period: string,
+): boolean {
+    return (
+        coupon.status === "available" &&
+        (!coupon.planIds.length || coupon.planIds.includes(planId)) &&
+        (!coupon.billingPeriods.length ||
+            coupon.billingPeriods.includes(couponBillingPeriods[period]))
+    );
 }

@@ -36,11 +36,11 @@ $assert($sign === md5(http_build_query($payload) . $config['mgate_app_secret']),
 $assert($payload['total_amount'] === '1234' && $payload['source_currency'] === 'CNY', 'Amount or default currency changed');
 $assert($curl->options[CURLOPT_SSL_VERIFYPEER] === true && $curl->options[CURLOPT_SSL_VERIFYHOST] === 2 && $curl->closed, 'TLS verification or cleanup failed');
 $signed = function ($params) use ($config) { ksort($params); $params['sign'] = md5(http_build_query($params) . $config['mgate_app_secret']); return $params; };
-$params = $signed(['out_trade_no' => 'local-order', 'trade_no' => 'gateway-order', 'app_id' => 'app-test']);
-$assert($adapter->notify($params) === ['trade_no' => 'local-order', 'callback_no' => 'gateway-order'], 'Valid callback rejected');
+$params = $signed(['out_trade_no' => 'local-order', 'trade_no' => 'gateway-order', 'app_id' => 'app-test', 'total_amount'=>'1234', 'source_currency'=>'CNY']);
+$assert($adapter->notify($params) === ['trade_no' => 'local-order', 'callback_no' => 'gateway-order', 'amount'=>1234, 'currency'=>'CNY'], 'Valid callback rejected');
 $params['out_trade_no'] = 'tampered';
 $assert($adapter->notify($params) === false, 'Tampered callback accepted');
-foreach ([[], ['sign' => []], $signed(['out_trade_no' => 'local-order']), $signed(['out_trade_no' => 'local-order', 'trade_no' => 'gateway-order', 'app_id' => 'other'])] as $invalid) {
+foreach ([$signed(['out_trade_no'=>'local-order','trade_no'=>'gateway-order','app_id'=>'app-test']), $signed(['out_trade_no'=>'local-order','trade_no'=>'gateway-order','total_amount'=>'1234']), $signed(['out_trade_no'=>'local-order','trade_no'=>'gateway-order','app_id'=>'app-test','total_amount'=>'12.34']), $signed(['out_trade_no'=>'local-order','trade_no'=>'gateway-order','app_id'=>'app-test','total_amount'=>'1234','source_currency'=>'USD']), [], ['sign' => []], $signed(['out_trade_no' => 'local-order']), $signed(['out_trade_no' => 'local-order', 'trade_no' => 'gateway-order', 'app_id' => 'other'])] as $invalid) {
     $assert($adapter->notify($invalid) === false, 'Malformed or wrong-app callback accepted');
 }
 $curl->closed = false;

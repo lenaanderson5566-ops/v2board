@@ -992,6 +992,9 @@
     "footer": "Для удобной работы с ИИ."
   },
   "pricing": {
+    "couponAvailableSaving": "Доступная скидка до {{amount}}",
+    "couponAvailable": "Выбрать доступный купон",
+    "estimatedSubtotal": "Предварительный итог",
     "claimLimit": "Каждый купон — один раз на аккаунт",
     "priceDetails": "Расчёт стоимости",
     "monthlyBaseline": "Месячная цена × {{months}} мес.",

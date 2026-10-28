@@ -1,25 +1,16 @@
-import { SelectionPicker } from "../shared/ui/SelectionPicker";
-import { useCouponActivities } from "./useCouponActivities";
-import { useEffect, useId } from "react";
+import { useEffect, useId, useRef } from "react";
 import { formatInstant } from "../shared/timezone";
-import { TicketPercent, ArrowUpRight } from "lucide-react";
+import { TicketPercent, ChevronDown } from "lucide-react";
 import { State, useData } from "../shared/ui";
 import { money } from "../shared/api";
 import { pricingCopy as pc } from "./pricing-copy";
+import { usablePurchaseCoupon } from "./billing-flow";
 import { tx } from "../shared/i18n";
 import type { V10WalletCoupon } from "../shared/v10-types";
 
+import "./coupon-picker.css";
+
 export type WalletCoupon = V10WalletCoupon;
-const periods: Record<string, string> = {
-    month_price: "monthly",
-    quarter_price: "quarterly",
-    half_year_price: "semiannual",
-    year_price: "annual",
-    two_year_price: "biennial",
-    three_year_price: "triennial",
-    onetime_price: "credits",
-    reset_price: "reset",
-};
 export function CouponPicker({
     planId,
     period,
@@ -35,16 +26,13 @@ export function CouponPicker({
     amount?: number;
     currency?: string;
 }) {
-    const activities = useCouponActivities();
     const wallet = useData<WalletCoupon[]>("user/coupon/wallet");
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
     const name = useId();
-    const applicable = (coupon: WalletCoupon) =>
-        (!coupon.planIds.length || coupon.planIds.includes(planId)) &&
-        (!coupon.billingPeriods.length ||
-            coupon.billingPeriods.includes(periods[period]));
+    const summaryId = `${name}-summary`;
+    const disclosure = useRef<HTMLDetailsElement>(null);
     const usable = (coupon: WalletCoupon) =>
-        coupon.status === "available" && applicable(coupon);
+        usablePurchaseCoupon(coupon, planId, period);
     const available = rows
         .filter(usable)
         .sort(
@@ -53,6 +41,9 @@ export function CouponPicker({
                 Date.parse(a.expiresAt) - Date.parse(b.expiresAt),
         );
     const unavailable = rows.filter((coupon) => !usable(coupon));
+    const bestSaving = available.length
+        ? Math.floor((amount * available[0].discountPercent) / 100)
+        : 0;
     useEffect(() => {
         if (
             value !== null &&
@@ -82,100 +73,131 @@ export function CouponPicker({
                   ? "已过期"
                   : "已占用或使用",
         );
+    function choose(coupon?: WalletCoupon) {
+        onChange(coupon?.id ?? null, coupon);
+        if (disclosure.current) {
+            disclosure.current.open = false;
+            disclosure.current.querySelector("summary")?.focus();
+        }
+    }
+    function renderCoupon(coupon: WalletCoupon) {
+        const enabled = usable(coupon);
+        return (
+            <label
+                key={coupon.id}
+                className={`checkout-coupon-option${value === coupon.id ? " is-selected" : ""}${enabled ? "" : " is-disabled"}`}
+            >
+                <input
+                    type="radio"
+                    name={name}
+                    checked={value === coupon.id}
+                    disabled={!enabled}
+                    onChange={() => choose(coupon)}
+                />
+                <span>
+                    <strong>{coupon.name}</strong>
+                    <small>
+                        {tx("有效期至")} {formatInstant(coupon.expiresAt)}
+                    </small>
+                    {!enabled && <small>{unavailableReason(coupon)}</small>}
+                </span>
+                {enabled && (
+                    <span className="checkout-coupon-saving">
+                        {amount > 0
+                            ? pc("couponSaving", {
+                                  amount: money(
+                                      Math.floor(
+                                          (amount * coupon.discountPercent) /
+                                              100,
+                                      ),
+                                      currency,
+                                  ),
+                              })
+                            : `${tx("减免")} ${coupon.discountPercent}%`}
+                    </span>
+                )}
+            </label>
+        );
+    }
+    // Keep error recovery visible, but do not advertise discounts without a usable coupon.
+    if (!wallet.error && available.length === 0) return null;
     return (
         <section className="coupon-wallet coupon-picker-compact">
-            <label htmlFor={name} className="coupon-picker-label">
-                <TicketPercent size={18} aria-hidden="true" />
-                {tx("我的优惠券")}
-            </label>
             <State {...wallet} retry={wallet.reload}>
-                {rows.length > 0 ? (
-                    <>
-                        <SelectionPicker
-                            id={name}
-                            label={tx("我的优惠券")}
-                            value={selected ? String(selected.id) : ""}
-                            unavailableLabel={pc("unavailableCoupons")}
-                            options={[
-                                { value: "", label: tx("不使用优惠券") },
-                                ...[...available, ...unavailable].map(
-                                    (coupon) => ({
-                                        value: String(coupon.id),
-                                        label: coupon.name,
-                                        disabled: !usable(coupon),
-                                        description: (
-                                            <>
-                                                {usable(coupon) ? (
-                                                    <>
-                                                        {tx("减免")}{" "}
-                                                        {coupon.discountPercent}
-                                                        %
-                                                        {amount > 0 && (
-                                                            <>
-                                                                {" "}
-                                                                ·{" "}
-                                                                {pc(
-                                                                    "couponSaving",
-                                                                    {
-                                                                        amount: money(
-                                                                            Math.floor(
-                                                                                (amount *
-                                                                                    coupon.discountPercent) /
-                                                                                    100,
-                                                                            ),
-                                                                            currency,
-                                                                        ),
-                                                                    },
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </>
-                                                ) : (
-                                                    unavailableReason(coupon)
-                                                )}
-                                                <br />
-                                                {tx("有效期至")}{" "}
-                                                {formatInstant(
-                                                    coupon.expiresAt,
-                                                )}
-                                            </>
-                                        ),
-                                    }),
-                                ),
-                            ]}
-                            onChange={(nextValue) => {
-                                const next = available.find(
-                                    (coupon) => String(coupon.id) === nextValue,
-                                );
-                                onChange(next?.id ?? null, next);
-                            }}
-                        />
-                        {selected && (
-                            <small className="coupon-selected-detail">
-                                {tx("有效期至")}{" "}
-                                {formatInstant(selected.expiresAt)}
-                            </small>
-                        )}
-                    </>
-                ) : (
-                    <p className="muted">
-                        {tx(
-                            activities.hasActivities
-                                ? "暂无优惠券，可前往活动中心查看"
-                                : "暂无优惠券",
-                        )}
-                    </p>
+                {available.length > 0 && (
+                    <details className="checkout-coupon" ref={disclosure}>
+                        <summary
+                            aria-label={tx("我的优惠券")}
+                            aria-describedby={summaryId}
+                        >
+                            <TicketPercent size={16} aria-hidden="true" />
+                            <span className="checkout-coupon-heading">
+                                {tx("我的优惠券")}
+                            </span>
+                            <span
+                                id={summaryId}
+                                className="checkout-coupon-summary"
+                            >
+                                {selected ? (
+                                    <>
+                                        <span className="checkout-coupon-name">
+                                            {selected.name}
+                                        </span>
+                                        {amount > 0 && (
+                                            <span>
+                                                {pc("couponSaving", {
+                                                    amount: money(
+                                                        Math.floor(
+                                                            (amount *
+                                                                selected.discountPercent) /
+                                                                100,
+                                                        ),
+                                                        currency,
+                                                    ),
+                                                })}
+                                            </span>
+                                        )}
+                                    </>
+                                ) : bestSaving > 0 ? (
+                                    pc("couponAvailableSaving", {
+                                        amount: money(bestSaving, currency),
+                                    })
+                                ) : (
+                                    pc("couponAvailable")
+                                )}
+                            </span>
+                            <ChevronDown size={16} aria-hidden="true" />
+                        </summary>
+                        <div
+                            className="checkout-coupon-options"
+                            role="radiogroup"
+                            aria-label={tx("我的优惠券")}
+                        >
+                            <label
+                                className={`checkout-coupon-option${selected ? "" : " is-selected"}`}
+                            >
+                                <input
+                                    type="radio"
+                                    name={name}
+                                    checked={!selected}
+                                    onChange={() => choose()}
+                                />
+                                <span>{tx("不使用优惠券")}</span>
+                            </label>
+                            {available.map(renderCoupon)}
+                            {unavailable.length > 0 && (
+                                <details className="checkout-coupon-unavailable">
+                                    <summary>
+                                        {pc("unavailableCoupons")} (
+                                        {unavailable.length})
+                                    </summary>
+                                    {unavailable.map(renderCoupon)}
+                                </details>
+                            )}
+                        </div>
+                    </details>
                 )}
             </State>
-            <div className="coupon-picker-links">
-                {activities.hasActivities && (
-                    <a href="#/activities">
-                        {tx("查看活动")}
-                        <ArrowUpRight size={14} aria-hidden="true" />
-                    </a>
-                )}
-                <a href="#/coupons">{tx("管理优惠券")}</a>
-            </div>
         </section>
     );
 }

@@ -419,6 +419,7 @@
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
 }
+.purchase-footer-context { overflow-wrap: anywhere; }
 .purchase-selection .purchase-footer .purchase-primary {
     position: static;
     box-shadow: none;

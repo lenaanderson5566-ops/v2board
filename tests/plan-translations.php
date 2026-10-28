@@ -9,7 +9,7 @@ $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
-    $plan=Plan::firstOrFail();
+    $plan=Plan::create(['name'=>'Source plan','content'=>'Source description','group_id'=>1,'transfer_enable'=>10,'month_price'=>1000,'show'=>1,'renew'=>1]);
     PlanTranslation::where('plan_id',$plan->id)->delete();
     PlanTranslation::create(['plan_id'=>$plan->id,'locale'=>'zh-CN','name'=>'简体套餐','content'=>'简体说明']);
     PlanTranslation::create(['plan_id'=>$plan->id,'locale'=>'zh-TW','name'=>'繁體套餐','content'=>'繁體說明']);

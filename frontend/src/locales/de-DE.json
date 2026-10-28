@@ -990,6 +990,9 @@
     "footer": "Für ein reibungsloseres Erlebnis mit KI."
   },
   "pricing": {
+    "couponAvailableSaving": "Verfügbare Ersparnis bis zu {{amount}}",
+    "couponAvailable": "Verfügbaren Gutschein auswählen",
+    "estimatedSubtotal": "Geschätzte Zwischensumme",
     "claimLimit": "Ein Anspruch pro Coupon und Konto",
     "priceDetails": "Preisaufschlüsselung",
     "monthlyBaseline": "Monatspreis × {{months}} Monate",

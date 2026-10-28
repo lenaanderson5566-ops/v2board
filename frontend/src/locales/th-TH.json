@@ -990,6 +990,9 @@
     "footer": "เพื่อประสบการณ์ที่ราบรื่นยิ่งขึ้นด้วย AI"
   },
   "pricing": {
+    "couponAvailableSaving": "ใช้คูปองประหยัดได้สูงสุด {{amount}}",
+    "couponAvailable": "เลือกคูปองที่ใช้ได้",
+    "estimatedSubtotal": "ยอดรวมย่อยโดยประมาณ",
     "claimLimit": "หนึ่งสิทธิ์ต่อคูปองต่อบัญชี",
     "priceDetails": "รายละเอียดราคา",
     "monthlyBaseline": "ราคารายเดือน × {{months}} เดือน",

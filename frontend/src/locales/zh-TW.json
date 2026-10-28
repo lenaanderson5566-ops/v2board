@@ -988,6 +988,9 @@
     "footer": "AI 應用設定與使用支援"
   },
   "pricing": {
+    "couponAvailableSaving": "可用優惠，最多省 {{amount}}",
+    "couponAvailable": "選擇可用優惠券",
+    "estimatedSubtotal": "預估小計",
     "claimLimit": "每人每種券限領一次",
     "priceDetails": "價格明細",
     "monthlyBaseline": "按月購買合計（{{months}}個月）",

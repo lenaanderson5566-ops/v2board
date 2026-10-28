@@ -1,26 +1,42 @@
 // @vitest-environment jsdom
-// @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     reload: vi.fn(),
     wallet: [] as any[],
     offers: [] as any[],
+    error: "",
+    loading: false,
 }));
-vi.mock("../shared/api", () => ({ boot: {mode: "user"}, request: mocks.request, money: (n: number, currency: string) => `${currency} ${(n / 100).toFixed(2)}` }));
-vi.mock("./pricing-copy", () => ({ pricingCopy: (key: string, args: any = {}) => `${key} ${args.amount || ""}` }));
+vi.mock("../shared/api", () => ({
+    boot: { mode: "user" },
+    request: mocks.request,
+    money: (n: number, currency: string) =>
+        `${currency} ${(n / 100).toFixed(2)}`,
+}));
+vi.mock("./pricing-copy", () => ({
+    pricingCopy: (key: string, args: any = {}) => `${key} ${args.amount || ""}`,
+}));
 vi.mock("../shared/i18n", () => ({
     locale: () => "zh-CN",
     tx: (s: string) => s,
 }));
 vi.mock("../shared/ui", () => ({
-    State: ({ children }: any) => children,
+    State: ({ children, error, retry }: any) =>
+        error ? (
+            <div role="alert">
+                {error}
+                <button onClick={retry}>重试</button>
+            </div>
+        ) : (
+            children
+        ),
     useData: (path: string) => ({
         data: path.endsWith("/wallet") ? mocks.wallet : mocks.offers,
         reload: mocks.reload,
-        error: "",
-        loading: false,
+        error: mocks.error,
+        loading: mocks.loading,
     }),
 }));
 import { CouponPicker } from "./CouponPicker";
@@ -38,6 +54,8 @@ afterEach(() => {
     vi.clearAllMocks();
     mocks.wallet = [];
     mocks.offers = [];
+    mocks.error = "";
+    mocks.loading = false;
 });
 it("selects a wallet entry without entering a coupon code", () => {
     mocks.wallet = [coupon];
@@ -50,38 +68,57 @@ it("selects a wallet entry without entering a coupon code", () => {
             onChange={change}
         />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
+    fireEvent.click(
+        screen.getByLabelText("我的优惠券", { selector: "summary" }),
+    );
     fireEvent.click(screen.getByRole("radio", { name: /Welcome/ }));
-    fireEvent.click(screen.getByRole("button", { name: "确认选择" }));
     expect(change).toHaveBeenCalledWith(1, coupon);
     expect(screen.queryByRole("textbox")).toBeNull();
 });
-it("cancels draft selection with Escape and restores focus without applying a coupon", () => {
+it("applies inline immediately and restores focus without opening a dialog", () => {
     mocks.wallet = [coupon];
     const change = vi.fn();
-    render(<CouponPicker planId={1} period="month_price" value={null} onChange={change} />);
-    const trigger = screen.getByRole("button", {name:"我的优惠券"});
-    trigger.focus(); fireEvent.click(trigger);
-    fireEvent.click(screen.getByRole("radio", {name:/Welcome/}));
-    fireEvent.keyDown(document, {key:"Escape"});
+    render(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={null}
+            onChange={change}
+        />,
+    );
+    const trigger = screen.getByLabelText("我的优惠券", {
+        selector: "summary",
+    });
+    fireEvent.click(trigger);
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(change).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("radio", { name: /Welcome/ }));
+    expect(change).toHaveBeenCalledWith(1, coupon);
+    expect(trigger.closest("details")?.open).toBe(false);
     expect(document.activeElement).toBe(trigger);
-    fireEvent.click(trigger);
-    expect((screen.getByRole("radio", {name:"不使用优惠券"}) as HTMLInputElement).checked).toBe(true);
+    expect(screen.queryByRole("button", { name: "确认选择" })).toBeNull();
 });
-it("confirms opting out of a selected coupon", async () => {
+it("immediately opts out of a selected coupon", () => {
     mocks.wallet = [coupon];
     const change = vi.fn();
-    render(<CouponPicker planId={1} period="month_price" value={1} onChange={change} />);
-    fireEvent.click(screen.getByRole("button", {name:"我的优惠券"}));
-    fireEvent.click(screen.getByRole("radio", {name:"不使用优惠券"}));
-    fireEvent.click(screen.getByRole("button", {name:"确认选择"}));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    render(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={1}
+            onChange={change}
+        />,
+    );
+    fireEvent.click(
+        screen.getByLabelText("我的优惠券", { selector: "summary" }),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: "不使用优惠券" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
     expect(change).toHaveBeenCalledWith(null, undefined);
 });
 it("disables expired, used and ineligible coupons", () => {
     mocks.wallet = [
+        { ...coupon, id: 5 },
         { ...coupon, id: 1, status: "expired" },
         { ...coupon, id: 2, status: "reservedOrUsed" },
         { ...coupon, id: 3, planIds: [2] },
@@ -95,13 +132,16 @@ it("disables expired, used and ineligible coupons", () => {
             onChange={vi.fn()}
         />,
     );
-    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
-    fireEvent.click(screen.getByText("unavailableCoupons", {exact:false}));
+    fireEvent.click(
+        screen.getByLabelText("我的优惠券", { selector: "summary" }),
+    );
+    fireEvent.click(screen.getByText("unavailableCoupons", { exact: false }));
     const radios = screen.getAllByRole("radio") as HTMLInputElement[];
     expect(radios[0].disabled).toBe(false);
-    expect(radios.slice(1).every((r) => r.disabled)).toBe(true);
+    expect(radios[1].disabled).toBe(false);
+    expect(radios.slice(2).every((r) => r.disabled)).toBe(true);
 });
-it("keeps public claiming outside checkout and links to activities and wallet", () => {
+it("keeps empty checkout compact without activity detours or claiming operations", () => {
     mocks.offers = [coupon];
     render(
         <CouponPicker
@@ -111,24 +151,137 @@ it("keeps public claiming outside checkout and links to activities and wallet", 
             onChange={vi.fn()}
         />,
     );
-    expect(
-        screen.getByRole("link", { name: "查看活动" }).getAttribute("href"),
-    ).toBe("#/activities");
-    expect(
-        screen.getByRole("link", { name: "管理优惠券" }).getAttribute("href"),
-    ).toBe("#/coupons");
+    expect(screen.queryByText("暂无优惠券")).toBeNull();
+    expect(screen.queryByText("我的优惠券")).toBeNull();
+    expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("button", { name: /领取/ })).toBeNull();
     expect(mocks.request).not.toHaveBeenCalled();
 });
 
 it("sorts usable coupons by savings, previews integer-cent discounts and clears incompatible selection", () => {
-    mocks.wallet = [coupon, { ...coupon, id: 2, name: "Better", discountPercent: 25 }];
+    mocks.wallet = [
+        coupon,
+        { ...coupon, id: 2, name: "Better", discountPercent: 25 },
+    ];
     const change = vi.fn();
-    const view = render(<CouponPicker planId={1} period="month_price" value={1} onChange={change} amount={999} currency="USD" />);
-    fireEvent.click(screen.getByRole("button", { name: "我的优惠券" }));
-    expect(screen.getAllByRole("radio")[1].closest("label")?.textContent).toContain("Better");
-    expect(screen.getByRole("radio", { name: /couponSaving USD 2.49/ })).toBeTruthy();
+    const view = render(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={1}
+            onChange={change}
+            amount={999}
+            currency="USD"
+        />,
+    );
+    fireEvent.click(
+        screen.getByLabelText("我的优惠券", { selector: "summary" }),
+    );
+    expect(
+        screen.getAllByRole("radio")[1].closest("label")?.textContent,
+    ).toContain("Better");
+    expect(
+        screen.getByRole("radio", { name: /couponSaving USD 2.49/ }),
+    ).toBeTruthy();
     mocks.wallet = [{ ...coupon, planIds: [1] }];
-    view.rerender(<CouponPicker planId={2} period="month_price" value={1} onChange={change} />);
+    view.rerender(
+        <CouponPicker
+            planId={2}
+            period="month_price"
+            value={1}
+            onChange={change}
+        />,
+    );
     expect(change).toHaveBeenCalledWith(null);
+});
+
+it("shows selected savings collapsed without automatically choosing another coupon", () => {
+    mocks.wallet = [coupon, { ...coupon, id: 2, discountPercent: 25 }];
+    const change = vi.fn();
+    render(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={1}
+            amount={999}
+            currency="USD"
+            onChange={change}
+        />,
+    );
+    const summary = screen.getByLabelText("我的优惠券", {
+        selector: "summary",
+    });
+    expect(summary.textContent).toContain("USD 0.99");
+    expect(summary.closest("details")?.open).toBe(false);
+    expect(change).not.toHaveBeenCalled();
+});
+
+it.each([
+    { status: "expired" },
+    { status: "reservedOrUsed" },
+    { planIds: [2] },
+    { billingPeriods: ["annual"] },
+])(
+    "hides checkout coupon entry when no coupon is usable: %j",
+    (restriction) => {
+        mocks.wallet = [{ ...coupon, ...restriction }];
+        const { container } = render(
+            <CouponPicker
+                planId={1}
+                period="month_price"
+                value={null}
+                onChange={vi.fn()}
+            />,
+        );
+        expect(container.childElementCount).toBe(0);
+    },
+);
+it("hides the entry while loading and retains retry when the wallet fails", () => {
+    mocks.loading = true;
+    const view = render(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={null}
+            onChange={vi.fn()}
+        />,
+    );
+    expect(view.container.childElementCount).toBe(0);
+    mocks.loading = false;
+    mocks.error = "Wallet unavailable";
+    view.rerender(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={null}
+            onChange={vi.fn()}
+        />,
+    );
+    expect(screen.getByRole("alert").textContent).toContain(
+        "Wallet unavailable",
+    );
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(mocks.reload).toHaveBeenCalledOnce();
+});
+
+it("previews available savings without applying them or suggesting that a discount is already included", () => {
+    mocks.wallet = [coupon, { ...coupon, id: 2, discountPercent: 25 }];
+    const change = vi.fn();
+    render(
+        <CouponPicker
+            planId={1}
+            period="month_price"
+            value={null}
+            amount={999}
+            currency="USD"
+            onChange={change}
+        />,
+    );
+    const summary = screen.getByLabelText("我的优惠券", {
+        selector: "summary",
+    });
+    expect(summary.textContent).toContain("couponAvailableSaving USD 2.49");
+    expect(summary.textContent).not.toContain("不使用优惠券");
+    expect(summary.getAttribute("aria-describedby")).toBeTruthy();
+    expect(change).not.toHaveBeenCalled();
 });

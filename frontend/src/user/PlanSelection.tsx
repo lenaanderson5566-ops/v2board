@@ -7,6 +7,7 @@ import {
     periodSavings,
     purchasePeriods,
     purchaseQuote,
+    usablePurchaseCoupon,
 } from "./billing-flow";
 import { CouponPicker, type WalletCoupon } from "./CouponPicker";
 import { pricingCopy as pc } from "./pricing-copy";
@@ -28,10 +29,14 @@ export function PlanSelection({
             ? plan.initialPeriod
             : available[0] || "",
     );
-    const [coupon, setCoupon] = useState<WalletCoupon | null>(null);
+    const [selection, setCoupon] = useState<WalletCoupon | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const submitting = useRef(false);
+    const coupon =
+        selection && usablePurchaseCoupon(selection, Number(plan.id), period)
+            ? selection
+            : null;
     const quote = purchaseQuote(plan, period, coupon?.discountPercent);
     async function submit(event: FormEvent) {
         event.preventDefault();
@@ -95,7 +100,16 @@ export function PlanSelection({
                                         checked={period === key}
                                         onChange={() => {
                                             setPeriod(key);
-                                            setCoupon(null);
+                                            setCoupon((current) =>
+                                                current &&
+                                                usablePurchaseCoupon(
+                                                    current,
+                                                    Number(plan.id),
+                                                    key,
+                                                )
+                                                    ? current
+                                                    : null,
+                                            );
                                         }}
                                     />
                                     <span className="period-name">
@@ -224,7 +238,14 @@ export function PlanSelection({
                 </div>
                 <div className="purchase-footer">
                     <div className="purchase-footer-total" aria-live="polite">
-                        <span>{pc("couponEstimate")}</span>
+                        <span className="purchase-footer-context">
+                            {plan.name} · {tx(billingPeriods[period] || "")}
+                        </span>
+                        <span>
+                            {pc(
+                                coupon ? "couponEstimate" : "estimatedSubtotal",
+                            )}
+                        </span>
                         <strong>{money(quote.subtotal, plan.currency)}</strong>
                         <small>{pc("estimateExclusions")}</small>
                     </div>

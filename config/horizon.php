@@ -183,17 +183,20 @@ return [
                 // Do not probe /proc or /sys: restricted hosts cannot read them.
                 'maxProcesses' => max(1, (int)env('HORIZON_MAX_PROCESSES', 6)),
                 'tries' => 1,
+                // Traffic batches may run for 120s; allow shutdown before the
+                // queue's 180s reservation expires and another worker claims it.
+                'timeout' => 150,
                 'balanceCooldown' => 3,
             ],
             'mail-priority' => [
                 'connection' => 'redis', 'queue' => ['send_email_priority'],
                 'balance' => 'simple', 'processes' => 2, 'minProcesses' => 2, 'maxProcesses' => 2,
-                'tries' => 1, 'timeout' => 30, 'sleep' => 1,
+                'tries' => 1, 'timeout' => 45, 'sleep' => 1,
             ],
             'mail-bulk' => [
                 'connection' => 'redis', 'queue' => ['send_email_mass'],
                 'balance' => 'simple', 'processes' => 1, 'minProcesses' => 1, 'maxProcesses' => 1,
-                'tries' => 1, 'timeout' => 30, 'sleep' => 1,
+                'tries' => 1, 'timeout' => 90, 'sleep' => 1,
             ],
         ],
     ],

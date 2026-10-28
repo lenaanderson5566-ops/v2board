@@ -7,6 +7,7 @@ import { Mail, ArrowLeft, LoaderCircle } from "lucide-react";
 import { boot, request, query, bytes, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
+import { e } from "../shared/experience-copy";
 
 const statusTones: Record<string, StatusTone> = { queued: "warning", sent: "info", accepted: "success", expired: "neutral", failed: "danger" };
 const statuses: Record<string, string> = {
@@ -28,7 +29,7 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
     );
     async function send(event: FormEvent) {
         event.preventDefault();
-        if (busy) return;
+        if (busy || boot.registerClosed) return;
         setBusy(true);
         setError("");
         setSent(false);
@@ -73,7 +74,10 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                         </div>}
                     </div>
                 )}
-                <div className="invite-center-form">
+                {boot.registerClosed ? <div className="invite-center-form">
+                    <p role="status">{e("registerClosed")}</p>
+                    <button type="button" onClick={() => setView("history")}>{tx("跟踪邀请")}</button>
+                </div> : <div className="invite-center-form">
                     <RegistrationDomains />
                                 <form onSubmit={send}>
                                     <label>
@@ -124,7 +128,7 @@ export function EmailInvites({ rewards }: { rewards?: { registrationBytes?: numb
                                     </div>
                                 </form>
                     <p className="muted invite-conditions">{tx("专属邀请仅限收件邮箱使用，7 天内有效。")}</p>
-                </div>
+                </div>}
                 {(Number(rewards?.registrationBytes) > 0 || Number(rewards?.firstUseBytes) > 0) && <p className="invite-validity muted">{tx("赠送额度到账后 {{months}} 个月内有效。", { months: rewards?.validityMonths || 1 })}</p>}
             </section>
             {view && (

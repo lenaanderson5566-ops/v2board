@@ -130,7 +130,7 @@ final class NodeDeploymentWorkflow
                 return ['completed' => true,'dnsReady' => true,'applicationState' => 'applied','errorCode' => null,'addresses' => (object)[]];
             }
             if ($workflow['runtimeOnly'] ?? false) {
-                if ($action === 'start') {
+                if ($action === 'start' && !$workflow['startedAt']) {
                     Cache::forget("NODE_CONFIG_RECEIPT:v2box:{$node->id}");
                     $workflow['startedAt'] = time();
                     abort_unless($cache->put($key, $workflow, max(1, $workflow['expires'] - time())), 503);

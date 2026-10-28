@@ -105,8 +105,7 @@ class ServerService
             $apiHost = rtrim((string)(config('v2board.server_api_url') ?: config('v2board.app_url')), '/');
             $nodeId = (int) $v['id'];
             $apiHostArg = escapeshellarg((string) $apiHost);
-            $scriptUrl = rtrim((string)$apiHost, '/') . '/api/v10/public/node-deployment/bootstrap';
-            $entry = 'wget --https-only -O install-v2box.sh ' . escapeshellarg($scriptUrl) . ' && sh install-v2box.sh --install v1.0.16';
+            $entry = NodeDeployment::bootstrapCommand($apiHost) . ' --install v1.0.16';
             $servers[$k]['upgrade_command'] = $entry . ' --update';
             $servers[$k]['install_command'] = sprintf(
                 $entry . ' --node-type v2box --api-host %s --node-id %d --prompt-api-key',

@@ -829,6 +829,66 @@ it("pauses deployment polling after fifteen minutes and stops while hidden",asyn
     expect(api.request).toHaveBeenCalledTimes(pausedCalls);
 });
 
+it("recovers failed deployment status reads without manual refresh", async () => {
+    let unavailable = true;
+    api.request.mockImplementation(async (path: string) => {
+        if (unavailable) throw new Error("Temporary network failure");
+        return path.includes("manage/runtime")
+            ? {data:{runtimeStatus:"unknown",applicationState:"unconfirmed"}}
+            : {data:{keys:[],assignments:[]}};
+    });
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    await act(async () => { render(<NodeDeployment node={{id:1,type:"v2box",name:"Node"}} close={()=>{}}/>); });
+    expect(screen.getByText("状态读取暂不可用")).toBeTruthy();
+    const calls = api.request.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(api.request).toHaveBeenCalledTimes(calls);
+    unavailable = false;
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(api.request).toHaveBeenCalledTimes(calls + 3);
+    expect(screen.queryByText("状态读取暂不可用")).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(api.request.mock.calls.length).toBeGreaterThan(calls + 3);
+});
+
+it("restarts paused status polling after generating a new deployment command", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("credentials/deployment")) return {data:{command:"one-use-command",expiresAt:new Date(Date.now()+600000).toISOString()}};
+        return path.includes("manage/runtime")
+            ? {data:{runtimeStatus:"unknown",applicationState:"unconfirmed"}}
+            : {data:{keys:[],assignments:[]}};
+    });
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    await act(async () => { render(<NodeDeployment node={{id:1,type:"v2box",name:"Node"}} close={()=>{}}/>); });
+    await act(() => vi.advanceTimersByTimeAsync(900000));
+    expect(screen.getByText(/已暂停自动检查/)).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole("button", {name:"生成一键部署命令"})); });
+    expect(screen.queryByText(/已暂停自动检查/)).toBeNull();
+    const calls = api.request.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(api.request.mock.calls.length).toBeGreaterThan(calls);
+});
+
+it("keeps tracking an upgrade through temporary offline status", async () => {
+    Object.defineProperty(navigator, "clipboard", {configurable:true,value:{writeText:vi.fn().mockResolvedValue(undefined)}});
+    let runtimeStatus = "offline";
+    api.request.mockImplementation(async (path: string) => path.includes("manage/runtime")
+        ? {data:{runtimeStatus,applicationState:"applied"}}
+        : {data:{keys:[{status:"active",lastUsedAt:1}],assignments:[]}});
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    await act(async () => { render(<NodeDeployment node={{id:1,type:"v2box",name:"Node",runtime_status:"offline",upgrade_command:"upgrade"}} close={()=>{}}/>); });
+    expect(screen.getByText("节点通信中断")).toBeTruthy();
+    await act(async () => { fireEvent.click(screen.getByRole("button", {name:"复制升级命令"})); });
+    const calls = api.request.mock.calls.length;
+    runtimeStatus = "online";
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(api.request.mock.calls.length).toBeGreaterThan(calls);
+    expect(screen.getByText("服务运行正常")).toBeTruthy();
+});
+
 it("keeps sensitive node changes in the form when confirmation is cancelled",async()=>{
     const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
     api.request.mockImplementation(async(path:string)=>{

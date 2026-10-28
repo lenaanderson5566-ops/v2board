@@ -22,6 +22,26 @@ try {
     config(['v2board.new_user_currency'=>'CNY','v2board.telegram_bot_enable'=>0,'v2board.deposit_bounus'=>['100:10'],'v2board.invite_commission'=>10,'v2board.commission_distribution_enable'=>0,'v2board.withdraw_close_enable'=>0]);
     $user=User::create(['email'=>'legacy-'.uniqid().'@example.test','password'=>'test','token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'balance'=>5000,'transfer_enable'=>0,'expired_at'=>0]);
     $plan=Plan::create(['name'=>'Dual currency fixture','group_id'=>1,'transfer_enable'=>100,'month_price'=>3000,'year_price'=>30000,'show'=>1,'renew'=>1,'usd_prices'=>['month_price'=>500,'year_price'=>5000]]);
+    // The plan catalog and direct detail must honor the same switching policy as orders.
+    $policyUser=$user->replicate();$policyUser->email='plan-policy-'.uniqid().'@example.test';$policyUser->token=bin2hex(random_bytes(16));$policyUser->uuid=Illuminate\Support\Str::uuid();$policyUser->plan_id=$plan->id;$policyUser->transfer_enable=1073741824;$policyUser->expired_at=time()+86400;$policyUser->save();
+    $otherPlan=$plan->replicate();$otherPlan->name='Other visible plan';$otherPlan->save();
+    $catalog=new App\Services\Actions\User\PlanActions();
+    $planRequest=Illuminate\Http\Request::create('/api/v10/plans','GET',['user'=>['id'=>$policyUser->id]]);
+    $planIds=fn()=>array_column(json_decode($catalog->fetch($planRequest)->getContent(),true)['data'],'id');
+    config(['v2board.plan_change_enable'=>0]);
+    $assert($planIds()===[$plan->id],'Disabled plan switching only exposes the current renewable subscription');
+    $plan->show=0;$plan->save();
+    $assert($planIds()===[$plan->id],'Hidden current plan remains available for permitted renewal');
+    try { $catalog->fetch(Illuminate\Http\Request::create('/api/v10/plans','GET',['user'=>['id'=>$policyUser->id],'id'=>$otherPlan->id]));throw new RuntimeException('Disabled plan detail exposed'); }
+    catch(Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===409,'Direct detail cannot reopen a disallowed plan switch'); }
+    $plan->show=1;$plan->save();
+    $policyUser->expired_at=time()-1;$policyUser->save();
+    $assert(in_array($otherPlan->id,$planIds(),true),'Expired subscriptions may purchase another plan');
+    $policyUser->expired_at=time()+86400;$policyUser->transfer_enable=0;$policyUser->save();
+    $assert(in_array($otherPlan->id,$planIds(),true),'Accounts without a traffic entitlement may purchase a plan');
+    $policyUser->transfer_enable=1073741824;$policyUser->save();config(['v2board.plan_change_enable'=>1]);
+    $assert(in_array($otherPlan->id,$planIds(),true),'Enabled switching restores other plans');
+    $policyUser->delete();$otherPlan->delete();
     config(['v2board.new_user_currency'=>'USD','v2board.currency'=>'USD']);
     $assert($user->fresh()->currency==='CNY' && $user->fresh()->balance===5000,'Changing new account default changed legacy funds');
     $usd=User::create(['email'=>'usd-'.uniqid().'@example.test','password'=>'test','token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'balance'=>700,'transfer_enable'=>0,'expired_at'=>0]);

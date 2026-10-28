@@ -300,6 +300,24 @@ it("times out stalled requests", async () => {
     }
 });
 
+it.each(["headers", "body"])("times out stalled CSV %s without replaying export", async (stage) => {
+    vi.useFakeTimers();
+    try {
+        const fetcher = vi.fn((_url, options) => {
+            const stalled = () => new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError"))));
+            return stage === "headers" ? stalled() : Promise.resolve({ok:true,headers:new Headers({"Content-Type":"text/csv"}),blob:stalled});
+        });
+        vi.stubGlobal("fetch", fetcher);
+        const assertion = expect(download("admin/coupon/generate", {}, "coupons.csv")).rejects.toMatchObject({code:"REQUEST_TIMEOUT"});
+        await vi.advanceTimersByTimeAsync(60000);
+        await assertion;
+        expect(fetcher).toHaveBeenCalledTimes(1);
+        expect(vi.getTimerCount()).toBe(0);
+    } finally {
+        vi.useRealTimers();
+    }
+});
+
 it("uses the configured backend origin for authenticated API calls with scoped cookies", async () => {
     window.V2BOARD.apiBaseUrl = "https://api.example.com";
     const fetcher = vi

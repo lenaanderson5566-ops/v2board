@@ -139,10 +139,21 @@ describe("help and ticket interactions", () => {
     });
 });
 
-it.each(["closed", "purchase_required"])("disables new tickets for policy %s", (policy) => {
+it.each(["closed", "purchase_required"])("hides new tickets for policy %s", (policy) => {
     mocks.policy = policy;
     render(<Tickets />);
-    expect((screen.getByRole("button", {name: "创建工单"}) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.queryByRole("button", {name: "创建工单"})).toBeNull();
+});
+it("hides an open creation dialog if ticket creation is closed", () => {
+    const view=render(<Tickets />);
+    fireEvent.click(screen.getByRole("button",{name:"创建工单"}));
+    mocks.policy="closed";view.rerender(<Tickets />);
+    expect(screen.queryByRole("dialog",{name:"创建工单"})).toBeNull();
+});
+it("preserves existing ticket access when new tickets are closed", () => {
+    mocks.policy="closed";mocks.tickets=[{id:12,status:0,subject:"Existing"}];
+    render(<Tickets />);
+    expect(screen.getByRole("button",{name:"继续已有工单"})).toBeTruthy();
 });
 
 it("acknowledges a displayed reply once even when ticket data refreshes",async()=>{

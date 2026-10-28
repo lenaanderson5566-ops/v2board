@@ -80,7 +80,7 @@ export function SubscriptionImport({
             </p>
         );
     }
-    const available = supportedClients(device);
+    const available = supportedClients(device).filter(client => enabled(client.id));
     const primary = recommended.find((client) => enabled(client.id));
     const alternative =
         selected !== primary?.id
@@ -187,7 +187,7 @@ export function SubscriptionImport({
                 <p className="muted">
                     {tx("选择已安装的客户端，直接导入订阅。")}
                 </p>
-                <div className="client-focus">
+                {enabled(selected) && <div className="client-focus">
                     <span className="client-symbol">
                         <Smartphone size={22} />
                     </span>
@@ -204,7 +204,7 @@ export function SubscriptionImport({
                                 : choice("selected")}
                         </small>
                     </div>
-                </div>
+                </div>}
                 <div className="client-switches">
                     {alternative && (
                         <button
@@ -221,12 +221,12 @@ export function SubscriptionImport({
                             <ChevronRight size={15} aria-hidden="true" />
                         </button>
                     )}
-                    <button
+                    {available.length > 0 && <button
                         className="client-text-link"
                         onClick={() => setAll(true)}
                     >
                         {choice("more")} <ArrowUpRight size={14} />
-                    </button>
+                    </button>}
                 </div>
                 {!enabled(selected) && (
                     <p role="status">{choice("disabled")}</p>
@@ -326,7 +326,7 @@ export function SubscriptionImport({
             )}
         </div>
     );
-    const downloadDialog = downloadOpen && (
+    const downloadDialog = downloadOpen && enabled(selected) && (
         <ClientDownload
             client={selected}
             device={device}
@@ -334,7 +334,7 @@ export function SubscriptionImport({
             close={() => setDownloadOpen(false)}
         />
     );
-    const chooser = all && (
+    const chooser = all && available.length > 0 && (
         <Modal
             title={choice("more")}
             close={() => setAll(false)}

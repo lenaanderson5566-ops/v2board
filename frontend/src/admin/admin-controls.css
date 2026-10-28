@@ -34,12 +34,37 @@ body[data-console="admin"] .section-tabs > a.button { margin-left: auto; }
 body[data-console="admin"] :is(.section-tabs,.admin-choice-group) > button:disabled { cursor: not-allowed; opacity: .5; }
 body[data-console="admin"] .admin-choice-group > button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-body[data-console="admin"] .admin-filter-bar { display: flex; align-items: flex-end; flex-wrap: wrap; gap: 12px; padding: var(--admin-space, 16px); border-bottom: 1px solid var(--border); margin: 0; }
-body[data-console="admin"] .admin-filter-bar > label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; min-width: 0; }
-body[data-console="admin"] .admin-filter-bar :is(input,select) { min-height: var(--admin-control-height, 36px); }
-body[data-console="admin"] .admin-filter-bar > input { flex: 1 1 200px; min-width: 0; }
-body[data-console="admin"] .admin-filter-bar > button { min-height: var(--admin-control-height, 36px); }
-@media (max-width: 540px) {
-    body[data-console="admin"] .admin-filter-bar > label { flex: 1 1 100%; }
-    body[data-console="admin"] .admin-filter-bar > :is(input,select) { max-width: 100%; }
+/* One owner for filter geometry, shared by standalone pages and table panels. */
+body[data-console="admin"] .admin-filter-bar {
+    display: flex;
+    align-items: flex-end;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin: 0;
+    padding: var(--admin-space, 16px);
+    border-bottom: 1px solid var(--border);
+    background: var(--admin-surface-soft);
+}
+body[data-console="admin"] .admin-filter-bar > label {
+    display: flex;
+    flex: 1 1 168px;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+    max-width: 360px;
+    font-size: 12px;
+}
+body[data-console="admin"] .admin-filter-bar :is(input, select, button) {
+    min-height: var(--admin-control-height, 36px);
+    height: auto;
+    margin: 0;
+}
+body[data-console="admin"] .admin-filter-bar :is(input, select) { width: 100%; min-width: 0; }
+body[data-console="admin"] .admin-filter-bar > input { flex: 1 1 200px; }
+body[data-console="admin"] .admin-filter-bar > select { flex: 0 1 180px; width: auto; }
+body[data-console="admin"] .admin-filter-actions { display: flex; flex: 0 0 auto; flex-wrap: wrap; gap: 8px; align-items: center; }
+@media (max-width: 600px) {
+    body[data-console="admin"] .admin-filter-bar > label { flex: 1 1 100%; max-width: none; }
+    body[data-console="admin"] .admin-filter-bar > :is(input, select) { flex: 1 1 100%; width: 100%; max-width: 100%; }
+    body[data-console="admin"] .admin-filter-actions { width: 100%; }
 }

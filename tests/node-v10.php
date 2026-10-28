@@ -503,7 +503,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
-    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.16') && str_contains($server['upgrade_command'],'--install v1.0.16'),'Manual install and upgrade use short wget/script commands');
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -T 30 -t 3 -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.16') && str_contains($server['upgrade_command'],'--install v1.0.16'),'Manual install and upgrade share bounded HTTPS download retries');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');
@@ -527,8 +527,8 @@ try {
     $assert(!str_contains($grant['command'],'nk_') && !str_contains($grant['command'],'test-admin-credential-password'),'Command carries no long-lived key or admin password');
     $pipes=[];$syntax=proc_open(['bash','-n'],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes);fwrite($pipes[0],$grant['command']);fclose($pipes[0]);stream_get_contents($pipes[1]);$parseError=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);$assert(proc_close($syntax)===0,'Generated deployment command parses as shell: '.preg_replace('/nd_[a-f0-9]{64}/','[grant]',$parseError));
     $assert(!str_contains($grant['command'],"\r") && !str_contains($grant['command'],"\n"),'Deployment command is a single portable shell line');
-    $assert(str_contains($grant['command'],'--api-host') && str_contains($grant['command'],'--node-id '.$nodeId) && str_contains($grant['command'],'--deploy-token') && str_starts_with($grant['command'],'wget -q -O install-v2box.sh ') && !str_contains($grant['command'],'deploy_dir') && !str_contains($grant['command'],'--prompt-api-key'),'Single-line command automatically supplies the one-use grant, not an interactive key prompt');
-    $assert(str_contains($grant['command'],'wget -q -O') && !str_contains($grant['command'],'apt-get'),'Copied deployment command stays short; dependencies belong in the script');
+    $assert(str_contains($grant['command'],'--api-host') && str_contains($grant['command'],'--node-id '.$nodeId) && str_contains($grant['command'],'--deploy-token') && str_starts_with($grant['command'],'wget --https-only -T 30 -t 3 -O install-v2box.sh ') && !str_contains($grant['command'],'deploy_dir') && !str_contains($grant['command'],'--prompt-api-key'),'Single-line command supplies the one-use grant with bounded HTTPS download retries');
+    $assert(!str_contains($grant['command'],'wget -q') && !str_contains($grant['command'],'apt-get'),'Copied deployment command shows download progress; dependencies belong in the script');
     preg_match('/nd_[a-f0-9]{64}/',$grant['command'],$matches);$grantToken=$matches[0]??'';
     $assert(strlen($grantToken)===67,'One-use token format');
     $assert(DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->count()===$beforeKeys,'Creating command does not rotate live credentials');
@@ -679,6 +679,9 @@ try {
     $addressConfiguration=json_decode($call('GET',$root.'/configuration',[],$addressHeaders)->getContent(),true);
     $addressReceipt=['coreVersion'=>'test','features'=>['configuration-receipt-v1'],'configuration'=>['hash'=>$addressConfiguration['meta']['configurationHash'],'state'=>'applied']];
     $call('POST',$root.'/capabilities',$addressReceipt,$addressHeaders);
+    $receiptBeforeRetry=Cache::get('NODE_CONFIG_RECEIPT:v2box:'.$addressNode->id);
+    $assert($receiptBeforeRetry && $runtimeProgress('start')->getStatusCode()===200,'Lost start response can be retried after the node acknowledges configuration');
+    $assert(Cache::get('NODE_CONFIG_RECEIPT:v2box:'.$addressNode->id)===$receiptBeforeRetry,'Repeated runtime start preserves the fresh configuration receipt');
     $assert($runtimeProgress('complete')->getStatusCode()===200,'Unmanaged deployment completes after real node configuration acknowledgement');
     foreach([$adminPath.'/server/credentials/migrate-api',$adminPath.'/server/network/migrate-api','/api/v10/server/api-migrations/progress'] as $retiredMigration) {
         $assert($call('POST',$retiredMigration,[],['HTTP_AUTHORIZATION'=>$token])->getStatusCode()===404,'Removed API migration endpoints remain unavailable');

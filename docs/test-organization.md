@@ -63,7 +63,11 @@ PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以�
 
 ## 验证边界
 
+跨面板与节点的公共层回归：`framework-upgrade` 检查任务超时、Horizon 停止上限和队列重投间隔留有余量；`node-traffic-batches` 与 `node-traffic-concurrency` 验证重复领取不会重复计费，调度器可恢复未处理批次。前端 `api.test.ts` 覆盖 CSV 等待响应头、读取正文的超时，禁止自动重放导出操作。V2Box 的 `node/reload_retry_test.go` 用 HTTPS 夹具及真实本地核心验证在线统计失败不丢失用户撤销，以及准备失败后的缓存恢复；全量 Go 竞态与生命周期测试沿用节点仓库 CI 命令。
+
 自动测试、静态分析和构建各自说明不同结果，不能互相替代。工具链或输入不足而跳过的测试，须明确报告原因，不能记为通过。
+
+V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，并覆盖关闭时中断待处理连接、等待路由匹配结束、拒绝迟到连接，防止规则集释放与匹配并发访问。
 
 本地模拟不证明真实邮件送达、支付结算、生产节点联网、Cloudflare 解析或公网证书签发成功。Windows TUN、Android VPN/DNS/网络切换及各平台原生构建须在对应环境验证。长时间 soak、外部 padding preset 或面板联调等可选场景，应提供所需输入和显式开关后再执行。
 
@@ -75,6 +79,7 @@ PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以�
 - `lightsail` 与 `AdminLightsail.test.tsx` 覆盖共享凭据、失败恢复、任务锁和错误诊断；只用模拟 AWS。HTTP/cURL 状态不能单独证明真实权限、配额或资源存在性。
 - `lightsail` 同时通过 SDK 的 HTTP 处理器注入响应，验证真实错误解析、空错误码和非空未知错误码 HTTP 400 的分页列表核验、完整申请/换绑/释放和查询失败时的旧 IP 保护；畸形列表、循环分页与未知 404 不得授权资源变更。
 - Lightsail 诊断断言覆盖执行编号关联、AWS Request ID 与响应元数据、敏感内容排除，以及日志不可写时原有失败和恢复行为保持不变。
+- 用户功能开关复用 EmailInvites、HelpSupport、QuickStart 和 BillingFlow 前端用例；套餐关闭切换的目录、详情、历史套餐续费与到期边界归入现有 `commerce` 模块，在隔离数据库执行。
 
 ## 文档与测试清理
 

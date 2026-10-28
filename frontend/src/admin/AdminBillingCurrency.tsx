@@ -3,7 +3,7 @@ import { Coins, RefreshCw, Save, ArrowRightLeft } from "lucide-react";
 import { admin, request, money } from "../shared/api";
 import { State, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
-import { AdminSectionHead, AdminOperationNotice } from "./admin-section";
+import { AdminSectionHead, AdminOperationNotice, AdminDetails } from "./admin-section";
 import { useAdminOperation } from "./admin-operation";
 import { parseUsdPrice } from "./billing-price-input";
 
@@ -122,16 +122,10 @@ export function AdminBillingCurrency() {
                                     ? `1 USD = ${rate.usd_cny_micros / 1_000_000} CNY`
                                     : "尚未获取汇率"}
                             </p>
-                            <dl className="admin-key-values">
-                                <div>
-                                    <dt>数据时间</dt>
-                                    <dd>{dateLabel(rate?.quoted_at)}</dd>
-                                </div>
-                                <div>
-                                    <dt>最近成功</dt>
-                                    <dd>{dateLabel(rate?.fetched_at)}</dd>
-                                </div>
-                            </dl>
+                            <AdminDetails items={[
+                                {label: "数据时间", value: dateLabel(rate?.quoted_at)},
+                                {label: "最近成功", value: dateLabel(rate?.fetched_at)},
+                            ]} />
                             <p className="muted">
                                 每个 UTC
                                 日期最多自动请求一次，手动刷新间隔至少一分钟。报价超过

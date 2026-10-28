@@ -46,6 +46,28 @@ it("bootstraps cookie metadata once and sends CSRF without Authorization", async
     expect(fetcher.mock.calls[1][1].headers.get("X-CSRF-Token")).toBe("csrf");
     expect(stored.size).toBe(0);
 });
+
+it("times out stalled session metadata and allows a fresh initialization", async () => {
+    vi.useFakeTimers();
+    try {
+        const fetcher = vi.fn().mockImplementationOnce((_url, options) => Promise.resolve({
+            ok: true,
+            json: () => new Promise((_resolve, reject) => options.signal.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")))),
+        })).mockResolvedValueOnce(reply(true));
+        vi.stubGlobal("fetch", fetcher);
+        const sessions = await import("./browser-session");
+        const assertion = expect(sessions.initializeBrowserSession()).rejects.toThrow();
+        await vi.advanceTimersByTimeAsync(15000);
+        await assertion;
+        expect(sessions.hasBrowserSession()).toBe(false);
+        await sessions.initializeBrowserSession();
+        expect(sessions.hasBrowserSession()).toBe(true);
+        expect(fetcher).toHaveBeenCalledTimes(2);
+        expect(vi.getTimerCount()).toBe(0);
+    } finally {
+        vi.useRealTimers();
+    }
+});
 it("deletes retired local credentials without sending them to the server", async () => {
     stored.set("v2board.user.auth", "legacy-secret");
     const fetcher = vi.fn().mockResolvedValue(reply());

@@ -251,30 +251,52 @@ export function query(path: string, params: Row): string {
 }
 export async function download(path: string, body: Row, filename: string) {
     const token = hasBrowserSession();
-    const response = await browserFetch(apiUrl(`/api/v1/${path}`), {
-        credentials: "include",
-        method: "POST",
-        headers: {
-            Accept: "text/csv, application/json",
-            "Content-Language": locale(),
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ ...body, format: "csv" }),
-    });
-    if (!response.ok) {
-        const payload = await response.json().catch(() => ({}));
-        throw apiFailure(payload, response.status, token);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 60000);
+    try {
+        const response = await browserFetch(apiUrl(`/api/v1/${path}`), {
+            signal: controller.signal,
+            credentials: "include",
+            method: "POST",
+            headers: {
+                Accept: "text/csv, application/json",
+                "Content-Language": locale(),
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ ...body, format: "csv" }),
+        });
+        if (!response.ok) {
+            const payload = await response.json().catch(() => ({}));
+            throw apiFailure(payload, response.status, token);
+        }
+        if (!response.headers.get("Content-Type")?.includes("text/csv"))
+            throw new Error(tx("服务没有返回 CSV 文件"));
+        const url = URL.createObjectURL(await response.blob()),
+            link = document.createElement("a");
+        link.href = url;
+        link.download = filename;
+        document.body.append(link);
+        try {
+            link.click();
+        } finally {
+            link.remove();
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+    } catch (error) {
+        if (controller.signal.aborted)
+            throw Object.assign(
+                new Error(tx("请求超时，请刷新确认结果后再试")),
+                { code: "REQUEST_TIMEOUT" },
+            );
+        if (error instanceof TypeError)
+            throw Object.assign(
+                new Error(tx("网络连接中断，请检查网络后确认操作结果")),
+                { code: "NETWORK_ERROR" },
+            );
+        throw error;
+    } finally {
+        clearTimeout(timer);
     }
-    if (!response.headers.get("Content-Type")?.includes("text/csv"))
-        throw new Error(tx("服务没有返回 CSV 文件"));
-    const url = URL.createObjectURL(await response.blob()),
-        link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 export function rows(data: unknown): Row[] {
     if (Array.isArray(data)) return data;

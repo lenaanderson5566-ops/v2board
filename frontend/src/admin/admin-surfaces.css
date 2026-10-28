@@ -1,4 +1,27 @@
 /* Shared workspace geometry. Business-specific layouts stay in their modules. */
+body[data-console="admin"] .panel {
+    box-shadow: var(--admin-shadow);
+}
+body[data-console="admin"] .panel-head h2 { color: var(--admin-heading); font-weight: 650; }
+body[data-console="admin"] .table-viewport tbody tr:hover > td { background-color: var(--admin-surface-soft); }
+body[data-console="admin"] .table-viewport tbody tr:focus-within > td { background-color: #f5f3ff; }
+body[data-console="admin"] .admin-details { margin: 16px 0; min-width: 0; }
+body[data-console="admin"] .admin-details > div {
+    display: grid;
+    grid-template-columns: minmax(96px, 0.35fr) minmax(0, 1fr);
+    align-items: baseline;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+body[data-console="admin"] .admin-details > div:last-child { border-bottom: 0; }
+body[data-console="admin"] .admin-details dt { color: var(--muted); font-size: 13px; font-weight: 400; }
+body[data-console="admin"] .admin-details dd { margin: 0; min-width: 0; line-height: 1.65; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+body[data-console="admin"] .admin-operation-notice { align-items: flex-start; line-height: 1.65; }
+body[data-console="admin"] .admin-operation-notice svg { flex: 0 0 auto; margin-top: 2px; }
+body[data-console="admin"] .admin-operation-notice span { min-width: 0; overflow-wrap: anywhere; }
+body[data-console="admin"] .admin-settings-layout > *,
+body[data-console="admin"] .admin-section-head > div { min-width: 0; }
 body[data-console="admin"] :is(.panel, .panel-body, .admin-data-state, [role="tabpanel"]) {
     min-width: 0;
     max-width: 100%;
@@ -19,25 +42,6 @@ body[data-console="admin"] .panel-head > .actions {
 }
 body[data-console="admin"] :is(.panel-body, .pad) {
     padding: var(--admin-space);
-}
-body[data-console="admin"] .admin-filter-bar {
-    gap: 12px;
-    padding: var(--admin-space);
-    background: var(--admin-surface-soft);
-}
-body[data-console="admin"] .admin-filter-bar > label {
-    flex: 1 1 168px;
-    max-width: 360px;
-    gap: 6px;
-}
-body[data-console="admin"] .admin-filter-bar :is(input, select, button) {
-    min-height: var(--admin-control-height);
-    height: auto;
-    margin: 0;
-}
-body[data-console="admin"] .admin-filter-bar :is(input, select) {
-    width: 100%;
-    min-width: 0;
 }
 body[data-console="admin"] :is(.panel-head, .pager, .form-bottom) > :is(button, .button),
 body[data-console="admin"] .panel-head > .actions > :is(button, .button),
@@ -83,10 +87,6 @@ body[data-console="admin"] :is(.admin-section-head p, .panel-body > p, .admin-lo
 }
 @media (max-width: 600px) {
     body[data-console="admin"] { --admin-space: 12px; --admin-control-height: 40px; }
-    body[data-console="admin"] .admin-filter-bar > label {
-        flex: 1 1 100%;
-        max-width: none;
-    }
     body[data-console="admin"] .panel-head > .actions { width: 100%; }
     body[data-console="admin"] .panel-head > .actions:empty { display: none; }
     body[data-console="admin"] .pager { gap: 12px; }
@@ -95,8 +95,6 @@ body[data-console="admin"] :is(.admin-section-head p, .panel-body > p, .admin-lo
 }
 
 /* Page audit: shared geometry for standalone filters and legacy cards. */
-body[data-console="admin"] .admin-filter-bar > select { flex: 0 1 180px; width: auto; }
-body[data-console="admin"] .admin-filter-actions { display: flex; flex: 0 0 auto; gap: 8px; align-items: center; }
 body[data-console="admin"] .table-empty-state { position: sticky; left: 0; width: 100%; }
 body[data-console="admin"] :is(.release-card, .risk-rule-card, .release-hero) { border: 1px solid var(--border); border-radius: var(--admin-radius); padding: var(--admin-space); background: var(--surface); box-shadow: none; }
 body[data-console="admin"] :is(.release-hero, .release-monitor) > h2,
@@ -105,8 +103,6 @@ body[data-console="admin"] :is(.release-card,.risk-rule-card) > h3 { font-size: 
 body[data-console="admin"] .release-grid { grid-template-columns: repeat(auto-fit,minmax(min(100%,290px),1fr)); gap: 16px; }
 body[data-console="admin"] :is(.release-card,.risk-rule-card) p { line-height: 1.7; }
 @media(max-width:600px) {
- body[data-console="admin"] .admin-filter-bar > select { flex: 1 1 100%; width: 100%; }
- body[data-console="admin"] .admin-filter-actions { width: 100%; }
  body[data-console="admin"] .release-hero { flex-wrap: wrap; gap: 12px; }
 }
 

@@ -1,3 +1,4 @@
+import { AdminDetails } from "./admin-section";
 import { useEffect, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
@@ -166,36 +167,13 @@ export function AdminLightsail({
                                         {labels[row.status] || row.status}
                                     </span>
                                 </header>
-                                <dl>
-                                    <div>
-                                        <dt>实例</dt>
-                                        <dd>{row.instance}</dd>
-                                    </div>
-                                    <div>
-                                        <dt>区域</dt>
-                                        <dd>{row.region}</dd>
-                                    </div>
-                                    <div><dt>AWS 密钥</dt><dd>{credentials.data?.find(item => item.id === row.credential_id)?.name || `#${row.credential_id}`}</dd></div>
-                                    <div>
-                                        <dt>当前 IP</dt>
-                                        <dd>
-                                            {observed[row.id] ||
-                                                row.current_ip ||
-                                                "尚未查询"}
-                                        </dd>
-                                    </div>
-                                    <div>
-                                        <dt>节点</dt>
-                                        <dd>
-                                            {nodes.find(
-                                                (n) =>
-                                                    n.type === row.node_type &&
-                                                    n.id === row.node_id,
-                                            )?.name ||
-                                                `${row.node_type} #${row.node_id}`}
-                                        </dd>
-                                    </div>
-                                </dl>
+                                <AdminDetails items={[
+                                    {label: "实例", value: row.instance},
+                                    {label: "区域", value: row.region},
+                                    {label: "AWS 密钥", value: credentials.data?.find(item => item.id === row.credential_id)?.name || `#${row.credential_id}`},
+                                    {label: "当前 IP", value: observed[row.id] || row.current_ip || "尚未查询"},
+                                    {label: "节点", value: nodes.find(n => n.type === row.node_type && n.id === row.node_id)?.name || `${row.node_type} #${row.node_id}`},
+                                ]} />
                                 {row.error_code && (() => {
                                     const failure = lightsailFailure(row);
                                     return <div className="infrastructure-notice" data-tone="warning" role="status">

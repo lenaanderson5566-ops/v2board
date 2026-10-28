@@ -45,6 +45,7 @@ export function NodeDeployment({
         [error, setError] = useState("");
     const [deployment, setDeployment] = useState<Row | null>(null),
         [copied, setCopied] = useState("");
+    const generating = useRef(false);
     const report = useData<Row>(
         scope === "connection"
             ? ""
@@ -71,6 +72,7 @@ export function NodeDeployment({
     );
     const deadline = useRef(Date.now() + 900000);
     const [paused, setPaused] = useState(false);
+    const [tracking, setTracking] = useState(false);
     const binding = (network.data?.assignments || []).find(
         (a: Row) => a.node_type === node.type && a.node_id === node.id && a.status !== "manual",
     );
@@ -86,16 +88,19 @@ export function NodeDeployment({
         );
         return () => clearTimeout(timer);
     }, [deployment]);
-    async function copy(value: string, label: string) {
+    async function copy(value: string, label: string, track = false) {
         try {
             await navigator.clipboard.writeText(value);
             setCopied(label);
             setError("");
+            if (track) refreshStatus();
         } catch {
             setError("复制失败，请手动复制命令");
         }
     }
     async function generate() {
+        if (generating.current) return;
+        generating.current = true;
         setBusy(true);
         setError("");
         setCopied("");
@@ -106,9 +111,11 @@ export function NodeDeployment({
                 { type: node.type, id: node.id },
             );
             setDeployment(result.data);
+            refreshStatus();
         } catch (e) {
             setError((e as Error).message);
         } finally {
+            generating.current = false;
             setBusy(false);
         }
     }
@@ -122,9 +129,11 @@ export function NodeDeployment({
         binding,
         authenticated,
     );
+    const statusError = report.error || runtime.error || network.error;
     function refreshStatus() {
         deadline.current = Date.now() + 900000;
         setPaused(false);
+        setTracking(true);
         report.reload();
         runtime.reload();
         network.reload();
@@ -134,13 +143,10 @@ export function NodeDeployment({
             tab !== "deploy" ||
             busy ||
             paused ||
-            stage.terminal ||
+            (stage.terminal && !statusError && !tracking) ||
             report.loading ||
             runtime.loading ||
-            network.loading ||
-            report.error ||
-            runtime.error ||
-            network.error
+            network.loading
         )
             return;
         const timer = window.setInterval(() => {
@@ -149,16 +155,18 @@ export function NodeDeployment({
                 return;
             }
             if (document.visibilityState !== "visible") return;
-            if (!authenticated) report.reload();
+            if (!authenticated || report.error) report.reload();
             runtime.reload();
-            if (binding) network.reload();
-        }, 15000);
+            if (binding || network.error) network.reload();
+        }, statusError ? 30000 : 15000);
         return () => window.clearInterval(timer);
     }, [
         tab,
         busy,
         paused,
+        tracking,
         stage.terminal,
+        statusError,
         stage.dnsReady,
         authenticated,
         report.loading,
@@ -256,11 +264,11 @@ export function NodeDeployment({
                             <section
                                 className="node-deployment-progress"
                                 aria-label="部署状态"
-                                data-ready={stage.target === "runtime" && !runtime.error && !network.error}
+                                data-ready={stage.target === "runtime" && !statusError}
                             >
                                 <div>
                                     <strong>
-                                        {runtime.error || network.error
+                                        {statusError
                                             ? "状态读取暂不可用"
                                             : stage.title}
                                     </strong>
@@ -277,8 +285,8 @@ export function NodeDeployment({
                                     </button>
                                 </div>
                                 <p>
-                                    {runtime.error || network.error
-                                        ? "请刷新状态重试，部署命令仍可按原流程生成。"
+                                    {statusError
+                                        ? paused ? "自动检查已暂停，请刷新状态重试。" : "状态查询失败，页面可见时每 30 秒自动重试，也可手动刷新。"
                                         : stage.description}
                                 </p>
                                 {node.type === "v2box" && scope === "service" && (
@@ -453,6 +461,7 @@ export function NodeDeployment({
                                             copy(
                                                 nodeUpgradeCommand(node),
                                                 "升级命令已复制",
+                                                true,
                                             )
                                         }
                                     >

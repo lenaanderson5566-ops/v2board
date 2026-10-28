@@ -31,6 +31,13 @@ final class NodeDeployment
         return "'".str_replace("'", "'\\''", $value)."'";
     }
 
+    public static function bootstrapCommand(string $host): string
+    {
+        return 'wget --https-only -T 30 -t 3 -O install-v2box.sh '
+            .self::quote(rtrim($host, '/').'/api/v10/public/node-deployment/bootstrap')
+            .' && sh install-v2box.sh';
+    }
+
     private static function proof(int $id): string
     {
         return hash('sha256', json_encode([
@@ -84,8 +91,7 @@ final class NodeDeployment
                 'host' => $host,
             ], self::TTL), 503);
             abort_unless(self::cache()->put($index, $hash, self::TTL), 503);
-            $command = 'wget -q -O install-v2box.sh '.self::quote($host.'/api/v10/public/node-deployment/bootstrap')
-                .' && sh install-v2box.sh '.($networkOnly ? '--network-only ' : '')
+            $command = self::bootstrapCommand($host).' '.($networkOnly ? '--network-only ' : '')
                 .'--api-host '.self::quote($host).' --node-id '.$id
                 .' --deploy-token '.self::quote($token);
             return ['command' => $command,'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires)];
@@ -115,7 +121,7 @@ final class NodeDeployment
                 'expires' => $expires,
             ], self::TTL), 503);
             abort_unless(self::cache()->put('latest-server:'.$id, $hash, self::TTL), 503);
-            return ['command' => 'wget -q -O install-v2box.sh '.self::quote($host.'/api/v10/public/node-deployment/bootstrap').' && sh install-v2box.sh --server-id '.$id.' --api-host '.self::quote($host).' --deploy-token '.self::quote($token),'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires)];
+            return ['command' => self::bootstrapCommand($host).' --server-id '.$id.' --api-host '.self::quote($host).' --deploy-token '.self::quote($token),'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires)];
         });
     }
 

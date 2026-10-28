@@ -95,6 +95,16 @@ try {
 }
 
 // Preserve upgrade-baseline and pending-migration detection.
+$queueConfig = require __DIR__.'/../config/queue.php';
+$workers = (require __DIR__.'/../config/horizon.php')['environments']['*'];
+foreach (['V2board'=>new App\Jobs\ProcessNodeTrafficBatch(1), 'mail-bulk'=>new App\Jobs\SendCampaignMailJob(1)] as $name=>$job) {
+    $worker = $workers[$name];
+    $assert($job->timeout < $worker['timeout'] && $worker['timeout'] < $queueConfig['connections'][$worker['connection']]['retry_after'], 'Job, supervisor and reservation timeouts must leave termination margins: '.$name);
+}
+foreach (['database','beanstalkd','redis'] as $connection) {
+    $assert($queueConfig['connections'][$connection]['retry_after'] > (new App\Jobs\ProcessNodeTrafficBatch(1))->timeout, 'Slow traffic batch cannot be reclaimed while executing: '.$connection);
+}
+
 $files = [];
 foreach (glob(__DIR__.'/../database/migrations/*.php') as $file) $files[basename($file, '.php')] = $file;
 $modern = array_values(array_filter(array_keys($files), fn($name) => str_starts_with($name, '2026_10')));

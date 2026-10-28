@@ -6,6 +6,8 @@ import {
     render,
     screen,
     waitFor,
+    act,
+    renderHook,
 } from "@testing-library/react";
 const api = vi.hoisted(() => ({ request: vi.fn(), reload: vi.fn() }));
 vi.mock("../shared/api", () => ({
@@ -40,11 +42,24 @@ vi.mock("../shared/ui", () => ({
     State: ({ children }: { children: React.ReactNode }) => children,
 }));
 import { AdminBillingCurrency } from "./AdminBillingCurrency";
+import { useAdminOperation } from "./admin-operation";
 beforeEach(() => {
     vi.clearAllMocks();
     api.request.mockResolvedValue({ data: {} });
 });
 afterEach(cleanup);
+it("does not restore a stale notice after the view clears an in-flight operation", async () => {
+    let resolve!: (message: string) => void;
+    const {result}=renderHook(()=>useAdminOperation());
+    let completion!: Promise<void>;
+    act(()=>{completion=result.current.run(()=>new Promise(done=>{resolve=done;}));});
+    act(()=>result.current.clear());
+    await act(async()=>{resolve("Previous selection saved");await completion;});
+    expect(result.current.notice).toBeNull();
+    expect(result.current.busy).toBe(false);
+    await act(async()=>{await result.current.run(async()=>"Current selection saved");});
+    expect(result.current.notice?.message).toBe("Current selection saved");
+});
 
 it("saves only independent USD prices, preserving cents, zero and unavailable periods", async () => {
     render(<AdminBillingCurrency />);

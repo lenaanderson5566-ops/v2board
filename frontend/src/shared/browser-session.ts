@@ -57,10 +57,15 @@ export function acceptBrowserResponse(response: Response) {
     const next = response.headers.get("X-CSRF-Token");
     if (next) csrfToken = next;
 }
-async function sessionFetch(url: string, options: RequestInit) {
+async function sessionFetch(url: string, options: RequestInit, readJson = false) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 15000);
-    try { return await fetch(url, { ...options, signal: controller.signal }); }
+    try {
+        const response = await fetch(url, { ...options, signal: controller.signal });
+        // Keep the deadline until metadata is consumed, not just until headers.
+        const data = readJson && response.ok ? await response.json() : undefined;
+        return { response, data };
+    }
     catch (error) {
         if (controller.signal.aborted) throw new Error(tx("请求超时，请刷新确认结果后再试"));
         throw error;
@@ -69,15 +74,14 @@ async function sessionFetch(url: string, options: RequestInit) {
 async function bootstrap() {
     observeSession();
     observedRevision = localPreferences.getItem(revisionKey());
-    const response = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
+    const { response, data: result } = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
         credentials: "include",
         headers: { Accept: "application/json", "X-Browser-Client": mode() },
-    });
+    }, true);
     if (!response.ok)
         throw new Error(
             tx("服务响应异常 ({{value0}})", { value0: response.status }),
         );
-    const result = await response.json();
     if (invalidated) changedSession();
     const metadata = result?.data;
     if (!metadata || typeof metadata.csrfToken !== "string" || !metadata.csrfToken ||
@@ -90,7 +94,7 @@ async function bootstrap() {
     if (localPreferences.getItem(`${legacyKey()}.pendingLogout`)) {
         authenticated = false;
         accountId = null;
-        const revoked = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
+        const { response: revoked } = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
             method: "DELETE",
             credentials: "include",
             headers: {

@@ -9,12 +9,13 @@ import {
 } from "@testing-library/react";
 import type { ReactNode } from "react";
 const mocks = vi.hoisted(() => ({
+    boot: { title: "Studio", registerClosed: false },
     request: vi.fn(),
     history: [] as any[],
     paths: [] as string[],
 }));
 vi.mock("../shared/api", () => ({
-    boot: { title: "Studio" },
+    boot: mocks.boot,
     bytes: (value: number) => `${value} B`,
     request: mocks.request,
     query: (path: string, params: any) =>
@@ -24,6 +25,7 @@ vi.mock("../shared/i18n", () => ({
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
+vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
     useData: (path: string) => {
         mocks.paths.push(path);
@@ -45,9 +47,21 @@ vi.mock("../shared/ui", () => ({
 import { EmailInvites } from "./EmailInvites";
 afterEach(cleanup);
 beforeEach(() => {
+    mocks.boot.registerClosed = false;
     mocks.request.mockReset();
     mocks.paths = [];
     mocks.history = [];
+});
+it("hides invitation sending when registration closes but preserves history", () => {
+    const view = render(<EmailInvites />);
+    fireEvent.change(screen.getByLabelText("朋友的邮箱地址"), {target:{value:"friend@example.com"}});
+    mocks.boot.registerClosed = true;
+    view.rerender(<EmailInvites />);
+    expect(screen.queryByLabelText("朋友的邮箱地址")).toBeNull();
+    expect(screen.queryByRole("button", {name:"发送邀请"})).toBeNull();
+    fireEvent.click(screen.getByRole("button", {name:"跟踪邀请"}));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
 });
 it("sends a private email invitation and reports queued status without public codes or links", async () => {
     mocks.request.mockResolvedValue({ data: { status: "queued" } });

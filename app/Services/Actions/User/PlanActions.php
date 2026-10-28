@@ -33,7 +33,13 @@ class PlanActions
     public function fetch(Request $request)
     {
         $user = User::find($request->user['id']);
+        $renewalOnly = !(int) config('v2board.plan_change_enable', 1)
+            && $user->transfer_enable > 0 && $user->plan_id !== null
+            && ($user->expired_at === null || $user->expired_at > time());
         if ($request->input('id')) {
+            if ($renewalOnly && (int) $request->input('id') !== (int) $user->plan_id) {
+                abort(409, __('Subscription plan does not exist'));
+            }
             $plan = Plan::where('id', $request->input('id'))->first();
             if (!$plan) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
@@ -51,7 +57,10 @@ class PlanActions
         }
 
         $counts = PlanService::countActiveUsers();
-        $plans = Plan::where('show', 1)
+        $plans = Plan::query()
+            ->when($renewalOnly,
+                fn($query) => $query->where('id', $user->plan_id)->where(fn($visible) => $visible->where('show', 1)->orWhere('renew', 1)),
+                fn($query) => $query->where('show', 1))
             ->orderBy('sort', 'ASC')
             ->get();
         foreach ($plans as $k => $v) {

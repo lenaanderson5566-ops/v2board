@@ -77,17 +77,31 @@ it("shows ranked recommendations and only compatible alternatives", () => {
  expect(screen.getByRole("link", {name: /在 Shadowrocket/})).toBeTruthy();
 });
 
-it("disables clients blocked by backend policy and selects an available alternative", () => {
+it("hides clients blocked by backend policy and selects an available alternative", () => {
  boot.clientPolicies = { clash: {enabled: false}, singbox: {enabled: true, minVersion: "1.12.0"} };
  try {
   render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
   fireEvent.click(screen.getByRole("button", {name: "Windows"}));
   fireEvent.click(screen.getByRole("button", {name:"查看全部客户端"}));
-  expect((screen.getByRole("button", {name: /Clash Verge Rev/}) as HTMLButtonElement).disabled).toBe(true);
+  expect(screen.queryByRole("button", {name: /Clash Verge Rev/})).toBeNull();
   fireEvent.click(screen.getByRole("button", {name:/sing-box/}));
   expect(screen.getByRole("link", {name: /在 sing-box/})).toBeTruthy();
   expect(screen.getByText(/最低版本：1.12.0/)).toBeTruthy();
  } finally { boot.clientPolicies = undefined; }
+});
+it("closes download access and hides all client entry points when every client is disabled", () => {
+    const view=render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
+    fireEvent.click(screen.getByRole("button",{name:"Windows"}));
+    fireEvent.click(screen.getByRole("button",{name:"获取客户端"}));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    try {
+        boot.clientPolicies=Object.fromEntries(["clash","flclash","hiddify","singbox"].map(id=>[id,{enabled:false}]));
+        view.rerender(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.queryByRole("button",{name:"获取客户端"})).toBeNull();
+        expect(screen.queryByRole("button",{name:"查看全部客户端"})).toBeNull();
+        expect(screen.queryByRole("link",{name:/在 .* 中打开/})).toBeNull();
+    } finally {delete boot.clientPolicies;}
 });
 
 it("uses configured recommendations per platform and keeps default primary when only backup changes",()=>{

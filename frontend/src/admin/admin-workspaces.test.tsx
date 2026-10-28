@@ -760,6 +760,27 @@ it("keeps a nested row action dialog mounted when the action list closes", async
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(trigger);
 });
+it("opens row actions upward with the keyboard and skips hidden or disabled actions", async () => {
+    const {AdminRowMenu}=await import("./AdminRowMenu");
+    render(<AdminRowMenu><button hidden>Hidden</button><button disabled>Disabled</button><button>First</button><button>Last</button></AdminRowMenu>);
+    fireEvent.keyDown(screen.getByRole("button",{name:"更多操作"}),{key:"ArrowUp"});
+    expect(document.activeElement).toBe(screen.getByRole("button",{name:"Last"}));
+    fireEvent.keyDown(document.activeElement!,{key:"Home"});
+    expect(document.activeElement).toBe(screen.getByRole("button",{name:"First"}));
+});
+it("measures row menu height before placing it near the viewport edge", async () => {
+    const {AdminRowMenu}=await import("./AdminRowMenu");
+    const bounds=vi.spyOn(HTMLElement.prototype,"getBoundingClientRect").mockImplementation(function(this:HTMLElement) {
+        return this.classList.contains("admin-row-popover")
+            ? {width:210,height:120,left:0,right:210,top:0,bottom:120,x:0,y:0,toJSON:()=>({})}
+            : {width:80,height:36,left:200,right:280,top:window.innerHeight-50,bottom:window.innerHeight-14,x:200,y:0,toJSON:()=>({})};
+    });
+    try {
+        render(<AdminRowMenu label="Measured actions"><button>Action</button></AdminRowMenu>);
+        fireEvent.click(screen.getByRole("button",{name:"更多操作"}));
+        expect(screen.getByRole("group",{name:"Measured actions"}).style.top).toBe(`${window.innerHeight-174}px`);
+    } finally {bounds.mockRestore();}
+});
 
 it("provides peer infrastructure workspaces with bookmarkable task tabs", () => {
     for(const key of ["nodes","servers","node-domains"]){

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 export type OperationNotice = { kind: "success" | "error"; message: string };
 
@@ -7,16 +7,30 @@ export function useAdminOperation() {
     const lock = useRef(false);
     const [busy, setBusy] = useState(false);
     const [notice, setNotice] = useState<OperationNotice | null>(null);
+    const generation = useRef(0);
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; generation.current++; };
+    }, []);
+    const clear = useCallback(() => {
+        generation.current++;
+        setNotice(null);
+    }, []);
 
-    async function run(operation: () => Promise<string>) {
+    const run = useCallback(async (operation: () => Promise<string>) => {
         if (lock.current) return;
         lock.current = true;
         setBusy(true);
         setNotice(null);
+        const current = ++generation.current;
+        const publish = (value: OperationNotice) => {
+            if (mounted.current && current === generation.current) setNotice(value);
+        };
         try {
-            setNotice({ kind: "success", message: await operation() });
+            publish({ kind: "success", message: await operation() });
         } catch (error) {
-            setNotice({
+            publish({
                 kind: "error",
                 message:
                     error instanceof Error
@@ -25,9 +39,9 @@ export function useAdminOperation() {
             });
         } finally {
             lock.current = false;
-            setBusy(false);
+            if (mounted.current) setBusy(false);
         }
-    }
+    }, []);
 
-    return { busy, notice, run, clear: () => setNotice(null) };
+    return { busy, notice, run, clear };
 }

@@ -120,7 +120,7 @@ export function Tickets({
                                 if (!isAdmin) ticketAccount.reload();
                             }}
                         />
-                        {!isAdmin && (
+                        {!isAdmin && (openTicket || (!ticketAccount.loading && !ticketAccount.error && ticketPolicy === "allowed")) && (
                             <button
                                 className="button"
                                 disabled={
@@ -200,7 +200,7 @@ export function Tickets({
                     )}
                 </State>
             </Panel>
-            {creating && (
+            {creating && (isAdmin || (!ticketAccount.loading && !ticketAccount.error && ticketPolicy === "allowed")) && (
                 <Modal title={tx("创建工单")} close={() => setCreating(false)}>
                     <Editor
                         draftKey="ticket-new"

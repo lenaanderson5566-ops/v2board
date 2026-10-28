@@ -646,7 +646,11 @@
     "删除账户无法撤销，请确认不再需要此账户。": "Không thể hoàn tác việc xóa tài khoản. Hãy chắc chắn rằng bạn không còn cần tài khoản này.",
     "为避免误操作，请输入大写 DELETE。": "Để tránh xóa nhầm, hãy nhập DELETE bằng chữ in hoa.",
     "账户已停用，所有登录会话均已结束。": "Tài khoản đã bị vô hiệu hóa và mọi phiên đăng nhập đã kết thúc.",
-    "暂时无法检查账户状态，请稍后重新检查。": "Hiện chưa thể kiểm tra trạng thái tài khoản. Vui lòng thử lại sau."
+    "暂时无法检查账户状态，请稍后重新检查。": "Hiện chưa thể kiểm tra trạng thái tài khoản. Vui lòng thử lại sau.",
+    "了解删除影响": "Xem tác động của việc xóa",
+    "验证并确认": "Xác minh và xác nhận",
+    "删除前，请确认以下事项": "Trước khi xóa, hãy kiểm tra các mục sau",
+    "账户状态已检查，可以继续。": "Đã kiểm tra trạng thái tài khoản. Bạn có thể tiếp tục."
   },
   "account": {
     "notificationAutoSave": "Thay đổi được lưu tự động",

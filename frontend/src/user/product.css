@@ -2428,22 +2428,36 @@ body[data-console="user"] .client-family-header p {
     .minimal-landing-footer > .privacy-footer-links { grid-column: 1 / -1; justify-self: start; justify-content: flex-start; }
 }
 
-.account-deletion-warning { display: flex; align-items: flex-start; gap: 12px; line-height: 1.65; }
+.account-deletion-steps { display: flex; gap: 20px; list-style: none; padding: 0; margin: 0 0 28px; }
+.account-deletion-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.account-deletion-steps li[aria-current="step"] { color: var(--ink); font-weight: 600; }
+.account-deletion-step-number { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; }
+.account-deletion-steps li[aria-current="step"] .account-deletion-step-number, .account-deletion-steps li[data-complete="true"] .account-deletion-step-number { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
+.account-deletion-review-title { margin: 0; font-size: 17px; font-weight: 600; }
+.account-deletion-warning { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--warning-border); border-radius: 12px; background: var(--warning-soft); font-size: 13px; line-height: 1.65; }
 .account-deletion-warning > svg { flex: 0 0 auto; margin-top: 2px; color: var(--danger); }
-.account-deletion-effects { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 22px 0; }
-.account-deletion-effects > div { min-width: 0; padding: 16px; border-radius: 12px; background: var(--surface-soft); }
-.account-deletion-effects dt { margin-bottom: 8px; font-weight: 600; }
+.account-deletion-effects { margin: 14px 0 22px; }
+.account-deletion-effects > div { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 14px; min-width: 0; padding: 18px 0; }
+.account-deletion-effects > div + div { border-top: 1px solid var(--border); }
+.account-deletion-effects > div > svg { grid-row: span 2; color: var(--text-secondary); margin-top: 2px; }
+.account-deletion-effects dt { margin-bottom: 6px; font-weight: 600; font-size: 14px; }
 .account-deletion-effects dd { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
-.account-deletion-blockers { padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
+.account-deletion-blockers { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
 .account-deletion-blockers h3 { margin: 0; font-size: 14px; }
 .account-deletion-blockers ul { margin: 10px 0 0; padding-inline-start: 20px; line-height: 1.75; }
 .account-deletion-footer { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 12px; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
 .account-deletion-confirm > label { margin-top: 18px; }
+.account-deletion-verification { min-width: 0; margin: 22px 0 0; padding: 0; border: 0; }
+.account-deletion-verification legend { padding: 0; font-size: 14px; font-weight: 600; }
+.account-deletion-verification > label { margin-top: 16px; }
+.app.user .settings-card .account-deletion-ready { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--text-secondary); font-size: 13px; }
+.account-deletion-ready > svg, .account-deletion-success-icon { flex-shrink: 0; color: var(--brand); }
+.account-deletion-success-icon { margin-bottom: 16px; }
 .account-deletion-confirm .account-deletion-hint { margin: 6px 0 0; font-size: 12px; }
 .account-deletion-ack { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; margin-block: 16px; line-height: 1.65; }
 .account-deletion-ack input[type="checkbox"] { width: 18px; min-width: 18px; height: 18px; margin: 3px 0 0; }
 @media (max-width: 700px) {
-    .account-deletion-effects { grid-template-columns: minmax(0, 1fr); }
+    .account-deletion-steps { gap: 12px; flex-wrap: wrap; }
     .account-deletion-footer > button { flex: 1 1 auto; }
 }
 

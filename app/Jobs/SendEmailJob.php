@@ -36,7 +36,10 @@ class SendEmailJob implements ShouldQueue
     public function backoff() { return ($this->params['template_name'] ?? '') === 'verify' ? [5, 15, 30, 60] : [60, 180, 600, 900]; }
     public function handle()
     {
-        if (!empty($this->params['user_id']) && (\App\Models\User::find($this->params['user_id'])?->account_deleted_at)) return ['skipped'=>true,'reason'=>'ACCOUNT_DELETED'];
+        if (!empty($this->params['user_id'])) {
+            $account = \App\Models\User::find($this->params['user_id']);
+            if (!$account || $account->account_deleted_at) return ['skipped'=>true,'reason'=>'ACCOUNT_DELETED'];
+        }
         $announcement=(($this->params['template_name'] ?? '')==='notify' && ($this->params['mail_purpose'] ?? 'marketing')==='marketing') || (($this->params['template_name'] ?? '')==='test' && ($this->params['test_stream'] ?? '')==='announcement');
         return \App\Services\Mail\MailChannel::run($announcement, fn()=>$this->deliver($announcement));
     }

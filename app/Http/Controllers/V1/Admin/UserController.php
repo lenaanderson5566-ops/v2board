@@ -6,12 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserFetch;
 use App\Http\Requests\Admin\UserSendMail;
 use App\Http\Requests\Admin\UserUpdate;
-use App\Models\InviteCode;
-use App\Models\EmailInvitation;
-use App\Models\Ticket;
 use App\Models\Order;
 use App\Models\Plan;
-use App\Models\TicketMessage;
 use App\Models\User;
 use App\Services\AuthService;
 use App\Utils\Helper;
@@ -244,70 +240,36 @@ class UserController extends Controller
 
     public function allDel(Request $request)
     {
-        $request->validate(['filter' => 'required|array|min:1']);
-        $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
-        $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
-        $builder = User::orderBy($sort, $sortType);
-        $this->filter($request, $builder);
-        $this->checkScope($request, $builder);
-
-        DB::beginTransaction();
-        try {
-            $builder->each(function ($user){
-                $authService = new AuthService($user);
-                $authService->removeAllSession();
-                Order::where('user_id', $user->id)->delete();
-                InviteCode::where('user_id', $user->id)->delete();
-                EmailInvitation::where('user_id', $user->id)->orWhere('accepted_user_id', $user->id)->delete();
-                $tickets = Ticket::where('user_id', $user->id)->get();
-                foreach($tickets as $ticket) {
-                    TicketMessage::where('ticket_id', $ticket->id)->delete();
-                }
-                Ticket::where('user_id', $user->id)->delete();
-                User::where('invite_user_id', $user->id)->update(['invite_user_id' => null]);
-            });
-            $builder->delete();
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            abort(500, '批量删除用户信息失败');
-        }  
-
-        return response([
-            'data' => true
-        ]);
+        $request->validate(['filter'=>'required|array|min:1','expected_count'=>'nullable|integer|min:1']);
+        DB::transaction(function () use ($request) {
+            $builder = User::orderBy('id');
+            $this->filter($request, $builder);
+            // Freeze the confirmed set: cleanup can change fields used by the filter.
+            $users = $builder->lockForUpdate()->get(['id']);
+            if ($request->has('expected_count') && $users->count() !== (int)$request->input('expected_count')) {
+                abort(409, '匹配人数已变化，请刷新列表后重新确认');
+            }
+            foreach ($users as $user) $this->deleteUser($user);
+        }, 3);
+        return response(['data'=>true]);
     }
 
     public function delUser(Request $request)
     {
-        $user = User::find($request->input('id'));
-        if (!$user) {
-            abort(500, '用户不存在');
-        }
-        DB::beginTransaction();
-        try {
-            $authService = new AuthService($user);
-            $authService->removeAllSession();
-            Order::where('user_id', $request->input('id'))->delete();
-            User::where('invite_user_id', $request->input('id'))->update(['invite_user_id' => null]);
-            InviteCode::where('user_id', $request->input('id'))->delete();
-            EmailInvitation::where('user_id', $user->id)->orWhere('accepted_user_id', $user->id)->delete();
-            
-            $tickets = Ticket::where('user_id', $request->input('id'))->get();
-            foreach($tickets as $ticket) {
-                TicketMessage::where('ticket_id', $ticket->id)->delete();
-            }
-            Ticket::where('user_id', $request->input('id'))->delete();
-    
-            $user->delete();
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            abort(500, '删除用户失败');
-        }
+        $request->validate(['id'=>'required|integer|min:1']);
+        DB::transaction(function () use ($request) {
+            $user = User::whereKey($request->input('id'))->lockForUpdate()->first();
+            if (!$user) abort(500, '用户不存在');
+            $this->deleteUser($user);
+        }, 3);
+        return response(['data'=>true]);
+    }
 
-        return response([
-            'data' => true
-        ]);
+    private function deleteUser(User $user): void
+    {
+        app(\App\Services\Actions\User\EraseAccountData::class)->erase($user, true);
+        Order::where('user_id', $user->id)->delete();
+        $user->delete();
+        (new AuthService($user))->removeAllSession();
     }
 }

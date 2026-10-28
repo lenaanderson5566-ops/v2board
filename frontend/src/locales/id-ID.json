@@ -648,7 +648,11 @@
     "删除账户无法撤销，请确认不再需要此账户。": "Penghapusan akun tidak dapat dibatalkan. Pastikan Anda tidak lagi memerlukan akun ini.",
     "为避免误操作，请输入大写 DELETE。": "Untuk mencegah penghapusan yang tidak disengaja, ketik DELETE dengan huruf besar.",
     "账户已停用，所有登录会话均已结束。": "Akun Anda telah dinonaktifkan dan semua sesi login telah berakhir.",
-    "暂时无法检查账户状态，请稍后重新检查。": "Status akun belum dapat diperiksa. Silakan coba lagi nanti."
+    "暂时无法检查账户状态，请稍后重新检查。": "Status akun belum dapat diperiksa. Silakan coba lagi nanti.",
+    "了解删除影响": "Tinjau dampak penghapusan",
+    "验证并确认": "Verifikasi dan konfirmasi",
+    "删除前，请确认以下事项": "Sebelum menghapus, tinjau hal berikut",
+    "账户状态已检查，可以继续。": "Status akun telah diperiksa. Anda dapat melanjutkan."
   },
   "account": {
     "notificationAutoSave": "Perubahan disimpan secara otomatis",

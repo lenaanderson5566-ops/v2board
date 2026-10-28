@@ -1,5 +1,12 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { ShieldAlert } from "lucide-react";
+import {
+    Check,
+    CheckCircle2,
+    CreditCard,
+    FileText,
+    ShieldAlert,
+    UserRound,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { browserFetch, forgetBrowserSession } from "../shared/browser-session";
 import { clearReadCache } from "../shared/api";
@@ -58,6 +65,34 @@ async function deletionRequest(
         signal?.removeEventListener("abort", abort);
     }
 }
+function DeletionSteps({ confirming = false }: { confirming?: boolean }) {
+    return (
+        <ol className="account-deletion-steps" aria-label={tx("删除账户")}>
+            {["了解删除影响", "验证并确认"].map((label, index) => (
+                <li
+                    key={label}
+                    aria-current={
+                        index === (confirming ? 1 : 0) ? "step" : undefined
+                    }
+                    data-complete={confirming && index === 0}
+                >
+                    <span
+                        className="account-deletion-step-number"
+                        aria-hidden="true"
+                    >
+                        {confirming && index === 0 ? (
+                            <Check size={14} />
+                        ) : (
+                            index + 1
+                        )}
+                    </span>
+                    <span>{tx(label)}</span>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
 export function AccountDeletion() {
     useTranslation();
     const [state, setState] = useState<V10AccountDeletionState | null>(null);
@@ -135,6 +170,11 @@ export function AccountDeletion() {
         return (
             <section className="settings-section account-deletion">
                 <div className="settings-card">
+                    <CheckCircle2
+                        className="account-deletion-success-icon"
+                        size={36}
+                        aria-hidden="true"
+                    />
                     <h2 role="status">{tx("账户已删除。")}</h2>
                     <p className="muted">
                         {tx("账户已停用，所有登录会话均已结束。")}
@@ -156,16 +196,13 @@ export function AccountDeletion() {
         <section className="settings-section account-deletion">
             <h2>{tx("删除账户")}</h2>
             <div className="settings-card">
-                <div className="account-deletion-warning">
-                    <ShieldAlert size={22} aria-hidden="true" />
-                    <div>
-                        <strong>
-                            {tx("删除账户无法撤销，请确认不再需要此账户。")}
-                        </strong>
-                    </div>
-                </div>
+                <DeletionSteps />
+                <h3 className="account-deletion-review-title">
+                    {tx("删除前，请确认以下事项")}
+                </h3>
                 <dl className="account-deletion-effects">
                     <div>
+                        <UserRound size={20} aria-hidden="true" />
                         <dt>{tx("账户与登录")}</dt>
                         <dd>
                             {tx(
@@ -174,6 +211,7 @@ export function AccountDeletion() {
                         </dd>
                     </div>
                     <div>
+                        <CreditCard size={20} aria-hidden="true" />
                         <dt>{tx("订阅与权益")}</dt>
                         <dd>
                             {tx(
@@ -182,6 +220,7 @@ export function AccountDeletion() {
                         </dd>
                     </div>
                     <div>
+                        <FileText size={20} aria-hidden="true" />
                         <dt>{tx("数据与记录")}</dt>
                         <dd>
                             {tx(
@@ -190,6 +229,12 @@ export function AccountDeletion() {
                         </dd>
                     </div>
                 </dl>
+                <div className="account-deletion-warning">
+                    <ShieldAlert size={20} aria-hidden="true" />
+                    <strong>
+                        {tx("删除账户无法撤销，请确认不再需要此账户。")}
+                    </strong>
+                </div>
                 {!!state.blockers.length && (
                     <div className="account-deletion-blockers">
                         <h3>{tx("需要先处理的事项")}</h3>
@@ -210,6 +255,12 @@ export function AccountDeletion() {
                 {statusError && (
                     <p className="alert" role="alert">
                         {statusError}
+                    </p>
+                )}
+                {!state.blockers.length && !statusError && !checking && (
+                    <p className="account-deletion-ready" role="status">
+                        <CheckCircle2 size={17} aria-hidden="true" />
+                        {tx("账户状态已检查，可以继续。")}
                     </p>
                 )}
                 <div className="account-deletion-footer" aria-busy={checking}>
@@ -240,12 +291,14 @@ export function AccountDeletion() {
                     title={tx("确认删除账户")}
                     close={close}
                     dismissible={!busy}
+                    className="account-deletion-dialog"
                 >
                     <form
                         className="pad account-deletion-confirm"
                         onSubmit={remove}
                         aria-busy={busy}
                     >
+                        <DeletionSteps confirming />
                         <div className="account-deletion-warning">
                             <ShieldAlert size={22} aria-hidden="true" />
                             <strong>
@@ -262,43 +315,49 @@ export function AccountDeletion() {
                                 "请重新登录并完成安全验证，在 5 分钟内删除账户。",
                             )}
                         </p>
-                        <label>
-                            {tx("当前密码")}
-                            <input
-                                type="password"
-                                autoComplete="current-password"
-                                maxLength={128}
-                                required
-                                value={password}
-                                disabled={busy}
-                                onChange={(event) =>
-                                    setPassword(event.target.value)
-                                }
-                            />
-                        </label>
-                        <label>
-                            {tx("输入 DELETE 确认删除")}
-                            <input
-                                autoComplete="off"
-                                autoCapitalize="characters"
-                                spellCheck={false}
-                                dir="ltr"
-                                required
-                                pattern="DELETE"
-                                aria-describedby={confirmationHint}
-                                value={confirmation}
-                                disabled={busy}
-                                onChange={(event) =>
-                                    setConfirmation(event.target.value)
-                                }
-                            />
-                        </label>
-                        <p
-                            id={confirmationHint}
-                            className="muted account-deletion-hint"
+                        <fieldset
+                            className="account-deletion-verification"
+                            disabled={busy}
                         >
-                            {tx("为避免误操作，请输入大写 DELETE。")}
-                        </p>
+                            <legend>{tx("验证并确认")}</legend>
+                            <label>
+                                {tx("当前密码")}
+                                <input
+                                    type="password"
+                                    autoComplete="current-password"
+                                    maxLength={128}
+                                    required
+                                    value={password}
+                                    disabled={busy}
+                                    onChange={(event) =>
+                                        setPassword(event.target.value)
+                                    }
+                                />
+                            </label>
+                            <label>
+                                {tx("输入 DELETE 确认删除")}
+                                <input
+                                    autoComplete="off"
+                                    autoCapitalize="characters"
+                                    spellCheck={false}
+                                    dir="ltr"
+                                    required
+                                    pattern="DELETE"
+                                    aria-describedby={confirmationHint}
+                                    value={confirmation}
+                                    disabled={busy}
+                                    onChange={(event) =>
+                                        setConfirmation(event.target.value)
+                                    }
+                                />
+                            </label>
+                            <p
+                                id={confirmationHint}
+                                className="muted account-deletion-hint"
+                            >
+                                {tx("为避免误操作，请输入大写 DELETE。")}
+                            </p>
+                        </fieldset>
                         <label className="account-deletion-ack">
                             <input
                                 type="checkbox"

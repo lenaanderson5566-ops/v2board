@@ -648,7 +648,11 @@
     "删除账户无法撤销，请确认不再需要此账户。": "La eliminación de la cuenta no se puede deshacer. Asegúrese de que ya no necesita esta cuenta.",
     "为避免误操作，请输入大写 DELETE。": "Para evitar una eliminación accidental, escriba DELETE en mayúsculas.",
     "账户已停用，所有登录会话均已结束。": "Su cuenta se ha desactivado y se han cerrado todas las sesiones.",
-    "暂时无法检查账户状态，请稍后重新检查。": "No podemos comprobar el estado de su cuenta en este momento. Inténtelo de nuevo más tarde."
+    "暂时无法检查账户状态，请稍后重新检查。": "No podemos comprobar el estado de su cuenta en este momento. Inténtelo de nuevo más tarde.",
+    "了解删除影响": "Revisar las consecuencias",
+    "验证并确认": "Verificar y confirmar",
+    "删除前，请确认以下事项": "Antes de eliminar, revise lo siguiente",
+    "账户状态已检查，可以继续。": "Estado de la cuenta comprobado. Puede continuar."
   },
   "account": {
     "notificationAutoSave": "Los cambios se guardan automáticamente",

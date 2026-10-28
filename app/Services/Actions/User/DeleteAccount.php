@@ -2,7 +2,7 @@
 namespace App\Services\Actions\User;
 
 use App\Models\{User, Order};
-use App\Services\{AuthService, TelegramCommunityService};
+use App\Services\AuthService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\{DB, RateLimiter};
@@ -43,21 +43,7 @@ final class DeleteAccount
             if (!$reference || (int)$reference['userId'] !== $id || !AuthService::sessionUser($reference) || AuthService::authenticatedAt($reference)<time()-300) $this->fail(409,'RECENT_LOGIN_REQUIRED');
             if (!Helper::multiPasswordVerify($user->password_algo,$user->password_salt,$request->input('password'),$user->password)) $this->fail(422,'INCORRECT_PASSWORD');
             if ($reasons = $this->blockers($user)) $this->fail(409,$reasons[0]);
-            // Keep a pseudonymous accounting reference, never credentials or account identity.
-            app(TelegramCommunityService::class)->unbind($user);
-            DB::table('v2_user_mfa')->insertOrIgnore(['user_id'=>$id]);
-            DB::table('v2_user_mfa')->where('user_id',$id)->update(['email_enabled'=>0,'totp_secret'=>null,'recovery_hashes'=>null,'last_totp_step'=>-1,'version'=>DB::raw('version + 1')]);
-            foreach (['v2_passkey','v2_invite_code','v2_notice_read','v2_telegram_preference','v2_coupon_wallet','v2_mail_campaign_recipient'] as $table) DB::table($table)->where('user_id',$id)->delete();
-            DB::table('v2_email_invitation')->where('user_id',$id)->orWhere('accepted_user_id',$id)->delete();
-            $tickets=DB::table('v2_ticket')->where('user_id',$id)->pluck('id');
-            DB::table('v2_ticket_message')->whereIn('ticket_id',$tickets)->delete();
-            DB::table('v2_ticket_notification_read')->where('user_id',$id)->delete();
-            DB::table('v2_ticket')->where('user_id',$id)->delete();
-            DB::table('v2_client_diagnostic_report')->where('user_id',$id)->delete();
-            // Preserve issuance history while permanently invalidating remaining entitlements.
-            DB::table('v2_credit_batch')->where('user_id',$id)->update(['remaining_bytes'=>0]);
-            DB::table('v2_usage_reset_credit')->where('user_id',$id)->update(['remaining'=>0]);
-            User::where('invite_user_id',$id)->update(['invite_user_id'=>null]);
+            app(EraseAccountData::class)->erase($user);
             $user->forceFill([
                 'account_deleted_at'=>time(), 'email'=>bin2hex(random_bytes(16)).'@deleted.invalid',
                 'password'=>password_hash(bin2hex(random_bytes(32)),PASSWORD_DEFAULT), 'password_algo'=>null,'password_salt'=>null,

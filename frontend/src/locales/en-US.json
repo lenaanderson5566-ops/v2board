@@ -648,7 +648,11 @@
     "删除账户无法撤销，请确认不再需要此账户。": "Account deletion cannot be undone. Please make sure you no longer need this account.",
     "为避免误操作，请输入大写 DELETE。": "To prevent accidental deletion, type DELETE in uppercase.",
     "账户已停用，所有登录会话均已结束。": "Your account has been deactivated and all sign-in sessions have ended.",
-    "暂时无法检查账户状态，请稍后重新检查。": "We cannot check your account status right now. Please try again later."
+    "暂时无法检查账户状态，请稍后重新检查。": "We cannot check your account status right now. Please try again later.",
+    "了解删除影响": "Review the impact",
+    "验证并确认": "Verify and confirm",
+    "删除前，请确认以下事项": "Before deleting, review the following",
+    "账户状态已检查，可以继续。": "Account status checked. You can continue."
   },
   "account": {
     "notificationAutoSave": "Changes save automatically",

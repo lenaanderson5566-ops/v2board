@@ -80,4 +80,6 @@ PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以�
 
 清单校验、合并后的框架回归及本次修改文档的本地链接检查已通过；执行结果保存于忽略的 `storage/app/test-organization/docs-test-cleanup.json`。框架测试合并本身不修改生产功能或数据库迁移；前端改动仍按实际范围测试并重新构建。
 
-后台样式一致性使用现有前端全量与 Lightsail、DDNS、节点等模块复查，保留提交锁、未保存保护和恢复流程断言。共用弹窗实现及用户端代码不变；桌面与窄屏通过仅本地、禁止写入的合成数据页验收。验证日志为 `storage/app/test-organization/admin-ui-consistency-*`，临时预览入口不纳入发布资源。
+后台样式一致性使用现有前端全量与 Lightsail、DDNS、节点等模块复查，保留提交锁、未保存保护和恢复流程断言。后台主题只修改管理员样式；桌面与窄屏通过仅本地、禁止写入的合成数据页验收。验证日志为 `storage/app/test-organization/admin-ui-consistency-*`，临时预览入口不纳入发布资源。
+
+子窗口交互复用 `UXResilience.test.tsx`、`Banners.test.tsx`、`AdminRiskReview.test.tsx`、`ContentComposer.test.tsx`、`AdminDictionary.test.tsx`、`Payments.test.tsx` 和既有后台业务模块。保留原业务断言，新增关闭保护、同步提交锁、失败草稿和焦点排除场景；共享 Modal 的草稿确认显式启用，默认关闭策略不变，公共确认文案覆盖全部语言。结果与构建日志保存在 `storage/app/test-organization/admin-subdialogs-*`。

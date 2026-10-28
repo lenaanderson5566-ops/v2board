@@ -160,6 +160,8 @@ export function RiskOverview() {
 }
 
 export function RiskRules() {
+    const [editBusy, setEditBusy] = useState(false);
+    const [editDirty, setEditDirty] = useState(false);
     const d = useData<Row[]>(ops("risk/rule/fetch"));
     const [scene, setScene] = useState("all"),
         [edit, setEdit] = useState<Row | null>(null),
@@ -268,18 +270,20 @@ export function RiskRules() {
                                     ),
                                 )}
                             </dl>
-                            <button onClick={() => setEdit(r)}>调整规则</button>
+                            <button onClick={() => { setEditDirty(false); setEdit(r); }}>调整规则</button>
                         </article>
                     ))}
                 </div>
             </State>
             {edit && (
-                <Modal title={edit.name} close={() => setEdit(null)}>
-                    <p className="muted">
+                <Modal title={`编辑风控规则 · ${edit.name}`} guardChanges dismissible={!editBusy} close={() => setEdit(null)}>
+                    <p className="pad muted admin-dialog-intro">
                         保存后用于后续请求；不会清除历史命中记录。
                     </p>
                     <Editor
                         key={`${edit.rule_key}-${revision}`}
+                        onBusyChange={setEditBusy}
+                        onDirty={() => setEditDirty(true)}
                         fields={fields}
                         initial={{
                             enabled: !!edit.enabled,
@@ -302,9 +306,11 @@ export function RiskRules() {
                             setEdit(null);
                             d.reload();
                         }}
-                    />
-                    <button
+                    >
+                    <button type="button" disabled={editBusy}
                         onClick={() => {
+                            if (editDirty && !window.confirm("填入建议阈值会重置当前表单，确认放弃未保存的修改？")) return;
+                            setEditDirty(false);
                             setEdit({
                                 ...edit,
                                 thresholds: edit.default_thresholds || {},
@@ -314,6 +320,7 @@ export function RiskRules() {
                     >
                         填入建议阈值
                     </button>
+                    </Editor>
                 </Modal>
             )}
         </>

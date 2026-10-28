@@ -13,6 +13,8 @@ export function AdminClientDictionary() {
     const [ua,setUa] = useState(""), [preview,setPreview] = useState<Recognition|null>(null);
     const [busy,setBusy] = useState(false), [error,setError] = useState(""), [notice,setNotice] = useState("");
     const pending = useRef(false);
+    const [initialEdit,setInitialEdit]=useState("");
+    const dirty=!!edit && JSON.stringify({name:edit.name,aliasText:edit.aliasText,priority:edit.priority})!==initialEdit;
     const items = (data.data?.items || []).filter(item =>
         [item.code,item.name,...item.builtinAliases,...item.aliases].join(" ").toLowerCase().includes(search.trim().toLowerCase()));
     const currentPage = Math.min(page,Math.max(1,Math.ceil(items.length/20)));
@@ -35,7 +37,7 @@ export function AdminClientDictionary() {
         } catch (cause) {setError((cause as Error).message);}
         finally {pending.current=false;setBusy(false);}
     }
-    function close() {if (!pending.current) {setEdit(null);setPreview(null);if(error)data.reload();setError("");}}
+    function close() {if (!pending.current) {if(dirty&&!window.confirm("客户端识别修改尚未保存，确认放弃？"))return;setEdit(null);setPreview(null);if(error)data.reload();setError("");}}
     const tester = <div className="settings-card">
         <label>测试 UA<textarea aria-label="测试 UA" value={ua} maxLength={1024} disabled={busy} onChange={e=>{setUa(e.target.value);setPreview(null);}}/></label>
         <button type="button" disabled={busy || !ua.trim() || !data.data} onClick={()=>run("preview")}>测试识别</button>
@@ -50,7 +52,7 @@ export function AdminClientDictionary() {
             <AdminFilterBar onSubmit={e=>e.preventDefault()}><input aria-label="搜索客户端识别" placeholder="搜索名称、代码或别名" value={search} onChange={e=>{setSearch(e.target.value);setPage(1);}}/></AdminFilterBar>
             <State {...data} retry={data.reload}>
                 <TableViewport><table><thead><tr><th>客户端</th><th>内置别名</th><th>自定义别名</th><th>优先级</th><th>操作</th></tr></thead><tbody>
-                    {items.slice((currentPage-1)*20,currentPage*20).map(item=><tr key={item.code}><td>{item.name}<small className="muted"> · {item.code}</small></td><td>{item.builtinAliases.join(" / ")}</td><td>{item.aliases.join(" / ") || "—"}</td><td>{item.priority}</td><td><button onClick={()=>{setEdit({...item,aliasText:item.aliases.join("\n")});setError("");setPreview(null);}}>编辑</button></td></tr>)}
+                    {items.slice((currentPage-1)*20,currentPage*20).map(item=><tr key={item.code}><td>{item.name}<small className="muted"> · {item.code}</small></td><td>{item.builtinAliases.join(" / ")}</td><td>{item.aliases.join(" / ") || "—"}</td><td>{item.priority}</td><td><button onClick={()=>{setInitialEdit(JSON.stringify({name:item.name,aliasText:item.aliases.join("\n"),priority:item.priority}));setEdit({...item,aliasText:item.aliases.join("\n")});setError("");setPreview(null);}}>编辑</button></td></tr>)}
                 </tbody></table></TableViewport>
                 {!items.length && <p>没有匹配的客户端</p>}
                 <Pager page={currentPage} total={items.length} size={20} loading={data.loading} onChange={setPage}/>
@@ -58,8 +60,8 @@ export function AdminClientDictionary() {
             {!edit && tester}
             {!edit && error && <p role="alert">{error}</p>}
         </div>
-        {edit && <Modal variant="drawer" title={`编辑客户端 · ${edit.code}`} close={close}>
-            <form className="pad admin-dictionary-editor" onSubmit={e=>{e.preventDefault();run("save");}}>
+        {edit && <Modal variant="drawer" title={`编辑客户端 · ${edit.code}`} dismissible={!busy} close={close}>
+            <form className="pad admin-dictionary-editor" aria-busy={busy} data-unsaved={dirty ? "true" : undefined} onSubmit={e=>{e.preventDefault();run("save");}}>
                 <label>显示名称<input aria-label="显示名称" value={edit.name} maxLength={100} required disabled={busy} onChange={e=>{setEdit({...edit,name:e.target.value});setPreview(null);}}/></label>
                 <p className="muted">固定代码：{edit.code} · 内置别名：{edit.builtinAliases.join(" / ")}</p>
                 <label>自定义别名<textarea aria-label="自定义别名" value={edit.aliasText} maxLength={1300} disabled={busy} onChange={e=>{setEdit({...edit,aliasText:e.target.value});setPreview(null);}}/></label>
@@ -70,7 +72,7 @@ export function AdminClientDictionary() {
                 <div className="actions admin-dictionary-actions">
                     <button type="button" disabled={busy} onClick={()=>{setEdit({...edit,name:edit.defaultName,aliasText:"",priority:100});setPreview(null);}}>恢复默认</button>
                     <button type="button" disabled={busy} onClick={close}>取消</button>
-                    <button disabled={busy}>{busy ? "处理中…" : "保存"}</button>
+                    <button className="primary" disabled={busy}>{busy ? "处理中…" : "保存"}</button>
                 </div>
             </form>
         </Modal>}

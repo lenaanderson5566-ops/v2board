@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request, rows, bytes, type Row } from "../shared/api";
 import { useData, State, Table, Modal, Panel } from "../shared/ui";
 export function ServerTrafficBudgets({
@@ -17,9 +17,20 @@ export function ServerTrafficBudgets({
         [error, setError] = useState(""),
         [busy, setBusy] = useState(false);
     const [gib, setGib] = useState("0");
+    const pending = useRef(false);
+    const [cleanSnapshot,setCleanSnapshot] = useState("");
+    const dirty = !!draft && JSON.stringify({draft,gib}) !== cleanSnapshot;
+    function cancelDraft() {
+        if (pending.current) return;
+        if (dirty && !window.confirm("服务器额度修改尚未保存，确认放弃？")) return;
+        setDraft(null);
+    }
     const edit = (r: Row) => {
-        setDraft({ ...r, nodes: r.nodes || [] });
-        setGib(String(Number(r.limitBytes || 0) / 1073741824));
+        const next = { ...r, nodes: r.nodes || [] };
+        const limit = String(Number(r.limitBytes || 0) / 1073741824);
+        setDraft(next);
+        setGib(limit);
+        setCleanSnapshot(JSON.stringify({draft:next,gib:limit}));
         setError("");
     };
     const content = (
@@ -93,9 +104,11 @@ export function ServerTrafficBudgets({
             </button>
             </>}
             {draft && (
-                <form
+                <form aria-busy={busy} data-unsaved={dirty ? "true" : undefined}
                     onSubmit={async (e) => {
                         e.preventDefault();
+                        if (pending.current) return;
+                        pending.current = true;
                         setBusy(true);
                         setError("");
                         try {
@@ -117,10 +130,12 @@ export function ServerTrafficBudgets({
                                 e instanceof Error ? e.message : "保存失败",
                             );
                         } finally {
+                            pending.current = false;
                             setBusy(false);
                         }
                     }}
                 >
+                    <fieldset disabled={busy} className="admin-dialog-fields admin-dialog-form">
                     <label>
                         服务器名称
                         <input
@@ -236,18 +251,17 @@ export function ServerTrafficBudgets({
                             {error}
                         </div>
                     )}
-                    <button disabled={busy} type="submit">
-                        保存额度
-                    </button>
-                    <button type="button" onClick={() => setDraft(null)}>
-                        取消
-                    </button>
+                    <div className="admin-dialog-actions">
+                        <button type="button" disabled={busy} onClick={cancelDraft}>取消</button>
+                        <button className="primary" disabled={busy} type="submit">保存额度</button>
+                    </div>
+                    </fieldset>
                 </form>
             )}
         </div>
     );
     return close ? (
-        <Modal title="服务器流量" close={close}>
+        <Modal title="服务器流量" guardChanges dismissible={!busy} close={close}>
             {content}
         </Modal>
     ) : (

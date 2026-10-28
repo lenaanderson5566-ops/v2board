@@ -140,6 +140,7 @@ export function Payments() {
                 <Modal
                     variant="modal"
                     title="支付方式设置"
+                    guardChanges
                     close={() => setEditing(null)}
                 >
                     <PaymentEditor
@@ -175,18 +176,27 @@ function PaymentEditor({
     const [category, setCategory] = useState(() =>
         paymentCategoryInitial(initial.config),
     );
+    const [busy, setBusy] = useState(false);
+    const [fieldsDirty, setFieldsDirty] = useState(false);
+    const [cleanChoices] = useState(() => JSON.stringify({ method, iconPreset, category }));
+    const choicesDirty = JSON.stringify({ method, iconPreset, category }) !== cleanChoices;
     const d = useData(method ? admin("payment/getPaymentForm") : "", {
         payment: method,
         id: method === initial.payment ? initial.id : undefined,
     });
     return (
-        <>
+        <div data-unsaved={choicesDirty ? "true" : undefined}>
+            <fieldset className="admin-dialog-fields" disabled={busy}>
             <div className="pad">
                 <label>
                     支付网关
                     <select
                         value={method}
-                        onChange={(e) => setMethod(e.target.value)}
+                        onChange={(e) => {
+                            if (fieldsDirty && !window.confirm("切换支付网关会重置接口字段，确认放弃未保存的修改？")) return;
+                            setFieldsDirty(false);
+                            setMethod(e.target.value);
+                        }}
                     >
                         {methods.map((m) => (
                             <option key={m}>{m}</option>
@@ -249,6 +259,8 @@ function PaymentEditor({
                     ))}
                 <Editor
                     key={method}
+                    onBusyChange={setBusy}
+                    onDirty={() => setFieldsDirty(true)}
                     fields={[
                         field("name", "显示名称", "text", true),
                         {
@@ -330,6 +342,7 @@ function PaymentEditor({
                     }}
                 />
             </State>
-        </>
+            </fieldset>
+        </div>
     );
 }

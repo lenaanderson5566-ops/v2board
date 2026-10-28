@@ -478,6 +478,7 @@ export function OrdersPage({
             {assign && (
                 <Modal
                     title="分配订单"
+                    guardChanges
                     close={() => {
                         setAssign(false);
                         setRevision((v) => v + 1);
@@ -492,7 +493,7 @@ export function OrdersPage({
                 </Modal>
             )}
             {commission && (
-                <Modal title="佣金审核" close={() => setCommission(null)}>
+                <Modal title="佣金审核" guardChanges close={() => setCommission(null)}>
                     <CommissionReview
                         row={commission}
                         saved={() => {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request, rows, type Row } from "../shared/api";
 import { Modal, State, Panel, Table, Reload, useData } from "../shared/ui";
 import { moveItem, sortPayload, type SortKind } from "./admin-actions";
@@ -16,6 +16,7 @@ export function SortButton({
     const [draft, setDraft] = useState<Row[] | null>(null),
         [busy, setBusy] = useState(false),
         [error, setError] = useState("");
+    const pending = useRef(false);
     const [drag, setDrag] = useState<number | null>(null);
     return (
         <>
@@ -36,11 +37,13 @@ export function SortButton({
             {draft && (
                 <Modal
                     title="调整排序"
+                    guardChanges
+                    dismissible={!busy}
                     close={() => {
                         if (!busy) setDraft(null);
                     }}
                 >
-                    <div className="pad">
+                    <div className="pad" data-unsaved={JSON.stringify(draft) !== JSON.stringify(items) ? "true" : undefined} data-saving={busy ? "true" : undefined}>
                         <p className="muted">
                             拖动项目或使用上移、下移；保存后才生效。
                         </p>
@@ -102,6 +105,8 @@ export function SortButton({
                             className="primary"
                             disabled={busy}
                             onClick={async () => {
+                                if (pending.current) return;
+                                pending.current = true;
                                 setBusy(true);
                                 setError("");
                                 try {
@@ -114,6 +119,7 @@ export function SortButton({
                                 } catch (e) {
                                     setError((e as Error).message);
                                 } finally {
+                                    pending.current = false;
                                     setBusy(false);
                                 }
                             }}

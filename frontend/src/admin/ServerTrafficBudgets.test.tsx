@@ -98,3 +98,22 @@ it("polls only an open clean server manager and releases its timer",async()=>{
  expect(clear).toHaveBeenCalled();expect(timer).not.toHaveBeenCalled();
  view.unmount();vi.restoreAllMocks();
 });
+
+it("keeps a quota draft locked during save and confirms discarding after failure",async()=>{
+ let reject!: (error:Error)=>void;
+ api.request.mockImplementation((path:string)=>path.endsWith('/save')?new Promise((_,fail)=>{reject=fail;}):Promise.resolve({data:[]}));
+ render(<ServerTrafficBudgets nodes={[]} close={vi.fn()} onSaved={vi.fn()}/>);
+ fireEvent.click(screen.getByRole('button',{name:'添加服务器额度'}));
+ const name=screen.getByLabelText('服务器名称') as HTMLInputElement;
+ fireEvent.change(name,{target:{value:'Quota draft'}});
+ const form=name.closest('form')!;fireEvent.submit(form);fireEvent.submit(form);
+ expect(api.request.mock.calls.filter(([path])=>String(path).endsWith('/save'))).toHaveLength(1);
+ expect(name.matches(':disabled')).toBe(true);
+ expect((screen.getByRole('button',{name:'取消'}) as HTMLButtonElement).disabled).toBe(true);
+ reject(new Error('Offline'));await screen.findByText('Offline');
+ expect(name.value).toBe('Quota draft');expect(name.matches(':disabled')).toBe(false);
+ const confirm=vi.spyOn(window,'confirm').mockReturnValue(false);
+ fireEvent.click(screen.getByRole('button',{name:'取消'}));expect(screen.getByLabelText('服务器名称')).toBeTruthy();
+ confirm.mockReturnValue(true);fireEvent.click(screen.getByRole('button',{name:'取消'}));
+ expect(screen.queryByLabelText('服务器名称')).toBeNull();
+});

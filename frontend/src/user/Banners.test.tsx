@@ -54,6 +54,7 @@ import {
 import { BannerEditor } from "../admin/AdminBanners";
 afterEach(() => {
     cleanup();
+    vi.restoreAllMocks();
     mocks.data = [];
     mocks.request.mockReset();
 });
@@ -188,4 +189,34 @@ it("updates existing preset artwork while preserving custom mobile images", () =
     expect(bannerImages({ image_url: "/other.png" }).desktop).toBe(
         "/other.png",
     );
+});
+
+it("confirms dismissal of unsaved banner edits", () => {
+    const close = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<BannerEditor initial={{title:"Original",image_url:"/before.png",placements:["dashboard"],languages:[],sort:0,show:true}} close={close} complete={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("标题 / 图片替代文本"), {target:{value:"Changed"}});
+    fireEvent.click(screen.getByRole("button", {name:"取消"}));
+    expect(close).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("标题 / 图片替代文本") as HTMLInputElement).value).toBe("Changed");
+    confirm.mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", {name:"取消"}));
+    expect(close).toHaveBeenCalledTimes(1);
+});
+it("locks the banner draft during save and retains it after failure", async () => {
+    let reject!: (error: Error) => void;
+    mocks.request.mockImplementationOnce(() => new Promise((_, fail) => {reject=fail;}));
+    const close = vi.fn();
+    render(<BannerEditor initial={{title:"Original",image_url:"/before.png",placements:["dashboard"],languages:[],sort:0,show:true}} close={close} complete={vi.fn()} />);
+    const title = screen.getByLabelText("标题 / 图片替代文本") as HTMLInputElement;
+    fireEvent.change(title, {target:{value:"Changed"}});
+    const form = title.closest("form")!;
+    fireEvent.submit(form); fireEvent.submit(form);
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(title.disabled).toBe(true);
+    expect((screen.getByRole("button",{name:"取消"}) as HTMLButtonElement).disabled).toBe(true);
+    reject(new Error("Save failed"));
+    await screen.findByText("Save failed");
+    expect(title.value).toBe("Changed"); expect(title.disabled).toBe(false);
+    expect(close).not.toHaveBeenCalled();
 });

@@ -371,6 +371,7 @@ export function UsersPage() {
             {detail && detail.kind !== "profile" && (
                 <Modal
                     title={`${adminUserLabel({ user_id: detail.row.id, email: detail.row.email })} · ${{ assign: "分配订单", link: "订阅链接" }[detail.kind as "assign"] || ""}`}
+                    guardChanges={detail.kind === "assign"}
                     close={() => setDetail(null)}
                 >
                     {detail.kind === "assign" ? (

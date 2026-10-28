@@ -7,6 +7,18 @@ import { boot } from "../api";
 export const ModalClose = createContext<(() => void) | undefined>(undefined);
 const modalStack: HTMLElement[] = [];
 let restoreModalPage: (() => void) | undefined;
+function focusableItems(element: HTMLElement): HTMLElement[] {
+    return [...element.querySelectorAll<HTMLElement>(
+        'button, input:not([type="hidden"]), select, textarea, a[href], [tabindex], [contenteditable="true"]',
+    )].filter((item) => {
+        if (item.tabIndex < 0 || item.matches(':disabled, input[type="hidden"]') || item.closest("[hidden], [inert]")) return false;
+        for (let parent: HTMLElement | null = item; parent && parent !== element; parent = parent.parentElement) {
+            const style = getComputedStyle(parent);
+            if (style.display === "none" || style.visibility === "hidden") return false;
+        }
+        return true;
+    });
+}
 export function Modal({
     dismissible = true,
     initialFocus,
@@ -16,6 +28,7 @@ export function Modal({
     variant,
     wide = false,
     className = "",
+    guardChanges = false,
 }: {
     title: string;
     children: ReactNode;
@@ -25,12 +38,24 @@ export function Modal({
     variant?: "modal" | "drawer";
     wide?: boolean;
     className?: string;
+    guardChanges?: boolean;
 }) {
     const dialog = useRef<HTMLElement>(null);
     const closeRef = useRef(close);
     closeRef.current = close;
     const dismissibleRef = useRef(dismissible);
     dismissibleRef.current = dismissible;
+    const guardRef = useRef(guardChanges);
+    guardRef.current = guardChanges;
+    function requestClose() {
+        if (!dismissibleRef.current) return;
+        const element = dialog.current;
+        if (guardRef.current && element) {
+            if (element.querySelector('[data-saving="true"], form[aria-busy="true"]')) return;
+            if (element.querySelector('[data-unsaved="true"]') && !window.confirm(tx("有尚未保存的修改，确认放弃？"))) return;
+        }
+        closeRef.current();
+    }
     useEffect(() => {
         const previous = document.activeElement as HTMLElement | null;
         const element = dialog.current!;
@@ -53,24 +78,18 @@ export function Modal({
             ? dialog.current?.querySelector<HTMLElement>(initialFocus)
             : null;
         (
-            preferred ||
-            dialog.current?.querySelector<HTMLElement>(
-                "button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href]",
-            ) ||
+            (preferred && focusableItems(element).includes(preferred) ? preferred : null) ||
+            focusableItems(element)[0] ||
             element
         )?.focus();
         const fn = (e: KeyboardEvent) => {
             if (modalStack.at(-1) !== element) return;
             if (e.key === "Escape" && dismissibleRef.current) {
                 e.preventDefault();
-                closeRef.current();
+                requestClose();
             }
             if (e.key === "Tab") {
-                const items = [
-                    ...(dialog.current?.querySelectorAll<HTMLElement>(
-                        'button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), a[href], [tabindex="0"]',
-                    ) || []),
-                ];
+                const items = focusableItems(element);
                 const first = items[0],
                     last = items.at(-1);
                 if (!first) {
@@ -123,7 +142,7 @@ export function Modal({
                 className
             }
             onMouseDown={(e) => {
-                if (dismissible && e.target === e.currentTarget) close();
+                if (modalStack.at(-1) === dialog.current && e.target === e.currentTarget) requestClose();
             }}
         >
             <section
@@ -139,14 +158,15 @@ export function Modal({
                     {dismissible && (
                         <button
                             className="icon-button"
-                            onClick={close}
+                            type="button"
+                            onClick={requestClose}
                             aria-label={tx("关闭")}
                         >
                             <X />
                         </button>
                     )}
                 </div>
-                <ModalClose.Provider value={close}>
+                <ModalClose.Provider value={requestClose}>
                     {children}
                 </ModalClose.Provider>
             </section>

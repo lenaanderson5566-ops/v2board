@@ -6,7 +6,7 @@ vi.mock("../shared/api",()=>({admin:(p:string)=>p,request:mocks.request}));
 vi.mock("../shared/ui",()=>({useData:()=>({data:mocks.data,reload:mocks.reload,loading:false,error:""}),Pager:()=>null,TableViewport:({children}:any)=>children,State:({children}:any)=>children,Modal:({children}:any)=><div role="dialog">{children}</div>}));
 import { AdminClientDictionary } from "./AdminClientDictionary";
 import { AdminDictionary } from "./AdminDictionary";
-beforeEach(()=>{mocks.request.mockReset();mocks.reload.mockClear();});afterEach(cleanup);
+beforeEach(()=>{mocks.request.mockReset();mocks.reload.mockClear();});afterEach(()=>{cleanup();vi.restoreAllMocks();});
 it("searches dictionaries and submits the fixed identity with its revision",async()=>{
  mocks.request.mockResolvedValue({data:true});render(<AdminDictionary/>);
  fireEvent.change(screen.getByLabelText("搜索字典"),{target:{value:"US"}});
@@ -55,6 +55,7 @@ it("previews draft client aliases without saving and retains input after conflic
  fireEvent.click(screen.getByRole("button",{name:"保存"}));
  expect((await screen.findByRole("alert")).textContent).toContain("其他管理员");
  expect((screen.getByLabelText("自定义别名") as HTMLTextAreaElement).value).toBe("ExampleClient");
+ vi.spyOn(window,"confirm").mockReturnValue(true);
  fireEvent.click(screen.getByRole("button",{name:"取消"}));expect(mocks.reload).toHaveBeenCalled();
 });
 it("restores client defaults only after saving the current version",async()=>{
@@ -64,4 +65,14 @@ it("restores client defaults only after saving the current version",async()=>{
  mocks.request.mockResolvedValueOnce({data:true});fireEvent.click(screen.getByRole("button",{name:"保存"}));
  await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("dictionary/clients/save",{version:3,rules:{flclash:{name:"FlClash",aliases:[],priority:100}}}));
  await waitFor(()=>expect(mocks.reload).toHaveBeenCalled());
+});
+
+it("keeps a changed dictionary entry when discard is declined",()=>{
+ const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
+ render(<AdminDictionary/>);fireEvent.click(screen.getByRole("button",{name:"编辑"}));
+ fireEvent.change(screen.getByLabelText("zh-CN"),{target:{value:"Unsaved country"}});
+ fireEvent.click(screen.getByRole("button",{name:"取消"}));
+ expect(screen.getByRole("dialog")).toBeTruthy();expect(mocks.request).not.toHaveBeenCalled();
+ confirm.mockReturnValue(true);fireEvent.click(screen.getByRole("button",{name:"取消"}));
+ expect(screen.queryByRole("dialog")).toBeNull();
 });

@@ -16,6 +16,43 @@ import { State, Editor, Modal } from "./ui";
 afterEach(() => {
     cleanup();
     sessionStorage.clear();
+    vi.restoreAllMocks();
+});
+it("guards every dismissal route while saving and confirms unsaved changes", () => {
+    const close = vi.fn();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const content = (busy: boolean) => <Modal title="Guarded editor" close={close} guardChanges><form aria-busy={busy} data-unsaved="true"><input aria-label="Draft" /></form></Modal>;
+    const view = render(content(true));
+    fireEvent.keyDown(document, { key: "Escape" });
+    fireEvent.click(screen.getByRole("button", { name: /关闭|Close/ }));
+    fireEvent.mouseDown(screen.getByRole("dialog").parentElement!);
+    expect(close).not.toHaveBeenCalled();
+    expect(confirm).not.toHaveBeenCalled();
+    view.rerender(content(false));
+    fireEvent.click(screen.getByRole("button", { name: /关闭|Close/ }));
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(close).not.toHaveBeenCalled();
+    confirm.mockReturnValue(true);
+    fireEvent.mouseDown(screen.getByRole("dialog").parentElement!);
+    expect(close).toHaveBeenCalledTimes(1);
+});
+it("cycles focus around visible enabled controls rather than hidden or disabled fields", () => {
+    render(<Modal title="Focus" close={vi.fn()} initialFocus="#hidden-field">
+        <button>Last usable action</button>
+        <div hidden><button>Hidden parent</button></div>
+        <div style={{ display: "none" }}><button>Hidden style</button></div>
+        <fieldset disabled><button>Disabled group</button></fieldset>
+        <button tabIndex={-1}>Programmatic only</button>
+        <input type="hidden" tabIndex={0} id="hidden-field" />
+    </Modal>);
+    const first = screen.getByRole("button", { name: /关闭|Close/ });
+    const last = screen.getByRole("button", { name: "Last usable action" });
+    expect(document.activeElement).toBe(first);
+    last.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(document, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(last);
 });
 it("only dismisses the top dialog and keeps the page locked until every dialog closes", () => {
     const outer = vi.fn(),

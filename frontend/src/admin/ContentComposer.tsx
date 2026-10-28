@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { AdminMailPreview, mailLanguages } from "./AdminMailPreview";
 import { Html } from "../shared/ui";
@@ -40,6 +40,9 @@ export function ContentComposer({
     const [cover, setCover] = useState(initial.img_url || ""),
         [tags, setTags] = useState(JSON.stringify(initial.tags || []));
     const draft = drafts[tab] || { subject: "", content: "" };
+    const snapshot = JSON.stringify({ source, selected, drafts, cover, tags });
+    const [cleanSnapshot, setCleanSnapshot] = useState(snapshot);
+    const pending = useRef(false);
     const edit = (key: keyof Draft, value: string) =>
         setDrafts((prev) => ({
             ...prev,
@@ -49,6 +52,7 @@ export function ContentComposer({
             },
         }));
     async function generate() {
+        if (pending.current) return;
         const original = drafts.default;
         if (!original.subject.trim() || !original.content.trim()) {
             setError("请先填写原文标题和正文");
@@ -60,6 +64,7 @@ export function ContentComposer({
             )
         )
             return;
+        pending.current = true;
         setBusy(true);
         setError("");
         const errors: Record<string, string> = {};
@@ -101,13 +106,17 @@ export function ContentComposer({
                 ? "生成结束，请审核译文后保存"
                 : "所选语言已有内容，无需生成",
         );
+        pending.current = false;
         setBusy(false);
     }
     return (
         <form
             className="mail-composer content-composer"
+            data-unsaved={snapshot !== cleanSnapshot ? "true" : undefined}
+            aria-busy={busy}
             onSubmit={async (e) => {
                 e.preventDefault();
+                if (pending.current) return;
                 setError("");
                 if (!confirmed) {
                     setError("请先确认操作范围和人数");
@@ -143,6 +152,7 @@ export function ContentComposer({
                         return;
                     }
                 }
+                pending.current = true;
                 setBusy(true);
                 try {
                     await onSave(
@@ -162,9 +172,11 @@ export function ContentComposer({
                                   tags: parsedTags,
                               },
                     );
+                    setCleanSnapshot(snapshot);
                 } catch (e) {
                     setError((e as Error).message);
                 } finally {
+                    pending.current = false;
                     setBusy(false);
                 }
             }}

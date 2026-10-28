@@ -277,3 +277,26 @@ body[data-console="admin"] .modal pre { max-width: 100%; overflow-x: auto; }
     body[data-console="admin"] .admin-dialog-actions > button { flex: 1 1 auto; }
     body[data-console="admin"] .modal .field-grid { column-gap: 12px; }
 }
+
+/* Custom editors and detail dialogs use the same field and action rhythm. */
+body[data-console="admin"] .admin-dialog-fields { border: 0; margin: 0; padding: 0; min-width: 0; }
+body[data-console="admin"] .admin-dialog-intro { margin: 0; padding-bottom: 0; }
+body[data-console="admin"] .banner-editor { padding: var(--admin-space); gap: 16px; min-width: 0; grid-template-columns: minmax(0, 1fr); }
+body[data-console="admin"] .banner-editor > * { min-width: 0; }
+body[data-console="admin"] .banner-editor > .admin-dialog-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 3;
+    background: var(--surface);
+    margin-inline: calc(-1 * var(--admin-space));
+    margin-bottom: calc(-1 * var(--admin-space));
+    padding: 12px var(--admin-space);
+}
+body[data-console="admin"] .banner-editor > fieldset { min-inline-size: 0; border-color: var(--border); border-radius: var(--admin-radius); }
+body[data-console="admin"] .banner-editor .banner-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+body[data-console="admin"] .banner-options > label { min-width: 0; }
+body[data-console="admin"] .modal .detail-grid > div { min-width: 0; }
+body[data-console="admin"] .modal .detail-grid dd { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+    body[data-console="admin"] .banner-editor .banner-options { grid-template-columns: minmax(0, 1fr); }
+}

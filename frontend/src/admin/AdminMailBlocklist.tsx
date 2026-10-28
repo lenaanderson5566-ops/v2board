@@ -379,12 +379,16 @@ export function AdminMailBlocklist() {
             {editing && (
                 <Modal
                     title="编辑禁发备注"
+                    guardChanges
+                    dismissible={!busy}
                     close={() => {
                         if (!busy) setEditing(null);
                     }}
                 >
                     <form
                         className="pad mail-blocklist-edit"
+                        aria-busy={busy}
+                        data-unsaved={editNote !== (editing.note || "") ? "true" : undefined}
                         onSubmit={(e) => {
                             e.preventDefault();
                             void mutate(
@@ -405,6 +409,7 @@ export function AdminMailBlocklist() {
                             <textarea
                                 rows={3}
                                 maxLength={1000}
+                                disabled={busy}
                                 value={editNote}
                                 onChange={(e) => setEditNote(e.target.value)}
                             />

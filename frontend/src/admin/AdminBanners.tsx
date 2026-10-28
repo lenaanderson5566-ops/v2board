@@ -178,6 +178,12 @@ export function BannerEditor({
         [uploading, setUploading] = useState(false),
         [error, setError] = useState("");
     const lock = useRef(false);
+    const [cleanDraft] = useState(() => JSON.stringify(draft));
+    function dismiss() {
+        if (lock.current) return;
+        if (JSON.stringify(draft) !== cleanDraft && !window.confirm("横幅修改尚未保存，确认放弃？")) return;
+        close();
+    }
     function change(key: string, value: unknown) {
         setDraft((d) => ({ ...d, [key]: value }));
     }
@@ -249,11 +255,13 @@ export function BannerEditor({
             variant="drawer"
             wide
             close={close}
+            guardChanges
+            dismissible={!busy && !uploading}
         >
-            <form className="banner-editor" onSubmit={save}>
+            <form className="banner-editor" onSubmit={save} aria-busy={busy || uploading} data-unsaved={JSON.stringify(draft) !== cleanDraft ? "true" : undefined}>
                 <label>
                     标题 / 图片替代文本
-                    <input
+                    <input disabled={busy || uploading}
                         required
                         maxLength={200}
                         value={draft.title}
@@ -282,7 +290,7 @@ export function BannerEditor({
                 ].map(([key, label]) => (
                     <label key={key}>
                         {label}
-                        <input
+                        <input disabled={busy || uploading}
                             required={key === "image_url"}
                             value={draft[key] || ""}
                             placeholder="上传图片或填写 HTTPS 图片地址"
@@ -318,7 +326,7 @@ export function BannerEditor({
                 </small>
                 <label>
                     点击跳转（可选）
-                    <input
+                    <input disabled={busy || uploading}
                         value={draft.target_url || ""}
                         placeholder="例如 /app#/plan 或 https://example.com"
                         onChange={(e) => change("target_url", e.target.value)}
@@ -328,7 +336,7 @@ export function BannerEditor({
                     <legend>展示位置</legend>
                     {Object.entries(positions).map(([code, name]) => (
                         <label key={code}>
-                            <input
+                            <input disabled={busy || uploading}
                                 type="checkbox"
                                 checked={draft.placements.includes(code)}
                                 onChange={() => toggle("placements", code)}
@@ -341,7 +349,7 @@ export function BannerEditor({
                     <legend>语言范围（不勾选表示全部语言）</legend>
                     {languages.map((l) => (
                         <label key={l.code}>
-                            <input
+                            <input disabled={busy || uploading}
                                 type="checkbox"
                                 checked={(draft.languages || []).includes(
                                     l.code,
@@ -355,7 +363,7 @@ export function BannerEditor({
                 <div className="banner-options">
                     <label>
                         排序
-                        <input
+                        <input disabled={busy || uploading}
                             type="number"
                             min={0}
                             max={100000}
@@ -366,7 +374,7 @@ export function BannerEditor({
                     </label>
                     <label>
                         上线时间
-                        <input
+                        <input disabled={busy || uploading}
                             type="datetime-local"
                             title={`时区：${displayTimeZone()}`}
                             value={draft.starts_at}
@@ -377,7 +385,7 @@ export function BannerEditor({
                     </label>
                     <label>
                         下线时间
-                        <input
+                        <input disabled={busy || uploading}
                             type="datetime-local"
                             title={`时区：${displayTimeZone()}`}
                             value={draft.ends_at}
@@ -387,7 +395,7 @@ export function BannerEditor({
                 </div>
                 <small>时间按当前设备时区填写；留空表示不限制。</small>
                 <label style={{ display: "flex", alignItems: "center" }}>
-                    <input
+                    <input disabled={busy || uploading}
                         type="checkbox"
                         checked={draft.show}
                         onChange={(e) => change("show", e.target.checked)}
@@ -399,8 +407,8 @@ export function BannerEditor({
                         {error}
                     </p>
                 )}
-                <div className="actions">
-                    <button type="button" onClick={close}>
+                <div className="admin-dialog-actions">
+                    <button type="button" disabled={busy || uploading} onClick={dismiss}>
                         取消
                     </button>
                     <button

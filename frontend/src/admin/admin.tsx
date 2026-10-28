@@ -1039,7 +1039,7 @@ export function ResourcePage({
         [error, setError] = useState("");
     const [routeUsage, setRouteUsage] = useState("");
     const [routeFilter, setRouteFilter] = useState("");
-    const [routeEditorState, setRouteEditorState] = useState({ busy: false, dirty: false });
+    const [editorState, setEditorState] = useState({ busy: false, dirty: false });
     useEffect(() => {
         saveListView(viewKey, {
             context: JSON.stringify(queryParams),
@@ -1531,8 +1531,10 @@ export function ResourcePage({
                             ? `编辑 · ${resource.title}`
                             : `新建 · ${resource.title}`
                     }
+                    guardChanges={resource !== resources.routes}
+                    dismissible={!editorState.busy}
                     close={() => {
-                        if (resource === resources.routes && (routeEditorState.busy || routeEditorState.dirty && !confirm("路由修改尚未保存，确认放弃？"))) return;
+                        if (resource === resources.routes && (editorState.busy || editorState.dirty && !confirm("路由修改尚未保存，确认放弃？"))) return;
                         setEditing(null);
                     }}
                 >
@@ -1560,7 +1562,7 @@ export function ResourcePage({
                                 }}
                             />
                         ) : resource === resources.routes && editing.action === "sing_box" ? (
-                            <RouteRuleEditor initial={editing} onStateChange={setRouteEditorState} onSave={async body => { await request(resource.save!, body); d.reload(); setEditing(null); }} />
+                            <RouteRuleEditor initial={editing} onStateChange={setEditorState} onSave={async body => { await request(resource.save!, body); d.reload(); setEditing(null); }} />
                         ) : (
                             <Editor
                                 fields={formPresentation(
@@ -1574,6 +1576,7 @@ export function ResourcePage({
                                     ) || "",
                                 )}
                                 initial={editing}
+                                onBusyChange={busy => setEditorState(current => ({ ...current, busy }))}
                                 resolveFields={(fields, values) =>
                                     resourceFields(
                                         Object.keys(resources).find(

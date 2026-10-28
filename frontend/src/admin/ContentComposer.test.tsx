@@ -157,3 +157,18 @@ it("releases controls after a stalled request times out", async () => {
         vi.useRealTimers();
     }
 });
+
+it("locks duplicate notice submissions and keeps edits after a failed save",async()=>{
+ let reject!: (error:Error)=>void;
+ const save=vi.fn().mockImplementationOnce(()=>new Promise((_,fail)=>{reject=fail;})).mockResolvedValue(undefined);
+ render(<ContentComposer kind="notice" initial={{title:"Notice",content:"Body",translations:{"en-US":{subject:"Notice",content:"Body"}}}} onSave={save}/>);
+ const title=screen.getByLabelText("公告标题") as HTMLInputElement;
+ fireEvent.change(title,{target:{value:"Draft notice"}});
+ const form=title.closest("form")!;
+ fireEvent.submit(form);fireEvent.submit(form);
+ expect(save).toHaveBeenCalledTimes(1);expect(form.getAttribute("aria-busy")).toBe("true");
+ reject(new Error("Offline"));await screen.findByText("Offline");
+ expect(title.value).toBe("Draft notice");expect(form.getAttribute("data-unsaved")).toBe("true");
+ fireEvent.submit(form);await waitFor(()=>expect(save).toHaveBeenCalledTimes(2));
+ await waitFor(()=>expect(form.getAttribute("data-unsaved")).toBeNull());
+});

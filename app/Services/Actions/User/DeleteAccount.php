@@ -54,6 +54,9 @@ final class DeleteAccount
             DB::table('v2_ticket_notification_read')->where('user_id',$id)->delete();
             DB::table('v2_ticket')->where('user_id',$id)->delete();
             DB::table('v2_client_diagnostic_report')->where('user_id',$id)->delete();
+            // Preserve issuance history while permanently invalidating remaining entitlements.
+            DB::table('v2_credit_batch')->where('user_id',$id)->update(['remaining_bytes'=>0]);
+            DB::table('v2_usage_reset_credit')->where('user_id',$id)->update(['remaining'=>0]);
             User::where('invite_user_id',$id)->update(['invite_user_id'=>null]);
             $user->forceFill([
                 'account_deleted_at'=>time(), 'email'=>bin2hex(random_bytes(16)).'@deleted.invalid',

@@ -1,4 +1,5 @@
 <?php
+use Illuminate\Support\Facades\{DB, Cache};
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
@@ -132,7 +133,7 @@ try {
     $deleteAuth=new App\Services\AuthService($deleting);
     $deleteToken=$deleteAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
     $otherToken=$deleteAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
-    $oldEmail=$deleting->email; $oldSubscription=$deleting->token;
+    $oldEmail=$deleting->email; $oldSubscription=$deleting->token; $oldUuid=$deleting->uuid;
     $call=0;
     $deleteCall=function($method='DELETE',$body=null,$credential=true) use($kernel,$deleteToken,&$call,$deleting) {
         Illuminate\Support\Facades\RateLimiter::clear('ACCOUNT_DELETION:'.$deleting->id);
@@ -174,13 +175,46 @@ try {
     $sessions[$ref['sessionId']]['authenticated_at']=time();
     Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('USER_SESSIONS',$deleting->id),$sessions);
     Illuminate\Support\Facades\DB::table('v2_passkey')->insert(['user_id'=>$deleting->id,'credential_hash'=>str_repeat('a',64),'credential_id'=>'test','public_key'=>'test','user_handle'=>'test','rp_id'=>'example.test','name'=>'test','sign_count'=>0,'created_at'=>time()]);
+    $deleting->update(['telegram_id'=>123456789,'plan_id'=>1,'group_id'=>1,'transfer_enable'=>100000,'credit_balance'=>5000,'expired_at'=>time()+86400,'auto_renewal'=>1,'announcement_email'=>1,'remind_service'=>1,'last_login_ip'=>123,'last_login_at'=>time(),'language'=>'en-US','display_timezone'=>'UTC','remarks'=>'Private account note']);
+    DB::table('v2_user_mfa')->insert(['user_id'=>$deleting->id,'email_enabled'=>1,'totp_secret'=>'test-encrypted-secret','recovery_hashes'=>'["test-hash"]','version'=>0]);
+    $creditId=DB::table('v2_credit_batch')->insertGetId(['user_id'=>$deleting->id,'reference'=>'deletion:'.$deleting->id,'remaining_bytes'=>5000,'expires_at'=>time()+86400,'created_at'=>time()]);
+    $resetId=DB::table('v2_usage_reset_credit')->insertGetId(['user_id'=>$deleting->id,'batch_id'=>123,'quantity'=>3,'remaining'=>3,'created_at'=>time()]);
+    $otherCreditId=DB::table('v2_credit_batch')->insertGetId(['user_id'=>$target->id,'reference'=>'deletion-control:'.$target->id,'remaining_bytes'=>9000,'expires_at'=>time()+86400,'created_at'=>time()]);
+    $otherResetId=DB::table('v2_usage_reset_credit')->insertGetId(['user_id'=>$target->id,'batch_id'=>123,'quantity'=>4,'remaining'=>4,'created_at'=>time()]);
+    DB::table('v2_telegram_identity')->insert(['user_id'=>$deleting->id,'telegram_id'=>123456789]);
+    DB::table('v2_telegram_binding_challenge')->insert(['user_id'=>$deleting->id,'token_hash'=>hash('sha256','deletion-challenge'),'expires_at'=>time()+300]);
+    DB::table('v2_telegram_preference')->insert(['user_id'=>$deleting->id,'telegram_id'=>123456789,'updated_at'=>time()]);
+    DB::table('v2_notice_read')->insert(['user_id'=>$deleting->id,'notice_id'=>123,'notice_updated_at'=>time(),'read_at'=>time()]);
+    DB::table('v2_coupon_wallet')->insert(['user_id'=>$deleting->id,'coupon_id'=>123,'snapshot'=>'{}','created_at'=>time()]);
+    DB::table('v2_invite_code')->insert(['user_id'=>$deleting->id,'code'=>bin2hex(random_bytes(16)),'created_at'=>time(),'updated_at'=>time()]);
+    DB::table('v2_mail_campaign_recipient')->insert(['user_id'=>$deleting->id,'campaign_id'=>123,'recipient_hash'=>hash('sha256',$oldEmail),'available_at'=>time(),'updated_at'=>time()]);
+    $invitation=['user_id'=>$deleting->id,'email'=>$target->email,'email_hash'=>hash('sha256',$target->email),'token_hash'=>bin2hex(random_bytes(32)),'expires_at'=>time()+86400,'last_requested_at'=>time(),'created_at'=>time(),'updated_at'=>time()];
+    DB::table('v2_email_invitation')->insert($invitation);
+    $acceptedInvitation=DB::table('v2_email_invitation')->insertGetId(array_replace($invitation,['user_id'=>$target->id,'accepted_user_id'=>$deleting->id,'email'=>$oldEmail,'email_hash'=>hash('sha256',$oldEmail),'token_hash'=>bin2hex(random_bytes(32))]));
+    DB::table('v2_ticket_message')->insert(['user_id'=>$deleting->id,'ticket_id'=>$openTicket,'message'=>'Private support message','created_at'=>time(),'updated_at'=>time()]);
+    DB::table('v2_ticket_notification_read')->insert(['user_id'=>$deleting->id,'ticket_id'=>$openTicket,'message_id'=>123,'read_at'=>time()]);
+    DB::table('v2_client_diagnostic_report')->insert(['user_id'=>$deleting->id,'report_id'=>App\Utils\Helper::guid(true),'report_kind'=>'diagnostic','client_version'=>'test','platform'=>'windows','checks'=>'{}','created_at'=>time()]);
+    $target->update(['invite_user_id'=>$deleting->id]);
+    $authorizations=app(App\Services\SessionAuthorizationCode::class);
+    $codes=[];
+    foreach ([App\Services\SessionAuthorizationCode::APP,App\Services\SessionAuthorizationCode::BROWSER] as $purpose) $codes[$purpose]=$authorizations->issue($purpose,$otherToken);
+    $browserSessions=app(App\Services\BrowserSession::class);
+    $browserRequest=Illuminate\Http\Request::create('https://delete.example/api/v10/me');
+    $browserRecord=$browserSessions->rotate($browserSessions->load($browserRequest,'user'),$otherToken);
+    $browserSessions->persist($browserRecord,response('',204));
+    $browserCookies=[$browserSessions->cookieName('user')=>$browserRecord['id']];
     $rollbackOnce=true;
     Illuminate\Support\Facades\Event::listen(Illuminate\Database\Events\QueryExecuted::class,function($query) use (&$rollbackOnce) {
-        if ($rollbackOnce && str_starts_with(strtolower($query->sql),'delete from') && str_contains($query->sql,'v2_passkey')) { $rollbackOnce=false; throw new RuntimeException('Test rollback'); }
+        if ($rollbackOnce && str_starts_with(strtolower($query->sql),'update') && str_contains($query->sql,'v2_usage_reset_credit')) { $rollbackOnce=false; throw new RuntimeException('Test rollback'); }
     });
     $assert($deleteCall()->getStatusCode()===500,'Unexpected cleanup failure aborts deletion');
     $assert(App\Models\User::find($deleting->id)->email===$oldEmail && Illuminate\Support\Facades\DB::table('v2_passkey')->where('user_id',$deleting->id)->exists(),'Cleanup failure rolls back identity and credentials');
-    $deleted=$deleteCall();
+    $assert((int)DB::table('v2_credit_batch')->where('id',$creditId)->value('remaining_bytes')===5000 && (int)DB::table('v2_usage_reset_credit')->where('id',$resetId)->value('remaining')===3,'Failed deletion preserves entitlements');
+    $browserDelete=Illuminate\Http\Request::create('https://delete.example/api/v10/me','DELETE',[],$browserCookies,[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'],json_encode(['password'=>'test-only-password','confirmation'=>'DELETE']));
+    $browserDelete->headers->set('X-Browser-Client','user');
+    $browserDelete->headers->set('Origin','https://delete.example');
+    $browserDelete->headers->set('X-CSRF-Token',$browserRecord['csrfToken']);
+    $deleted=$kernel->handle($browserDelete);
     $assert($deleted->getStatusCode()===204,'Deletion succeeds: '.$deleted->getContent());
     $deleting->refresh();
     $assert($deleting->banned && $deleting->account_deleted_at && $deleting->email!==$oldEmail && $deleting->token!==$oldSubscription,'Identity erased and subscription revoked');
@@ -188,6 +222,40 @@ try {
     $assert(!App\Services\AuthService::decryptAuthData($deleteToken) && !App\Services\AuthService::decryptAuthData($otherToken),'Every session is revoked');
     $assert(!Illuminate\Support\Facades\DB::table('v2_passkey')->where('user_id',$deleting->id)->exists(),'Passkeys erased');
     $assert(App\Models\Order::whereKey($order->id)->exists(),'Accounting records retained');
+    $assert($deleting->uuid!==$oldUuid && !$deleting->plan_id && !$deleting->group_id && !$deleting->transfer_enable && !$deleting->credit_balance && !$deleting->auto_renewal && $deleting->expired_at<=time(),'Plan, quota and node credentials are revoked');
+    foreach (['telegram_id','last_login_ip','last_login_at','language','display_timezone','remarks','invite_user_id'] as $field) $assert($deleting->$field===null,'Profile field erased: '.$field);
+    foreach (['announcement_email','remind_service','remind_expire','remind_traffic'] as $field) $assert(!$deleting->$field,'Notification preference disabled: '.$field);
+    $mfa=DB::table('v2_user_mfa')->where('user_id',$deleting->id)->first();
+    $assert(!$mfa->email_enabled && $mfa->totp_secret===null && $mfa->recovery_hashes===null && $mfa->version===1,'MFA secrets are erased and assurance version advances');
+    foreach (['v2_passkey','v2_invite_code','v2_notice_read','v2_telegram_identity','v2_telegram_binding_challenge','v2_telegram_preference','v2_coupon_wallet','v2_mail_campaign_recipient','v2_email_invitation','v2_ticket','v2_ticket_message','v2_ticket_notification_read','v2_client_diagnostic_report'] as $table) $assert(!DB::table($table)->where('user_id',$deleting->id)->exists(),'Account-owned rows erased: '.$table);
+    $assert(App\Models\User::find($target->id)->invite_user_id===null,'Invitees are detached without deleting their accounts');
+    $assert(!DB::table('v2_email_invitation')->where('id',$acceptedInvitation)->exists(),'Accepted invitation identity is also removed from another inviter');
+    $assert($deleteAuth->getSessions()===[],'Session metadata and source credentials removed');
+    $assert(!$browserSessions->projection($browserSessions->load($browserRequest->duplicate(null,null,null,$browserCookies),'user'))['authenticated'],'Old browser Cookie is anonymous after deletion');
+    $browserRead=Illuminate\Http\Request::create('https://delete.example/api/v10/me','GET',[],$browserCookies,[],['HTTP_X_BROWSER_CLIENT'=>'user','HTTP_ACCEPT'=>'application/json']);
+    $assert($kernel->handle($browserRead)->getStatusCode()===401,'Old browser Cookie cannot read profile through real router');
+    foreach ($codes as $purpose=>$code) {
+        try { $authorizations->exchange($purpose,$code); $assert(false,'Deleted account authorization code was accepted'); }
+        catch (Illuminate\Http\Exceptions\HttpResponseException $error) { $assert($error->getResponse()->getStatusCode()>=400,'Pre-deletion authorization codes cannot issue sessions'); }
+    }
+    foreach ([0,1,2] as $method) {
+        config(['v2board.show_subscribe_method'=>$method]);
+        $subToken=$oldSubscription;
+        if ($method===1) { $subToken='deletion-otp-'.bin2hex(random_bytes(8)); Cache::put('otpn_'.$subToken,$oldSubscription,60); }
+        if ($method===2) { $subToken='deletion-totp-'.bin2hex(random_bytes(8)); Cache::put('totp_'.$subToken,$oldSubscription,60); }
+        foreach (['','/application-config','/application-version'] as $suffix) {
+            $subscription=Illuminate\Http\Request::create('/api/v10/subscriptions/'.$subToken.$suffix,'GET',[],[],[],['HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>'192.0.2.123']);
+            $assert($kernel->handle($subscription)->getStatusCode()===403,'Old subscription rejected for method '.$method.' and suffix '.$suffix);
+        }
+        if ($method===2) Cache::forget('totp_'.$subToken);
+    }
+    $assert(!App\Models\User::withUsableTraffic()->whereKey($deleting->id)->exists(),'Deleted account is excluded from node user lists');
+    $assert((int)DB::table('v2_credit_batch')->where('id',$creditId)->value('remaining_bytes')===0,'Independent traffic credit batches are invalidated');
+    $assert((int)DB::table('v2_usage_reset_credit')->where('id',$resetId)->value('remaining')===0,'Unused traffic reset credits are invalidated');
+    $assert((int)DB::table('v2_credit_batch')->where('id',$otherCreditId)->value('remaining_bytes')===9000 && (int)DB::table('v2_usage_reset_credit')->where('id',$otherResetId)->value('remaining')===4,'Other accounts retain their entitlements');
+    Cache::put(App\Utils\CacheKey::get('USER_SESSIONS',$deleting->id),$sessions);
+    $assert(!App\Services\AuthService::decryptAuthData($deleteToken) && !App\Services\AuthService::sessionUser($ref),'Database deletion marker rejects credentials even if stale session metadata returns');
+    $deleteAuth->removeAllSession();
     $mail=(new App\Jobs\SendEmailJob(['user_id'=>$deleting->id,'email'=>$oldEmail,'template_name'=>'notify']))->handle();
     $assert(($mail['reason'] ?? null)==='ACCOUNT_DELETED','Queued account mail is suppressed after deletion');
     $assert($deleteCall()->getStatusCode()===401,'Replayed deletion cannot authenticate');

@@ -291,7 +291,7 @@ export function AdminDDNS() {
                 <div className="pad">
                     <p className="muted">
                         默认保留 30
-                        天，可在系统日志页面调整；只记录状态变化和实际 DNS
+                        天，可在<a href="#/log-settings">采集与保留策略</a>中调整；只记录状态变化和实际 DNS
                         更新。
                     </p>
                     <label>
@@ -358,7 +358,7 @@ export function AdminDDNS() {
                     }}
                 >
                     <form
-                        className="pad"
+                        className="pad admin-dialog-form"
                         onSubmit={async (e) => {
                             e.preventDefault();
                             if (
@@ -442,9 +442,9 @@ export function AdminDDNS() {
                             后恢复认证失败的同步。
                         </p>
                         {error && <p role="alert">{error}</p>}
-                        <button className="primary" disabled={busy}>
+                        <div className="admin-dialog-actions"><button className="primary" disabled={busy}>
                             保存
-                        </button>
+                        </button></div>
                     </form>
                 </Modal>
             )}

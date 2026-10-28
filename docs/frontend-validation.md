@@ -57,4 +57,4 @@ php tests/console-ui-fixtures.php cleanup
 
 模拟 SDK 不证明真实 AWS 权限或公网 IP 切换；本地回环的 sing-box 测试不证明线上配置已生效；模拟 SMTP、支付和 Cloudflare 不证明邮件送达、结算、DNS 传播或公网证书签发。原生客户端唤起、Android VPN 和 Windows TUN 需对应平台单独验收。
 
-本轮结果和构建日志写入忽略的 `storage/app/test-organization/`，不包含凭据或生产数据。文档不再累积逐轮通过数量。本次整理保留夹具操作、当前验收范围和上述边界，没有执行浏览器视觉或真实云服务验收。
+本轮结果和构建日志写入忽略的 `storage/app/test-organization/`，不包含凭据或生产数据。文档不再累积逐轮通过数量。后台样式核对使用真实页面组件和仅本地的合成数据响应，逐项打开侧栏入口及工作区标签；重点查看 Lightsail 嵌套抽屉、Cloudflare 凭据、路由编辑、日志筛选及带单位设置表单的桌面和 390px 窄屏布局。合成数据以空列表为主，不代表每种业务数据状态或线上环境均已人工验收；未执行真实云服务操作。

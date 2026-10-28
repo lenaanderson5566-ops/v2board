@@ -204,7 +204,7 @@ function ResetForm({
                         {error}
                     </p>
                 )}
-                <div className="actions">
+                <div className="admin-dialog-actions">
                     <button type="button" disabled={busy} onClick={close}>
                         取消
                     </button>

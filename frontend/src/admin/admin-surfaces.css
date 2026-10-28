@@ -1,9 +1,4 @@
 /* Shared workspace geometry. Business-specific layouts stay in their modules. */
-body[data-console="admin"] {
-    --admin-space: 16px;
-    --admin-control-height: 36px;
-    --admin-surface-soft: #f8fafc;
-}
 body[data-console="admin"] :is(.panel, .panel-body, .admin-data-state, [role="tabpanel"]) {
     min-width: 0;
     max-width: 100%;
@@ -201,4 +196,84 @@ body[data-console="admin"] .admin-row-popover[hidden] { display: none; }
     .node-detail-grid {
         grid-template-columns: 1fr;
     }
+}
+
+/* Dialogs share the page rhythm; business layouts keep their own grids. */
+body[data-console="admin"] .modal > .panel-head {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    padding: var(--admin-space);
+    gap: 12px;
+    flex-wrap: nowrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+}
+body[data-console="admin"] .modal > .panel-head h2 {
+    margin: 0;
+    min-width: 0;
+    flex: 1;
+    font-size: 16px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] .modal > .panel-head .icon-button {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    width: var(--admin-control-height);
+    height: var(--admin-control-height);
+    min-width: var(--admin-control-height);
+    padding: 6px;
+}
+body[data-console="admin"] :is(.admin-content, .modal) label {
+    font-size: 13px;
+    line-height: 1.6;
+}
+body[data-console="admin"] .admin-dialog-form {
+    display: grid;
+    gap: 16px;
+    min-width: 0;
+}
+body[data-console="admin"] .admin-dialog-form > :is(p, label) { margin: 0; }
+body[data-console="admin"] .admin-dialog-form > label { gap: 6px; }
+body[data-console="admin"] .admin-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    min-width: 0;
+}
+body[data-console="admin"] .admin-dialog-actions > button { min-height: var(--admin-control-height); }
+body[data-console="admin"] .modal :is(.admin-dialog-form, .infrastructure-form) input:not([type="checkbox"]):not([type="radio"]),
+body[data-console="admin"] .modal :is(.admin-dialog-form, .infrastructure-form) :is(select, textarea) {
+    width: 100%;
+    min-width: 0;
+}
+body[data-console="admin"] :is(.admin-content, .modal) :is(input[type="checkbox"], input[type="radio"]) {
+    flex: 0 0 auto;
+    width: 16px;
+    height: 16px;
+    min-height: 0;
+    padding: 0;
+    margin: 3px 0 0;
+    accent-color: var(--accent);
+}
+body[data-console="admin"] .modal label:has(> input:is([type="checkbox"], [type="radio"])) {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 8px;
+}
+body[data-console="admin"] .modal :is(pre, code) { overflow-wrap: anywhere; }
+body[data-console="admin"] .modal pre { max-width: 100%; overflow-x: auto; }
+@media (max-width: 600px) {
+    body[data-console="admin"] .overlay.admin-drawer .modal,
+    body[data-console="admin"] .overlay.admin-wide-drawer .modal { width: 100vw; }
+    body[data-console="admin"] .admin-dialog-actions > button { flex: 1 1 auto; }
+    body[data-console="admin"] .modal .field-grid { column-gap: 12px; }
 }

@@ -78,4 +78,6 @@ PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以�
 
 验证文档只维护当前入口、覆盖范围及验收边界，不累积每轮测试计数、旧发布流水或本机临时路径。历史结果由 Git 和忽略的测试输出保存。前后台验收方式见 [前后台验证](frontend-validation.md)。合并测试后同步清单、命令及引用，保留原断言并在隔离副本执行受影响模块。
 
-清单校验、合并后的框架回归及本次修改文档的本地链接检查已通过；执行结果保存于忽略的 `storage/app/test-organization/docs-test-cleanup.json`。本次未改动生产功能、数据库迁移或前端代码，无需重建静态资源。
+清单校验、合并后的框架回归及本次修改文档的本地链接检查已通过；执行结果保存于忽略的 `storage/app/test-organization/docs-test-cleanup.json`。框架测试合并本身不修改生产功能或数据库迁移；前端改动仍按实际范围测试并重新构建。
+
+后台样式一致性使用现有前端全量与 Lightsail、DDNS、节点等模块复查，保留提交锁、未保存保护和恢复流程断言。共用弹窗实现及用户端代码不变；桌面与窄屏通过仅本地、禁止写入的合成数据页验收。验证日志为 `storage/app/test-organization/admin-ui-consistency-*`，临时预览入口不纳入发布资源。

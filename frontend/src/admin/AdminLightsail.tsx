@@ -132,7 +132,7 @@ export function AdminLightsail({
                     >
                         添加服务器
                     </button>
-                    <button onClick={data.reload}>刷新状态</button>
+                    {close && <button onClick={data.reload}>刷新状态</button>}
                 </div>
                 <details className="admin-deployment-card">
                     <summary>AWS 密钥管理</summary>
@@ -198,7 +198,7 @@ export function AdminLightsail({
                                 </dl>
                                 {row.error_code && (() => {
                                     const failure = lightsailFailure(row);
-                                    return <div className="infrastructure-notice" role="status">
+                                    return <div className="infrastructure-notice" data-tone="warning" role="status">
                                         <strong>{failure.title}</strong>
                                         <p>{failure.advice}</p>
                                         <small>{failure.operation && `${failure.operation} · `}阶段 {row.phase} · {row.error_code}</small>
@@ -424,9 +424,9 @@ export function AdminLightsail({
                                         查询、申请、绑定、解绑和释放静态 IP
                                         权限。
                                     </p>
-                                    <button type="submit">
+                                    <div className="admin-dialog-actions"><button type="submit" className="primary">
                                         {busy ? "保存中…" : "保存配置"}
-                                    </button>
+                                    </button></div>
                                 </fieldset>
                             </form>
                             {editing.id && (
@@ -442,6 +442,7 @@ export function AdminLightsail({
                     </Modal>
                 )}
                 {credentialEditing && <Modal title={credentialEditing.id ? "编辑 AWS 密钥" : "添加 AWS 密钥"} close={() => { if (!busy) setCredentialEditing(null); }} dismissible={!busy} className="lightsail-dialog">
+                    <div className="lightsail-content">
                     {error && <p role="alert" className="alert">{error}</p>}
                     <form onSubmit={e => { e.preventDefault(); manageCredential("save", credentialEditing); }}>
                         <fieldset disabled={busy} className="infrastructure-form">
@@ -450,9 +451,10 @@ export function AdminLightsail({
                             <p className="muted">编辑时留空保留原凭据。更新密钥需同时填写 Access Key 和 Secret Key；临时凭据需同时填写 Session Token。凭据不会回显。</p>
                             {credentialEditing.active_count > 0 && <p role="status">绑定服务器正在执行 IP 操作，当前只能修改密钥名称。</p>}
                             {credentialEditing.server_count > 1 && <label><input type="checkbox" checked={credentialEditing.confirmSharedUpdate} onChange={e => setCredentialEditing({ ...credentialEditing, confirmSharedUpdate: e.target.checked })} />确认更新这份密钥绑定的全部 {credentialEditing.server_count} 台服务器的凭据</label>}
-                            <button type="submit">{busy ? "保存中…" : "保存 AWS 密钥"}</button>
+                            <div className="admin-dialog-actions"><button type="submit" className="primary">{busy ? "保存中…" : "保存 AWS 密钥"}</button></div>
                         </fieldset>
                     </form>
+                    </div>
                 </Modal>}
                 {operation && (
                     <Modal
@@ -487,7 +489,8 @@ export function AdminLightsail({
                                     autoComplete="off"
                                 />
                             </label>
-                            <button
+                            <div className="admin-dialog-actions"><button
+                                className="primary"
                                 disabled={
                                     busy || confirmation !== operation.instance
                                 }
@@ -500,7 +503,7 @@ export function AdminLightsail({
                                 }
                             >
                                 {busy ? "提交中…" : "确认操作"}
-                            </button>
+                            </button></div>
                         </div>
                     </Modal>
                 )}

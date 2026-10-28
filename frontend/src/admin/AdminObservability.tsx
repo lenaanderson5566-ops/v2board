@@ -276,7 +276,7 @@ export function AdminObservability() {
                     }}
                 >
                     <form
-                        className="pad"
+                        className="pad admin-dialog-form"
                         onSubmit={(e) => {
                             e.preventDefault();
                             save();
@@ -308,7 +308,7 @@ export function AdminObservability() {
                             </label>
                         ))}
                         {error && <p role="alert">{error}</p>}
-                        <div className="actions">
+                        <div className="admin-dialog-actions">
                             <button
                                 type="button"
                                 disabled={busy}
@@ -316,7 +316,7 @@ export function AdminObservability() {
                             >
                                 取消
                             </button>
-                            <button disabled={busy}>
+                            <button className="primary" disabled={busy}>
                                 {busy ? "保存中…" : "保存"}
                             </button>
                         </div>

@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     forget: vi.fn(),
     clear: vi.fn(),
     state: {
+        enrollmentEnabled: true,
         emailEnabled: false,
         totpEnabled: false,
         recoveryCodesRemaining: 0,
@@ -51,6 +52,7 @@ afterEach(() => {
     cleanup();
     vi.clearAllMocks();
     mocks.state = {
+        enrollmentEnabled: true,
         emailEnabled: false,
         totpEnabled: false,
         recoveryCodesRemaining: 0,
@@ -133,6 +135,7 @@ it("retains recovery codes until the user confirms they were saved", async () =>
 });
 it("requires an existing authenticator factor when disabling", () => {
     mocks.state = {
+        enrollmentEnabled: false,
         emailEnabled: true,
         totpEnabled: true,
         recoveryCodesRemaining: 10,
@@ -146,6 +149,19 @@ it("requires an existing authenticator factor when disabling", () => {
     expect(screen.getByLabelText("当前密码")).toBeTruthy();
     expect(screen.getByLabelText("当前动态码")).toBeTruthy();
     expect(screen.queryByLabelText("邮箱验证码")).toBeNull();
+});
+it("hides MFA when site enrollment is disabled and no factors exist", () => {
+    mocks.state.enrollmentEnabled = false;
+    const view = render(<MfaRecoveryProvider><MfaSecurity /></MfaRecoveryProvider>);
+    expect(view.container.innerHTML).toBe("");
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("preserves existing factor management but hides new enrollment when disabled", () => {
+    mocks.state.enrollmentEnabled = false;
+    mocks.state.totpEnabled = true;
+    render(<MfaRecoveryProvider><MfaSecurity /></MfaRecoveryProvider>);
+    expect(screen.getByRole("button", {name: "关闭身份验证器"})).toBeTruthy();
+    expect(screen.queryByRole("button", {name: "开启邮件验证"})).toBeNull();
 });
 it("does not clear the form after a failed identity check", async () => {
     mocks.request.mockRejectedValue(new Error("身份验证失败"));

@@ -142,6 +142,7 @@ class ConfigSave extends FormRequest
         'browser_policy_other' => 'sometimes|required|in:allow,prompt,guide',
         'account_deletion_enable' => 'in:0,1',
         'passkey_enable' => 'in:0,1',
+        'mfa_enable' => 'in:0,1',
         'email_whitelist_enable' => 'in:0,1',
         'email_whitelist_suffix' => 'nullable|array',
         'email_gmail_limit_enable' => 'in:0,1',

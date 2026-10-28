@@ -201,6 +201,11 @@
       "hint": "使用设备生物识别、PIN 或安全密钥登录。需 HTTPS 站点 URL 和 Passkey 数据表；账户在安全中心自行绑定，已有 MFA 继续生效。",
       "child": false
     },
+    "mfa_enable": {
+      "label": "允许用户开启 MFA",
+      "hint": "默认关闭。开启后可设置邮件或身份验证器验证；关闭仅停止新增绑定，已有验证和恢复功能继续生效。",
+      "child": false
+    },
     "browser_policy_wechat": {
       "label": "微信访问策略",
       "hint": "仅控制用户页面引导，不限制管理入口或 API。重新加载页面生效；独立部署前端需重新导出运行配置。",

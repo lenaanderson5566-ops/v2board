@@ -74,6 +74,8 @@ export function MfaSecurity({
             setBusy(false);
         }
     }
+    if (!state.data && !state.error) return null;
+    if (state.data && !state.data.enrollmentEnabled && !state.data.emailEnabled && !state.data.totpEnabled) return null;
     return (
         <section className="panel mfa-security">
             <div className="panel-head">
@@ -118,7 +120,7 @@ export function MfaSecurity({
                                     <p className="mfa-help">
                                         {tx("登录时验证账号邮箱中的验证码。")}
                                     </p>
-                                    <button
+                                    {(state.data.enrollmentEnabled || state.data.emailEnabled) && <button
                                         disabled={busy || purpose !== null}
                                         onClick={() => {
                                             close();
@@ -134,7 +136,7 @@ export function MfaSecurity({
                                                 ? "关闭邮件验证"
                                                 : "开启邮件验证",
                                         )}
-                                    </button>
+                                    </button>}
                                 </div>
                                 <div>
                                     <h3>
@@ -202,7 +204,7 @@ export function MfaSecurity({
                                                 </button>
                                             ))}
                                         </div>
-                                    ) : (
+                                    ) : state.data.enrollmentEnabled ? (
                                         <button
                                             disabled={busy || purpose !== null}
                                             onClick={() => {
@@ -212,7 +214,7 @@ export function MfaSecurity({
                                         >
                                             {tx("开启身份验证器")}
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                             {purpose && (

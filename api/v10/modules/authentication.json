@@ -3440,9 +3440,13 @@
         "required": [
           "emailEnabled",
           "totpEnabled",
-          "recoveryCodesRemaining"
+          "recoveryCodesRemaining",
+          "enrollmentEnabled"
         ],
         "properties": {
+          "enrollmentEnabled": {
+            "type": "boolean"
+          },
           "emailEnabled": {
             "type": "boolean"
           },

@@ -41,7 +41,8 @@ final class MfaService
     {
         $row = DB::table('v2_user_mfa')->where('user_id', $userId)->first();
         return ['emailEnabled' => (bool) ($row->email_enabled ?? false), 'totpEnabled' => (bool) ($row->totp_secret ?? false),
-            'recoveryCodesRemaining' => count(json_decode($row->recovery_hashes ?? '[]', true) ?: [])];
+            'recoveryCodesRemaining' => count(json_decode($row->recovery_hashes ?? '[]', true) ?: []),
+            'enrollmentEnabled' => (bool) config('v2board.mfa_enable', 0)];
     }
 
     private function row(int $userId)
@@ -134,6 +135,7 @@ final class MfaService
     {
         $input = $request->validate(['purpose' => 'required|in:' . implode(',', self::PURPOSES), 'password' => 'required|string|max:128',
             'verificationCode' => 'nullable|string|max:40', 'verificationMethod' => 'nullable|in:totp,recovery']);
+        abort_if(in_array($input['purpose'], ['enableEmail', 'setupTotp'], true) && !config('v2board.mfa_enable', 0), 403, __('Security settings changed. Please refresh.'));
         $this->limit('settings:' . $user->id, 5, 300);
         abort_unless(Helper::multiPasswordVerify($user->password_algo, $user->password_salt, $input['password'], $user->password), 422, __('Incorrect email or password'));
         // Return failed factor validation outside the transaction so used recovery codes cannot roll back on a later error.
@@ -185,6 +187,7 @@ final class MfaService
                 $row = $this->row($user->id);
                 abort_unless((int) $row->version === $record['version'], 409, __('Security settings changed. Please start again.'));
                 $purpose = $record['purpose'];
+                abort_if(in_array($purpose, ['enableEmail', 'setupTotp'], true) && !config('v2board.mfa_enable', 0), 403, __('Security settings changed. Please refresh.'));
                 if (!empty($record['passkeyHash'])) abort_unless(config('v2board.passkey_enable',0) && DB::table('v2_passkey')->where('credential_hash',$record['passkeyHash'])->where('user_id',$user->id)->exists(),409,__('Security challenge expired. Please start again.'));
                 $email = $purpose === 'login' ? ($input['verificationCode'] ?? '') : ($input['emailCode'] ?? '');
                 $validEmail = isset($record['emailHash']) && hash_equals($record['emailHash'], hash_hmac('sha256', $email, config('app.key')));

@@ -41,10 +41,13 @@ $assert(strlen(Totp::secret()) === 32 && Totp::match($rfcSecret, 'invalid') === 
 DB::beginTransaction();
 try {
     foreach ([false, true] as $admin) {
+        config(['v2board.mfa_enable' => 0]);
         Cache::flush(); Queue::fake();
         $account = $user($admin ? 'mfa-admin' : 'mfa-user', $admin);
         $request = $make();
-        $assert($service->state($account->id) === ['emailEnabled'=>false,'totpEnabled'=>false,'recoveryCodesRemaining'=>0], 'Default off for both roles');
+        $assert($service->state($account->id) === ['emailEnabled'=>false,'totpEnabled'=>false,'recoveryCodesRemaining'=>0,'enrollmentEnabled'=>false], 'Site enrollment and factors default off for both roles');
+        foreach (['setupTotp', 'enableEmail'] as $purpose) $fails(fn()=>$service->start($account,$make(['purpose'=>$purpose,'password'=>'MfaFixture!2026'])), 'Disabled site rejects new factor enrollment',403);
+        config(['v2board.mfa_enable' => 1]);
         $old = (new AuthService($account))->generateAuthData($request)['auth_data'];
         $oldLink = (new SessionAuthorizationCode())->issue(SessionAuthorizationCode::BROWSER, $old);
         $fails(fn()=>$service->start($account,$make(['purpose'=>'setupTotp','password'=>'wrong'],$old)), 'Password required', 422);
@@ -52,6 +55,9 @@ try {
         $assert(!$service->state($account->id)['totpEnabled'], 'Staged secret is not enabled');
         $fails(fn()=>$service->finish($setup['challengeId'],$make(['totpCode'=>'000000'],$old)), 'Must prove new authenticator', 422);
         $enrollmentCode=Totp::code($setup['secret'],intdiv(time(),30));
+        config(['v2board.mfa_enable' => 0]);
+        $fails(fn()=>$service->finish($setup['challengeId'],$make(['totpCode'=>$enrollmentCode],$old)), 'Switch off blocks an already-issued enrollment challenge',403);
+        config(['v2board.mfa_enable' => 1]);
         $enabled = $service->finish($setup['challengeId'],$make(['totpCode'=>$enrollmentCode],$old));
         $assert(count($enabled['recoveryCodes']) === 10 && $service->state($account->id)['totpEnabled'], 'Enable after proof with recovery codes');
         $assert(strlen(str_replace('-','',$enabled['recoveryCodes'][0]))===32, '128-bit recovery entropy');
@@ -61,6 +67,7 @@ try {
         try {(new SessionAuthorizationCode())->exchange(SessionAuthorizationCode::BROWSER,$oldLink);throw new RuntimeException('Old link accepted');}
         catch (Illuminate\Http\Exceptions\HttpResponseException $e) {$assert(true,'Old session link revoked');}
         $fails(fn()=>(new AuthService($account))->generateAuthData($make()), 'Direct issuance cannot bypass MFA',403);
+        config(['v2board.mfa_enable' => 0]);
         $challenge = $service->login($account,$make());
         $assert($challenge['preferredMethod']==='totp' && $challenge['methods']===['totp','recovery'], 'TOTP priority');
         $fails(fn()=>$service->finish($challenge['challengeId'],$make(['verificationMethod'=>'totp','verificationCode'=>$enrollmentCode])), 'Enrollment code cannot replay',422);
@@ -80,6 +87,7 @@ try {
         $disabled = $service->start($account,$make(['purpose'=>'disableTotp','password'=>'MfaFixture!2026','verificationMethod'=>'recovery','verificationCode'=>$enabled['recoveryCodes'][1]],$auth));
         $service->finish($disabled['challengeId'],$make([],$auth));
         $assert(!$service->state($account->id)['totpEnabled'] && $service->state($account->id)['recoveryCodesRemaining']===0, 'Disable removes both secret and recovery codes');
+        config(['v2board.mfa_enable' => 1]);
         $fails(fn()=>(new AuthService($verified))->generateAuthData($exchange), 'Previously verified source cannot mint after MFA is disabled',403);
         $assert($account->fresh()->balance===1234 && $account->fresh()->currency==='CNY', 'Funds preserved');
     }

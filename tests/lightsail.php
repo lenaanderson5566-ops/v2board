@@ -26,6 +26,14 @@ $assert = function ($ok, $message) use (&$checks) {
 };
 config(['cache.default' => 'array']);
 Queue::fake();
+$diagnostics = [];
+$logUnavailable = false;
+$diagnosticLogger = Mockery::mock(Psr\Log\LoggerInterface::class);
+$diagnosticLogger->shouldReceive('warning')->andReturnUsing(function ($event, $context) use (&$diagnostics, &$logUnavailable) {
+    if ($logUnavailable) throw new RuntimeException('simulated log disk failure');
+    $diagnostics[] = ['event' => $event, 'context' => $context];
+});
+Illuminate\Support\Facades\Log::partialMock()->shouldReceive('channel')->with('daily')->andReturn($diagnosticLogger);
 DB::beginTransaction();
 try {
     (new App\Http\Controllers\V1\Admin\Server\V2boxController())->save(Request::create('/', 'POST', ['name' => 'Cloud test', 'host' => 'example.test', 'port' => '443', 'server_port' => 443, 'protocol' => 'vless', 'network' => 'tcp', 'disable_sni' => 0, 'zero_rtt_handshake' => 0, 'rate' => 1, 'group_id' => [1], 'tls' => 0, 'show' => 1]));
@@ -114,7 +122,7 @@ try {
     };
     // Exercise the real SDK HTTP/error parsers, not only handcrafted AwsExceptions.
     $httpResponse = function ($request, int $status, array $body) {
-        $response = new GuzzleHttp\Psr7\Response($status, ['Content-Type' => 'application/x-amz-json-1.1'], json_encode($body));
+        $response = new GuzzleHttp\Psr7\Response($status, ['Content-Type' => 'application/x-amz-json-1.1', 'x-amzn-requestid' => '11111111-2222-4333-8444-555555555555'], json_encode($body));
         return $status < 400 ? GuzzleHttp\Promise\Create::promiseFor($response)
             : GuzzleHttp\Promise\Create::rejectionFor(['response' => $response, 'exception' => new RuntimeException('simulated_secret_must_not_be_logged')]);
     };
@@ -139,28 +147,43 @@ try {
     $blocked = DB::table('v2_lightsail_server')->find($row->id);
     $assert($blocked->status === 'failed' && $blocked->phase === 'allocate' && $blocked->error_code === 'aws:list:AccessDeniedException', 'HTTP reconciliation retains actionable list failure without provider text');
     $assert($blockedCalls === ['GetStaticIp', 'GetStaticIps'] && $state->ips['old']['isAttached'], 'Failed list verification never allocates, detaches or releases');
+    $failureLog = end($diagnostics);
+    $startLog = $diagnostics[count($diagnostics) - 2];
+    $assert($startLog['event'] === 'lightsail.lookup_reconciliation_started' && $failureLog['event'] === 'lightsail.operation_failed'
+        && $failureLog['context']['attempt_id'] === $startLog['context']['attempt_id'] && $failureLog['context']['server_id'] === $row->id
+        && $failureLog['context']['phase'] === 'allocate', 'Diagnostic events correlate lookup and failure to the same attempt and stage');
+    $assert($failureLog['context']['aws_request_id'] === '11111111-2222-4333-8444-555555555555'
+        && $failureLog['context']['http_status'] === 400 && $failureLog['context']['response_format'] === 'json'
+        && $failureLog['context']['error_code'] === 'aws:list:AccessDeniedException' && $failureLog['context']['diagnostic_version'] === 1,
+        'Diagnostics retain bounded AWS response metadata');
+    $logUnavailable = true;
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued']);
+    $blockedService->run($row->id);
+    $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'aws:list:AccessDeniedException', 'Logging failure cannot replace AWS failure or interrupt recovery');
+    $logUnavailable = false;
     foreach ([
+        'absent-empty-code' => [[[200, ['staticIps' => [], 'nextPageToken' => 'page-two']], [200, ['staticIps' => []]]], null, null],
         'absent' => [[[200, ['staticIps' => [], 'nextPageToken' => 'page-two']], [200, ['staticIps' => []]]], null, null],
         'present' => [[[200, ['staticIps' => [], 'nextPageToken' => 'page-two']], [200, ['staticIps' => [['name' => 'candidate', 'ipAddress' => '1.1.1.1']]]]], '1.1.1.1', null],
         'denied' => [[[400, ['__type' => 'AccessDeniedException']]], null, 'AccessDeniedException'],
-        'malformed' => [[[200, []]], null, null],
-        'repeated-token' => [[[200, ['staticIps' => [], 'nextPageToken' => 'repeat']], [200, ['staticIps' => [], 'nextPageToken' => 'repeat']]], null, null],
+        'malformed' => [[[200, []]], null, 'UnrecognizedSensitiveProviderCode'],
+        'repeated-token' => [[[200, ['staticIps' => [], 'nextPageToken' => 'repeat']], [200, ['staticIps' => [], 'nextPageToken' => 'repeat']]], null, 'UnrecognizedSensitiveProviderCode'],
     ] as $scenario => [$pages, $expectedIp, $expectedCode]) {
         $calls = [];
-        $http = $wireClient(function ($request) use (&$pages, &$calls, $httpResponse) {
+        $http = $wireClient(function ($request) use (&$pages, &$calls, $httpResponse, $scenario) {
             $operation = substr(strrchr($request->getHeaderLine('X-Amz-Target'), '.'), 1);
             $calls[] = [$operation, json_decode((string)$request->getBody(), true)];
-            if ($operation === 'GetStaticIp') return $httpResponse($request, 400, ['message' => 'simulated_secret_must_not_be_logged']);
+            if ($operation === 'GetStaticIp') return $httpResponse($request, 400, array_filter(['code' => $scenario === 'absent-empty-code' ? null : 'UnrecognizedSensitiveProviderCode', 'message' => 'simulated_secret_must_not_be_logged']));
             if ($operation !== 'GetStaticIps' || !$pages) throw new RuntimeException('Unexpected wire request');
             [$status, $body] = array_shift($pages);
             return $httpResponse($request, $status, $body);
         });
         try {
             $found = $service->staticIp($http, 'candidate');
-            $assert(in_array($scenario, ['absent', 'present'], true) && ($found['ipAddress'] ?? null) === $expectedIp, 'HTTP 400 reconciliation '.$scenario);
+            $assert(in_array($scenario, ['absent-empty-code', 'absent', 'present'], true) && ($found['ipAddress'] ?? null) === $expectedIp, 'HTTP 400 reconciliation '.$scenario);
             $assert($calls[2][1]['pageToken'] === 'page-two', 'Reconciliation follows every list page '.$scenario);
         } catch (Aws\Exception\AwsException $e) {
-            $assert(!in_array($scenario, ['absent', 'present'], true) && $e->getAwsErrorCode() === $expectedCode, 'Failed reconciliation cannot prove absence '.$scenario);
+            $assert(!in_array($scenario, ['absent-empty-code', 'absent', 'present'], true) && $e->getAwsErrorCode() === $expectedCode, 'Failed reconciliation cannot prove absence '.$scenario);
         }
     }
     // Full rotation including release confirmation must recover missing-resource
@@ -173,7 +196,7 @@ try {
             return $httpResponse($request, 200, $result->toArray());
         } catch (Aws\Exception\AwsException $e) {
             if ($e->getAwsErrorCode() !== 'NotFoundException') throw $e;
-            return $httpResponse($request, 400, ['message' => 'simulated_secret_must_not_be_logged']);
+            return $httpResponse($request, 400, ['code' => 'UnrecognizedSensitiveProviderCode', 'message' => 'simulated_secret_must_not_be_logged']);
         }
     });
     $wireService = new class($http) extends LightsailService {
@@ -184,6 +207,11 @@ try {
     $wireService->run($row->id);
     $assert(DB::table('v2_lightsail_server')->find($row->id)->status === 'completed' && $state->ips['wire-new']['isAttached'] && !isset($state->ips['old']), 'Real SDK HTTP 400 rotation completes allocation, attachment and verified release');
     $assert(count(array_filter($state->calls, fn($call) => $call === 'AllocateStaticIp')) === 1, 'HTTP reconciliation allocates exactly once');
+    $completedLogs = array_values(array_filter($diagnostics, fn($log) => $log['event'] === 'lightsail.lookup_reconciliation_completed'));
+    $assert(count($completedLogs) >= 2 && end($completedLogs)['context']['resource_found'] === false, 'Successful reconciliation logs verified absence, including release confirmation');
+    $encodedLogs = json_encode($diagnostics);
+    $assert(!str_contains($encodedLogs, 'simulated_secret') && !str_contains($encodedLogs, 'UnrecognizedSensitiveProviderCode')
+        && !str_contains($encodedLogs, 'test-secret') && !str_contains($encodedLogs, 'Authorization'), 'Diagnostics exclude provider messages, unknown raw codes and signed request data');
     $state->ips = ['old' => ['name' => 'old', 'ipAddress' => '8.8.8.8', 'isAttached' => true, 'attachedTo' => 'test-instance']];
     $state->calls = [];
     $start('new');
@@ -209,7 +237,7 @@ try {
     DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued']);
     $service->run($row->id);
     $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'aws:get:AccessDeniedException', 'Read permission failure distinguished from allocation');
-    foreach ([['http',400,'Http400'], ['http',403,'Http403'], ['http',404,'Http404'], ['http',502,'Http502'], ['curl',60,'Curl60'], ['curl',28,'Curl28'], ['curl',6,'Curl6']] as [$kind,$value,$expected]) {
+    foreach ([['http',403,'Http403'], ['http',404,'Http404'], ['http',502,'Http502'], ['curl',60,'Curl60'], ['curl',28,'Curl28'], ['curl',6,'Curl6']] as [$kind,$value,$expected]) {
         $state->awsCode = 'UnrecognizedSensitiveProviderCode';
         $state->{$kind} = $value;
         $state->calls = [];

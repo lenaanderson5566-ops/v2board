@@ -9,6 +9,41 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
 class LightsailService
 {
+    private array $diagnosticContext = [];
+
+    private function logAwsDiagnostic(string $event, AwsException $error, array $extra = []): void
+    {
+        // Diagnostics must neither expose provider text nor interrupt IP recovery.
+        try {
+            $response = $error->getResponse();
+            $mediaType = strtolower(trim(explode(';', $response?->getHeaderLine('Content-Type') ?? '')[0]));
+            $format = match ($mediaType) {
+                'application/json', 'application/x-amz-json-1.0', 'application/x-amz-json-1.1' => 'json',
+                'text/html' => 'html',
+                'application/xml', 'text/xml' => 'xml',
+                '' => 'missing',
+                default => 'other',
+            };
+            $requestId = (string) $error->getAwsRequestId();
+            $phase = $this->diagnosticContext['phase'] ?? null;
+            $context = array_replace($this->diagnosticContext, [
+                'phase' => in_array($phase, ['idle', 'allocate', 'attach', 'publish', 'release', 'complete', 'restored'], true) ? $phase : null,
+                'diagnostic_version' => 1,
+                'error_code' => self::awsFailure($error),
+                'http_status' => $error->getStatusCode(),
+                'aws_request_id' => preg_match('/\A[0-9a-fA-F-]{16,128}\z/', $requestId) ? $requestId : null,
+                'sdk_error_code_present' => (string) $error->getAwsErrorCode() !== '',
+                'response_format' => $format,
+                'response_bytes' => $response?->getBody()->getSize(),
+            ], $extra);
+            // The default database logger intentionally strips arbitrary context.
+            // Use the existing rotating file channel for these bounded diagnostics.
+            \Illuminate\Support\Facades\Log::channel('daily')->warning($event, $context);
+        } catch (\Throwable $ignored) {
+            // Disk/logging errors must not change the cloud operation outcome.
+        }
+    }
+
     private static function awsFailure(AwsException $error): string
     {
         $operations = ['GetInstance'=>'instance', 'GetStaticIps'=>'list', 'GetStaticIp'=>'get', 'AllocateStaticIp'=>'allocate', 'AttachStaticIp'=>'attach', 'DetachStaticIp'=>'detach', 'ReleaseStaticIp'=>'release'];
@@ -48,14 +83,20 @@ class LightsailService
             // Lightsail also uses HTTP 400 for missing resources. If the SDK
             // cannot identify the error, reconcile through an independent read;
             // never infer absence from the HTTP status or provider message.
-            if (!$e->getAwsErrorCode() && $e->getStatusCode() === 400) {
+            if (self::awsFailure($e) === 'aws:get:Http400') {
+                $this->logAwsDiagnostic('lightsail.lookup_reconciliation_started', $e);
                 $token = null;
                 $seen = [];
+                $pages = 0;
                 do {
                     $page = $client->getStaticIps($token === null ? [] : ['pageToken' => $token]);
+                    $pages++;
                     if (!is_array($page['staticIps'])) throw $e;
                     foreach ($page['staticIps'] as $ip) {
-                        if (($ip['name'] ?? null) === $name) return $ip;
+                        if (($ip['name'] ?? null) === $name) {
+                            $this->logAwsDiagnostic('lightsail.lookup_reconciliation_completed', $e, ['resource_found' => true, 'pages' => $pages]);
+                            return $ip;
+                        }
                     }
                     $token = $page['nextPageToken'] ?? null;
                     if ($token !== null && $token !== '') {
@@ -63,6 +104,7 @@ class LightsailService
                         $seen[$token] = true;
                     }
                 } while ($token !== null && $token !== '');
+                $this->logAwsDiagnostic('lightsail.lookup_reconciliation_completed', $e, ['resource_found' => false, 'pages' => $pages]);
                 return null;
             }
             throw $e;
@@ -104,6 +146,7 @@ class LightsailService
             if (!$row || !in_array($row->status, ['queued', 'running'], true)) {
                 return;
             }
+            $this->diagnosticContext = ['server_id' => $id, 'attempt_id' => bin2hex(random_bytes(8)), 'phase' => $row->phase];
             $node = (new ServerService())->getServer($row->node_id, $row->node_type);
             if (!$node || $node->service_id) {
                 throw new \RuntimeException("node_missing");
@@ -114,6 +157,7 @@ class LightsailService
                 foreach ($values as $k => $v) {
                     $row->{$k} = $v;
                 }
+                $this->diagnosticContext['phase'] = $row->phase;
             };
             $update(['status' => 'running', 'error_code' => null, 'operation_at' => time()]);
             if ($row->operation === 'rotate' && !in_array($row->phase, ['idle', 'allocate', 'attach', 'publish', 'release', 'complete'], true)) throw new \RuntimeException('invalid_operation_state');
@@ -220,7 +264,9 @@ class LightsailService
                 $failure['operation'] = 'rotate';
             }
             DB::table('v2_lightsail_server')->where('id', $id)->update($failure);
+            if ($e instanceof AwsException) $this->logAwsDiagnostic('lightsail.operation_failed', $e);
         } finally {
+            $this->diagnosticContext = [];
             $lock->release();
         }
     }

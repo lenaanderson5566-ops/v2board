@@ -988,6 +988,15 @@
     "footer": "AI 应用配置与使用支持"
   },
   "pricing": {
+    "quoteLoading": "正在核算金额…",
+    "noPaymentMethods": "当前没有可用支付方式，请稍后重试。",
+    "quoteExpired": "报价已过期，请刷新后确认。",
+    "surplusCredit": "旧套餐折抵",
+    "surplusRefund": "多余折抵退回余额",
+    "amountDue": "应付金额",
+    "quoteNotice": "金额确认后创建订单并继续支付。",
+    "confirmAndPay": "确认并支付",
+    "quoteChanged": "报价或购买条件已变化，请核对最新金额后再次确认。",
     "couponAvailableSaving": "可用优惠，最多省 {{amount}}",
     "couponAvailable": "选择可用优惠券",
     "estimatedSubtotal": "预计小计",

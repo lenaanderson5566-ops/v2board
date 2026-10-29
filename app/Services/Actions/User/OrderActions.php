@@ -86,6 +86,10 @@ class OrderActions
         return DB::transaction(function () use ($request) {
             $lockedUser = User::where('id', $request->user['id'])->lockForUpdate()->firstOrFail();
             abort_if($lockedUser->banned,403,__('Account is disabled.'));
+            if ($request->filled('checkout_quote')) {
+                $replayed = \App\Services\CheckoutQuote::replay($request);
+                if ($replayed) return response(['data'=>$replayed->trade_no]);
+            }
             if ($request->filled('replace_trade_no')) {
                 $previous = Order::where('user_id', $request->user['id'])
                     ->where('trade_no', $request->input('replace_trade_no'))->lockForUpdate()->first();
@@ -137,10 +141,70 @@ class OrderActions
                 'data' => $order->trade_no
             ]);
         }
+        $user = User::findOrFail($request->user['id']);
+        $order = $this->prepareSubscriptionOrder($request, $user);
+        $orderService = new OrderService($order);
+        if ($request->filled('checkout_quote')) \App\Services\CheckoutQuote::confirm($request, $order, $user);
+
+        if ($user->balance > 0 && $order->total_amount > 0) {
+            $remainingBalance = $user->balance - $order->total_amount;
+            $userService = new UserService();
+            if ($remainingBalance > 0) {
+                if (!$userService->addBalance($order->user_id, - $order->total_amount)) {
+                    abort(request()->is('api/v10/*') ? 409 : 500, __('Insufficient balance'));
+                }
+                $order->balance_amount = $order->total_amount;
+                $order->total_amount = 0;
+            } else {
+                if (!$userService->addBalance($order->user_id, - $user->balance)) {
+                    abort(request()->is('api/v10/*') ? 409 : 500, __('Insufficient balance'));
+                }
+                $order->balance_amount = $user->balance;
+                $order->total_amount -= $user->balance;
+            }
+        }
+
+        $orderService->setInvite($user);
+
+        if (!$order->save()) {
+            abort(request()->is('api/v10/*') ? 409 : 500, __('Failed to create order'));
+        }
+
+        if ($request->filled('wallet_coupon_id')) {
+            DB::table('v2_coupon_wallet')->where('id', $request->input('wallet_coupon_id'))->where('user_id', $order->user_id)->update(['order_id'=>$order->id]);
+        }
+        return response([
+            'data' => $order->trade_no
+        ]);
+    }
+
+    public function quote(OrderSave $request)
+    {
+        abort_if((int)$request->input('plan_id') <= 0 || $request->input('period') === 'deposit', 422, __('Invalid parameter'));
+        $user = User::findOrFail($request->user['id']);
+        abort_if($user->banned, 403, __('Account is disabled.'));
+        $replacing = null;
+        if ($request->filled('replace_trade_no')) {
+            $replacing = Order::where('user_id',$user->id)->where('trade_no',$request->input('replace_trade_no'))->first();
+            $periods = ['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price'];
+            abort_unless($replacing && (int)$replacing->status === 0 && !$replacing->payment_id
+                && in_array($replacing->period,$periods,true) && in_array($request->input('period'),$periods,true),409,
+                __('You have an unpaid or pending order, please try again later or cancel it'));
+            $user->balance += (int)$replacing->balance_amount;
+        }
+        abort_if(Order::where('user_id',$user->id)->whereIn('status',[0,1])
+            ->when($replacing,fn($q)=>$q->where('id','!=',$replacing->id))->exists(),409,
+            __('You have an unpaid or pending order, please try again later or cancel it'));
+        $order = $this->prepareSubscriptionOrder($request,$user,true,$replacing?->id);
+        return response(['data'=>\App\Services\CheckoutQuote::preview($request,$order,$user)]);
+    }
+
+    private function prepareSubscriptionOrder(OrderSave $request, User $user, bool $preview = false, ?int $replacingOrderId = null): Order
+    {
+        $userService = new UserService();
         $planService = new PlanService($request->input('plan_id'));
 
         $plan = $planService->plan;
-        $user = User::find($request->user['id']);
 
         if (!$plan) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
@@ -192,45 +256,23 @@ class OrderActions
         }
 
         if ($request->filled('wallet_coupon_id')) {
-            \App\Services\CouponWallet::reserve($order, (int)$request->input('wallet_coupon_id'));
+            \App\Services\CouponWallet::reserve($order, (int)$request->input('wallet_coupon_id'), !$preview, $replacingOrderId);
         }
 
         $orderService->setVipDiscount($user);
         $orderService->setOrderType($user);
 
-        if ($user->balance > 0 && $order->total_amount > 0) {
-            $remainingBalance = $user->balance - $order->total_amount;
-            $userService = new UserService();
-            if ($remainingBalance > 0) {
-                if (!$userService->addBalance($order->user_id, - $order->total_amount)) {
-                    abort(request()->is('api/v10/*') ? 409 : 500, __('Insufficient balance'));
-                }
-                $order->balance_amount = $order->total_amount;
-                $order->total_amount = 0;
-            } else {
-                if (!$userService->addBalance($order->user_id, - $user->balance)) {
-                    abort(request()->is('api/v10/*') ? 409 : 500, __('Insufficient balance'));
-                }
-                $order->balance_amount = $user->balance;
-                $order->total_amount -= $user->balance;
-            }
-        }
-
-        $orderService->setInvite($user);
-
-        if (!$order->save()) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Failed to create order'));
-        }
-
-        if ($request->filled('wallet_coupon_id')) {
-            DB::table('v2_coupon_wallet')->where('id', $request->input('wallet_coupon_id'))->where('user_id', $order->user_id)->update(['order_id'=>$order->id]);
-        }
-        return response([
-            'data' => $order->trade_no
-        ]);
+        return $order;
     }
 
     public function checkout(Request $request)
+    {
+        // Older callers may omit a key, but must still respect another in-flight attempt.
+        if (!$request->filled('payment_request_key')) $request->merge(['payment_request_key'=>(string)\Illuminate\Support\Str::uuid()]);
+        return \App\Services\CheckoutPayment::once($request, fn()=>$this->performCheckout($request));
+    }
+
+    private function performCheckout(Request $request)
     {
         $tradeNo = $request->input('trade_no');
         $method = $request->input('method');
@@ -255,9 +297,11 @@ class OrderActions
         }
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) abort(request()->is('api/v10/*') ? 409 : 500, __('Payment method is not available'));
+        $channelSnapshot = $order->payment_snapshot['channels'][(string)$method] ?? null;
+        abort_if($channelSnapshot && (($channelSnapshot['uuid'] ?? null) !== $payment->uuid || ($channelSnapshot['provider'] ?? null) !== $payment->payment),409,__('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
         $quote = \App\Services\PaymentQuote::make($order, $payment);
-        if (($order->currency ?: 'CNY') !== $quote['payment_currency']) {
+        if ($request->filled('expected_payment_amount') || ($order->currency ?: 'CNY') !== $quote['payment_currency']) {
             abort_unless((int)$request->input('expected_payment_amount') === $quote['payment_amount']
                 && $request->input('expected_payment_currency') === $quote['payment_currency'], 409, __('Payment quote changed. Reload and confirm the payment amount.'));
         }
@@ -274,6 +318,7 @@ class OrderActions
             return $saved;
         }, 3);
         if (!$claimed) abort(409, __('Order does not exist or has been paid'));
+        $request->attributes->set('checkout.provider_started',true);
         $result = $paymentService->pay([
             'trade_no' => $tradeNo,
             'total_amount' => $quote['payment_amount'],
@@ -301,12 +346,13 @@ class OrderActions
         ]);
     }
 
-    public function getPaymentMethod(?Request $request = null)
+    public function getPaymentMethod(?Request $request = null, ?Order $previewOrder = null)
     {
         $request ??= request();
-        $order = $request->input('trade_no') ? Order::where('trade_no', $request->input('trade_no'))->where('user_id', $request->user['id'])->firstOrFail() : null;
+        $order = $previewOrder ?? ($request->input('trade_no') ? Order::where('trade_no', $request->input('trade_no'))->where('user_id', $request->user['id'])->firstOrFail() : null);
         $methods = Payment::select([
             'currency',
+            'uuid',
             'id',
             'name',
             'payment',
@@ -320,13 +366,15 @@ class OrderActions
             ->orderBy('sort', 'ASC')
             ->get()
             ->map(function ($method) use ($order) {
+                $saved = $order?->payment_snapshot['channels'][(string)$method->id] ?? null;
+                if ($saved && (($saved['uuid'] ?? null) !== $method->uuid || ($saved['provider'] ?? null) !== $method->payment)) return null;
                 $fields = \App\Services\PaymentPresentation::fields($method->config ?? []);
                 // Provider credentials must never be exposed by the public resource.
                 if ($order && $order->total_amount > 0) {
                     try { $quote = \App\Services\PaymentQuote::make($order, $method); } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) { if (!in_array($e->getStatusCode(),[422,503],true)) throw $e; return null; }
                     $fields += ['quoted_amount'=>$quote['payment_amount'], 'quoted_currency'=>$quote['payment_currency'], 'quoted_fee'=>$quote['handling_amount'], 'rate_time'=>$quote['fx']['quotedAt'] ?? null];
                 }
-                return array_merge($method->makeHidden('config')->toArray(), $fields);
+                return array_merge($method->makeHidden(['config','uuid'])->toArray(), $fields);
             })->filter()->values();
 
         return response([

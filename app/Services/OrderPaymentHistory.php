@@ -18,13 +18,15 @@ class OrderPaymentHistory {
         if ((int)$channels[$key]['handling_amount'] !== (int)$order->handling_amount) abort(409, __('Payment method is not available'));
         if ($quote && isset($channels[$key]['payment_amount']) && ($channels[$key]['payment_amount'] !== $quote['payment_amount'] || $channels[$key]['payment_currency'] !== $quote['payment_currency'])) abort(409, 'Payment quote changed');
         $order->handling_amount = $channels[$key]['handling_amount'];
-        $order->payment_snapshot = $channels[$key] + ['channels' => $channels];
+        $order->payment_snapshot = $channels[$key] + ['channels' => $channels]
+            + array_intersect_key($order->payment_snapshot ?: [], array_flip(['checkout_request','payment_attempts']));
         return $order->save();
     }
     public static function display(Order $order, ?Payment $current = null): string {
         if ($order->callback_no === 'manual_operation') return '人工确认';
         if ((int)$order->total_amount === 0) return (int)$order->balance_amount > 0 ? '余额抵扣 / 无需外部付款' : '无需外部付款';
         $snapshot = $order->payment_snapshot;
+        if (!$order->payment_id && is_array($snapshot) && !isset($snapshot['name'])) return '尚未选择';
         $historical = is_array($snapshot);
         if (!$historical && $current) $snapshot = self::capture($current);
         if (!$snapshot) return $order->payment_id ? '渠道已删除（无历史快照）' : '尚未选择';

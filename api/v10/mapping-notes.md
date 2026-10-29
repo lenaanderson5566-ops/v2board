@@ -8,6 +8,8 @@ Account notification preference: `GET/PATCH /me` exposes boolean `serviceNotific
 
 Admin, operations/risk and supported node APIs retain their API versions. The unfinished staff API is retired. Retired standalone node management and communication routes are removed as described below. Legacy symbols are historical mappings, not a list of callable routes. Only the explicit retained-endpoints allowlist remains callable. See contracts.json for exact field projections.
 
+Unified subscription checkout adds `POST /api/v10/me/checkout-quotes`, explicitly routed to the V10 order controller and shared read-only order preparation. It has no legacy HTTP endpoint. The browser alias `user/order/quote` is an internal transport key only. Order creation accepts a bound quote plus UUID request key; payment initiation accepts its own UUID request key. Existing request bodies remain compatible when these optional fields are absent.
+
 <!-- operation-table -->
 
 V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; node identities use `v2box` exclusively. See [V2Box integration](../v2box.md).

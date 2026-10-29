@@ -1,4 +1,5 @@
 {
+    "Payment is being confirmed. Please check the order status before trying again.": "กำลังยืนยันการชำระเงิน โปรดตรวจสอบสถานะคำสั่งซื้อก่อนลองอีกครั้ง",
   "Configure the site URL before sending invitations.": "กำหนดค่า URL ของไซต์ก่อนส่งคำเชิญ",
   "Your account is restricted.": "บัญชีของคุณถูกจำกัด",
   "You cannot invite yourself.": "คุณไม่สามารถเชิญตัวเองได้",

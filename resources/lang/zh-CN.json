@@ -1,4 +1,5 @@
 {
+    "Payment is being confirmed. Please check the order status before trying again.": "正在确认支付结果，请先查看订单状态，勿重复付款。",
     "Configure the site URL before sending invitations.": "请先配置站点地址再发送邀请。",
     "Your account is restricted.": "账户已被限制。",
     "You cannot invite yourself.": "不能向当前账户发送邀请。",

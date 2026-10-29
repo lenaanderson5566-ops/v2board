@@ -15,6 +15,9 @@ class OrderSave extends FormRequest
     {
         return [
             'plan_id' => 'required',
+            'checkout_quote' => 'nullable|string|max:8192|required_with:checkout_request_key',
+            'checkout_request_key' => 'nullable|uuid|required_with:checkout_quote',
+            'quote_method' => 'nullable|integer|min:0',
             'wallet_coupon_id' => 'nullable|integer|min:1',
             'coupon_code' => 'prohibited',
             'couponCode' => 'prohibited',

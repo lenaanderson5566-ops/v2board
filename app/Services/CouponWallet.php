@@ -30,10 +30,12 @@ final class CouponWallet
         }, 3);
     }
 
-    public static function reserve(Order $order, int $walletId): void
+    public static function reserve(Order $order, int $walletId, bool $lock = true, ?int $replacingOrderId = null): void
     {
-        $wallet = DB::table('v2_coupon_wallet')->where('id', $walletId)->where('user_id', $order->user_id)->lockForUpdate()->first();
-        abort_unless($wallet && $wallet->order_id === null, 409, __('Coupon is not available.'));
+        $query = DB::table('v2_coupon_wallet')->where('id', $walletId)->where('user_id', $order->user_id);
+        if ($lock) $query->lockForUpdate();
+        $wallet = $query->first();
+        abort_unless($wallet && ($wallet->order_id === null || (!$lock && $replacingOrderId !== null && (int)$wallet->order_id === $replacingOrderId)), 409, __('Coupon is not available.'));
         $terms = json_decode($wallet->snapshot, true, 512, JSON_THROW_ON_ERROR);
         abort_unless(self::eligible($terms, (int)$order->plan_id, $order->period), 409, __('Coupon is not applicable to this order.'));
         $order->discount_amount = intdiv((int)$order->total_amount * (int)$terms['value'], 100);

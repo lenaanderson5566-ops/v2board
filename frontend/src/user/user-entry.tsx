@@ -42,7 +42,7 @@ function UserBody({ current, path }: { current: string; path: string }) {
     ) : current === "subscribe" ? (
         <Subscribe />
     ) : current === "plan" ? (
-        <Plans />
+        <Plans planId={/^plan\/[1-9]\d*$/.test(path) ? Number(path.split("/")[1]) : undefined} />
     ) : current === "order" ? (
         <Orders key={path} tradeNo={path.split("/")[1]} />
     ) : current === "knowledge" ? (

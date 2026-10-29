@@ -990,6 +990,15 @@
     "footer": "Para una mejor experiencia con la IA."
   },
   "pricing": {
+    "quoteLoading": "Calculando el total…",
+    "noPaymentMethods": "No hay métodos de pago disponibles. Inténtelo más tarde.",
+    "quoteExpired": "El presupuesto ha caducado. Actualice y confirme de nuevo.",
+    "surplusCredit": "Crédito del plan anterior",
+    "surplusRefund": "Crédito sobrante devuelto al saldo",
+    "amountDue": "Importe a pagar",
+    "quoteNotice": "Confirme el total para crear el pedido y continuar con el pago.",
+    "confirmAndPay": "Confirmar y pagar",
+    "quoteChanged": "El presupuesto o las condiciones han cambiado. Revise el total actualizado y confirme de nuevo.",
     "couponAvailableSaving": "Ahorro disponible de hasta {{amount}}",
     "couponAvailable": "Elegir un cupón disponible",
     "estimatedSubtotal": "Subtotal estimado",

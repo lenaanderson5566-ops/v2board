@@ -9,6 +9,9 @@ final class Input
     // Public validation is independent of the legacy FormRequests used by shared actions.
     public static function validate(Request $request, array $contract): void
     {
+        if ($contract['key'] === 'User/OrderController@quote' && array_diff(array_keys($request->all()), array_keys($contract['input']))) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['quote'=>__('Invalid parameter')]);
+        }
         if ($contract['key'] === 'User/DiagnosticController@store' && array_diff(array_keys($request->all()), ['clientVersion','platform','checks'])) {
             throw \Illuminate\Validation\ValidationException::withMessages(['report'=>'Unsupported diagnostic fields.']);
         }
@@ -47,6 +50,7 @@ final class Input
             'code'=>'string|max:128','giftCardCode'=>'string|max:128',
             'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean','announcementEmails'=>'boolean','serviceNotifications'=>'boolean',
             'resetPassword'=>'boolean','languageSelected'=>'boolean','language'=>\App\Services\LanguagePreferenceService::rule(),
+            'quoteToken'=>'string|max:8192',
             'requestKey'=>'uuid','page'=>'integer|min:1','pageSize'=>'integer|min:1|max:100',
             'days'=>'integer|in:7,30,90','subject'=>'string|max:255','priority'=>'in:normal,high,urgent',
             'message'=>'string|max:20000','withdrawalMethod'=>'string|max:64','withdrawalAccount'=>'string|max:255',
@@ -70,6 +74,7 @@ final class Input
             'Passport/AuthController@token2Login'=>['verificationToken'],
             'Passport/CommController@sendEmailVerify'=>['email'],
             'User/OrderController@save'=>['planId','billingPeriod'],
+            'User/OrderController@quote'=>['planId','billingPeriod'],
             'User/OrderController@checkout'=>['paymentMethodId'],
             'User/UserController@changePassword'=>['oldPassword','newPassword'],
             'User/UserController@transfer'=>['amount'],
@@ -88,6 +93,14 @@ final class Input
         }
         foreach ($required[$contract['key']] ?? [] as $field) $rules[$field]='required|'.($types[$field] ?? 'string');
         if (($contract['key'] === 'User/OrderController@save') && $request->input('billingPeriod')==='deposit') $rules['depositAmount']='required|'.$types['depositAmount'];
+        if ($contract['key'] === 'User/OrderController@quote') {
+            $rules['planId']='required|integer|min:1';
+            $rules['billingPeriod']='required|in:monthly,quarterly,semiannual,annual,biennial,triennial,credits,reset';
+        }
+        if ($contract['key'] === 'User/OrderController@save') {
+            $rules['quoteToken']='nullable|string|max:8192|required_with:requestKey';
+            $rules['requestKey']='nullable|uuid|required_with:quoteToken';
+        }
         $messages=['required'=>__('This field is required.')];
         foreach (['string','email','max','min','digits','regex','integer','in','boolean','uuid'] as $rule) {
             $messages[$rule]=__('Please check the format and allowed range of this value.');

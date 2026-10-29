@@ -92,3 +92,9 @@ V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，�
 后台样式一致性使用现有前端全量与 Lightsail、DDNS、节点等模块复查，保留提交锁、未保存保护和恢复流程断言。后台主题只修改管理员样式；桌面与窄屏通过仅本地、禁止写入的合成数据页验收。验证日志为 `storage/app/test-organization/admin-ui-consistency-*`，临时预览入口不纳入发布资源。
 
 子窗口交互复用 `UXResilience.test.tsx`、`Banners.test.tsx`、`AdminRiskReview.test.tsx`、`ContentComposer.test.tsx`、`AdminDictionary.test.tsx`、`Payments.test.tsx` 和既有后台业务模块。保留原业务断言，新增关闭保护、同步提交锁、失败草稿和焦点排除场景；共享 Modal 的草稿确认显式启用，默认关闭策略不变，公共确认文案覆盖全部语言。结果与构建日志保存在 `storage/app/test-organization/admin-subdialogs-*`。
+
+
+统一结算继续复用 `order-replacement`、`api-v10`、`api-v10-inventory`、`commerce`、`coupon-availability` 和 `payment-presentation`，不新增平行后端验证入口。覆盖预报价无资产占用、金额及所有者绑定、过期/篡改/变化拒绝、原子替换预览、重复下单与支付结果重放、网关结果不确定时恢复查询。前端 `BillingFlow.test.tsx` 保留周期、优惠金额、订单参数和支付断言，并覆盖同页结算、过时报价、未知结果原请求重试、409 后重新确认及 StrictMode 不重复发起支付；全量 Vitest、类型检查和构建按既有命令运行。浏览器合成数据仍使用忽略目录中既有预览夹具，不接入真实付款。
+
+
+生产恢复保护继续归入 `order-replacement`、`api-v10`、`payment-presentation` 与 `commerce-concurrency`：覆盖不传标识不能绕过未确认支付、处理中结果不能通过新标识重付，以及仅有预报价元数据的未支付订单展示。浏览器路由和短期确认交接复用 BillingFlow/app 用例；模拟夹具与运行输出不进入发布目录。

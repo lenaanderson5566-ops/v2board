@@ -1,74 +1,207 @@
 // @vitest-environment jsdom
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-const mock = vi.hoisted(() => ({ request: vi.fn(), methods: [
-    { id: 1, name: "Alipay", handling_fee_fixed: 0 },
-    { id: 2, name: "USDT A", category: "crypto", asset: "USDT", network: "tron", network_name: "TRON", handling_fee_fixed: 10 },
-    { id: 3, name: "USDT B", category: "crypto", asset: "USDT", network: "bsc", network_name: "BSC", handling_fee_fixed: 100, handling_fee_percent: 5 },
-] }));
-vi.mock("../shared/api", () => ({ request: mock.request, bytes: String, money: (amount: number, currency="CNY") => `${currency} ${(Number(amount) / 100).toFixed(2)}`, query: (path: string) => path }));
-vi.mock("../shared/i18n", () => ({ tx: (value: string) => value, locale: () => "zh-CN" }));
-vi.mock("../shared/ui", () => ({ useData: () => ({ data: mock.methods, loading: false, reload: vi.fn() }), State: ({ children }: any) => children, Modal: ({ children }: any) => children }));
+import {
+    cleanup,
+    fireEvent,
+    render,
+    screen,
+    waitFor,
+} from "@testing-library/react";
+const mock = vi.hoisted(() => ({
+    request: vi.fn(),
+    methods: [
+        { id: 1, name: "Alipay", handling_fee_fixed: 0 },
+        {
+            id: 2,
+            name: "USDT A",
+            category: "crypto",
+            asset: "USDT",
+            network: "tron",
+            network_name: "TRON",
+            handling_fee_fixed: 10,
+        },
+        {
+            id: 3,
+            name: "USDT B",
+            category: "crypto",
+            asset: "USDT",
+            network: "bsc",
+            network_name: "BSC",
+            handling_fee_fixed: 100,
+            handling_fee_percent: 5,
+        },
+    ],
+}));
+vi.mock("../shared/api", () => ({
+    request: mock.request,
+    bytes: String,
+    money: (amount: number, currency = "CNY") =>
+        `${currency} ${(Number(amount) / 100).toFixed(2)}`,
+    query: (path: string) => path,
+}));
+vi.mock("../shared/i18n", () => ({
+    tx: (value: string) => value,
+    locale: () => "zh-CN",
+}));
+vi.mock("../shared/ui", () => ({
+    useData: () => ({ data: mock.methods, loading: false, reload: vi.fn() }),
+    State: ({ children }: any) => children,
+    Modal: ({ children }: any) => children,
+}));
 vi.mock("./PurchaseSteps", () => ({ PurchaseSteps: () => null }));
 vi.mock("./OrderHelp", () => ({ OrderHelp: () => null }));
 vi.mock("./OrderReceipt", () => ({ OrderReceipt: () => null }));
-vi.mock("../shared/credit-copy", () => ({ c: (value: string) => value, minuteDate: () => "" }));
+vi.mock("../shared/credit-copy", () => ({
+    c: (value: string) => value,
+    minuteDate: () => "",
+}));
 import { PaymentCheckout } from "./PaymentCheckout";
-function renderCheckout(overrides: Record<string, unknown> = {}, reload = vi.fn()) {
+function renderCheckout(
+    overrides: Record<string, unknown> = {},
+    reload = vi.fn(),
+) {
     return render(
         <PaymentCheckout
-            order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "test-order", plan: { name: "Plan" }, ...overrides }}
+            order={{
+                status: 0,
+                plan_id: 1,
+                total_amount: 1000,
+                trade_no: "test-order",
+                plan: { name: "Plan" },
+                ...overrides,
+            }}
             reload={reload}
             renderCard={() => null}
         />,
     );
 }
 
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+afterEach(() => {
+    cleanup();
+    vi.clearAllMocks();
+});
 it("recalculates the exact network fee and submits its channel ID", async () => {
-    mock.request.mockResolvedValue({ type: 0, data: "https://example.test/qr" });
+    mock.request.mockResolvedValue({
+        type: 0,
+        data: "https://example.test/qr",
+    });
     renderCheckout();
-    await waitFor(() => expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true));
+    await waitFor(() =>
+        expect(
+            (screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement)
+                .checked,
+        ).toBe(true),
+    );
     fireEvent.click(screen.getByRole("button", { name: /USDT/ }));
-    expect((screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+        (screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement)
+            .disabled,
+    ).toBe(true);
     fireEvent.click(screen.getByRole("radio", { name: /BSC/ }));
     expect(screen.getByText("CNY 11.50")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
-    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/checkout", { trade_no: "test-order", method: 3 }, { timeoutMs: 45000 }));
+    await waitFor(() =>
+        expect(mock.request).toHaveBeenCalledWith(
+            "user/order/checkout",
+            expect.objectContaining({
+                trade_no: "test-order",
+                method: 3,
+                payment_request_key: expect.any(String),
+            }),
+            { timeoutMs: 45000 },
+        ),
+    );
     await screen.findByText("正在等待支付确认，请勿重复付款。");
-    expect(screen.getByRole("radio", { name: /BSC/ }).closest("fieldset")?.disabled).toBe(true);
+    expect(
+        screen.getByRole("radio", { name: /BSC/ }).closest("fieldset")
+            ?.disabled,
+    ).toBe(true);
 });
 
-it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])("checks status without resubmitting after %s", async (code) => {
-    mock.request.mockImplementation((path: string) => path === "user/order/checkout"
-        ? Promise.reject(Object.assign(new Error("Load failed"), { code }))
-        : Promise.resolve({ data: 0 }));
-    const reload = vi.fn();
-    renderCheckout({ trade_no: "uncertain" }, reload);
-    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
-    await screen.findByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。");
-    await waitFor(() => expect(mock.request).toHaveBeenCalledWith("user/order/check", undefined, expect.objectContaining({signal:expect.any(AbortSignal)})));
-    expect(screen.queryByText("Load failed")).toBeNull();
-    expect(screen.getByRole("radio", { name: "Alipay" }).closest("fieldset")?.disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
-    expect(reload).toHaveBeenCalled();
-    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
-    fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "重新发起支付" }).at(-1)!);
-    await screen.findByRole("button", { name: "确认支付" });
-    expect(screen.queryByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。")).toBeNull();
-    expect(screen.getByRole("button", { name: "确认支付" })).toBeTruthy();
-});
+it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
+    "checks status without resubmitting after %s",
+    async (code) => {
+        mock.request.mockImplementation((path: string) =>
+            path === "user/order/checkout"
+                ? Promise.reject(
+                      Object.assign(new Error("Load failed"), { code }),
+                  )
+                : Promise.resolve({ data: 0 }),
+        );
+        const reload = vi.fn();
+        renderCheckout({ trade_no: "uncertain" }, reload);
+        fireEvent.click(
+            await screen.findByRole("button", { name: "确认支付" }),
+        );
+        await screen.findByText(
+            "未能确认支付请求结果，正在检查订单状态，请勿重复付款。",
+        );
+        await waitFor(() =>
+            expect(mock.request).toHaveBeenCalledWith(
+                "user/order/check",
+                undefined,
+                expect.objectContaining({ signal: expect.any(AbortSignal) }),
+            ),
+        );
+        expect(screen.queryByText("Load failed")).toBeNull();
+        expect(
+            screen.getByRole("radio", { name: "Alipay" }).closest("fieldset")
+                ?.disabled,
+        ).toBe(true);
+        fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+        expect(reload).toHaveBeenCalled();
+        expect(
+            mock.request.mock.calls.filter(
+                ([path]) => path === "user/order/checkout",
+            ),
+        ).toHaveLength(1);
+        fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
+        fireEvent.click(
+            screen.getAllByRole("button", { name: "重新发起支付" }).at(-1)!,
+        );
+        await screen.findByRole("button", { name: "确认支付" });
+        expect(
+            screen.queryByText(
+                "未能确认支付请求结果，正在检查订单状态，请勿重复付款。",
+            ),
+        ).toBeNull();
+        expect(screen.getByRole("button", { name: "确认支付" })).toBeTruthy();
+    },
+);
 
-it('shows the converted payment amount and confirms it without relabelling the USD order',async()=>{
- const old=mock.methods;
- mock.methods=[{id:1,name:'CNY Alipay',handling_fee_fixed:0,quoted_amount:3625,quoted_currency:'CNY',quoted_fee:0} as any];
- try{
-  mock.request.mockResolvedValue({type:0,data:'payment-code'});
-  renderCheckout({ total_amount: 500, currency: 'USD', trade_no: 'usd-order' });
-  expect(await screen.findByText(/实际付款.*CNY 36.25/)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button',{name:'确认支付'}));
-  await waitFor(()=>expect(mock.request).toHaveBeenCalledWith('user/order/checkout',expect.objectContaining({expected_payment_amount:3625,expected_payment_currency:'CNY'}),{timeoutMs:45000}));
- }finally{mock.methods=old;}
+it("shows the converted payment amount and confirms it without relabelling the USD order", async () => {
+    const old = mock.methods;
+    mock.methods = [
+        {
+            id: 1,
+            name: "CNY Alipay",
+            handling_fee_fixed: 0,
+            quoted_amount: 3625,
+            quoted_currency: "CNY",
+            quoted_fee: 0,
+        } as any,
+    ];
+    try {
+        mock.request.mockResolvedValue({ type: 0, data: "payment-code" });
+        renderCheckout({
+            total_amount: 500,
+            currency: "USD",
+            trade_no: "usd-order",
+        });
+        expect(await screen.findByText(/实际付款.*CNY 36.25/)).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+        await waitFor(() =>
+            expect(mock.request).toHaveBeenCalledWith(
+                "user/order/checkout",
+                expect.objectContaining({
+                    expected_payment_amount: 3625,
+                    expected_payment_currency: "CNY",
+                }),
+                { timeoutMs: 45000 },
+            ),
+        );
+    } finally {
+        mock.methods = old;
+    }
 });

@@ -5,7 +5,7 @@ import { Bell, Settings } from "lucide-react";
 import { TelegramIntegration } from "./TelegramIntegration";
 import { NotificationPreferences } from "./NotificationPreferences";
 import { ac } from "../shared/account-copy";
-import { lazy, useState, useEffect, useRef } from "react";
+import { lazy, useState, useEffect } from "react";
 import { NodeList } from "./NodeList";
 export { Tickets } from "../shared/Tickets";
 const AccountPreferences = lazy(() => import("./AccountPreferences").then((module) => ({ default: module.AccountPreferences })));
@@ -13,15 +13,14 @@ const BillingPage = lazy(() => import("./BillingPage").then((module) => ({ defau
 const UsagePage = lazy(() => import("./UsagePage").then((module) => ({ default: module.UsagePage })));
 import { e } from "../shared/experience-copy";
 const SubscriptionPurchase = lazy(() => import("./SubscriptionPurchase").then((module) => ({ default: module.SubscriptionPurchase })));
-const PaymentCheckout = lazy(() => import("./PaymentCheckout").then((module) => ({ default: module.PaymentCheckout })));
 const EmailInvites = lazy(() => import("./EmailInvites").then((module) => ({ default: module.EmailInvites })));
 import { tx, locale, languages } from "../shared/i18n";
 const SubscriptionImport = lazy(() => import("./SubscriptionImport").then((module) => ({ default: module.SubscriptionImport })));
 import { AccountEntry } from "./AccountEntry";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 
-import { loadStripe } from "@stripe/stripe-js/pure";
-import type { Stripe, StripeCardElement } from "@stripe/stripe-js";
+import { OrderView } from "./OrderView";
+import { UnifiedCheckout } from "./UnifiedCheckout";
 import { ArrowUpRight } from "lucide-react";
 import {
     request,
@@ -141,117 +140,14 @@ export function Subscribe() {
         </>
     );
 }
-export function Plans() {
+export function Plans({planId}: {planId?:number} = {}) {
+    if (planId) return <UnifiedCheckout key={planId} planId={planId}
+        initialPeriod={new URLSearchParams(location.hash.split("?")[1]).get("period") || undefined}
+        replaceTradeNo={new URLSearchParams(location.hash.split("?")[1]).get("replace") || undefined}/>;
     return <SubscriptionPurchase />;
 }
 export function Orders({ tradeNo }: { tradeNo?: string }) {
     return tradeNo ? <OrderView tradeNo={tradeNo} /> : <BillingPage />;
-}
-function OrderView({ tradeNo }: { tradeNo: string }) {
-    const d = useData<Row>(query("user/order/detail", { trade_no: tradeNo }));
-    useEffect(() => {
-        if (d.data && [2, 3, 4].includes(Number(d.data.status)))
-            window.scrollTo({ top: 0, behavior: "instant" });
-    }, [tradeNo, d.data?.status]);
-    return (
-        <div className="order-view" aria-busy={d.loading}>
-            {d.data ? (
-                <>
-                    {d.loading && (
-                        <p className="pad muted" role="status">
-                            {e("refreshing")}
-                        </p>
-                    )}
-                    {d.error && (
-                        <div className="alert" role="alert">
-                            {d.error}
-                            <button onClick={d.reload}>{tx("刷新")}</button>
-                        </div>
-                    )}
-                    <OrderDetail key={tradeNo} order={d.data} reload={d.reload} />
-                </>
-            ) : (
-                <State {...d} retry={d.reload}>
-                    <></>
-                </State>
-            )}
-        </div>
-    );
-}
-
-function OrderDetail({ order, reload }: { order: Row; reload: () => void }) {
-    return (
-        <PaymentCheckout
-            order={order}
-            reload={reload}
-            renderCard={(method, pay) => (
-                <StripeCard method={method} onToken={pay} />
-            )}
-        />
-    );
-}
-function StripeCard({
-    method,
-    onToken,
-}: {
-    method: number;
-    onToken: (token: string) => Promise<void>;
-}) {
-    const host = useRef<HTMLDivElement>(null),
-        stripe = useRef<Stripe | null>(null),
-        card = useRef<StripeCardElement | null>(null);
-    const [error, setError] = useState(""),
-        [ready, setReady] = useState(false),
-        [busy, setBusy] = useState(false);
-    useEffect(() => {
-        let live = true;
-        request<string>("user/comm/getStripePublicKey", { id: method })
-            .then((r) => loadStripe(r.data))
-            .then((s) => {
-                if (!live || !s || !host.current) return;
-                stripe.current = s;
-                card.current = s.elements().create("card");
-                card.current.mount(host.current);
-                card.current.on("ready", () => setReady(true));
-                card.current.on("change", (event) =>
-                    setError(event.error?.message || ""),
-                );
-            })
-            .catch((e) => {
-                if (live) setError(e.message);
-            });
-        return () => {
-            live = false;
-            card.current?.destroy();
-        };
-    }, [method]);
-    return (
-        <div className="pad">
-            <div ref={host} />
-            {error && <div className="alert">{error}</div>}
-            <button
-                className="primary space"
-                disabled={!ready || busy}
-                onClick={async () => {
-                    if (!stripe.current || !card.current) return;
-                    setBusy(true);
-                    try {
-                        const result = await stripe.current.createToken(
-                            card.current,
-                        );
-                        if (result.error) throw new Error(result.error.message);
-                        if (result.token) await onToken(result.token.id);
-                    } catch (e) {
-                        setError((e as Error).message);
-                    } finally {
-                        setBusy(false);
-                    }
-                }}
-            >
-                {tx("确认支付")}
-            </button>
-        </div>
-    );
 }
 export function Knowledge() {
     const [language, setLanguage] = useState(locale()),

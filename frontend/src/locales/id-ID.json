@@ -990,6 +990,15 @@
     "footer": "Untuk pengalaman yang lebih lancar dengan AI."
   },
   "pricing": {
+    "quoteLoading": "Menghitung total…",
+    "noPaymentMethods": "Metode pembayaran belum tersedia. Coba lagi nanti.",
+    "quoteExpired": "Penawaran kedaluwarsa. Muat ulang dan konfirmasi kembali.",
+    "surplusCredit": "Kredit paket sebelumnya",
+    "surplusRefund": "Kelebihan kredit dikembalikan ke saldo",
+    "amountDue": "Jumlah yang harus dibayar",
+    "quoteNotice": "Konfirmasi total untuk membuat pesanan dan melanjutkan pembayaran.",
+    "confirmAndPay": "Konfirmasi dan bayar",
+    "quoteChanged": "Penawaran atau ketentuan berubah. Periksa total terbaru dan konfirmasi kembali.",
     "couponAvailableSaving": "Hemat hingga {{amount}} dengan kupon",
     "couponAvailable": "Pilih kupon yang tersedia",
     "estimatedSubtotal": "Perkiraan subtotal",

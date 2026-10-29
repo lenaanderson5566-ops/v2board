@@ -754,6 +754,62 @@
         "currency"
       ]
     },
+    "checkoutQuote": {
+      "planAmount": [
+        "plan_amount",
+        "integer"
+      ],
+      "discountAmount": [
+        "discount_amount",
+        "integer"
+      ],
+      "surplusAmount": [
+        "surplus_amount",
+        "integer"
+      ],
+      "refundAmount": [
+        "refund_amount",
+        "integer"
+      ],
+      "balanceAmount": [
+        "balance_amount",
+        "integer"
+      ],
+      "amountDue": [
+        "total_amount",
+        "integer"
+      ],
+      "handlingAmount": [
+        "handling_amount",
+        "integer"
+      ],
+      "paymentAmount": [
+        "payment_amount",
+        "integer"
+      ],
+      "paymentMethodId": [
+        "payment_method_id",
+        "integer"
+      ],
+      "currency": [
+        "currency"
+      ],
+      "paymentCurrency": [
+        "payment_currency"
+      ],
+      "quoteToken": [
+        "quote_token"
+      ],
+      "expiresAt": [
+        "expires_at",
+        "time"
+      ],
+      "methods": [
+        "methods",
+        "array",
+        "paymentMethod"
+      ]
+    },
     "invitation": {
       "id": [
         "id",
@@ -1828,7 +1884,10 @@
         "replacementOrderNumber": "replace_trade_no",
         "billingPeriod": "period",
         "depositAmount": "deposit_amount",
-        "walletCouponId": "wallet_coupon_id"
+        "walletCouponId": "wallet_coupon_id",
+        "quoteToken": "checkout_quote",
+        "requestKey": "checkout_request_key",
+        "paymentMethodId": "quote_method"
       },
       "output": "orderCreated",
       "role": "user",
@@ -1859,7 +1918,8 @@
         "paymentMethodId": "method",
         "paymentToken": "token",
         "expectedPaymentAmount": "expected_payment_amount",
-        "expectedPaymentCurrency": "expected_payment_currency"
+        "expectedPaymentCurrency": "expected_payment_currency",
+        "requestKey": "payment_request_key"
       },
       "output": "payment",
       "role": "user",
@@ -2004,6 +2064,23 @@
       "output": "couponClaim",
       "raw": false,
       "path": "me/coupon-claims",
+      "method": "POST"
+    },
+    "postMeCheckoutQuotes": {
+      "input": {
+        "planId": "plan_id",
+        "billingPeriod": "period",
+        "walletCouponId": "wallet_coupon_id",
+        "replacementOrderNumber": "replace_trade_no",
+        "paymentMethodId": "quote_method"
+      },
+      "output": "checkoutQuote",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/OrderController@quote",
+      "path": "me/checkout-quotes",
       "method": "POST"
     },
     "postMeCommissionTransfers": {

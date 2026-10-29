@@ -49,6 +49,7 @@ import { InviteCampaign } from "./InviteCampaign";
 import { AccountMenu } from "./AccountMenu";
 import { BrowserAccessGate } from "./EmbeddedBrowserNotice";
 
+import { clearCheckoutPayment } from "./checkout-navigation";
 import { userNavigation } from "./user-navigation";
 import {
     WorkspaceSkeleton,
@@ -113,7 +114,7 @@ function UserApp() {
     const loggingOut = useRef(false);
     // Resume only known local purchase routes; never accept arbitrary return URLs.
     const purchaseReturn = useRef<string | undefined>(
-        /^(plan|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(path)
+        /^(plan(?:\/[1-9]\d*)?|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(path)
             ? path
             : undefined,
     );
@@ -127,6 +128,7 @@ function UserApp() {
     async function handleLogout() {
         if (loggingOut.current) return;
         loggingOut.current = true;
+        clearCheckoutPayment();
         try {
             await logoutSession();
             purchaseReturn.current = undefined;
@@ -190,7 +192,7 @@ function UserApp() {
             const current = location.hash.slice(2).split("?")[0];
             if (!["login", "register", "forget"].includes(current))
                 purchaseReturn.current =
-                    /^(plan|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(
+                    /^(plan(?:\/[1-9]\d*)?|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(
                         current,
                     )
                         ? current
@@ -211,6 +213,7 @@ function UserApp() {
             setOpen(false);
         };
         const expire = () => {
+            clearCheckoutPayment();
             active = false;
             setLoading(false);
             clearReadCache();

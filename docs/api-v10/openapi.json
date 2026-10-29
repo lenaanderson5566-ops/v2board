@@ -4109,7 +4109,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/save",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId. Unconfigured or negative period prices are rejected with 409; an explicit zero price remains valid.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Deposit orders require planId 0 and a positive integer depositAmount in minor currency units; other billing periods require a positive planId. Unconfigured or negative period prices are rejected with 409; an explicit zero price remains valid. quoteToken and requestKey are supplied together. Exact retries return the original owned order even after quote expiry; changed inputs conflict. Quotes are revalidated before reservations commit.",
         "requestBody": {
           "required": true,
           "content": {
@@ -4325,7 +4325,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/checkout",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow. With requestKey, duplicate attempts replay results or resume status checks without reissuing provider requests. Provided expected amounts are checked for same-currency payments too. Calls without requestKey also participate in the in-flight guard using a server-generated key. A stable client key is required to replay a specific result. A provider pending result blocks another attempt even with a fresh key.",
         "requestBody": {
           "required": true,
           "content": {
@@ -5398,6 +5398,106 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/postMeCouponClaimsInput"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/checkout-quotes": {
+      "post": {
+        "operationId": "postMeCheckoutQuotes",
+        "tags": [
+          "user"
+        ],
+        "summary": "Preview checkout without reserving funds or coupons",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/HeaderAcceptLanguage"
+          }
+        ],
+        "responses": {
+          "401": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "403": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "404": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "409": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "410": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "422": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "429": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "500": {
+            "$ref": "#/components/responses/ProblemDetails"
+          },
+          "200": {
+            "description": "Success",
+            "headers": {
+              "X-Request-ID": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Content-Language": {
+                "$ref": "#/components/headers/XRequestID"
+              },
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateNoStore"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/checkoutQuote"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "pagination": {
+                          "$ref": "#/components/schemas/Pagination"
+                        },
+                        "taskId": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          },
+          {
+            "browserUserCookie": []
+          }
+        ],
+        "x-permission": "user",
+        "description": "Read-only five-minute quote bound to the account, selection and channel. No order, wallet reservation or provider payment is created. Replacement previews include refundable reserved balance. Quote is revalidated atomically at order creation.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/postMeCheckoutQuotesInput"
               }
             }
           }
@@ -12717,6 +12817,18 @@
             "type": "integer",
             "minimum": 1,
             "description": "Owned coupon wallet entry. Coupons must be selected from the wallet."
+          },
+          "quoteToken": {
+            "type": "string",
+            "maxLength": 8192
+          },
+          "requestKey": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "paymentMethodId": {
+            "type": "integer",
+            "minimum": 0
           }
         },
         "required": [
@@ -12743,6 +12855,10 @@
               "CNY",
               "USD"
             ]
+          },
+          "requestKey": {
+            "type": "string",
+            "format": "uuid"
           }
         },
         "required": [
@@ -12922,6 +13038,132 @@
           "couponId"
         ],
         "additionalProperties": false
+      },
+      "postMeCheckoutQuotesInput": {
+        "type": "object",
+        "properties": {
+          "planId": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "replacementOrderNumber": {
+            "type": "string"
+          },
+          "billingPeriod": {
+            "type": "string",
+            "enum": [
+              "monthly",
+              "quarterly",
+              "semiannual",
+              "annual",
+              "biennial",
+              "triennial",
+              "credits",
+              "reset"
+            ]
+          },
+          "walletCouponId": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Owned coupon wallet entry. Coupons must be selected from the wallet."
+          },
+          "paymentMethodId": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "planId",
+          "billingPeriod"
+        ],
+        "additionalProperties": false
+      },
+      "checkoutQuote": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "planAmount",
+          "discountAmount",
+          "surplusAmount",
+          "refundAmount",
+          "balanceAmount",
+          "amountDue",
+          "handlingAmount",
+          "paymentAmount",
+          "paymentMethodId",
+          "currency",
+          "paymentCurrency",
+          "quoteToken",
+          "expiresAt",
+          "methods"
+        ],
+        "properties": {
+          "planAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "discountAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "surplusAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "refundAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "balanceAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "amountDue": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "handlingAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "paymentAmount": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "paymentMethodId": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ]
+          },
+          "paymentCurrency": {
+            "type": "string",
+            "enum": [
+              "CNY",
+              "USD"
+            ]
+          },
+          "quoteToken": {
+            "type": "string",
+            "nullable": true,
+            "maxLength": 8192
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "methods": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/paymentMethod"
+            }
+          }
+        }
       },
       "invitation": {
         "type": "object",

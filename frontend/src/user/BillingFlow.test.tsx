@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
 vi.mock("../shared/account-copy", () => ({ ac: (key: string) => key }));
-import { Suspense } from "react";
+import {
+    clearCheckoutPayment,
+    pendingCheckoutPayment,
+} from "./checkout-navigation";
+import { Suspense, StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
     cleanup,
@@ -15,6 +19,7 @@ const mocks = vi.hoisted(() => ({
     couponsAvailable: true,
     couponPeriods: [] as string[],
     request: vi.fn(),
+    quoteRequest: vi.fn(),
     navigate: vi.fn(),
     plans: [] as any[],
     orders: [] as any[],
@@ -27,7 +32,12 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("../shared/api", () => ({
     boot: { mode: "user" },
-    request: mocks.request,
+    request: (path: string, body?: any, options?: any) =>
+        path === "user/order/quote"
+            ? mocks.quoteRequest(body, options)
+            : options === undefined
+              ? mocks.request(path, body)
+              : mocks.request(path, body, options),
     navigate: mocks.navigate,
     bytes: (n: number) => `${n} B`,
     money: (value: any) => `¥${(Number(value || 0) / 100).toFixed(2)}`,
@@ -54,18 +64,37 @@ vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
     useData: (path: string) => ({
         data:
-            path === "user/coupon/wallet" ? (mocks.couponsAvailable ? [{id:7,name:"SAVE",discountPercent:10,expiresAt:"2030-01-01T00:00:00Z",status:"available",planIds:[],billingPeriods:mocks.couponPeriods}] : []) : path === "user/coupon/offers" ? [] : path === "user/comm/config"
-                ? { coupons_available: mocks.couponsAvailable }
-                : path === "user/plan/fetch"
-                  ? mocks.plans
-                  : path === "user/order/fetch"
-                    ? mocks.orders
-                    : path === "user/getSubscribe"
-                      ? mocks.sub
-                      : path.startsWith("user/order/detail")
-                        ? mocks.detail
-                        : mocks.methods,
-        loading: path === "user/getSubscribe" ? mocks.subLoading : path.startsWith("user/order/detail") && mocks.detailLoading,
+            path === "user/coupon/wallet"
+                ? mocks.couponsAvailable
+                    ? [
+                          {
+                              id: 7,
+                              name: "SAVE",
+                              discountPercent: 10,
+                              expiresAt: "2030-01-01T00:00:00Z",
+                              status: "available",
+                              planIds: [],
+                              billingPeriods: mocks.couponPeriods,
+                          },
+                      ]
+                    : []
+                : path === "user/coupon/offers"
+                  ? []
+                  : path === "user/comm/config"
+                    ? { coupons_available: mocks.couponsAvailable }
+                    : path === "user/plan/fetch"
+                      ? mocks.plans
+                      : path === "user/order/fetch"
+                        ? mocks.orders
+                        : path === "user/getSubscribe"
+                          ? mocks.sub
+                          : path.startsWith("user/order/detail")
+                            ? mocks.detail
+                            : mocks.methods,
+        loading:
+            path === "user/getSubscribe"
+                ? mocks.subLoading
+                : path.startsWith("user/order/detail") && mocks.detailLoading,
         error: path === "user/getSubscribe" ? mocks.subError : "",
         reload: vi.fn(),
     }),
@@ -116,6 +145,43 @@ beforeEach(() => {
     mocks.couponsAvailable = true;
     mocks.couponPeriods = [];
     mocks.request.mockReset();
+    mocks.quoteRequest.mockReset();
+    mocks.quoteRequest.mockImplementation(async (body: any) => {
+        const chosen = mocks.plans.find((p) => p.id === body.plan_id) || plan;
+        const amount = Number(chosen[body.period] || 0);
+        const discount = body.wallet_coupon_id ? Math.floor(amount * 0.1) : 0;
+        return {
+            data: {
+                plan_amount: amount,
+                discount_amount: discount,
+                total_amount: amount - discount,
+                balance_amount: 0,
+                surplus_amount: 0,
+                refund_amount: 0,
+                currency: "CNY",
+                payment_method_id: body.quote_method,
+                payment_amount: amount - discount,
+                payment_currency: "CNY",
+                handling_amount: 0,
+                quote_token:
+                    body.quote_method || amount === discount
+                        ? "test-quote-" + JSON.stringify(body)
+                        : null,
+                expires_at: Math.floor(Date.now() / 1000) + 300,
+                methods: [
+                    {
+                        id: 11,
+                        name: "Alipay",
+                        payment: "TestQR",
+                        category: "wallet",
+                        quoted_amount: amount - discount,
+                        quoted_currency: "CNY",
+                        quoted_fee: 0,
+                    },
+                ],
+            },
+        };
+    });
     mocks.navigate.mockReset();
     mocks.plans = [plan];
     mocks.orders = [];
@@ -143,6 +209,7 @@ beforeEach(() => {
 });
 afterEach(() => {
     cleanup();
+    clearCheckoutPayment();
     vi.useRealTimers();
 });
 it("preserves payment selection and QR content while an order refreshes", async () => {
@@ -200,20 +267,35 @@ it("shows the actual available period and lets users review their selection befo
     fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
-    fireEvent.click(screen.getByLabelText("我的优惠券", { selector: "summary" }));
+    fireEvent.click(
+        screen.getByLabelText("我的优惠券", { selector: "summary" }),
+    );
     fireEvent.click(screen.getByRole("radio", { name: /SAVE/ }));
+    await screen.findByText("−¥3.00");
     expect(screen.getByText("优惠金额")).toBeTruthy();
-    expect(screen.getByText("couponEstimate{}")).toBeTruthy();
+    expect(screen.getByText("amountDue{}")).toBeTruthy();
     expect(screen.getByText("−¥3.00")).toBeTruthy();
     expect(screen.getByText("¥27.00")).toBeTruthy();
     expect(mocks.request).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
     await waitFor(() =>
-        expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
-            plan_id: 1,
-            period: "year_price",
-            wallet_coupon_id: 7,
-        }),
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith(
+            "user/order/save",
+            expect.objectContaining({
+                plan_id: 1,
+                period: "year_price",
+                wallet_coupon_id: 7,
+            }),
+        ),
     );
     expect(mocks.navigate).toHaveBeenCalledWith("order/created-order");
 });
@@ -274,10 +356,11 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith(
             "user/order/checkout",
-            {
+            expect.objectContaining({
                 trade_no: "test-order",
                 method: 2,
-            },
+                payment_request_key: expect.any(String),
+            }),
             { timeoutMs: 45000 },
         ),
     );
@@ -299,7 +382,8 @@ it("keeps payment status checking available if a previous payment method was rem
     expect(view.reload).toHaveBeenCalled();
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/check?trade_no=test-order",
-        undefined, expect.objectContaining({signal:expect.any(AbortSignal)}),
+        undefined,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
 });
 it("uses the fee locked in an issued order even when provider settings change", async () => {
@@ -310,7 +394,11 @@ it("uses the fee locked in an issued order even when provider settings change", 
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
     ).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
-    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "重新发起支付" }));
+    fireEvent.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+            name: "重新发起支付",
+        }),
+    );
     expect(await screen.findByText("¥10.50")).toBeTruthy();
     expect(
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
@@ -382,11 +470,12 @@ it("closes the card dialog and exposes a failed card charge without claiming suc
     expect(screen.getAllByText("card declined").length).toBeGreaterThan(0);
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/checkout",
-        {
+        expect.objectContaining({
             trade_no: "test-order",
             method: 3,
             token: "test-card-token",
-        },
+            payment_request_key: expect.any(String),
+        }),
         { timeoutMs: 45000 },
     );
 });
@@ -398,10 +487,11 @@ it("allows zero-due activation even with no payment methods", async () => {
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith(
             "user/order/checkout",
-            {
+            expect.objectContaining({
                 trade_no: "test-order",
                 method: 0,
-            },
+                payment_request_key: expect.any(String),
+            }),
             { timeoutMs: 45000 },
         ),
     );
@@ -419,7 +509,8 @@ it("does not claim completion on payment acknowledgement and polls the authorita
     });
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/check?trade_no=test-order",
-        undefined, expect.objectContaining({signal:expect.any(AbortSignal)}),
+        undefined,
+        expect.objectContaining({ signal: expect.any(AbortSignal) }),
     );
     expect(view.reload).toHaveBeenCalled();
     view.unmount();
@@ -526,7 +617,6 @@ it("one-time-only products are not shown in the subscription catalog", () => {
     expect(screen.queryByText("CreditOnly")).toBeNull();
 });
 
-
 it("carries the yearly card selection into checkout and removes duplicate metadata", async () => {
     mocks.plans = [
         {
@@ -547,12 +637,24 @@ it("carries the yearly card selection into checkout and removes duplicate metada
     ).toBe(true);
     expect(screen.queryByText("不限速")).toBeNull();
     expect(screen.queryByRole("link", { name: "账单" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
     await waitFor(() =>
-        expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
-            plan_id: 1,
-            period: "year_price",
-        }),
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith(
+            "user/order/save",
+            expect.objectContaining({
+                plan_id: 1,
+                period: "year_price",
+            }),
+        ),
     );
 });
 
@@ -580,8 +682,6 @@ it("defaults mobile details to the current plan and preserves selection when cha
         "pricing-plan-2",
     );
 });
-
-
 
 it("renders built-in payment icons from the API host", () => {
     mocks.methods[0].icon = "/payment-icons/alipay.svg";
@@ -633,13 +733,25 @@ it("allows reviewing a replacement and submits its exact order reference atomica
     fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(mocks.request).not.toHaveBeenCalled();
     expect(screen.getByRole("note").textContent).toContain("replaceConfirm");
-    fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
     await waitFor(() =>
-        expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
-            plan_id: 1,
-            period: "quarter_price",
-            replace_trade_no: "test-order",
-        }),
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await waitFor(() =>
+        expect(mocks.request).toHaveBeenCalledWith(
+            "user/order/save",
+            expect.objectContaining({
+                plan_id: 1,
+                period: "quarter_price",
+                replace_trade_no: "test-order",
+            }),
+        ),
     );
     expect(
         mocks.request.mock.calls.filter(([path]) => path === "user/order/save"),
@@ -698,7 +810,6 @@ it("hides coupon controls when no enabled usable coupons exist", () => {
     expect(screen.queryByLabelText("优惠码（可选）")).toBeNull();
 });
 
-
 it("compares configured quota and limits without implying unlimited or monthly data", () => {
     mocks.plans = [{ ...plan, device_limit: 3, speed_limit: 100 }];
     const view = render(<SubscriptionPurchase />);
@@ -706,65 +817,357 @@ it("compares configured quota and limits without implying unlimited or monthly d
     expect(screen.getByText('speedValue{"value":100}')).toBeTruthy();
     expect(screen.getByText("deviceLimit")).toBeTruthy();
     expect(screen.getByText("total{}")).toBeTruthy();
-    mocks.plans = [{ ...plan, transfer_enable: null, device_limit: null, speed_limit: 0 }];
+    mocks.plans = [
+        { ...plan, transfer_enable: null, device_limit: null, speed_limit: 0 },
+    ];
     view.rerender(<SubscriptionPurchase />);
     expect(document.querySelector(".pricing-specs")?.children.length).toBe(0);
     expect(screen.queryByText("不限速")).toBeNull();
     expect(screen.queryByText("不限设备数")).toBeNull();
 });
-it.each(["loading", "error"])("waits for authoritative subscription state before selection (%s)", (state) => {
-    mocks.subLoading = state === "loading";
-    mocks.subError = state === "error" ? "Subscription temporarily unavailable" : "";
-    render(<SubscriptionPurchase />);
-    const action = screen.getByRole("button", { name: "subscribe{}" });
-    expect(action.matches(":disabled")).toBe(true);
-    fireEvent.click(action);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(mocks.request).not.toHaveBeenCalled();
-});
+it.each(["loading", "error"])(
+    "waits for authoritative subscription state before selection (%s)",
+    (state) => {
+        mocks.subLoading = state === "loading";
+        mocks.subError =
+            state === "error" ? "Subscription temporarily unavailable" : "";
+        render(<SubscriptionPurchase />);
+        const action = screen.getByRole("button", { name: "subscribe{}" });
+        expect(action.matches(":disabled")).toBe(true);
+        fireEvent.click(action);
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(mocks.request).not.toHaveBeenCalled();
+    },
+);
 it("initially shows an available plan on mobile instead of a sold-out first plan", () => {
-    mocks.plans = [{ ...plan, capacity_limit: 0 }, { ...plan, id: 2, name: "Available", capacity_limit: 5 }];
+    mocks.plans = [
+        { ...plan, capacity_limit: 0 },
+        { ...plan, id: 2, name: "Available", capacity_limit: 5 },
+    ];
     render(<SubscriptionPurchase />);
     expect(document.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
-    fireEvent.click(within(screen.getByRole("group", { name: "选择套餐" })).getByRole("button", { name: "Basic" }));
+    fireEvent.click(
+        within(screen.getByRole("group", { name: "选择套餐" })).getByRole(
+            "button",
+            { name: "Basic" },
+        ),
+    );
     expect(document.querySelector(".mobile-active")?.id).toBe("pricing-plan-1");
-    expect(screen.getByRole("button", { name: "暂时售罄" }).matches(":disabled")).toBe(true);
+    expect(
+        screen.getByRole("button", { name: "暂时售罄" }).matches(":disabled"),
+    ).toBe(true);
 });
 it("puts the connection action before receipt details after successful payment", () => {
     checkout({ status: 3 });
     const action = screen.getByRole("link", { name: "快速开始" });
     const receipt = document.querySelector(".receipt-card")!;
     expect(action.getAttribute("href")).toBe("#/subscribe");
-    expect(action.compareDocumentPosition(receipt) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+        action.compareDocumentPosition(receipt) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
 });
 
 it.each([
-    {periods: [], optOut: false, discount: true},
-    {periods: ["quarterly"], optOut: false, discount: false},
-    {periods: [], optOut: true, discount: false},
-])("preserves valid choices across cycle changes without submitting an incompatible coupon: %j", async ({periods, optOut, discount}) => {
-    mocks.couponPeriods = periods;
-    mocks.request.mockResolvedValue({data:"created-order"});
+    { periods: [], optOut: false, discount: true },
+    { periods: ["quarterly"], optOut: false, discount: false },
+    { periods: [], optOut: true, discount: false },
+])(
+    "preserves valid choices across cycle changes without submitting an incompatible coupon: %j",
+    async ({ periods, optOut, discount }) => {
+        mocks.couponPeriods = periods;
+        mocks.request.mockResolvedValue({ data: "created-order" });
+        render(<SubscriptionPurchase />);
+        fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+        fireEvent.click(
+            screen.getByLabelText("我的优惠券", { selector: "summary" }),
+        );
+        fireEvent.click(screen.getByRole("radio", { name: /SAVE/ }));
+        if (optOut) {
+            fireEvent.click(
+                screen.getByLabelText("我的优惠券", { selector: "summary" }),
+            );
+            fireEvent.click(
+                screen.getByRole("radio", { name: "不使用优惠券" }),
+            );
+        }
+        fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+        await waitFor(() =>
+            expect(
+                screen.getByText(discount ? "¥27.00" : "¥30.00", {
+                    selector: ".purchase-footer-total strong",
+                }),
+            ).toBeTruthy(),
+        );
+        if (!discount) {
+            fireEvent.click(screen.getByRole("radio", { name: /季付/ }));
+            await waitFor(() =>
+                expect(
+                    screen.getByText("¥9.00", {
+                        selector: ".purchase-footer-total strong",
+                    }),
+                ).toBeTruthy(),
+            );
+            fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+        }
+        expect(screen.getByText("Basic · 年付")).toBeTruthy();
+        expect(screen.getByText("amountDue{}")).toBeTruthy();
+        await waitFor(() =>
+            expect(
+                (
+                    screen.getByRole("button", {
+                        name: "confirmAndPay{}",
+                    }) as HTMLButtonElement
+                ).disabled,
+            ).toBe(false),
+        );
+        fireEvent.click(
+            screen.getByRole("button", { name: "confirmAndPay{}" }),
+        );
+        await waitFor(() =>
+            expect(mocks.request).toHaveBeenCalledWith(
+                "user/order/save",
+                expect.objectContaining({
+                    plan_id: 1,
+                    period: "year_price",
+                    ...(discount ? { wallet_coupon_id: 7 } : {}),
+                }),
+            ),
+        );
+    },
+);
+
+it("does not create an order while the server quote is pending", async () => {
+    mocks.quoteRequest.mockReturnValue(new Promise(() => {}));
     render(<SubscriptionPurchase />);
-    fireEvent.click(screen.getByRole("button", {name:"subscribe{}"}));
-    fireEvent.click(screen.getByLabelText("我的优惠券", {selector:"summary"}));
-    fireEvent.click(screen.getByRole("radio", {name:/SAVE/}));
-    if (optOut) {
-        fireEvent.click(screen.getByLabelText("我的优惠券", {selector:"summary"}));
-        fireEvent.click(screen.getByRole("radio", {name:"不使用优惠券"}));
-    }
-    fireEvent.click(screen.getByRole("radio", {name:/年付/}));
-    expect(screen.getByText(discount ? "¥27.00" : "¥30.00", {selector:".purchase-footer-total strong"})).toBeTruthy();
-    if (!discount) {
-        fireEvent.click(screen.getByRole("radio", {name:/季付/}));
-        expect(screen.getByText("¥9.00", {selector:".purchase-footer-total strong"})).toBeTruthy();
-        fireEvent.click(screen.getByRole("radio", {name:/年付/}));
-    }
-    expect(screen.getByText("Basic · 年付")).toBeTruthy();
-    expect(screen.getByText(discount ? "couponEstimate{}" : "estimatedSubtotal{}")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", {name:"创建订单并继续"}));
-    await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("user/order/save", {
-        plan_id:1, period:"year_price", ...(discount ? {wallet_coupon_id:7} : {}),
-    }));
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    expect(
+        (
+            screen.getByRole("button", {
+                name: "confirmAndPay{}",
+            }) as HTMLButtonElement
+        ).disabled,
+    ).toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("ignores an obsolete quote after changing cycles", async () => {
+    const quote = mocks.quoteRequest.getMockImplementation()!;
+    let finish: (value: any) => void = () => {};
+    mocks.quoteRequest.mockImplementation((body: any) =>
+        body.period === "year_price"
+            ? new Promise((resolve) => {
+                  finish = resolve;
+              })
+            : quote(body),
+    );
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() =>
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+    fireEvent.click(screen.getByRole("radio", { name: /季付/ }));
+    await screen.findByText("¥9.00", {
+        selector: ".purchase-footer-total strong",
+    });
+    finish(await quote({ plan_id: 1, period: "year_price", quote_method: 11 }));
+    await waitFor(() =>
+        expect(
+            screen.getByText("¥9.00", {
+                selector: ".purchase-footer-total strong",
+            }),
+        ).toBeTruthy(),
+    );
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("retries an uncertain order using exactly the same quote and idempotency key", async () => {
+    mocks.request
+        .mockRejectedValueOnce(
+            Object.assign(new Error("timeout"), { code: "REQUEST_TIMEOUT" }),
+        )
+        .mockResolvedValue({ data: "recovered-order" });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() =>
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    const retry = await screen.findByRole("button", { name: "重试" });
+    expect(
+        screen.getByRole("radio", { name: /年付/ }).matches(":disabled"),
+    ).toBe(true);
+    fireEvent.click(retry);
+    await waitFor(() =>
+        expect(mocks.navigate).toHaveBeenCalledWith("order/recovered-order"),
+    );
+    const saves = mocks.request.mock.calls.filter(
+        ([path]) => path === "user/order/save",
+    );
+    expect(saves).toHaveLength(2);
+    expect(saves[0][1]).toEqual(saves[1][1]);
+    expect(saves[0][1].checkout_request_key).toMatch(/^[a-f0-9-]{36}$/);
+});
+it("re-quotes a conflict and waits for explicit confirmation before resubmitting", async () => {
+    mocks.request
+        .mockImplementationOnce(async () => {
+            mocks.plans[0] = { ...plan, quarter_price: 1200 };
+            throw Object.assign(new Error("Quote changed"), { status: 409 });
+        })
+        .mockResolvedValue({ data: "updated-order" });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() =>
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await screen.findByText("¥12.00", {
+        selector: ".purchase-footer-total strong",
+    });
+    expect(
+        mocks.request.mock.calls.filter(([path]) => path === "user/order/save"),
+    ).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await waitFor(() =>
+        expect(mocks.navigate).toHaveBeenCalledWith("order/updated-order"),
+    );
+});
+it("starts a confirmed payment once under StrictMode using its request key", async () => {
+    mocks.methods = [
+        {
+            id: 11,
+            name: "Alipay",
+            payment: "TestQR",
+            quoted_amount: 1000,
+            quoted_currency: "CNY",
+            quoted_fee: 0,
+        },
+    ];
+    mocks.request.mockResolvedValue({ type: 2, data: true });
+    render(
+        <StrictMode>
+            <PaymentCheckout
+                order={{ ...order, balance_amount: 0, discount_amount: 0 }}
+                reload={vi.fn()}
+                renderCard={() => null}
+                initialPayment={{
+                    methodId: 11,
+                    amount: 1000,
+                    currency: "CNY",
+                    requestKey: "e499b094-a7a7-4d71-abd9-f7cc60f00001",
+                }}
+            />
+        </StrictMode>,
+    );
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(1));
+    expect(mocks.request).toHaveBeenCalledWith(
+        "user/order/checkout",
+        expect.objectContaining({
+            method: 11,
+            expected_payment_amount: 1000,
+            expected_payment_currency: "CNY",
+            payment_request_key: "e499b094-a7a7-4d71-abd9-f7cc60f00001",
+        }),
+        { timeoutMs: 45000 },
+    );
+});
+
+it("uses the real order route and hands off only the explicitly confirmed order", async () => {
+    mocks.request.mockResolvedValue({ data: "routed-order" });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    expect(mocks.navigate).toHaveBeenCalledWith(
+        expect.stringMatching(/^plan\/1\?period=quarter_price/),
+    );
+    await waitFor(() =>
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await waitFor(() =>
+        expect(mocks.navigate).toHaveBeenCalledWith("order/routed-order"),
+    );
+    expect(pendingCheckoutPayment("routed-order")).toEqual(
+        expect.objectContaining({ methodId: 11, amount: 900, currency: "CNY" }),
+    );
+    expect(pendingCheckoutPayment("another-order")).toBeUndefined();
+    clearCheckoutPayment();
+    expect(pendingCheckoutPayment("routed-order")).toBeUndefined();
+});
+it("recovers the methods list after a selected channel becomes unavailable", async () => {
+    const quote = mocks.quoteRequest.getMockImplementation()!;
+    let unavailable = false;
+    mocks.quoteRequest.mockImplementation((body: any) => {
+        if (unavailable && body.quote_method === 11)
+            return Promise.reject(new Error("Channel unavailable"));
+        return Promise.resolve(quote(body)).then((result: any) =>
+            unavailable
+                ? {
+                      data: {
+                          ...result.data,
+                          methods: [
+                              {
+                                  ...result.data.methods[0],
+                                  id: 12,
+                                  name: "Spare",
+                              },
+                          ],
+                      },
+                  }
+                : result,
+        );
+    });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() =>
+        expect(
+            (
+                screen.getByRole("button", {
+                    name: "confirmAndPay{}",
+                }) as HTMLButtonElement
+            ).disabled,
+        ).toBe(false),
+    );
+    unavailable = true;
+    fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+    await screen.findByText("Channel unavailable");
+    await waitFor(() =>
+        expect(
+            mocks.quoteRequest.mock.calls.some(
+                ([body]) =>
+                    body.period === "year_price" && body.quote_method === 0,
+            ),
+        ).toBe(true),
+    );
+    await waitFor(() =>
+        expect(
+            (screen.getByRole("radio", { name: "Spare" }) as HTMLInputElement)
+                .checked,
+        ).toBe(true),
+    );
+    expect(mocks.request).not.toHaveBeenCalled();
 });

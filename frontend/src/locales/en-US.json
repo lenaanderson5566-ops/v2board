@@ -990,6 +990,15 @@
     "footer": "AI application setup and support"
   },
   "pricing": {
+    "quoteLoading": "Calculating total…",
+    "noPaymentMethods": "No payment methods are available. Please try again later.",
+    "quoteExpired": "This quote has expired. Refresh and confirm again.",
+    "surplusCredit": "Previous plan credit",
+    "surplusRefund": "Excess credit returned to balance",
+    "amountDue": "Amount due",
+    "quoteNotice": "Confirm the total to create your order and continue to payment.",
+    "confirmAndPay": "Confirm and pay",
+    "quoteChanged": "The quote or purchase conditions changed. Review the updated total and confirm again.",
     "couponAvailableSaving": "Available savings up to {{amount}}",
     "couponAvailable": "Choose an available coupon",
     "estimatedSubtotal": "Estimated subtotal",

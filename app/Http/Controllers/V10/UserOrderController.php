@@ -2,6 +2,12 @@
 namespace App\Http\Controllers\V10;
 class UserOrderController extends ResourceController
 {
+    public function postMeCheckoutQuotes(\Illuminate\Http\Request $request)
+    {
+        $this->prepare($request, 'postMeCheckoutQuotes');
+        $result = app(\App\Services\Actions\User\OrderActions::class)->quote($this->businessRequest($request, \App\Http\Requests\User\OrderSave::class));
+        return $this->respond($request, $result, 'postMeCheckoutQuotes');
+    }
     public function postMeOrders(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'postMeOrders');

@@ -38,6 +38,18 @@ try {
         $assert($retired->getStatusCode()===404,'Retired invitation page counter is unavailable');
         $assert((int)$oldInvite->fresh()->pv===7,'Retired counter cannot update legacy invitation records');
     }
+
+    [$quoteResponse,$quoteBody]=$call('POST','/api/v10/me/checkout-quotes',['planId'=>$plan->id,'billingPeriod'=>'annual'],$bearer);
+    $assert($quoteResponse->getStatusCode()===200 && $quoteBody['data']['amountDue']===7500 && $quoteBody['data']['balanceAmount']===1500,'Native quote route calculates server amounts');
+    $assert(!isset($quoteBody['data']['methods'][0]['config']) && str_contains($quoteResponse->headers->get('Cache-Control'),'no-store'),'Quote route is private and projects public payment fields');
+    $assert(Order::where('user_id',$user->id)->count()===0 && $user->fresh()->balance===1500,'Native quote endpoint does not reserve assets');
+    [$unauthorizedQuote]=$call('POST','/api/v10/me/checkout-quotes',['planId'=>$plan->id,'billingPeriod'=>'annual']);
+    $assert($unauthorizedQuote->getStatusCode()===401,'Quote requires authenticated owner');
+    [$invalidQuote]=$call('POST','/api/v10/me/checkout-quotes',['planId'=>0,'billingPeriod'=>'deposit'],$bearer);
+    $assert($invalidQuote->getStatusCode()===422,'Quote rejects deposit and mismatched purchase type');
+    [$forgedQuote]=$call('POST','/api/v10/me/checkout-quotes',['planId'=>$plan->id,'billingPeriod'=>'annual','totalAmount'=>1],$bearer);
+    $assert($forgedQuote->getStatusCode()===422,'Quote rejects client monetary overrides and undocumented fields');
+
     $ordersBefore=Order::where('user_id',$user->id)->count();
     $balanceBefore=$user->fresh()->balance;
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>$plan->id,'billingPeriod'=>'semiannual','totalAmount'=>0],$bearer);

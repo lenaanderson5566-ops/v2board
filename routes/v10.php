@@ -130,3 +130,5 @@
 \Illuminate\Support\Facades\Route::get('public/node-deployment/bootstrap', [\App\Http\Controllers\V10\NodeDeploymentController::class,'bootstrap'])->middleware('throttle:30,1,node-bootstrap:')->name('v10.nodeDeployment.bootstrap');
 \Illuminate\Support\Facades\Route::post('server/enrollments/redeem', [\App\Http\Controllers\V10\NodeDeploymentController::class,'redeem'])->middleware('throttle:60,1,node-enrollment:')->name('v10.nodeDeployment.redeem');
 \Illuminate\Support\Facades\Route::post('server/enrollments/progress', [\App\Http\Controllers\V10\NodeDeploymentController::class,'progress'])->middleware('throttle:120,1,node-deployment-progress:')->name('v10.nodeDeployment.progress');
+
+\Illuminate\Support\Facades\Route::post('me/checkout-quotes', [\App\Http\Controllers\V10\UserOrderController::class, 'postMeCheckoutQuotes'])->name('v10.postMeCheckoutQuotes');

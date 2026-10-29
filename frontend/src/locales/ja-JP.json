@@ -988,6 +988,15 @@
     "footer": "AIをもっと快適に使うために。"
   },
   "pricing": {
+    "quoteLoading": "金額を計算中…",
+    "noPaymentMethods": "利用可能な支払い方法がありません。後で再試行してください。",
+    "quoteExpired": "見積もりの有効期限が切れました。更新して再確認してください。",
+    "surplusCredit": "以前のプランの充当額",
+    "surplusRefund": "余剰分を残高に返還",
+    "amountDue": "お支払い額",
+    "quoteNotice": "金額を確認すると注文を作成し、支払いに進みます。",
+    "confirmAndPay": "確認して支払う",
+    "quoteChanged": "見積もりまたは購入条件が変更されました。最新の金額を再確認してください。",
     "couponAvailableSaving": "クーポンで最大 {{amount}} 割引",
     "couponAvailable": "利用可能なクーポンを選択",
     "estimatedSubtotal": "小計（概算）",

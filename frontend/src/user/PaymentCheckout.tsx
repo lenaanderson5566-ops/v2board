@@ -21,13 +21,22 @@ import {
     paymentFee,
     orderOriginalAmount,
 } from "./billing-flow";
+import { pricingCopy as pc } from "./pricing-copy";
 import { PurchaseSteps } from "./PurchaseSteps";
 
+export type InitialPayment = {
+    methodId: number;
+    amount: number;
+    currency: string;
+    requestKey: string;
+};
 export function PaymentCheckout({
     order,
     reload,
     renderCard,
+    initialPayment,
 }: {
+    initialPayment?: InitialPayment;
     order: Row;
     reload: () => void;
     renderCard: (
@@ -56,7 +65,7 @@ export function PaymentCheckout({
         { refreshOnEvents: false },
     );
     const [selected, setSelected] = useState<number>(
-        Number(order.payment_id || -1),
+        Number(order.payment_id || initialPayment?.methodId || -1),
     );
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
@@ -79,6 +88,11 @@ export function PaymentCheckout({
     const [pollRun, setPollRun] = useState(0);
     const [summaryOpen, setSummaryOpen] = useState(false);
     const inFlight = useRef(false);
+    const autoStarted = useRef(false);
+    const paymentKey = useRef(
+        initialPayment?.requestKey || crypto.randomUUID(),
+    );
+    const keyedMethod = useRef(initialPayment?.methodId);
     const refresh = useRef(reload);
     refresh.current = reload;
     const method = methods.data?.find((item) => Number(item.id) === selected);
@@ -125,7 +139,12 @@ export function PaymentCheckout({
             observedChange = false;
         const controller = new AbortController();
         async function check() {
-            if (!live || checking || observedChange || document.visibilityState === "hidden")
+            if (
+                !live ||
+                checking ||
+                observedChange ||
+                document.visibilityState === "hidden"
+            )
                 return;
             if (checks >= 60) {
                 setPollStopped(true);
@@ -177,6 +196,10 @@ export function PaymentCheckout({
     async function pay(id: number, token?: string) {
         if (inFlight.current) return;
         inFlight.current = true;
+        if (paymentKey.current && keyedMethod.current !== id) {
+            paymentKey.current = crypto.randomUUID();
+            keyedMethod.current = id;
+        }
         setBusy(true);
         setError("");
         setWaiting(false);
@@ -194,6 +217,9 @@ export function PaymentCheckout({
                         (item) => Number(item.id) === id,
                     )?.quoted_currency,
                     ...(token ? { token } : {}),
+                    ...(paymentKey.current
+                        ? { payment_request_key: paymentKey.current }
+                        : {}),
                 },
                 { timeoutMs: 45000 },
             );
@@ -277,6 +303,43 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
+    useEffect(() => {
+        if (
+            !initialPayment ||
+            autoStarted.current ||
+            status !== 0 ||
+            waiting ||
+            methods.loading ||
+            methods.error
+        )
+            return;
+        const selectedMethod = methods.data?.find(
+            (item) => Number(item.id) === initialPayment.methodId,
+        );
+        if (due > 0 && !methods.data) return;
+        autoStarted.current = true;
+        if (
+            due > 0 &&
+            (!selectedMethod ||
+                Number(selectedMethod.quoted_amount) !==
+                    initialPayment.amount ||
+                selectedMethod.quoted_currency !== initialPayment.currency)
+        ) {
+            setError(pc("quoteChanged"));
+            return;
+        }
+        if (due > 0 && selectedMethod?.payment === "StripeCredit")
+            setCardMethod(initialPayment.methodId);
+        else void pay(due > 0 ? initialPayment.methodId : 0);
+    }, [
+        initialPayment,
+        status,
+        waiting,
+        methods.data,
+        methods.loading,
+        methods.error,
+        due,
+    ]);
     async function cancel() {
         if (inFlight.current) return;
         inFlight.current = true;
@@ -307,6 +370,8 @@ export function PaymentCheckout({
             if (Number(result.data) === 0) {
                 setWaiting(false);
                 setQr("");
+                if (paymentKey.current)
+                    paymentKey.current = crypto.randomUUID();
                 methods.reload();
             } else reload();
             setRetryOpen(false);
@@ -347,13 +412,15 @@ export function PaymentCheckout({
                                 : "确认与支付",
                         )}
                     </h1>
-                    <p>
-                        {tx(
-                            status === 1
-                                ? "开通结果将自动更新，请勿重复支付。"
-                                : "请核对订单，选择支付方式后继续。",
-                        )}
-                    </p>
+                    {(status === 1 || !waiting) && (
+                        <p>
+                            {tx(
+                                status === 1
+                                    ? "开通结果将自动更新，请勿重复支付。"
+                                    : "请核对订单，选择支付方式后继续。",
+                            )}
+                        </p>
+                    )}
                 </div>
                 <span
                     className={`checkout-status ${status === 1 ? "processing" : ""}`}

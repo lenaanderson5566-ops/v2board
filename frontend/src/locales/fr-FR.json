@@ -990,6 +990,15 @@
     "footer": "Pour une expérience plus fluide avec l’IA."
   },
   "pricing": {
+    "quoteLoading": "Calcul du total…",
+    "noPaymentMethods": "Aucun moyen de paiement disponible. Réessayez plus tard.",
+    "quoteExpired": "Le devis a expiré. Actualisez et confirmez à nouveau.",
+    "surplusCredit": "Crédit de l’ancien forfait",
+    "surplusRefund": "Crédit excédentaire reversé au solde",
+    "amountDue": "Montant à payer",
+    "quoteNotice": "Confirmez le total pour créer la commande et poursuivre le paiement.",
+    "confirmAndPay": "Confirmer et payer",
+    "quoteChanged": "Le devis ou les conditions ont changé. Vérifiez le nouveau total et confirmez à nouveau.",
     "couponAvailableSaving": "Économies disponibles jusqu’à {{amount}}",
     "couponAvailable": "Choisir un coupon disponible",
     "estimatedSubtotal": "Sous-total estimé",

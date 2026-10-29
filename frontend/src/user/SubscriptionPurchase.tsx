@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { bytes, money, type Row } from "../shared/api";
+import { bytes, money, navigate, type Row } from "../shared/api";
 import { e } from "../shared/experience-copy";
 import { tx } from "../shared/i18n";
 import { PlanDescription } from "../shared/PlanDescription";
-import { Empty, Modal, State, useData } from "../shared/ui";
+import { Empty, State, useData } from "../shared/ui";
 import { activePlan } from "../shared/user-experience";
 import {
     billingPeriodMonths,
@@ -17,7 +17,7 @@ import { PendingOrderNotice } from "./PendingOrderNotice";
 import { pricingCopy as pc } from "./pricing-copy";
 import "./pricing.css";
 
-import { PlanSelection } from "./PlanSelection";
+import { UnifiedCheckout } from "./UnifiedCheckout";
 import { PurchaseSteps } from "./PurchaseSteps";
 export function SubscriptionPurchase() {
     const plans = useData<Row[]>("user/plan/fetch");
@@ -75,6 +75,18 @@ export function SubscriptionPurchase() {
                 ),
         ) ||
         cyclePlans[0];
+    if (selected)
+        return (
+            <UnifiedCheckout
+                initialPlan={selected}
+                replaceTradeNo={
+                    !selected.resetOnly && replaceable
+                        ? pending?.trade_no
+                        : undefined
+                }
+                onBack={() => setSelected(null)}
+            />
+        );
     return (
         <section className="subscription-catalog">
             <PurchaseSteps step={1} />
@@ -279,13 +291,16 @@ export function SubscriptionPurchase() {
                                     <button
                                         className="primary"
                                         disabled={blocked}
-                                        onClick={() =>
+                                        onClick={() => {
+                                            navigate(
+                                                `plan/${plan.id}?period=${displayed}${replaceable ? `&replace=${encodeURIComponent(pending.trade_no)}` : ""}`,
+                                            );
                                             setSelected({
                                                 ...plan,
                                                 initialPeriod: displayed,
                                                 purchaseAction: action,
-                                            })
-                                        }
+                                            });
+                                        }}
                                     >
                                         {soldOut
                                             ? tx("暂时售罄")
@@ -308,29 +323,6 @@ export function SubscriptionPurchase() {
                     </p>
                 )}
             </State>
-            {selected && (
-                <Modal
-                    title={
-                        selected.resetOnly
-                            ? tx("购买 {{value0}}", { value0: selected.name })
-                            : pc("actionTitle", {
-                                  action: pc(selected.purchaseAction),
-                                  plan: selected.name,
-                              })
-                    }
-                    close={() => setSelected(null)}
-                >
-                    <PlanSelection
-                        plan={selected}
-                        replaceTradeNo={
-                            !selected.resetOnly && replaceable
-                                ? pending?.trade_no
-                                : undefined
-                        }
-                        close={() => setSelected(null)}
-                    />
-                </Modal>
-            )}
         </section>
     );
 }

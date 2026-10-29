@@ -990,6 +990,15 @@
     "footer": "Für ein reibungsloseres Erlebnis mit KI."
   },
   "pricing": {
+    "quoteLoading": "Gesamtbetrag wird berechnet…",
+    "noPaymentMethods": "Keine Zahlungsarten verfügbar. Bitte später erneut versuchen.",
+    "quoteExpired": "Das Angebot ist abgelaufen. Aktualisieren und erneut bestätigen.",
+    "surplusCredit": "Gutschrift des bisherigen Tarifs",
+    "surplusRefund": "Überschuss dem Guthaben gutgeschrieben",
+    "amountDue": "Zu zahlender Betrag",
+    "quoteNotice": "Bestätigen Sie den Betrag, um die Bestellung zu erstellen und zu bezahlen.",
+    "confirmAndPay": "Bestätigen und bezahlen",
+    "quoteChanged": "Angebot oder Kaufbedingungen haben sich geändert. Prüfen und bestätigen Sie den neuen Betrag.",
     "couponAvailableSaving": "Verfügbare Ersparnis bis zu {{amount}}",
     "couponAvailable": "Verfügbaren Gutschein auswählen",
     "estimatedSubtotal": "Geschätzte Zwischensumme",

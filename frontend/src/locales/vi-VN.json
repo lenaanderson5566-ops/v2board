@@ -988,6 +988,15 @@
     "footer": "Cho trải nghiệm AI thuận tiện hơn."
   },
   "pricing": {
+    "quoteLoading": "Đang tính tổng…",
+    "noPaymentMethods": "Chưa có phương thức thanh toán. Vui lòng thử lại sau.",
+    "quoteExpired": "Báo giá đã hết hạn. Làm mới và xác nhận lại.",
+    "surplusCredit": "Khấu trừ gói cũ",
+    "surplusRefund": "Phần khấu trừ dư hoàn vào số dư",
+    "amountDue": "Số tiền phải trả",
+    "quoteNotice": "Xác nhận tổng tiền để tạo đơn và tiếp tục thanh toán.",
+    "confirmAndPay": "Xác nhận và thanh toán",
+    "quoteChanged": "Báo giá hoặc điều kiện mua đã thay đổi. Kiểm tra tổng tiền mới rồi xác nhận lại.",
     "couponAvailableSaving": "Có thể giảm tối đa {{amount}}",
     "couponAvailable": "Chọn phiếu giảm giá khả dụng",
     "estimatedSubtotal": "Tạm tính",

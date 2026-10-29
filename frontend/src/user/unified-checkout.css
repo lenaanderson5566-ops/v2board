@@ -1,0 +1,143 @@
+.unified-checkout {
+    max-width: 1080px;
+    margin-inline: auto;
+}
+.unified-checkout > h2 {
+    font-size: 24px;
+    margin: 20px 0;
+}
+/* A page layout, independent of the compact modal confirmation styles. */
+.unified-checkout .purchase-selection {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(260px, 0.85fr);
+    grid-template-rows: auto 1fr;
+    gap: 20px 24px;
+    padding: 24px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    overflow: clip;
+}
+.purchase-selection .purchase-inputs,
+.unified-checkout .purchase-body {
+    display: contents;
+}
+.unified-checkout .purchase-choices {
+    grid-column: 1;
+    grid-row: 1 / span 2;
+}
+.unified-checkout .purchase-breakdown {
+    grid-column: 2;
+    grid-row: 1;
+}
+.unified-checkout .purchase-footer {
+    grid-column: 2;
+    grid-row: 2;
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+    padding: 0 16px 16px;
+    border: 0;
+    align-self: start;
+}
+.unified-checkout .period-options {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.unified-checkout .period-options label {
+    display: grid;
+}
+.unified-checkout .period-options label strong {
+    width: auto;
+    padding-inline-start: 0;
+}
+.checkout-product {
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--line);
+}
+.checkout-product p {
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+.checkout-method-section {
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+}
+.unified-checkout .payment-options {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.unified-checkout .payment-options > label {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    min-height: 48px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+}
+.unified-checkout .payment-options > label.selected {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+.unified-checkout .payment-options input[type="radio"] {
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    min-height: 16px;
+    margin: 0;
+    padding: 0;
+}
+.unified-checkout .payment-method-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+}
+@media (max-width: 800px) {
+    .unified-checkout .purchase-selection {
+        display: block;
+        padding: 0;
+    }
+    .unified-checkout .purchase-body {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        padding: 16px;
+    }
+    .unified-checkout .purchase-choices,
+    .unified-checkout .purchase-breakdown {
+        grid-column: auto;
+        grid-row: auto;
+    }
+    .unified-checkout .purchase-footer {
+        position: sticky;
+        bottom: calc(64px + env(safe-area-inset-bottom));
+        z-index: 2;
+        grid-template-columns: minmax(0, 1fr) minmax(130px, 1fr);
+        gap: 12px;
+        border-top: 1px solid var(--line);
+        padding: 12px 16px;
+    }
+}
+@media (max-width: 480px) {
+    .unified-checkout .period-options label strong,
+    .unified-checkout .period-options label .period-saving {
+        grid-column: 1 / -1;
+        grid-row: auto;
+        padding-inline-start: 0;
+        max-width: 100%;
+    }
+    .unified-checkout .period-options label strong {
+        font-size: 12px;
+    }
+    .unified-checkout .period-options label .period-saving {
+        overflow-wrap: normal;
+        word-break: normal;
+    }
+}

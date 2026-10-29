@@ -80,6 +80,7 @@ const cacheable = new Set([
     "user/getSubscribe",
     "user/notice/fetch",
     "user/server/fetch",
+    "user/coupon/wallet",
 ]);
 export function readRequest<T = Row>(
     path: string,
@@ -112,7 +113,7 @@ export async function logoutSession() {
     }
 }
 /** Normalize untrusted JSON errors from both V10 problems and legacy envelopes. */
-function apiFailure(payload: unknown, status: number, authenticated: boolean, problem = false): Error {
+function apiFailure(payload: unknown, status: number, authenticated: boolean, problem = false, retryHeader?: string | null): Error {
     const fields = payload !== null && typeof payload === "object" && !Array.isArray(payload)
         ? payload as Record<string, unknown> : {};
     const text = (value: unknown) => typeof value === "string" ? value : "";
@@ -124,8 +125,11 @@ function apiFailure(payload: unknown, status: number, authenticated: boolean, pr
         forgetBrowserSession();
         window.dispatchEvent(new Event("auth-expired"));
     }
-    return Object.assign(new Error(errors.join("；") || message || tx("请求失败 ({{value0}})", { value0: status })), {
+    const delay = retryHeader && /^\d+$/.test(retryHeader.trim())
+        ? Number(retryHeader) : retryHeader ? Math.ceil((Date.parse(retryHeader) - Date.now()) / 1000) : NaN;
+    return Object.assign(new Error(status === 429 ? tx("操作过于频繁，请稍后重试。") : errors.join("；") || message || tx("请求失败 ({{value0}})", { value0: status })), {
         code: text(fields.code) || undefined, status,
+        ...(status === 429 ? { retryAfter: Number.isFinite(delay) ? Math.max(1, delay) : 60 } : {}),
     });
 }
 export async function request<T = Row>(
@@ -135,7 +139,9 @@ export async function request<T = Row>(
 ): Promise<Envelope<T>> {
     const observedStart=performance.now();
     let observedFailure: "api_error" | "network_error" | null = null;
-    if (body) readCache.clear();
+    // Checkout quotes use POST for structured input, but do not mutate account data.
+    const readOnly = path.split("?")[0] === "user/order/quote";
+    if (body && !readOnly) readCache.clear();
     const token = hasBrowserSession();
     const controller = new AbortController();
     let timedOut = false;
@@ -196,19 +202,19 @@ export async function request<T = Row>(
             if (v10 && res.ok && res.status !== 204) json = v10.decode(json);
         } catch {
             observedFailure="api_error";
-            if (!res.ok) throw apiFailure(undefined, res.status, token, Boolean(v10));
+            if (!res.ok) throw apiFailure(undefined, res.status, token, Boolean(v10), res.headers.get("Retry-After"));
             throw new Error(
                 tx("服务响应异常 ({{value0}})", { value0: res.status }),
             );
         }
-        if (!res.ok) throw apiFailure(json, res.status, token, Boolean(v10));
+        if (!res.ok) throw apiFailure(json, res.status, token, Boolean(v10), res.headers.get("Retry-After"));
         if (
             json.data &&
             typeof json.data === "object" &&
             (json.data as Row).authenticated === true
         )
             markBrowserAuthenticated((json.data as Row).accountId);
-        if (body && boot.mode === "user" && path !== "passport/mfa/verifications") {
+        if (body && !readOnly && boot.mode === "user" && path !== "passport/mfa/verifications") {
             readCache.clear();
             window.dispatchEvent(new Event("data-changed"));
         }

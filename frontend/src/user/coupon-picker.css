@@ -117,3 +117,18 @@
         text-align: start;
     }
 }
+.checkout-coupon-recovery {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-block: 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+.checkout-coupon-recovery button {
+    background: transparent;
+    border: 0;
+    color: var(--brand);
+}

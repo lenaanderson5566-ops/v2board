@@ -1035,7 +1035,10 @@
     "trafficVolume": "Datos incluidos",
     "speedCap": "Límite de velocidad",
     "setupAfterPayment": "Tras pagar, abre Conexión y descargas para obtener el cliente y la configuración.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "Los cupones no están disponibles temporalmente. Inténtalo más tarde.",
+    "retryIn": "Reintentar en {{seconds}} s",
+    "reselectPayment": "Volver a elegir el método de pago"
   },
   "profile": {
     "intro": "Consulta tu correo de acceso y gestiona el idioma y los servicios vinculados.",

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     reload: vi.fn(),
@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
     offers: [] as any[],
     error: "",
     loading: false,
+    retryAt: 0,
 }));
 vi.mock("../shared/api", () => ({
     boot: { mode: "user" },
@@ -37,6 +38,7 @@ vi.mock("../shared/ui", () => ({
         reload: mocks.reload,
         error: mocks.error,
         loading: mocks.loading,
+        retryAt: mocks.retryAt,
     }),
 }));
 import { CouponPicker } from "./CouponPicker";
@@ -56,6 +58,7 @@ afterEach(() => {
     mocks.offers = [];
     mocks.error = "";
     mocks.loading = false;
+    mocks.retryAt = 0;
 });
 it("selects a wallet entry without entering a coupon code", () => {
     mocks.wallet = [coupon];
@@ -257,11 +260,25 @@ it("hides the entry while loading and retains retry when the wallet fails", () =
             onChange={vi.fn()}
         />,
     );
-    expect(screen.getByRole("alert").textContent).toContain(
-        "Wallet unavailable",
-    );
+    expect(screen.getByRole("status").textContent).toContain("couponUnavailable");
+    expect(screen.queryByText("Wallet unavailable")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     expect(mocks.reload).toHaveBeenCalledOnce();
+});
+it("keeps coupon failures secondary and waits before allowing a rate-limit retry", async () => {
+    vi.useFakeTimers();
+    try {
+        mocks.error = "Too Many Attempts.";
+        mocks.retryAt = Date.now() + 2000;
+        render(<CouponPicker planId={1} period="month_price" value={null} onChange={vi.fn()} />);
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(screen.queryByText("Too Many Attempts.")).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: /retryIn/ }));
+        expect(mocks.reload).not.toHaveBeenCalled();
+        await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+        fireEvent.click(screen.getByRole("button", { name: "重试" }));
+        expect(mocks.reload).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
 });
 
 it("previews available savings without applying them or suggesting that a discount is already included", () => {

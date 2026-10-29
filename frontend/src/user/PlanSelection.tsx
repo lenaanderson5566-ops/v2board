@@ -22,9 +22,11 @@ export function PlanSelection({
     replaceTradeNo,
     unified = false,
     onOrderCreated,
+    onQuoteConflict,
 }: {
     unified?: boolean;
     onOrderCreated?: (orderNumber: string, payment: InitialPayment) => void;
+    onQuoteConflict?: () => void;
     plan: Row;
     close: () => void;
     replaceTradeNo?: string;
@@ -42,6 +44,7 @@ export function PlanSelection({
     const submitting = useRef(false);
     const [methodId, setMethodId] = useState(0);
     const manualPaymentSelection = useRef(false);
+    const checkedConflict = useRef(false);
     const [paymentMethods, setPaymentMethods] = useState<Row[]>([]);
     const [uncertain, setUncertain] = useState(false);
     const submitted = useRef<
@@ -78,12 +81,11 @@ export function PlanSelection({
         if (recommended) setMethodId(Number(recommended.id));
     }, [unified, methodId, serverQuote]);
     useEffect(() => {
-        if (unified && preview.error && methodId) {
-            setError(preview.error);
-            manualPaymentSelection.current = false;
-            setMethodId(0);
+        if (unified && preview.status === 409 && !checkedConflict.current) {
+            checkedConflict.current = true;
+            onQuoteConflict?.();
         }
-    }, [unified, preview.error, methodId]);
+    }, [unified, preview.status, onQuoteConflict]);
     async function submit(event: FormEvent) {
         event.preventDefault();
         if (
@@ -281,7 +283,7 @@ export function PlanSelection({
                                         <PaymentMethodPicker
                                             methods={paymentMethods}
                                             selected={methodId}
-                                            disabled={busy || uncertain}
+                                            disabled={busy || uncertain || preview.retryIn > 0}
                                             onSelect={(id) => {
                                                 manualPaymentSelection.current = true;
                                                 setMethodId(id);
@@ -300,10 +302,18 @@ export function PlanSelection({
                                             {preview.error}
                                             <button
                                                 type="button"
+                                                disabled={preview.retryIn > 0}
                                                 onClick={preview.reload}
                                             >
-                                                {tx("重试")}
+                                                {preview.retryIn > 0 ? pc("retryIn", { seconds: preview.retryIn }) : tx("重试")}
                                             </button>
+                                            {preview.status === 409 && <>
+                                                <a href="#/order">{tx("查看订单记录")}</a>
+                                                {methodId > 0 && paymentMethods.length > 0 && <button type="button" onClick={() => {
+                                                    manualPaymentSelection.current = false;
+                                                    setMethodId(0);
+                                                }}>{pc("reselectPayment")}</button>}
+                                            </>}
                                         </div>
                                     )}
                                     {preview.expired && (

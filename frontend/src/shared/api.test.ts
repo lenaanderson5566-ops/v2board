@@ -386,3 +386,31 @@ it("separates in-memory account reads even when Web Storage cannot persist a rev
     expect(first.data.email).not.toBe(second.data.email);
     session.identity="user:42";clearReadCache();
 });
+
+it("does not invalidate wallet reads or broadcast changes for a read-only checkout quote", async () => {
+    const { readRequest, clearReadCache } = await import("./api");
+    clearReadCache();
+    const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({
+        data: url.includes("checkout-quotes") ? {} : [],
+    }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    await readRequest("user/coupon/wallet");
+    const before = (window.dispatchEvent as any).mock.calls.length;
+    await request("user/order/quote", { plan_id: 1, period: "month_price", quote_method: 0 });
+    await readRequest("user/coupon/wallet");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect((window.dispatchEvent as any).mock.calls.slice(before).some(([event]: [Event]) => event.type === "data-changed")).toBe(false);
+    clearReadCache();
+});
+it.each(["seconds", "date"])("preserves server rate-limit cooldown from Retry-After %s", async (format) => {
+    const retryAfter = format === "seconds" ? "7" : new Date(Date.now() + 7000).toUTCString();
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "Too Many Attempts.", code: "RATE_LIMITED" }), {
+        status: 429, headers: { "Retry-After": retryAfter },
+    })));
+    const failure = await request("user/coupon/wallet").catch(error => error);
+    expect(failure.status).toBe(429);
+    expect(failure.code).toBe("RATE_LIMITED");
+    expect(failure.retryAfter).toBeGreaterThan(0);
+    expect(failure.retryAfter).toBeLessThanOrEqual(7);
+    expect(failure.message).not.toContain("Too Many Attempts");
+});

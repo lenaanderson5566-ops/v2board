@@ -120,3 +120,26 @@ it("coalesces focus and visibility resume events without suppressing data change
     act(()=>window.dispatchEvent(new Event("data-changed")));
     await waitFor(()=>expect(read).toHaveBeenCalledTimes(3));
 });
+it("does not bypass a server cooldown through reload, focus or data-change events", async () => {
+    vi.useFakeTimers();
+    try {
+        read.mockRejectedValueOnce(Object.assign(new Error("Limited"), { status: 429, retryAfter: 3 }))
+            .mockResolvedValue({ data: [] });
+        const { result } = renderHook(() => useData("user/coupon/wallet"));
+        await act(async () => { await Promise.resolve(); });
+        expect(result.current.error).toBe("Limited");
+        expect(result.current.retryAt).toBe(Date.now() + 3000);
+        act(() => {
+            result.current.reload();
+            window.dispatchEvent(new Event("focus"));
+            window.dispatchEvent(new Event("data-changed"));
+        });
+        expect(read).toHaveBeenCalledTimes(1);
+        expect(result.current.error).toBe("Limited");
+        await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+        expect(read).toHaveBeenCalledTimes(1);
+        await act(async () => { result.current.reload(); });
+        expect(read).toHaveBeenCalledTimes(2);
+        expect(result.current.retryAt).toBe(0);
+    } finally { vi.useRealTimers(); }
+});

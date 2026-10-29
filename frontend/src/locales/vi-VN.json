@@ -1033,7 +1033,10 @@
     "trafficVolume": "Dung lượng dữ liệu",
     "speedCap": "Giới hạn tốc độ",
     "setupAfterPayment": "Sau khi thanh toán, mở Kết nối và tải xuống để lấy ứng dụng và cấu hình.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "Tạm thời không tải được phiếu giảm giá. Vui lòng thử lại sau.",
+    "retryIn": "Thử lại sau {{seconds}} giây",
+    "reselectPayment": "Chọn lại phương thức thanh toán"
   },
   "profile": {
     "intro": "Xem email đăng nhập, quản lý ngôn ngữ và dịch vụ đã kết nối.",

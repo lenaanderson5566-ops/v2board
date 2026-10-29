@@ -1035,7 +1035,10 @@
     "trafficVolume": "Data allowance",
     "speedCap": "Speed cap",
     "setupAfterPayment": "After payment, open Connect & download to obtain the client and configuration.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "Coupons are temporarily unavailable. Please try again later.",
+    "retryIn": "Retry in {{seconds}}s",
+    "reselectPayment": "Choose payment method again"
   },
   "profile": {
     "intro": "View your sign-in email and manage your language and connected services.",

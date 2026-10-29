@@ -19,6 +19,7 @@ export function useData<T = Row>(
     const queryKey = JSON.stringify([path, serializedBody, language, allPages]);
     const [resultKey, setResultKey] = useState(queryKey);
     const [meta, setMeta] = useState<Row | undefined>();
+    const [retryAt, setRetryAt] = useState(0);
     const [data, setData] = useState<T | null>(null),
         [error, setError] = useState(""),
         [loading, setLoading] = useState(true),
@@ -38,6 +39,11 @@ export function useData<T = Row>(
             setError("");
             setTotal(0);
             setMeta(undefined);
+            return;
+        }
+        // Focus, visibility and repeated clicks must respect a server rate limit.
+        if (resultKey === queryKey && retryAt > Date.now()) {
+            setLoading(false);
             return;
         }
         setLoading(true);
@@ -65,13 +71,17 @@ export function useData<T = Row>(
                     )) as typeof r;
                 }
                 if (live) {
+                    setRetryAt(0);
                     setData(r.data);
                     setTotal(r.total || 0);
                     setMeta(r.meta);
                 }
             })
             .catch((e) => {
-                if (live) setError(e.message);
+                if (live) {
+                    setError(e.message);
+                    setRetryAt(e.status === 429 ? Date.now() + Math.max(1, Number(e.retryAfter) || 60) * 1000 : 0);
+                }
             })
             .finally(() => {
                 if (live) setLoading(false);
@@ -111,6 +121,7 @@ export function useData<T = Row>(
         total: path && resultKey === queryKey ? total : 0,
         meta: path && resultKey === queryKey ? meta : undefined,
         reload,
+        retryAt,
     };
 }
 

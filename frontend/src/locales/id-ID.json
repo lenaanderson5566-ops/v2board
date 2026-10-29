@@ -1035,7 +1035,10 @@
     "trafficVolume": "Kuota data",
     "speedCap": "Batas kecepatan",
     "setupAfterPayment": "Setelah membayar, buka Koneksi dan unduhan untuk mendapatkan klien dan konfigurasi.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "Kupon sementara tidak tersedia. Silakan coba lagi nanti.",
+    "retryIn": "Coba lagi dalam {{seconds}} dtk",
+    "reselectPayment": "Pilih ulang metode pembayaran"
   },
   "profile": {
     "intro": "Lihat email masuk Anda dan kelola bahasa serta layanan terhubung Anda.",

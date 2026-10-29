@@ -118,6 +118,7 @@ vi.mock("../shared/ui", () => ({
     ),
 }));
 import { SubscriptionPurchase } from "./SubscriptionPurchase";
+import { UnifiedCheckout } from "./UnifiedCheckout";
 import { PaymentCheckout } from "./PaymentCheckout";
 import { Orders } from "./user";
 const plan = {
@@ -272,11 +273,6 @@ it("shows the actual available period and lets users review their selection befo
     );
     fireEvent.click(screen.getByRole("radio", { name: /SAVE/ }));
     await screen.findByText("−¥3.00");
-    expect(screen.getByText("优惠金额")).toBeTruthy();
-    expect(screen.getByText("amountDue{}")).toBeTruthy();
-    expect(screen.getByText("−¥3.00")).toBeTruthy();
-    expect(screen.getByText("¥27.00")).toBeTruthy();
-    expect(mocks.request).not.toHaveBeenCalled();
     await waitFor(() =>
         expect(
             (
@@ -286,6 +282,11 @@ it("shows the actual available period and lets users review their selection befo
             ).disabled,
         ).toBe(false),
     );
+    expect(screen.getByText("优惠金额")).toBeTruthy();
+    expect(screen.getByText("amountDue{}")).toBeTruthy();
+    expect(screen.getByText("−¥3.00")).toBeTruthy();
+    expect(screen.getByText("¥27.00")).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith(
@@ -1151,7 +1152,7 @@ it("recovers the methods list after a selected channel becomes unavailable", asy
     let unavailable = false;
     mocks.quoteRequest.mockImplementation((body: any) => {
         if (unavailable && body.quote_method === 11)
-            return Promise.reject(new Error("Channel unavailable"));
+            return Promise.reject(Object.assign(new Error("Channel unavailable"), { status: 409 }));
         return Promise.resolve(quote(body)).then((result: any) =>
             unavailable
                 ? {
@@ -1183,6 +1184,7 @@ it("recovers the methods list after a selected channel becomes unavailable", asy
     unavailable = true;
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
     await screen.findByText("Channel unavailable");
+    fireEvent.click(screen.getByRole("button", { name: "reselectPayment{}" }));
     await waitFor(() =>
         expect(
             mocks.quoteRequest.mock.calls.some(
@@ -1198,4 +1200,49 @@ it("recovers the methods list after a selected channel becomes unavailable", asy
         ).toBe(true),
     );
     expect(mocks.request).not.toHaveBeenCalled();
+});
+it.each([0, 1])("recovers an existing order before quoting a direct checkout (status %s)", (status) => {
+    mocks.orders = [{ ...order, status, payment_id: 1 }];
+    render(<UnifiedCheckout initialPlan={plan} />);
+    expect(screen.getByRole("link", { name: status === 1 ? "查看开通进度" : "继续支付" }).getAttribute("href")).toBe("#/order/test-order");
+    expect(screen.queryByRole("button", { name: "confirmAndPay{}" })).toBeNull();
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("does not loop between the selected method and default after a quote conflict", async () => {
+    vi.useFakeTimers();
+    try {
+        const quote = mocks.quoteRequest.getMockImplementation()!;
+        mocks.quoteRequest.mockImplementation((body: any) => body.quote_method
+            ? Promise.reject(Object.assign(new Error("Existing order"), { status: 409 })) : quote(body));
+        render(<SubscriptionPurchase />);
+        fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+        await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+        await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+        expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+        expect(screen.getAllByText("Existing order")).toHaveLength(1);
+        expect(screen.getByRole("link", { name: "查看订单记录" })).toBeTruthy();
+        await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+        expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+        expect(mocks.request).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+});
+it("honors quote rate-limit cooldown across input changes and explicit retries", async () => {
+    vi.useFakeTimers();
+    try {
+        mocks.quoteRequest.mockRejectedValue(Object.assign(new Error("操作过于频繁，请稍后重试。"), { status: 429, retryAfter: 3 }));
+        render(<SubscriptionPurchase />);
+        fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+        await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+        expect(mocks.quoteRequest).toHaveBeenCalledTimes(1);
+        expect((screen.getByRole("button", { name: /retryIn/ }) as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+        await act(async () => { await vi.advanceTimersByTimeAsync(3500); });
+        expect(mocks.quoteRequest).toHaveBeenCalledTimes(1);
+        fireEvent.click(screen.getByRole("button", { name: "重试" }));
+        await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+        expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+        expect(mocks.quoteRequest.mock.calls.at(-1)?.[0].period).toBe("year_price");
+        expect(mocks.request).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
 });

@@ -1033,7 +1033,10 @@
     "trafficVolume": "데이터 제공량",
     "speedCap": "속도 상한",
     "setupAfterPayment": "결제 후 연결 및 다운로드에서 클라이언트와 설정을 받으세요.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "쿠폰을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "retryIn": "{{seconds}}초 후 재시도",
+    "reselectPayment": "결제 수단 다시 선택"
   },
   "profile": {
     "intro": "로그인 이메일, 언어 및 연결된 서비스를 관리하세요.",

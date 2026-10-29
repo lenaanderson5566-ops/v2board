@@ -1033,7 +1033,10 @@
     "trafficVolume": "データ容量",
     "speedCap": "速度上限",
     "setupAfterPayment": "お支払い後、「接続とダウンロード」でクライアントと設定を取得できます。",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "クーポンを読み込めません。しばらくしてから再試行してください。",
+    "retryIn": "{{seconds}}秒後に再試行",
+    "reselectPayment": "支払い方法を選び直す"
   },
   "profile": {
     "intro": "ログインメール、言語設定、連携サービスを管理します。",

@@ -66,6 +66,14 @@
     padding-top: 20px;
     border-top: 1px solid var(--line);
 }
+.checkout-order-recovery {
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: var(--surface-soft);
+}
+.checkout-order-recovery > p { margin-top: 0; }
+.checkout-method-section .alert { flex-wrap: wrap; gap: 10px; }
 @media (max-width: 800px) {
     .unified-checkout .purchase-selection {
         display: block;

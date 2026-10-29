@@ -1033,7 +1033,10 @@
     "trafficVolume": "套餐流量",
     "speedCap": "速率上限",
     "setupAfterPayment": "支付完成后，在「连接与下载」获取客户端和配置。",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "优惠券暂时无法加载，请稍后重试。",
+    "retryIn": "{{seconds}} 秒后重试",
+    "reselectPayment": "重新选择支付方式"
   },
   "profile": {
     "intro": "查看登录邮箱，管理个人语言偏好与已连接的服务。",

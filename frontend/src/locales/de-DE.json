@@ -1035,7 +1035,10 @@
     "trafficVolume": "Datenvolumen",
     "speedCap": "Geschwindigkeitslimit",
     "setupAfterPayment": "Öffne nach der Zahlung Verbindung und Downloads, um Client und Konfiguration zu erhalten.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "Gutscheine sind vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
+    "retryIn": "In {{seconds}} s erneut versuchen",
+    "reselectPayment": "Zahlungsart erneut auswählen"
   },
   "profile": {
     "intro": "Sehen Sie sich Ihre Anmelde-E-Mail an und verwalten Sie Ihre Sprache und verbundene Dienste.",

@@ -1035,7 +1035,10 @@
     "trafficVolume": "حجم ترافیک",
     "speedCap": "سقف سرعت",
     "setupAfterPayment": "پس از پرداخت، برای دریافت برنامه و تنظیمات به بخش اتصال و دانلود بروید.",
-    "speedValue": "{{value}} Mbps"
+    "speedValue": "{{value}} Mbps",
+    "couponUnavailable": "بارگیری کوپن‌ها موقتاً ممکن نیست. لطفاً بعداً دوباره تلاش کنید.",
+    "retryIn": "تلاش مجدد پس از {{seconds}} ثانیه",
+    "reselectPayment": "انتخاب دوباره روش پرداخت"
   },
   "profile": {
     "intro": "ایمیل ورود، زبان و سرویس‌های متصل را مدیریت کنید.",

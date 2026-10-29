@@ -7,6 +7,7 @@ import { pricingCopy as pc } from "./pricing-copy";
 import { usablePurchaseCoupon } from "./billing-flow";
 import { tx } from "../shared/i18n";
 import type { V10WalletCoupon } from "../shared/v10-types";
+import { useRetryCountdown } from "../shared/use-retry-countdown";
 
 import "./coupon-picker.css";
 
@@ -27,6 +28,7 @@ export function CouponPicker({
     currency?: string;
 }) {
     const wallet = useData<WalletCoupon[]>("user/coupon/wallet");
+    const retryIn = useRetryCountdown(wallet.retryAt);
     const rows = Array.isArray(wallet.data) ? wallet.data : [];
     const name = useId();
     const summaryId = `${name}-summary`;
@@ -123,7 +125,13 @@ export function CouponPicker({
     if (!wallet.error && available.length === 0) return null;
     return (
         <section className="coupon-wallet coupon-picker-compact">
-            <State {...wallet} retry={wallet.reload}>
+            {wallet.error && <div className="checkout-coupon-recovery" role="status">
+                <span>{pc("couponUnavailable")}</span>
+                <button type="button" disabled={wallet.loading || retryIn > 0} onClick={wallet.reload}>
+                    {retryIn > 0 ? pc("retryIn", { seconds: retryIn }) : tx("重试")}
+                </button>
+            </div>}
+            <State {...wallet} error="">
                 {available.length > 0 && (
                     <details className="checkout-coupon" ref={disclosure}>
                         <summary

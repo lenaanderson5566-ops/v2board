@@ -296,6 +296,26 @@
     overflow-y: auto;
     min-height: 0;
     overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+    scrollbar-color: color-mix(in srgb, var(--text-secondary) 35%, transparent) transparent;
+}
+.purchase-body:hover,
+.purchase-body:focus-within {
+    scrollbar-color: color-mix(in srgb, var(--text-secondary) 60%, transparent) transparent;
+}
+@supports not (scrollbar-width: thin) {
+    .purchase-body::-webkit-scrollbar { width: 6px; }
+    .purchase-body::-webkit-scrollbar-track { background: transparent; }
+    .purchase-body::-webkit-scrollbar-thumb {
+        background: var(--line);
+        border-radius: 999px;
+    }
+    .purchase-body::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
+}
+@media (forced-colors: active) {
+    .purchase-body { scrollbar-width: auto; scrollbar-color: auto; }
+    .checkout-coupon-option.is-selected { border-color: Highlight; }
 }
 .purchase-body h3 {
     font-size: 15px;

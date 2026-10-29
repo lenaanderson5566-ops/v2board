@@ -36,9 +36,7 @@
     transform: rotate(180deg);
 }
 .checkout-coupon-options {
-    max-height: 240px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    /* Share the purchase body's scrolling instead of nesting another scroll area. */
     padding: 3px 3px 8px;
 }
 .purchase-selection .checkout-coupon-option {
@@ -49,6 +47,7 @@
     min-height: 44px;
     padding: 8px;
     margin: 2px 0;
+    border: 1px solid transparent;
     border-radius: 8px;
     cursor: pointer;
     font-size: 13px;
@@ -56,10 +55,16 @@
 }
 .checkout-coupon-option.is-selected {
     background: var(--brand-soft);
+    border-color: var(--line);
 }
 .checkout-coupon-option.is-disabled {
     color: var(--text-secondary);
     cursor: default;
+}
+@media (hover: hover) and (pointer: fine) {
+    .checkout-coupon-option:not(.is-selected):not(.is-disabled):hover {
+        background: var(--surface-soft);
+    }
 }
 .purchase-selection .checkout-coupon-option input[type="radio"] {
     width: 18px;

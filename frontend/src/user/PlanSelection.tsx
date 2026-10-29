@@ -24,6 +24,7 @@ import { PaymentMethodPicker } from "./PaymentMethodPicker";
 import { useCheckoutQuote } from "./useCheckoutQuote";
 import type { InitialPayment, PaymentQuote } from "./PaymentCheckout";
 import { useAnalyticsPage } from "./product-analytics";
+import { PurchaseRules } from "./PurchaseRules";
 export function PlanSelection({
     plan,
     close,
@@ -386,6 +387,7 @@ export function PlanSelection({
                                     }
                                 />
                             )}
+                            <PurchaseRules plan={plan} period={period} />
                         </fieldset>
                         {unified && !checkout && (
                             <section className="checkout-method-section">

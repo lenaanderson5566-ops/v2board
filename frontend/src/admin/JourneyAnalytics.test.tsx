@@ -130,3 +130,25 @@ it("reloads range and device filters and reports request failures", async () => 
         "test-admin/analytics/journey?days=90&device=mobile",
     );
 });
+
+it("labels a payment-provider click separately from completed business payments", async () => {
+    const data = fixture();
+    data.experience.rows = [
+        {
+            page: "payment",
+            event: "payment_open",
+            samples: 8,
+            sessions: 3,
+            average: null,
+            p75Upper: null,
+            p95Upper: null,
+        },
+    ];
+    api.request.mockResolvedValue({ data });
+    render(<JourneyAnalytics days={7} device="mobile" />);
+    expect(await screen.findByText("点击前往付款")).toBeTruthy();
+    expect(screen.getByText(/不代表支付完成/)).toBeTruthy();
+    expect(
+        screen.getByRole("heading", { name: "注册到首次使用 · 7 日观察窗" }),
+    ).toBeTruthy();
+});

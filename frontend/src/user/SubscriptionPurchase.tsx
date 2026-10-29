@@ -19,6 +19,7 @@ import "./pricing.css";
 
 import { UnifiedCheckout } from "./UnifiedCheckout";
 import { PurchaseSteps } from "./PurchaseSteps";
+import { PlanResetRule } from "./PurchaseRules";
 export function SubscriptionPurchase() {
     const plans = useData<Row[]>("user/plan/fetch");
     const orders = useData<Row[]>("user/order/fetch");
@@ -230,6 +231,7 @@ export function SubscriptionPurchase() {
                                                 </div>
                                             )}
                                     </dl>
+                                    <PlanResetRule plan={plan} />
                                     <div className="pricing-summary">
                                         <div className="plan-price">
                                             {money(

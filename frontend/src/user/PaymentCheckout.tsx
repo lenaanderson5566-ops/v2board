@@ -1,4 +1,4 @@
-import { useAnalyticsPage } from "./product-analytics";
+import { trackAction, useAnalyticsPage } from "./product-analytics";
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
 import { PaymentIcon, PaymentMethodPicker } from "./PaymentMethodPicker";
@@ -23,6 +23,11 @@ import {
 } from "./billing-flow";
 import { pricingCopy as pc } from "./pricing-copy";
 import { PurchaseSteps } from "./PurchaseSteps";
+import {
+    nativeWechatQr,
+    paymentActionUrl,
+    qrPaymentActionUrl,
+} from "./payment-action";
 
 export type PaymentQuote = { amount: number; currency: string; fee: number };
 
@@ -78,9 +83,31 @@ export function PaymentCheckout({
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
         [qr, setQr] = useState("");
-    const qrPanel = useRef<HTMLDivElement>(null);
+    const [paymentLink, setPaymentLink] = useState("");
+    const [copied, setCopied] = useState(false);
+    const [copyError, setCopyError] = useState("");
+    const [smallScreen, setSmallScreen] = useState(
+        () => window.innerWidth <= 800,
+    );
     useEffect(() => {
-        if (!embedded || !qr || !qrPanel.current) return;
+        const resize = () => setSmallScreen(window.innerWidth <= 800);
+        window.addEventListener("resize", resize);
+        return () => window.removeEventListener("resize", resize);
+    }, []);
+    useEffect(() => {
+        setCopied(false);
+        setCopyError("");
+    }, [qr, paymentLink]);
+    const qrPanel = useRef<HTMLDivElement>(null);
+    const paymentActionPanel = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (
+            !embedded ||
+            !qr ||
+            !qrPanel.current ||
+            qrPanel.current.closest("details:not([open])")
+        )
+            return;
         const target = compact
             ? qrPanel.current.querySelector("svg") || qrPanel.current
             : qrPanel.current;
@@ -156,10 +183,33 @@ export function PaymentCheckout({
                 Number(order.payment_amount) !== Number(issuedQuote.amount)) ||
             (order.payment_currency &&
                 order.payment_currency !== issuedQuote.currency)
-        )
+        ) {
             setQr("");
+            setPaymentLink("");
+        }
     }, [serverPayment, status]);
     const method = methods.data?.find((item) => Number(item.id) === selected);
+    const openUrl =
+        status === 0
+            ? paymentLink ||
+              (smallScreen && qr
+                  ? qrPaymentActionUrl(qr, String(method?.payment || ""))
+                  : undefined)
+            : undefined;
+    useEffect(() => {
+        if (!smallScreen || !openUrl || !paymentActionPanel.current) return;
+        const target = paymentActionPanel.current;
+        const bounds = target.getBoundingClientRect();
+        if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
+            return;
+        target.scrollIntoView?.({
+            block: "center",
+            behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+                ?.matches
+                ? "instant"
+                : "smooth",
+        });
+    }, [smallScreen, openUrl]);
     const fee =
         status === 0
             ? waiting
@@ -211,6 +261,7 @@ export function PaymentCheckout({
     useEffect(() => {
         if (status !== 0) {
             setQr("");
+            setPaymentLink("");
             setCardMethod(null);
             setRetryOpen(false);
         }
@@ -290,6 +341,7 @@ export function PaymentCheckout({
         setError("");
         setWaiting(false);
         setQr("");
+        setPaymentLink("");
         try {
             const result = await request(
                 "user/order/checkout",
@@ -309,6 +361,7 @@ export function PaymentCheckout({
                 },
                 { timeoutMs: 45000 },
             );
+            if (!mounted.current) return;
             setIssuedFee(
                 Number(
                     methods.data?.find((item) => Number(item.id) === id)
@@ -332,25 +385,34 @@ export function PaymentCheckout({
                 setWaiting(true);
                 setCardMethod(null);
                 reload();
-            } else if (
-                result.type === 1 &&
-                typeof result.data === "string" &&
-                /^https?:\/\//i.test(result.data)
-            ) {
+            } else if (result.type === 1 && typeof result.data === "string") {
+                const action = paymentActionUrl(result.data);
                 setWaiting(true);
-                location.assign(result.data);
+                setCardMethod(null);
+                if (action) {
+                    setPaymentLink(action);
+                    if (!smallScreen && /^https?:/i.test(action))
+                        location.assign(action);
+                } else if (nativeWechatQr(result.data)) {
+                    // Native WeChat QR data is scan-only; it is not an H5 payment URL.
+                    setQr(result.data);
+                } else {
+                    setError(tx("此支付方式需要专用客户端，请选择其他方式。"));
+                }
             } else if (
                 result.type === 0 &&
                 typeof result.data === "string" &&
                 result.data
             ) {
                 setQr(result.data);
+                setCardMethod(null);
                 setWaiting(true);
             } else
                 throw new Error(
                     tx("此支付方式需要专用客户端，请选择其他方式。"),
                 );
         } catch (problem) {
+            if (!mounted.current) return;
             const failure = problem as Error & {
                 code?: string;
                 status?: number;
@@ -441,6 +503,7 @@ export function PaymentCheckout({
             await request("user/order/cancel", { trade_no: order.trade_no });
             setCancelOpen(false);
             setQr("");
+            setPaymentLink("");
             reload();
         } catch (problem) {
             setError((problem as Error).message);
@@ -462,6 +525,7 @@ export function PaymentCheckout({
             if (Number(result.data) === 0) {
                 setWaiting(false);
                 setQr("");
+                setPaymentLink("");
                 if (paymentKey.current)
                     paymentKey.current = crypto.randomUUID();
                 methods.reload();
@@ -475,21 +539,35 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
+    async function copyPayment() {
+        setCopied(false);
+        setCopyError("");
+        try {
+            await navigator.clipboard.writeText(qr || paymentLink);
+            setCopied(true);
+            trackAction("copy_success", "payment");
+        } catch {
+            trackAction("copy_failed", "payment");
+            setCopyError(tx("复制失败，请手动复制链接"));
+        }
+    }
     const paymentDetails = (
         <>
-            <input aria-label={tx("付款内容")} readOnly value={qr} />
-            <button
-                type="button"
-                onClick={async () => {
-                    try {
-                        await navigator.clipboard.writeText(qr);
-                    } catch {
-                        setError(tx("复制失败，请手动复制链接"));
-                    }
-                }}
-            >
-                {tx("复制")}
-            </button>
+            <input
+                aria-label={tx("付款内容")}
+                readOnly
+                value={qr || paymentLink}
+            />
+            {!smallScreen && (
+                <button type="button" onClick={copyPayment}>
+                    {tx("复制")}
+                </button>
+            )}
+            {!smallScreen && copyError && (
+                <p role="alert" className="checkout-copy-error">
+                    {copyError}
+                </p>
+            )}
         </>
     );
     const secondaryActions = (
@@ -516,6 +594,35 @@ export function PaymentCheckout({
                 </div>
             </div>
         </>
+    );
+    const qrContent = qr && (
+        <div ref={qrPanel} className="checkout-qr">
+            {method && !compact && (
+                <p className="checkout-qr-channel">
+                    <strong>{method.name}</strong>
+                    {method.category === "crypto" && (
+                        <span>
+                            {method.asset} ·{" "}
+                            {method.network_name || method.network}
+                        </span>
+                    )}
+                </p>
+            )}
+            <QRCodeSVG value={qr} size={200} marginSize={3} />
+            <p>
+                {smallScreen
+                    ? pc("mobileScanHelp")
+                    : tx("扫码支付后，页面会自动检查结果。")}
+            </p>
+            {compact ? (
+                <details className="checkout-payment-details">
+                    <summary>{tx("付款内容")}</summary>
+                    {paymentDetails}
+                </details>
+            ) : (
+                paymentDetails
+            )}
+        </div>
     );
     if ([2, 3, 4].includes(status))
         return (
@@ -861,40 +968,82 @@ export function PaymentCheckout({
                                           )}
                                   </State>
                               )}
-                        {qr && (
-                            <div ref={qrPanel} className="checkout-qr">
-                                {method && !compact && (
-                                    <p className="checkout-qr-channel">
-                                        <strong>{method.name}</strong>
-                                        {method.category === "crypto" && (
-                                            <span>
-                                                {method.asset} ·{" "}
-                                                {method.network_name ||
-                                                    method.network}
-                                            </span>
-                                        )}
+                        {openUrl && awaitingConfirmation && (
+                            <div
+                                ref={paymentActionPanel}
+                                className="checkout-open-payment"
+                            >
+                                <a
+                                    className="button primary checkout-open-link"
+                                    href={openUrl}
+                                    rel="noreferrer"
+                                    onClick={() => {
+                                        trackAction("payment_open", "payment");
+                                        setPollRun((run) => run + 1);
+                                    }}
+                                >
+                                    {pc("openPayment")}
+                                </a>
+                                <p>{pc("openPaymentHelp")}</p>
+                            </div>
+                        )}
+                        {smallScreen && openUrl && qr ? (
+                            <details
+                                className="checkout-alternative-qr"
+                                onToggle={(event) => {
+                                    if (!event.currentTarget.open) return;
+                                    const target =
+                                        qrPanel.current?.querySelector("svg");
+                                    if (!target) return;
+                                    const bounds =
+                                        target.getBoundingClientRect();
+                                    if (
+                                        bounds.top >= 80 &&
+                                        bounds.bottom <= window.innerHeight - 80
+                                    )
+                                        return;
+                                    target.scrollIntoView?.({
+                                        block: "center",
+                                        behavior: window.matchMedia?.(
+                                            "(prefers-reduced-motion: reduce)",
+                                        )?.matches
+                                            ? "instant"
+                                            : "smooth",
+                                    });
+                                }}
+                            >
+                                <summary>{pc("paymentQrFallback")}</summary>
+                                {qrContent}
+                            </details>
+                        ) : (
+                            qrContent
+                        )}
+                        {smallScreen && (qr || paymentLink) && (
+                            <div className="checkout-mobile-copy">
+                                <button type="button" onClick={copyPayment}>
+                                    {pc("copyPayment")}
+                                </button>
+                                <p role="status" aria-live="polite">
+                                    {copied ? pc("paymentCopied") : "\u00a0"}
+                                </p>
+                                {copyError && (
+                                    <p
+                                        role="alert"
+                                        className="checkout-copy-error"
+                                    >
+                                        {copyError}
                                     </p>
-                                )}
-                                <QRCodeSVG
-                                    value={qr}
-                                    size={200}
-                                    marginSize={3}
-                                />
-                                <p>{tx("扫码支付后，页面会自动检查结果。")}</p>
-                                {compact ? (
-                                    <details className="checkout-payment-details">
-                                        <summary>{tx("付款内容")}</summary>
-                                        {paymentDetails}
-                                    </details>
-                                ) : (
-                                    paymentDetails
                                 )}
                             </div>
                         )}
                         <div className="checkout-confirm">
                             <button
                                 type="button"
-                                className="primary"
+                                className={
+                                    openUrl && awaitingConfirmation
+                                        ? "checkout-check-result"
+                                        : "primary"
+                                }
                                 disabled={
                                     busy ||
                                     (!awaitingConfirmation &&

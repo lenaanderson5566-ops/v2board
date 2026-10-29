@@ -72,6 +72,7 @@ it("does not report views, guide actions or API observations without permission"
     render(<Page />);
     setCollection(true);
     trackAction("download");
+    trackAction("payment_open", "payment");
     observeApi({ duration: 100, failure: "api_error" });
     await Promise.resolve();
     expect(fetcher).not.toHaveBeenCalled();
@@ -112,6 +113,7 @@ it("revocation prevents further action and error reporting", async () => {
     setCollection(false);
     const before = fetcher.mock.calls.length;
     trackAction("download");
+    trackAction("payment_open", "payment");
     observeApi({ duration: 20, failure: "network_error" });
     window.dispatchEvent(new ErrorEvent("error", { message: "secret-stack" }));
     await Promise.resolve();
@@ -123,6 +125,7 @@ it("honors DNT even after allowing analytics", async () => {
     render(<Page />);
     setCollection(true);
     trackAction("download");
+    trackAction("payment_open", "payment");
     await Promise.resolve();
     expect(fetcher).not.toHaveBeenCalled();
 });
@@ -144,14 +147,49 @@ it("bounds API sampling and reports only error categories", async () => {
 });
 
 it("guide actions remain consent gated and do not include the handoff URL or raw UA", async () => {
-    trackAction("guide_continue","browser_prompt");
+    trackAction("guide_continue", "browser_prompt");
     await Promise.resolve();
     expect(fetcher).not.toHaveBeenCalled();
-    savePrivacyChoice("allow",30);setCollection(true);
-    trackAction("guide_manual","browser_guide");
-    await waitFor(()=>expect(events().some(e=>e.event==="guide_manual")).toBe(true));
-    const event=events().find(e=>e.event==="guide_manual");
+    savePrivacyChoice("allow", 30);
+    setCollection(true);
+    trackAction("guide_manual", "browser_guide");
+    await waitFor(() =>
+        expect(events().some((e) => e.event === "guide_manual")).toBe(true),
+    );
+    const event = events().find((e) => e.event === "guide_manual");
     expect(event.page).toBe("browser_guide");
-    expect(event).not.toHaveProperty("url");expect(event).not.toHaveProperty("userAgent");
+    expect(event).not.toHaveProperty("url");
+    expect(event).not.toHaveProperty("userAgent");
     expect(event).not.toHaveProperty("ip");
+});
+
+it("records explicit payment entry clicks and copy results without reporting a payment result or private contents", async () => {
+    savePrivacyChoice("allow", 30);
+    setCollection(true);
+    trackAction("payment_open", "payment");
+    trackAction("copy_success", "payment");
+    trackAction("copy_failed", "payment");
+    await waitFor(() => expect(events()).toHaveLength(3));
+    expect(events().map((event) => event.event)).toEqual([
+        "payment_open",
+        "copy_success",
+        "copy_failed",
+    ]);
+    for (const event of events()) {
+        expect(event.page).toBe("payment");
+        expect(Object.keys(event).sort()).toEqual(
+            [
+                "attributionVersion",
+                "consent",
+                "device",
+                "event",
+                "language",
+                "page",
+                "sessionId",
+            ].sort(),
+        );
+        expect(event).not.toHaveProperty("value");
+        expect(event).not.toHaveProperty("orderNumber");
+        expect(event).not.toHaveProperty("url");
+    }
 });

@@ -107,6 +107,38 @@ try {
     $assert($r->getStatusCode()===200 && $row['quotaBytes']===50*1073741824 && $row['monthlyPrice']===1000,'Plan schema and byte units');
     [$r,$j]=$call('GET','/api/v10/plans/'.$plan->id,[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['id']===$plan->id,'Plan detail resource');
+    $originalResetSetting=config('v2board.reset_traffic_method',0);
+    $originalResetMethod=$plan->fresh()->reset_traffic_method;
+    try {
+        $plan->reset_traffic_method=null; $plan->save();
+        foreach ([0,1,2,3,4] as $resetMethod) {
+            config(['v2board.reset_traffic_method'=>$resetMethod]);
+            $source=['reset_traffic_method'=>null,'transfer_enable'=>50];
+            $projection=App\Http\Resources\V10\Resource::encode('plan',$source);
+            $assert($projection['resetMethod']===null && $projection['effectiveResetMethod']===$resetMethod,'Inherited plan reset resolves the actual site policy '.$resetMethod);
+            $assert($source===['reset_traffic_method'=>null,'transfer_enable'=>50],'Read-only reset projection leaves its input unchanged');
+        }
+        config(['v2board.reset_traffic_method'=>3]);
+        $beforePlanRead=$plan->fresh()->getAttributes();
+        [$r,$j]=$call('GET','/api/v10/plans',[],$bearer);
+        $resolvedPlan=collect($j['data'])->firstWhere('id',$plan->id);
+        $assert($r->getStatusCode()===200 && $resolvedPlan['resetMethod']===null && $resolvedPlan['effectiveResetMethod']===3,'Plan catalog exposes resolved inherited reset policy');
+        $assert($beforePlanRead===$plan->fresh()->getAttributes(),'Plan catalog read does not persist resolved inheritance');
+        $plan->reset_traffic_method=0; $plan->save();
+        $beforePlanRead=$plan->fresh()->getAttributes();
+        [$r,$j]=$call('GET','/api/v10/plans/'.$plan->id,[],$bearer);
+        $assert($r->getStatusCode()===200 && $j['data']['resetMethod']===0 && $j['data']['effectiveResetMethod']===0,'Explicit zero reset policy takes precedence over the site default');
+        $assert($beforePlanRead===$plan->fresh()->getAttributes(),'Plan detail read does not mutate stored reset policy');
+        $nested=App\Http\Resources\V10\Resource::encode('order',['plan'=>['reset_traffic_method'=>null]]);
+        $assert($nested['plan']['resetMethod']===null && $nested['plan']['effectiveResetMethod']===3,'Nested order plan uses the same resolved reset projection');
+        config(['v2board.reset_traffic_method'=>99]);
+        $unknown=App\Http\Resources\V10\Resource::encode('plan',['reset_traffic_method'=>null]);
+        $assert(array_key_exists('effectiveResetMethod',$unknown) && $unknown['effectiveResetMethod']===null,'Unsupported reset settings do not invent a known schedule');
+    } finally {
+        config(['v2board.reset_traffic_method'=>$originalResetSetting]);
+        $plan->reset_traffic_method=$originalResetMethod; $plan->save();
+    }
+
     [$r,$j]=$call('POST','/api/v10/me/orders',['planId'=>$plan->id,'billingPeriod'=>'monthly','user'=>['id'=>1]],$bearer);
     $assert($r->getStatusCode()===201 && isset($j['data']['orderNumber']),'Order created '.json_encode($j));
     $old=$j['data']['orderNumber'];
@@ -251,6 +283,7 @@ try {
     [$r,$j]=$call('POST','/api/v10/me/orders/'.$order->trade_no.'/payments',['paymentMethodId'=>$payment->id,'paymentToken'=>'test-card-token'],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['kind']==='redirect','Checkout redirect contract '.json_encode($j));
     $assert((int)App\Payments\V10TestPayment::$lastOrder['total_amount']===1050 && App\Payments\V10TestPayment::$lastOrder['stripe_token']==='test-card-token','Checkout fee and payment token reach provider');
+    $assert(parse_url(App\Payments\V10TestPayment::$lastOrder['return_url'],PHP_URL_FRAGMENT)==='/plan/'.$plan->id.'?order='.rawurlencode($order->trade_no),'Checkout passes owned subscription context for an in-place gateway return');
     $assert($order->fresh()->payment_id===$payment->id && $order->fresh()->handling_amount===50 && $order->fresh()->status===0,'Checkout persists fee without prematurely activating');
     $notifyBody=['signature'=>'local-test-signature','orderNumber'=>$order->trade_no,'amount'=>1050,'currency'=>'CNY'];
     [$bad,$problem]=$call('POST','/api/v10/webhooks/payments/MGate/'.$payment->uuid,$notifyBody);

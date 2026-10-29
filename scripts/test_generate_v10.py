@@ -29,6 +29,15 @@ class ContractGenerationTest(unittest.TestCase):
         change(value)
         path.write_text(json.dumps(value), encoding='utf-8')
 
+    def test_nullable_reset_policy_has_an_explicit_null_enum_without_duplicate_types(self):
+        source = generator.load_source(self.root)
+        policy = source['components']['schemas']['plan']['properties']['effectiveResetMethod']
+        self.assertTrue(policy['nullable'])
+        self.assertTrue(policy['readOnly'])
+        self.assertEqual(policy['enum'], [0, 1, 2, 3, 4, None])
+        self.assertEqual(generator.ts(policy), '0 | 1 | 2 | 3 | 4 | null')
+        self.assertEqual(generator.ts({'type': 'integer', 'nullable': True}), 'number | null')
+
     def test_publications_are_deterministic_and_current(self):
         outputs = generator.generate(self.root)
         self.assertEqual(len(outputs), 7)

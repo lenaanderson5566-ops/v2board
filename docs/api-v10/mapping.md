@@ -10,6 +10,10 @@ Admin, operations/risk and supported node APIs retain their API versions. The un
 
 Unified subscription checkout adds `POST /api/v10/me/checkout-quotes`, explicitly routed to the V10 order controller and shared read-only order preparation. It has no legacy HTTP endpoint. The browser alias `user/order/quote` is an internal transport key only. Order creation accepts a bound quote plus UUID request key; payment initiation accepts its own UUID request key. Existing request bodies remain compatible when these optional fields are absent.
 
+Plan resources add optional read-only `effectiveResetMethod` (0–4 or null), mapped to `effective_reset_traffic_method`. It resolves `resetMethod=null` through `v2board.reset_traffic_method` with default 0, matching the traffic reset scheduler. Explicit plan policies take precedence, including 0; unsupported values project null. The stored `resetMethod` remains unchanged, including its inheritance meaning. The same projection applies to catalog/detail and embedded plan resources; reads do not update plans, calculate future reset dates, or change entitlement/reset behavior.
+Optional analytics adds `payment_open` only for explicit payment-entry clicks. It carries the existing anonymous page/device/session envelope, never payment URLs, order identifiers, amounts or channel data; it does not assert app opening/payment success or advance page views/purchase funnels. Existing consent, GPC/DNT, retention and sampling limits apply.
+
+
 | Existing symbol | V10 method and path | Permission | Resource |
 |---|---|---|---|
 | `GET client/subscribe` | `GET /api/v10/subscriptions/{subscriptionToken}` | subscription | scalar |

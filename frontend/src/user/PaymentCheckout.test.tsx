@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 const mock = vi.hoisted(() => ({
     request: vi.fn(),
+    trackAction: vi.fn(),
     methods: [
         { id: 1, name: "Alipay", handling_fee_fixed: 0 },
         {
@@ -57,6 +58,11 @@ vi.mock("../shared/ui", () => ({
         </div>
     ),
 }));
+vi.mock("./pricing-copy", () => ({ pricingCopy: (key: string) => key }));
+vi.mock("./product-analytics", () => ({
+    useAnalyticsPage: vi.fn(),
+    trackAction: mock.trackAction,
+}));
 vi.mock("./PurchaseSteps", () => ({ PurchaseSteps: () => null }));
 vi.mock("./OrderHelp", () => ({ OrderHelp: () => null }));
 vi.mock("./OrderReceipt", () => ({ OrderReceipt: () => null }));
@@ -65,6 +71,8 @@ vi.mock("../shared/credit-copy", () => ({
     minuteDate: () => "",
 }));
 import { PaymentCheckout, type PaymentQuote } from "./PaymentCheckout";
+import { paymentActionUrl, qrPaymentActionUrl } from "./payment-action";
+const originalMethods = mock.methods;
 function renderCheckout(
     overrides: Record<string, unknown> = {},
     reload = vi.fn(),
@@ -87,6 +95,8 @@ function renderCheckout(
 
 afterEach(() => {
     cleanup();
+    mock.methods = originalMethods;
+    vi.unstubAllGlobals();
     vi.clearAllMocks();
 });
 it("recalculates the exact network fee and submits its channel ID", async () => {
@@ -718,4 +728,256 @@ it("ignores an unfinished card token callback after leaving the payment componen
     } finally {
         mock.methods = old;
     }
+});
+
+// All payment actions below are synthetic. Prevent anchor navigation after React's
+// click handler runs, so repeated-open tests cannot leave the test document.
+function clickSyntheticPaymentLink(link: HTMLElement) {
+    document.addEventListener("click", (event) => event.preventDefault(), {
+        once: true,
+    });
+    fireEvent.click(link);
+}
+function renderMobilePayment(provider = "AlipayF2F", reload = vi.fn()) {
+    vi.stubGlobal("innerWidth", 390);
+    mock.methods = [
+        {
+            id: 1,
+            name: "Alipay",
+            payment: provider,
+            category: "wallet",
+            handling_fee_fixed: 0,
+            quoted_amount: 1000,
+            quoted_currency: "CNY",
+            quoted_fee: 0,
+        } as any,
+    ];
+    return render(
+        <PaymentCheckout
+            compact
+            embedded
+            order={{
+                status: 0,
+                plan_id: 1,
+                total_amount: 1000,
+                currency: "CNY",
+                trade_no: "synthetic-mobile-order",
+                plan: { name: "Plan" },
+            }}
+            reload={reload}
+            renderCard={() => null}
+        />,
+    );
+}
+
+it.each([
+    "https://pay.example.test/checkout?token=owned",
+    "http://gateway.example.test/pay?id=1",
+    "alipays://platformapi/startapp?appId=20000067&url=https%3A%2F%2Fexample.test",
+    "alipay://platformapi/startapp?appId=20000067",
+    "weixin://wap/pay?prepayid=wx123",
+])(
+    "accepts an explicit payment action with an allowed protocol and route: %s",
+    (value) => {
+        expect(paymentActionUrl(value)).toBe(value);
+    },
+);
+it.each([
+    "javascript:alert(1)",
+    "data:text/html,<script>alert(1)</script>",
+    "intent://pay/#Intent;scheme=alipay;end",
+    "file:///tmp/payment",
+    "unknown-wallet://pay/order",
+    "/relative-pay",
+    "//pay.example.test/checkout",
+    "https://user:secret@pay.example.test/checkout",
+    "https://pay.example.test/\r\nunsafe",
+    "\nhttps://pay.example.test/checkout",
+    "alipays://platformapi/other?appId=20000067",
+    "alipays://unrelated/startapp?appId=20000067",
+    "alipay://platformapi/startapp.evil?appId=20000067",
+    "weixin://dl/business/?t=123",
+    "weixin://wap/pay/extra?prepayid=wx123",
+    "",
+])("rejects unsafe or unsupported payment actions: %s", (value) => {
+    expect(paymentActionUrl(value)).toBeFalsy();
+});
+it.each([
+    ["https://qr.alipay.com/bax0123456789", "AlipayF2F", true],
+    ["https://qr.alipay.com/bax0123456789", "Coinbase", false],
+    ["https://unrelated.example.test/qr", "AlipayF2F", false],
+    ["https://qr.alipay.com.evil.test/qr", "AlipayF2F", false],
+    ["https://qr.alipay.com@evil.test/qr", "AlipayF2F", false],
+    ["https://user:secret@qr.alipay.com/qr", "AlipayF2F", false],
+    ["http://qr.alipay.com/bax0123456789", "AlipayF2F", false],
+    ["weixin://wap/pay?prepayid=wx123", "AlipayF2F", false],
+    ["TQsyntheticWalletAddress", "AlipayF2F", false],
+    ["javascript:alert(1)", "AlipayF2F", false],
+])(
+    "only creates a direct QR action for a supported provider and official HTTPS content: %s / %s",
+    (value, provider, allowed) => {
+        const action = qrPaymentActionUrl(value, provider);
+        if (allowed) expect(action).toBe(value);
+        else expect(action).toBeFalsy();
+    },
+);
+
+it("opens an existing mobile redirect payment without starting another checkout", async () => {
+    const target = "https://gateway.example.test/pay/owned-order";
+    mock.request.mockImplementation(async (path: string) =>
+        path === "user/order/checkout"
+            ? { type: 1, data: target }
+            : { data: 0 },
+    );
+    const reload = vi.fn();
+    renderMobilePayment("EPay", reload);
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    const action = await screen.findByRole("link", { name: "openPayment" });
+    expect(action.getAttribute("href")).toBe(target);
+    for (let i = 0; i < 3; i++) clickSyntheticPaymentLink(action);
+    expect(
+        mock.trackAction.mock.calls.filter(
+            ([event]) => event === "payment_open",
+        ),
+    ).toHaveLength(3);
+    expect(mock.trackAction).toHaveBeenCalledWith("payment_open", "payment");
+    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    expect(reload).toHaveBeenCalled();
+    expect(
+        mock.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(1);
+    expect(
+        mock.request.mock.calls.filter(([path]) => path === "user/order/save"),
+    ).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
+});
+it("offers a mobile action for an official supported Alipay QR while retaining its payment state", async () => {
+    const target = "https://qr.alipay.com/bax0123456789";
+    mock.request.mockImplementation(async (path: string) =>
+        path === "user/order/checkout"
+            ? { type: 0, data: target }
+            : { data: 0 },
+    );
+    renderMobilePayment();
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    const action = await screen.findByRole("link", { name: "openPayment" });
+    expect(action.getAttribute("href")).toBe(target);
+    expect(screen.getByDisplayValue(target)).toBeTruthy();
+    clickSyntheticPaymentLink(action);
+    clickSyntheticPaymentLink(action);
+    expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
+    expect(mock.trackAction).toHaveBeenCalledWith("payment_open", "payment");
+    expect(
+        mock.request.mock.calls.filter(
+            ([path]) => path === "user/order/checkout",
+        ),
+    ).toHaveLength(1);
+});
+it.each([
+    [1, "javascript:alert(1)"],
+    [1, "intent://pay/#Intent;scheme=alipay;end"],
+    [1, "https://user:secret@gateway.example.test/pay"],
+    [0, "https://qr.alipay.com.evil.test/pay"],
+    [0, "https://unrelated.example.test/pay"],
+    [0, "TQsyntheticWalletAddress"],
+])(
+    "does not create a mobile action for unsafe redirect or unrelated QR data: type %s",
+    async (type, value) => {
+        mock.request.mockImplementation(async (path: string) =>
+            path === "user/order/checkout"
+                ? { type, data: value }
+                : { data: 0 },
+        );
+        renderMobilePayment();
+        await act(async () => {
+            fireEvent.click(
+                await screen.findByRole("button", { name: "确认支付" }),
+            );
+        });
+        expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
+        if (type === 0) expect(screen.getByDisplayValue(value)).toBeTruthy();
+        expect(
+            mock.trackAction.mock.calls.filter(
+                ([event]) => event === "payment_open",
+            ),
+        ).toHaveLength(0);
+        expect(
+            mock.request.mock.calls.filter(
+                ([path]) => path === "user/order/checkout",
+            ),
+        ).toHaveLength(1);
+    },
+);
+it.each([true, false])(
+    "keeps copying unknown mobile QR data available and records its result: %s",
+    async (succeeds) => {
+        const content = "TQsyntheticWalletAddress";
+        const copy = succeeds
+            ? vi.fn().mockResolvedValue(undefined)
+            : vi.fn().mockRejectedValue(new Error("denied"));
+        mock.request.mockImplementation(async (path: string) =>
+            path === "user/order/checkout"
+                ? { type: 0, data: content }
+                : { data: 0 },
+        );
+        renderMobilePayment("CoinPayments");
+        vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
+        fireEvent.click(
+            await screen.findByRole("button", { name: "确认支付" }),
+        );
+        const action = await screen.findByRole("button", {
+            name: "copyPayment",
+        });
+        fireEvent.click(action);
+        await waitFor(() =>
+            expect(mock.trackAction).toHaveBeenCalledWith(
+                succeeds ? "copy_success" : "copy_failed",
+                "payment",
+            ),
+        );
+        expect(copy).toHaveBeenCalledWith(content);
+        expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
+        expect(
+            mock.request.mock.calls.filter(
+                ([path]) => path === "user/order/checkout",
+            ),
+        ).toHaveLength(1);
+    },
+);
+
+
+it.each([
+    "alipays://platformapi/startapp?appId=20000067&appId=999&url=https%3A%2F%2Fexample.test",
+    "alipays://platformapi/startapp?appId=20000067&saId=10000007",
+    "alipays://platformapi/startapp?appId=20000067&url=javascript%3Aalert(1)",
+    "alipays://platformapi/startapp?saId=10000007&qrcode=https%3A%2F%2Funtrusted.example%2Fpay",
+    "weixin://wap/pay?other=value",
+])("rejects ambiguous wallet actions and non-payment nested targets: %s", value => {
+    expect(paymentActionUrl(value)).toBeUndefined();
+});
+it("does not promote extra parameters on an official QR origin into a payment entry", () => {
+    expect(qrPaymentActionUrl("https://qr.alipay.com/bax0123456789?url=https%3A%2F%2Fevil.example", "AlipayF2F")).toBeUndefined();
+});
+it("preserves scan-only native WeChat responses without treating them as an H5 action", async () => {
+    const code = "weixin://wxpay/bizpayurl?pr=synthetic-native-order";
+    mock.request.mockImplementation(async path => path === "user/order/checkout" ? {type:1,data:code} : {data:0});
+    renderMobilePayment("EPayQrcode");
+    fireEvent.click(await screen.findByRole("button", {name:"确认支付"}));
+    await screen.findByDisplayValue(code);
+    expect(screen.queryByRole("link", {name:"openPayment"})).toBeNull();
+    expect(screen.getByRole("button", {name:"copyPayment"})).toBeTruthy();
+    expect(screen.getByRole("button", {name:"检查支付结果"})).toBeTruthy();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+it("keeps a rejected redirect response locked for status recovery without exposing its URL", async () => {
+    mock.request.mockImplementation(async path => path === "user/order/checkout" ? {type:1,data:"javascript:alert(1)"} : {data:0});
+    renderMobilePayment("EPayQrcode");
+    fireEvent.click(await screen.findByRole("button", {name:"确认支付"}));
+    await screen.findByText("此支付方式需要专用客户端，请选择其他方式。");
+    expect(screen.queryByRole("link", {name:"openPayment"})).toBeNull();
+    expect(screen.queryByRole("button", {name:"确认支付"})).toBeNull();
+    expect(screen.getByRole("button", {name:"检查支付结果"})).toBeTruthy();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });

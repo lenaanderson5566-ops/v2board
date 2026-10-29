@@ -170,7 +170,12 @@ try {
     $assert(DB::table('v2_analytics_session')->first()->browser==='chrome','Repeat browser migration preserves observations');
     $assert(DB::table('v2_analytics_page')->sum('views')==1 && $session->stage===1,'Action and numeric events never inflate page views or purchase funnel stages');
     $assert($measurement->report(7,'mobile')['rows']===[],'Experience reports respect anonymous device filtering');
-    DB::table('v2_analytics_measurement')->where('event','lcp')->where('bucket',100)->update(['samples'=>196]);
+    $analytics->record(array_replace($event,['page'=>'payment','event'=>'payment_open']));
+    $opened=collect($measurement->report(7,'desktop')['rows'])->firstWhere('event','payment_open');
+    $assert($opened && $opened['page']==='payment' && $opened['samples']===1 && $opened['sessions']===1 && $opened['average']===null,'Payment open records a bounded named click, without a metric value');
+    $assert(DB::table('v2_analytics_page')->sum('views')==1 && DB::table('v2_analytics_session')->first()->stage===1,'Opening a provider does not manufacture a page view or successful payment funnel stage');
+
+    DB::table('v2_analytics_measurement')->where('event','lcp')->where('bucket',100)->update(['samples'=>195]);
     $before=DB::table('v2_analytics_measurement')->sum('samples');
     $analytics->record($event+['event'=>'js_error']);
     $assert((int)$before===200 && (int)DB::table('v2_analytics_measurement')->sum('samples')===200,'Session lock and sample budget bound observation storage');
@@ -179,11 +184,12 @@ try {
         $r=Request::create('http://localhost/api/v10/public/analytics/events','POST',[],[],[],array_merge(['HTTP_ORIGIN'=>'http://localhost','CONTENT_TYPE'=>'application/json'],$headers),json_encode(array_replace($event,$extra)));
         $app->instance('request',$r);return $public->store($r,$analytics);
     };
-    foreach ([['event'=>'lcp'],['event'=>'copy_success','value'=>1],['event'=>'cls','value'=>100001],['event'=>'js_error','message'=>'private-secret'],['event'=>'api_request','value'=>-1]] as $bad) {
+    foreach ([['event'=>'lcp'],['event'=>'copy_success','value'=>1],['event'=>'cls','value'=>100001],['event'=>'js_error','message'=>'private-secret'],['event'=>'api_request','value'=>-1],['event'=>'payment_open','value'=>1],['event'=>'payment_open','orderNumber'=>'private-order']] as $bad) {
         try {$invoke($bad);throw new RuntimeException('Invalid numeric/action observation accepted');}
         catch (Illuminate\Validation\ValidationException $e) {$assert(true,'Invalid observation validation rejected');}
         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Invalid observation contract rejected');}
     }
+    $assert($invoke(['page'=>'payment','event'=>'payment_open'])->getStatusCode()===204,'The public contract accepts a payment click without a value or transaction fields');
     $assert($invoke(['event'=>'lcp','value'=>100],['HTTP_SEC_GPC'=>'1'])->getStatusCode()===204 && (int)DB::table('v2_analytics_measurement')->sum('samples')===200,'GPC prevents optional metric storage');
     DB::table('v2_analytics_session')->where('id',$session->id)->update(['created_at'=>$now-8*86400]);
     $analytics->prune();

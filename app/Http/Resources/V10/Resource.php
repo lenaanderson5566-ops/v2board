@@ -47,6 +47,13 @@ final class Resource
             return $kind === 'dictionary' ? (object)$rows : $rows;
         }
         if ($data === null) return null;
+        if ($name === 'plan') {
+            // Resolve inheritance for display using the same policy as ResetTraffic/UserService.
+            // Keep reset_traffic_method unchanged; this projection never writes a plan or setting.
+            $data=(array)$data;
+            $method=(int)($data['reset_traffic_method'] ?? config('v2board.reset_traffic_method', 0));
+            $data['effective_reset_traffic_method']=in_array($method,[0,1,2,3,4],true) ? $method : null;
+        }
         $out=[];
         foreach (self::contracts()['schemas'][$name] as $external=>$spec) {
             [$source]=$spec;

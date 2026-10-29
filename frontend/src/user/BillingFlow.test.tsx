@@ -128,6 +128,7 @@ import { UnifiedCheckout } from "./UnifiedCheckout";
 import { useCheckoutQuote } from "./useCheckoutQuote";
 import { PaymentCheckout } from "./PaymentCheckout";
 import { Orders } from "./user";
+import { PurchaseRules, PlanResetRule } from "./PurchaseRules";
 const plan = {
     id: 1,
     name: "Basic",
@@ -1560,4 +1561,70 @@ it("resumes in the original cycle layout with persisted totals and follows autho
     expect(within(screen.getByRole("region", { name: "priceDetails{}" })).getByText("¥0.50")).toBeTruthy();
     expect(mocks.quoteRequest).not.toHaveBeenCalled();
     expect(mocks.request).not.toHaveBeenCalled();
+});
+
+
+it.each([
+    [0, "ruleResetMonthStart"],
+    [1, "ruleResetMonthExpiry"],
+    [2, "ruleNoReset"],
+    [3, "ruleResetYearStart"],
+    [4, "ruleResetYearExpiry"],
+    [null, "ruleInherited"],
+    [undefined, "ruleInherited"],
+    [false, "ruleInherited"],
+    ["", "ruleInherited"],
+    [99, "ruleInherited"],
+])("shows the actual reset policy without treating inherited values as monthly: %s", (reset, key) => {
+    render(<PurchaseRules plan={{ ...plan, reset_traffic_method: reset }} period="year_price" />);
+    expect(screen.getByText(key + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
+    expect(screen.getByText('ruleValidity{"months":12}')).toBeTruthy();
+    expect(screen.getByText("ruleFulfillment{}")).toBeTruthy();
+    expect(screen.getByText("ruleRenewable{}")).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+});
+it("updates validity with the selected period and only declares known renewal support", () => {
+    const view = render(<PurchaseRules plan={{ ...plan, renew: undefined }} period="month_price" />);
+    expect(screen.getByText('ruleValidity{"months":1}')).toBeTruthy();
+    expect(screen.queryByText("ruleRenewable{}")).toBeNull();
+    expect(screen.queryByText("ruleNotRenewable{}")).toBeNull();
+    view.rerender(<PurchaseRules plan={{ ...plan, renew: 0 }} period="half_year_price" />);
+    expect(screen.getByText('ruleValidity{"months":6}')).toBeTruthy();
+    expect(screen.getByText("ruleNotRenewable{}")).toBeTruthy();
+    view.rerender(<PurchaseRules plan={{ ...plan, renew: null }} period="half_year_price" />);
+    expect(screen.queryByText("ruleNotRenewable{}")).toBeNull();
+});
+it("does not attach subscription rules to reset orders or invent a missing quota", () => {
+    const view = render(<PurchaseRules plan={{ ...plan, resetOnly: true }} period="reset_price" />);
+    expect(screen.queryByRole("region", { name: "purchaseRules{}" })).toBeNull();
+    view.rerender(<PlanResetRule plan={{ ...plan, transfer_enable: null, reset_traffic_method: 0 }} />);
+    expect(view.container.querySelector(".plan-reset-rule")).toBeNull();
+});
+it("shows the reset policy in the plan catalog and preserves it through cycle changes", () => {
+    mocks.plans = [{ ...plan, reset_traffic_method: 2 }];
+    render(<SubscriptionPurchase />);
+    expect(screen.getByText('ruleNoReset' + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "年付" }));
+    expect(screen.getByText('ruleNoReset' + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+
+
+it.each([
+    [0, "ruleResetMonthStart"],
+    [3, "ruleResetYearStart"],
+    [4, "ruleResetYearExpiry"],
+])("uses the server-resolved reset rule for inherited plans: %s", (effective, key) => {
+    render(<PurchaseRules plan={{ ...plan, reset_traffic_method: null, effective_reset_traffic_method: effective }} period="year_price" />);
+    expect(screen.getByText(key + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
+    expect(screen.queryByText('ruleInherited' + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeNull();
+});
+it("prefers a valid authoritative reset policy and safely falls back for older or unknown projections", () => {
+    const view = render(<PurchaseRules plan={{ ...plan, reset_traffic_method: 2, effective_reset_traffic_method: 3 }} period="year_price" />);
+    expect(screen.getByText('ruleResetYearStart' + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
+    view.rerender(<PurchaseRules plan={{ ...plan, reset_traffic_method: 2, effective_reset_traffic_method: null }} period="year_price" />);
+    expect(screen.getByText('ruleNoReset' + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
+    view.rerender(<PurchaseRules plan={{ ...plan, reset_traffic_method: null, effective_reset_traffic_method: 99 }} period="year_price" />);
+    expect(screen.getByText('ruleInherited' + JSON.stringify({ amount: `${50 * 1073741824} B` }))).toBeTruthy();
 });

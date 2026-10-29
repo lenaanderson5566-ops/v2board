@@ -303,3 +303,82 @@
     scroll-margin-block-start: 80px;
     scroll-margin-block-end: calc(80px + env(safe-area-inset-bottom));
 }
+
+.purchase-rules {
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.65;
+}
+.purchase-rules h4 {
+    margin: 0 0 6px;
+    color: var(--ink);
+    font-size: 12px;
+    font-weight: 600;
+}
+.purchase-rules ul {
+    margin: 0;
+    padding-inline-start: 18px;
+}
+.purchase-rules li + li {
+    margin-top: 4px;
+}
+.checkout-open-payment {
+    display: grid;
+    gap: 8px;
+    margin-top: 16px;
+}
+.app.user .checkout-open-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 50px;
+    border-radius: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+.checkout-open-payment p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+}
+.checkout-alternative-qr,
+.checkout-mobile-copy {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.checkout-alternative-qr {
+    margin-top: 12px;
+}
+.checkout-alternative-qr > summary {
+    cursor: pointer;
+    padding-block: 12px;
+    min-height: 44px;
+    box-sizing: border-box;
+}
+.checkout-mobile-copy {
+    margin-top: 12px;
+    text-align: center;
+}
+.checkout-mobile-copy button {
+    min-height: 44px;
+    width: 100%;
+}
+.checkout-mobile-copy p {
+    min-height: 1.5em;
+    margin: 4px 0 0;
+    line-height: 1.5;
+}
+.checkout-check-result {
+    min-height: 44px;
+    width: 100%;
+}
+
+.checkout-copy-error {
+    color: var(--danger);
+    font-size: 12px;
+    line-height: 1.6;
+}

@@ -50,7 +50,14 @@ class PaymentService
         $notifyBase = !empty($this->config['notify_domain'])
             ? rtrim($this->config['notify_domain'], '/') : $base;
         $notifyUrl = $notifyBase . "/api/v10/webhooks/payments/{$this->method}/{$this->config['uuid']}";
-        $returnUrl = $this->currentBase($base) . '/#/order/' . rawurlencode($order['trade_no']);
+        // Only persisted subscription context can resume the unified checkout.
+        // Older callers and non-subscription orders retain their order-detail return path.
+        $planId = (int)($order['plan_id'] ?? 0);
+        $subscription = $planId > 0 && array_key_exists('credit_bytes', $order)
+            && (int)$order['credit_bytes'] === 0
+            && in_array($order['period'] ?? null, ['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price'], true);
+        $returnPath = $subscription ? '/#/plan/' . $planId . '?order=' : '/#/order/';
+        $returnUrl = $this->currentBase($base) . $returnPath . rawurlencode($order['trade_no']);
         return $this->payment->pay([
             'currency' => $order['currency'] ?? 'CNY',
             'notify_url' => $notifyUrl,

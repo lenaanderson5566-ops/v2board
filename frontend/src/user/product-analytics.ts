@@ -18,7 +18,9 @@ export function privacyChoice(): PrivacyChoice | null {
         if (
             !value ||
             (value.version !== privacyRevision &&
-                !([2, 3, 4].includes(value.version) && value.choice === "deny")) ||
+                !(
+                    [2, 3, 4].includes(value.version) && value.choice === "deny"
+                )) ||
             !["allow", "deny"].includes(value.choice) ||
             !Number.isFinite(value.chosenAt) ||
             value.chosenAt > Date.now() ||
@@ -73,7 +75,8 @@ export function trackAction(
         | "import_start"
         | "help_open"
         | "guide_manual"
-        | "guide_continue",
+        | "guide_continue"
+        | "payment_open",
     page?: V10AnalyticsEvent["page"],
 ) {
     const target = page ?? currentPage();

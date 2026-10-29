@@ -10430,7 +10430,7 @@
         "security": [],
         "x-permission": "public",
         "summary": "POST public/analytics/events",
-        "description": "First-party, consent-gated anonymous views, named guide actions, numeric performance samples and error categories. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs, error messages or additional fields. GPC/DNT and disabled collection return 204 without recording. Non-view events do not inflate page views or the purchase funnel. Numeric metric values are required only for api_request/lcp/inp/cls. Histograms and a 200-sample/session cap make these estimates, not proof of payment, download or connection success. Browser family/major version, OS and embedded-app category are derived from a bounded request UA; raw UA and IP are not persisted in optional analytics. Guide views/actions require the same consent; copies do not prove external browser opening.",
+        "description": "First-party, consent-gated anonymous views, named guide/payment actions, numeric performance samples and error categories. Exact allowed Origin, JSON only, 1024-byte maximum, 60 requests/minute per IP. No query parameters, credentials, user IDs, URLs, error messages or additional fields. GPC/DNT and disabled collection return 204 without recording. Non-view events do not inflate page views or the purchase funnel. Numeric metric values are required only for api_request/lcp/inp/cls. Histograms and a 200-sample/session cap make these estimates, not proof of payment, download or connection success. Browser family/major version, OS and embedded-app category are derived from a bounded request UA; raw UA and IP are not persisted in optional analytics. Guide views/actions and payment_open require the same consent; copies do not prove external browser opening, and payment_open does not prove provider launch or payment success.",
         "responses": {
           "204": {
             "description": "Success"
@@ -12413,6 +12413,20 @@
           "resetMethod": {
             "type": "number",
             "nullable": true
+          },
+          "effectiveResetMethod": {
+            "type": "integer",
+            "nullable": true,
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              null
+            ],
+            "description": "Read-only reset policy used by the traffic scheduler: 0 month start, 1 monthly expiry day, 2 no scheduled reset, 3 year start, 4 yearly expiry date. Resolves an inherited resetMethod using the site setting (default 0). Null means the configured value is unsupported. Does not change the stored resetMethod or calculate a reset timestamp.",
+            "readOnly": true
           },
           "currency": {
             "type": "string",
@@ -15161,9 +15175,10 @@
               "inp",
               "cls",
               "guide_manual",
-              "guide_continue"
+              "guide_continue",
+              "payment_open"
             ],
-            "description": "Omitted means view. Action/error events forbid value; numeric metrics require value."
+            "description": "Omitted means view. Action/error events forbid value; numeric metrics require value. payment_open records only an explicit click to open the payment provider; it does not prove app launch or payment success."
           },
           "value": {
             "type": "integer",
@@ -15277,9 +15292,10 @@
               "inp",
               "cls",
               "guide_manual",
-              "guide_continue"
+              "guide_continue",
+              "payment_open"
             ],
-            "description": "Omitted means view. Action/error events forbid value; numeric metrics require value."
+            "description": "Omitted means view. Action/error events forbid value; numeric metrics require value. payment_open records only an explicit click to open the payment provider; it does not prove app launch or payment success."
           },
           "value": {
             "type": "integer",

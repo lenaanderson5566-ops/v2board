@@ -571,6 +571,10 @@
         "reset_traffic_method",
         "number"
       ],
+      "effectiveResetMethod": [
+        "effective_reset_traffic_method",
+        "integer"
+      ],
       "currency": [
         "currency"
       ]

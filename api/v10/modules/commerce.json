@@ -2373,6 +2373,24 @@
               "number"
             ]
           },
+          "effectiveResetMethod": {
+            "type": "integer",
+            "nullable": true,
+            "enum": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              null
+            ],
+            "description": "Read-only reset policy used by the traffic scheduler: 0 month start, 1 monthly expiry day, 2 no scheduled reset, 3 year start, 4 yearly expiry date. Resolves an inherited resetMethod using the site setting (default 0). Null means the configured value is unsupported. Does not change the stored resetMethod or calculate a reset timestamp.",
+            "x-runtime-field": [
+              "effective_reset_traffic_method",
+              "integer"
+            ],
+            "readOnly": true
+          },
           "currency": {
             "type": "string",
             "example": "CNY",

@@ -324,6 +324,9 @@ class OrderActions
             'total_amount' => $quote['payment_amount'],
             'currency' => $quote['payment_currency'],
             'user_id' => $order->user_id,
+            'plan_id' => (int)$order->plan_id,
+            'period' => $order->period,
+            'credit_bytes' => (int)$order->credit_bytes,
             'stripe_token' => $request->input('token')
         ]);
         return response([

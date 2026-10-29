@@ -26,7 +26,7 @@ def ts(schema):
             record = 'Record<string, ' + (ts(extra) if isinstance(extra, dict) else 'unknown') + '>'
             value = '(' + value + ' & ' + record + ')' if fields else record
     else: value = {'integer': 'number', 'number': 'number', 'boolean': 'boolean', 'string': 'string'}.get(schema.get('type'), 'unknown')
-    return value + (' | null' if schema.get('nullable') else '')
+    return value + (' | null' if schema.get('nullable') and None not in schema.get('enum', []) else '')
 def read_json(path):
     def unique(pairs):
         result = {}

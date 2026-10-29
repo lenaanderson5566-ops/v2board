@@ -67,6 +67,7 @@ const duration = (v: number | null) =>
 const eventNames: Record<string, string> = {
     guide_manual: "展开手动复制",
     guide_continue: "继续当前浏览器",
+    payment_open: "点击前往付款",
     download: "下载点击",
     copy_success: "复制成功",
     copy_failed: "复制失败",
@@ -335,7 +336,7 @@ export function JourneyAnalytics({
                                 })}
                             />
                             <p className="muted">
-                                下载、导入和帮助仅统计发起动作，不代表完成或连接成功。每页最多采样
+                                前往付款、下载、导入和帮助仅统计发起动作，不代表支付完成、安装完成或连接成功。每页最多采样
                                 20
                                 次接口调用，仅记录耗时和错误类别；客户端样本可能漏报，不用于风控或账务。
                             </p>

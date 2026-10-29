@@ -61,7 +61,7 @@ export function PlanSelection({
         ...(coupon ? { wallet_coupon_id: coupon.id } : {}),
         ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
         quote_method: methodId,
-    });
+    }, plan.currency);
     const serverQuote = preview.data;
     useEffect(() => {
         if (serverQuote) setPaymentMethods(serverQuote.methods || []);

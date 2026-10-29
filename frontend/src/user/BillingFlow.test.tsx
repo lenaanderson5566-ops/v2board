@@ -14,6 +14,7 @@ import {
     waitFor,
     act,
     within,
+    renderHook,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     couponsAvailable: true,
@@ -29,6 +30,7 @@ const mocks = vi.hoisted(() => ({
     detailLoading: false,
     subLoading: false,
     subError: "",
+    language: "zh-CN",
 }));
 vi.mock("../shared/api", () => ({
     boot: { mode: "user" },
@@ -46,7 +48,7 @@ vi.mock("../shared/api", () => ({
 }));
 vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
-    locale: () => "zh-CN",
+    locale: () => mocks.language,
     tx: (key: string, args: any = {}) =>
         key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
@@ -119,6 +121,7 @@ vi.mock("../shared/ui", () => ({
 }));
 import { SubscriptionPurchase } from "./SubscriptionPurchase";
 import { UnifiedCheckout } from "./UnifiedCheckout";
+import { useCheckoutQuote } from "./useCheckoutQuote";
 import { PaymentCheckout } from "./PaymentCheckout";
 import { Orders } from "./user";
 const plan = {
@@ -189,6 +192,7 @@ beforeEach(() => {
     mocks.sub = {};
     mocks.subLoading = false;
     mocks.subError = "";
+    mocks.language = "zh-CN";
     mocks.detail = { ...order };
     mocks.detailLoading = false;
     mocks.methods = [
@@ -1068,6 +1072,12 @@ it("re-quotes a conflict and waits for explicit confirmation before resubmitting
             ).disabled,
         ).toBe(false),
     );
+    fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+    await screen.findByText("¥30.00", { selector: ".purchase-footer-total strong" });
+    const requestsBeforeReturn = mocks.quoteRequest.mock.calls.length;
+    fireEvent.click(screen.getByRole("radio", { name: /季付/ }));
+    expect(screen.getByText("¥9.00", { selector: ".purchase-footer-total strong" })).toBeTruthy();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(requestsBeforeReturn);
     fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
     await screen.findByText("¥12.00", {
         selector: ".purchase-footer-total strong",
@@ -1245,4 +1255,163 @@ it("honors quote rate-limit cooldown across input changes and explicit retries",
         expect(mocks.quoteRequest.mock.calls.at(-1)?.[0].period).toBe("year_price");
         expect(mocks.request).not.toHaveBeenCalled();
     } finally { vi.useRealTimers(); }
+});
+
+const cachedSelection = { plan_id: 1, period: "quarter_price", quote_method: 11 };
+const settleCachedQuote = () => act(async () => { await vi.advanceTimersByTimeAsync(200); });
+it("instantly reuses a successful quote on a return selection without another request", async () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+        initialProps: { selection: cachedSelection },
+    });
+    await settleCachedQuote();
+    const original = result.current.data;
+    rerender({ selection: { ...cachedSelection, period: "year_price" } });
+    await settleCachedQuote();
+    expect(result.current.data?.payment_amount).toBe(3000);
+    rerender({ selection: cachedSelection });
+    expect(result.current.data).toBe(original);
+    expect(result.current.loading).toBe(false);
+    await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it.each([{ lifetime: 300, elapsed: 31_000 }, { lifetime: 7, elapsed: 2100 }])(
+    "refreshes a returned quote after cache or token safety expiry: %j", async ({ lifetime, elapsed }) => {
+        vi.useFakeTimers();
+        vi.setSystemTime(new Date("2026-10-29T08:00:00Z"));
+        const quote = mocks.quoteRequest.getMockImplementation()!;
+        mocks.quoteRequest.mockImplementation(async (body: any) => {
+            const result = await quote(body);
+            return { data: { ...result.data, expires_at: Math.floor(Date.now() / 1000) + lifetime } };
+        });
+        const { result, rerender } = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+            initialProps: { selection: cachedSelection },
+        });
+        await settleCachedQuote();
+        rerender({ selection: { ...cachedSelection, period: "year_price" } });
+        await settleCachedQuote();
+        await act(async () => { await vi.advanceTimersByTimeAsync(elapsed); });
+        rerender({ selection: cachedSelection });
+        expect(result.current.data).toBeUndefined();
+        expect(result.current.loading).toBe(true);
+        await settleCachedQuote();
+        expect(mocks.quoteRequest).toHaveBeenCalledTimes(3);
+        expect(result.current.data?.payment_amount).toBe(900);
+    },
+);
+it("does not extend the cache lifetime when a quote is reused", async () => {
+    vi.useFakeTimers();
+    const annual = { ...cachedSelection, period: "year_price" };
+    const { rerender } = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+        initialProps: { selection: cachedSelection },
+    });
+    await settleCachedQuote();
+    rerender({ selection: annual }); await settleCachedQuote();
+    await act(async () => { await vi.advanceTimersByTimeAsync(20_000); });
+    rerender({ selection: cachedSelection }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(11_000); });
+    rerender({ selection: annual }); await settleCachedQuote();
+    rerender({ selection: cachedSelection }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(4);
+});
+it("separates quotes by complete selection, currency and language", async () => {
+    vi.useFakeTimers();
+    const { rerender } = renderHook(({ selection, currency }) => useCheckoutQuote(true, selection, currency), {
+        initialProps: { selection: cachedSelection as any, currency: "CNY" },
+    });
+    await settleCachedQuote();
+    for (const selection of [
+        { ...cachedSelection, period: "year_price" },
+        { ...cachedSelection, quote_method: 12 },
+        { ...cachedSelection, wallet_coupon_id: 7 },
+        { ...cachedSelection, replace_trade_no: "owned-old-order" },
+        { ...cachedSelection, plan_id: 2 },
+    ]) { rerender({ selection, currency: "CNY" }); await settleCachedQuote(); }
+    rerender({ selection: cachedSelection, currency: "USD" }); await settleCachedQuote();
+    mocks.language = "en-US";
+    rerender({ selection: cachedSelection, currency: "CNY" }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(8);
+    mocks.language = "zh-CN";
+    rerender({ selection: cachedSelection, currency: "CNY" }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(8);
+});
+it("bypasses cached quotes on explicit refresh and rejects late responses after asset changes", async () => {
+    vi.useFakeTimers();
+    const quote = mocks.quoteRequest.getMockImplementation()!;
+    const { result, rerender } = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+        initialProps: { selection: cachedSelection },
+    });
+    await settleCachedQuote();
+    act(() => result.current.reload());
+    expect(result.current.data).toBeUndefined();
+    await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+    let oldResponse!: (value: any) => void;
+    mocks.quoteRequest.mockImplementationOnce(() => new Promise(resolve => { oldResponse = resolve; }));
+    const annual = { ...cachedSelection, period: "year_price" };
+    rerender({ selection: annual }); await settleCachedQuote();
+    act(() => window.dispatchEvent(new Event("data-changed")));
+    expect(result.current.data).toBeUndefined();
+    await settleCachedQuote();
+    await act(async () => oldResponse({ data: { ...(await quote(annual)).data, payment_amount: 1 } }));
+    expect(result.current.data?.payment_amount).toBe(3000);
+    rerender({ selection: cachedSelection }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(5);
+    expect(result.current.data?.payment_amount).toBe(900);
+});
+it.each([409, 500])("clears all cached combinations after quote failure %s", async status => {
+    vi.useFakeTimers();
+    const { rerender } = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+        initialProps: { selection: cachedSelection },
+    });
+    await settleCachedQuote();
+    mocks.quoteRequest.mockRejectedValueOnce(Object.assign(new Error("Changed"), { status }));
+    rerender({ selection: { ...cachedSelection, period: "year_price" } }); await settleCachedQuote();
+    rerender({ selection: cachedSelection }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(3);
+});
+it("does not use an older cache entry to bypass a rate-limit cooldown", async () => {
+    vi.useFakeTimers();
+    const { result, rerender } = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+        initialProps: { selection: cachedSelection },
+    });
+    await settleCachedQuote();
+    mocks.quoteRequest.mockRejectedValueOnce(Object.assign(new Error("Limited"), { status: 429, retryAfter: 3 }));
+    rerender({ selection: { ...cachedSelection, period: "year_price" } }); await settleCachedQuote();
+    rerender({ selection: cachedSelection }); await settleCachedQuote();
+    expect(result.current.data).toBeUndefined();
+    expect(result.current.status).toBe(429);
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+    await act(async () => { await vi.advanceTimersByTimeAsync(3000); });
+    act(() => result.current.reload()); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(3);
+});
+it("releases page quotes on unmount and stops reuse and requests after session expiry", async () => {
+    vi.useFakeTimers();
+    const first = renderHook(() => useCheckoutQuote(true, cachedSelection));
+    await settleCachedQuote(); first.unmount();
+    const next = renderHook(({ selection }) => useCheckoutQuote(true, selection), {
+        initialProps: { selection: cachedSelection },
+    });
+    await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+    act(() => window.dispatchEvent(new Event("auth-expired")));
+    expect(next.result.current.data).toBeUndefined();
+    next.rerender({ selection: { ...cachedSelection, period: "year_price" } });
+    await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(2);
+});
+it("limits retained combinations while keeping recently used quotes reusable", async () => {
+    vi.useFakeTimers();
+    const { rerender } = renderHook(({ coupon }) => useCheckoutQuote(true, { ...cachedSelection, wallet_coupon_id: coupon }), {
+        initialProps: { coupon: 1 },
+    });
+    await settleCachedQuote();
+    for (let coupon = 2; coupon <= 11; coupon++) { rerender({ coupon }); await settleCachedQuote(); }
+    rerender({ coupon: 2 }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(11);
+    rerender({ coupon: 1 }); await settleCachedQuote();
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(12);
 });

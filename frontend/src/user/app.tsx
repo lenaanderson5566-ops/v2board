@@ -49,7 +49,7 @@ import { InviteCampaign } from "./InviteCampaign";
 import { AccountMenu } from "./AccountMenu";
 import { BrowserAccessGate } from "./EmbeddedBrowserNotice";
 
-import { clearCheckoutPayment } from "./checkout-navigation";
+import { clearCheckoutPayment, purchaseReturnPath } from "./checkout-navigation";
 import { userNavigation } from "./user-navigation";
 import {
     WorkspaceSkeleton,
@@ -113,11 +113,7 @@ function UserApp() {
     const sidebar = useRef<HTMLElement>(null);
     const loggingOut = useRef(false);
     // Resume only known local purchase routes; never accept arbitrary return URLs.
-    const purchaseReturn = useRef<string | undefined>(
-        /^(plan(?:\/[1-9]\d*)?|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(path)
-            ? path
-            : undefined,
-    );
+    const purchaseReturn = useRef<string | undefined>(purchaseReturnPath(location.hash));
     const authorizationReturn = useRef<string | undefined>(
         /^#\/client-authorize\?authorizationId=[a-f0-9]{64}$/.test(
             location.hash,
@@ -191,12 +187,7 @@ function UserApp() {
         const fn = () => {
             const current = location.hash.slice(2).split("?")[0];
             if (!["login", "register", "forget"].includes(current))
-                purchaseReturn.current =
-                    /^(plan(?:\/[1-9]\d*)?|activities|coupons|order(?:\/[a-zA-Z0-9_-]+)?)$/.test(
-                        current,
-                    )
-                        ? current
-                        : undefined;
+                purchaseReturn.current = purchaseReturnPath(location.hash);
             if (
                 /^#\/client-authorize\?authorizationId=[a-f0-9]{64}$/.test(
                     location.hash,
@@ -213,6 +204,7 @@ function UserApp() {
             setOpen(false);
         };
         const expire = () => {
+            purchaseReturn.current = purchaseReturnPath(location.hash) || purchaseReturn.current;
             clearCheckoutPayment();
             active = false;
             setLoading(false);

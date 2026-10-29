@@ -1036,7 +1036,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "Tạm thời không tải được phiếu giảm giá. Vui lòng thử lại sau.",
     "retryIn": "Thử lại sau {{seconds}} giây",
-    "reselectPayment": "Chọn lại phương thức thanh toán"
+    "reselectPayment": "Chọn lại phương thức thanh toán",
+    "previousQuote": "Giá trước đó"
   },
   "profile": {
     "intro": "Xem email đăng nhập, quản lý ngôn ngữ và dịch vụ đã kết nối.",

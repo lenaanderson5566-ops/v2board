@@ -1038,7 +1038,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "Kupon sementara tidak tersedia. Silakan coba lagi nanti.",
     "retryIn": "Coba lagi dalam {{seconds}} dtk",
-    "reselectPayment": "Pilih ulang metode pembayaran"
+    "reselectPayment": "Pilih ulang metode pembayaran",
+    "previousQuote": "Harga sebelumnya"
   },
   "profile": {
     "intro": "Lihat email masuk Anda dan kelola bahasa serta layanan terhubung Anda.",

@@ -66,6 +66,32 @@
     padding-top: 20px;
     border-top: 1px solid var(--line);
 }
+.checkout-quote-status {
+    min-block-size: 1.5em;
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.unified-checkout .purchase-breakdown .checkout-lines {
+    min-block-size: 108px;
+}
+.unified-checkout .quote-snapshot-label {
+    display: block;
+    min-block-size: 1.5em;
+    font-size: 11px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+.unified-checkout .purchase-breakdown.is-requoting dd,
+.unified-checkout .purchase-footer-total.is-requoting strong {
+    color: var(--text-secondary);
+}
+.unified-checkout .purchase-footer-total strong {
+    min-block-size: 1.3em;
+    line-height: 1.3;
+    font-variant-numeric: tabular-nums;
+}
 .checkout-order-recovery {
     padding: 20px;
     border: 1px solid var(--line);
@@ -73,6 +99,35 @@
     background: var(--surface-soft);
 }
 .checkout-order-recovery > p { margin-top: 0; }
+.unified-checkout .checkout-embedded > .checkout-heading {
+    justify-content: flex-end;
+    margin: 0 0 16px;
+}
+.unified-checkout .inline-order-refresh {
+    min-block-size: 1.5em;
+    margin: 0 0 8px;
+    font-size: 12px;
+    line-height: 1.5;
+}
+.unified-checkout .checkout-embedded .checkout-layout {
+    gap: 24px;
+}
+.unified-checkout .checkout-embedded .checkout-summary {
+    padding: 20px;
+}
+.unified-checkout .checkout-embedded .checkout-qr {
+    scroll-margin-block: 80px;
+}
+.checkout-qr-channel {
+    display: grid;
+    gap: 4px;
+    margin: 0 0 12px;
+    color: var(--ink);
+}
+.checkout-qr-channel span {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
 .checkout-method-section .alert { flex-wrap: wrap; gap: 10px; }
 @media (max-width: 800px) {
     .unified-checkout .purchase-selection {

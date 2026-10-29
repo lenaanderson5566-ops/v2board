@@ -35,8 +35,10 @@ export function PaymentCheckout({
     reload,
     renderCard,
     initialPayment,
+    embedded = false,
 }: {
     initialPayment?: InitialPayment;
+    embedded?: boolean;
     order: Row;
     reload: () => void;
     renderCard: (
@@ -60,7 +62,7 @@ export function PaymentCheckout({
             : "",
         undefined,
         false,
-        // A successful checkout emits data-changed immediately before navigation.
+        // A successful checkout emits data-changed before entering payment.
         // Keep the loaded methods stable; order status has its own polling lifecycle.
         { refreshOnEvents: false },
     );
@@ -70,6 +72,20 @@ export function PaymentCheckout({
     const [busy, setBusy] = useState(false),
         [error, setError] = useState(""),
         [qr, setQr] = useState("");
+    const qrPanel = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!embedded || !qr || !qrPanel.current) return;
+        const bounds = qrPanel.current.getBoundingClientRect();
+        if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
+            return;
+        qrPanel.current.scrollIntoView?.({
+            block: "center",
+            behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+                ?.matches
+                ? "instant"
+                : "smooth",
+        });
+    }, [embedded, qr]);
     const [waiting, setWaiting] = useState(
         due > 0 && Boolean(order.payment_id),
     );
@@ -383,14 +399,17 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
-    if ([2, 3, 4].includes(status)) return <OrderReceipt order={order} />;
+    if ([2, 3, 4].includes(status))
+        return <OrderReceipt order={order} embedded={embedded} />;
     if (![0, 1].includes(status))
         return (
             <div className="checkout-page">
-                <a className="receipt-back" href="#/order">
-                    <ArrowLeft size={16} />
-                    {tx("账单")}
-                </a>
+                {!embedded && (
+                    <a className="receipt-back" href="#/order">
+                        <ArrowLeft size={16} />
+                        {tx("账单")}
+                    </a>
+                )}
                 <div className="alert" role="alert">
                     {tx("订单状态暂不可用，请刷新后重试。")}
                     <button onClick={reload}>{tx("刷新")}</button>
@@ -398,30 +417,34 @@ export function PaymentCheckout({
             </div>
         );
     return (
-        <div className="checkout-page">
-            <a className="receipt-back" href="#/order">
-                <ArrowLeft size={16} />
-                {tx("账单")}
-            </a>
+        <div className={`checkout-page${embedded ? " checkout-embedded" : ""}`}>
+            {!embedded && (
+                <a className="receipt-back" href="#/order">
+                    <ArrowLeft size={16} />
+                    {tx("账单")}
+                </a>
+            )}
             <header className="checkout-heading">
-                <div>
-                    <h1>
-                        {tx(
-                            status === 1
-                                ? "支付已确认，正在开通"
-                                : "确认与支付",
-                        )}
-                    </h1>
-                    {(status === 1 || !waiting) && (
-                        <p>
+                {!embedded && (
+                    <div>
+                        <h1>
                             {tx(
                                 status === 1
-                                    ? "开通结果将自动更新，请勿重复支付。"
-                                    : "请核对订单，选择支付方式后继续。",
+                                    ? "支付已确认，正在开通"
+                                    : "确认与支付",
                             )}
-                        </p>
-                    )}
-                </div>
+                        </h1>
+                        {(status === 1 || !waiting) && (
+                            <p>
+                                {tx(
+                                    status === 1
+                                        ? "开通结果将自动更新，请勿重复支付。"
+                                        : "请核对订单，选择支付方式后继续。",
+                                )}
+                            </p>
+                        )}
+                    </div>
+                )}
                 <span
                     className={`checkout-status ${status === 1 ? "processing" : ""}`}
                 >
@@ -433,7 +456,9 @@ export function PaymentCheckout({
                     {tx(status === 1 ? "开通中" : "待支付")}
                 </span>
             </header>
-            {!order.credit_bytes && !deposit && <PurchaseSteps step={2} />}
+            {!embedded && !order.credit_bytes && !deposit && (
+                <PurchaseSteps step={2} />
+            )}
             <div
                 className={
                     status === 1
@@ -635,7 +660,10 @@ export function PaymentCheckout({
                             </State>
                         )}
                         {qr && (
-                            <div className="checkout-qr">
+                            <div ref={qrPanel} className="checkout-qr">
+                                {method && <p className="checkout-qr-channel"><strong>{method.name}</strong>
+                                    {method.category === "crypto" && <span>{method.asset} · {method.network_name || method.network}</span>}
+                                </p>}
                                 <QRCodeSVG
                                     value={qr}
                                     size={200}

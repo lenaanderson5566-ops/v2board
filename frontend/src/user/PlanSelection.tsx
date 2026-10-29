@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+    type FormEvent,
+} from "react";
 import { bytes, money, navigate, request, type Row } from "../shared/api";
 import { e } from "../shared/experience-copy";
 import { tx } from "../shared/i18n";
@@ -55,14 +61,50 @@ export function PlanSelection({
             ? selection
             : null;
     const quote = purchaseQuote(plan, period, coupon?.discountPercent);
-    const preview = useCheckoutQuote(unified && !uncertain, {
-        plan_id: Number(plan.id),
-        period,
-        ...(coupon ? { wallet_coupon_id: coupon.id } : {}),
-        ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
-        quote_method: methodId,
-    }, plan.currency);
+    const preview = useCheckoutQuote(
+        unified && !uncertain,
+        {
+            plan_id: Number(plan.id),
+            period,
+            ...(coupon ? { wallet_coupon_id: coupon.id } : {}),
+            ...(replaceTradeNo ? { replace_trade_no: replaceTradeNo } : {}),
+            quote_method: methodId,
+        },
+        plan.currency,
+    );
     const serverQuote = preview.data;
+    // Presentation only: submission below always uses the current serverQuote.
+    const quoteScope = JSON.stringify([plan.id, plan.currency]);
+    const lastQuote = useRef<
+        { data: Row; period: string; scope: string } | undefined
+    >(undefined);
+    const quoteLines = useRef<HTMLDListElement>(null);
+    const quoteSize = useRef({ width: 0, height: 0 });
+    useEffect(() => {
+        if (serverQuote)
+            lastQuote.current = {
+                data: serverQuote,
+                period,
+                scope: quoteScope,
+            };
+    }, [serverQuote, period, quoteScope]);
+    const previous =
+        lastQuote.current?.scope === quoteScope ? lastQuote.current : undefined;
+    const displayQuote = serverQuote || previous?.data;
+    const displayPeriod = serverQuote ? period : previous?.period || period;
+    const showingPrevious = unified && !serverQuote && Boolean(displayQuote);
+    useLayoutEffect(() => {
+        const lines = quoteLines.current;
+        if (!unified || !lines) return;
+        lines.style.minHeight = "";
+        const { width, height } = lines.getBoundingClientRect();
+        const minimum =
+            Math.abs(width - quoteSize.current.width) < 1
+                ? Math.max(height, quoteSize.current.height)
+                : height;
+        quoteSize.current = { width, height: minimum };
+        lines.style.minHeight = `${Math.ceil(minimum)}px`;
+    }, [unified, displayQuote]);
     useEffect(() => {
         if (serverQuote) setPaymentMethods(serverQuote.methods || []);
     }, [serverQuote]);
@@ -274,16 +316,24 @@ export function PlanSelection({
                             {unified && (
                                 <section className="checkout-method-section">
                                     <h3>{tx("选择支付方式")}</h3>
-                                    {preview.loading && !serverQuote ? (
-                                        <p className="muted" role="status">
-                                            {pc("quoteLoading")}
-                                        </p>
-                                    ) : null}
+                                    <p
+                                        className="checkout-quote-status muted"
+                                        role="status"
+                                        aria-live="polite"
+                                    >
+                                        {preview.loading
+                                            ? pc("quoteLoading")
+                                            : "\u00a0"}
+                                    </p>
                                     {paymentMethods.length > 0 && (
                                         <PaymentMethodPicker
                                             methods={paymentMethods}
                                             selected={methodId}
-                                            disabled={busy || uncertain || preview.retryIn > 0}
+                                            disabled={
+                                                busy ||
+                                                uncertain ||
+                                                preview.retryIn > 0
+                                            }
                                             onSelect={(id) => {
                                                 manualPaymentSelection.current = true;
                                                 setMethodId(id);
@@ -305,15 +355,37 @@ export function PlanSelection({
                                                 disabled={preview.retryIn > 0}
                                                 onClick={preview.reload}
                                             >
-                                                {preview.retryIn > 0 ? pc("retryIn", { seconds: preview.retryIn }) : tx("重试")}
+                                                {preview.retryIn > 0
+                                                    ? pc("retryIn", {
+                                                          seconds:
+                                                              preview.retryIn,
+                                                      })
+                                                    : tx("重试")}
                                             </button>
-                                            {preview.status === 409 && <>
-                                                <a href="#/order">{tx("查看订单记录")}</a>
-                                                {methodId > 0 && paymentMethods.length > 0 && <button type="button" onClick={() => {
-                                                    manualPaymentSelection.current = false;
-                                                    setMethodId(0);
-                                                }}>{pc("reselectPayment")}</button>}
-                                            </>}
+                                            {preview.status === 409 && (
+                                                <>
+                                                    <a href="#/order">
+                                                        {tx("查看订单记录")}
+                                                    </a>
+                                                    {methodId > 0 &&
+                                                        paymentMethods.length >
+                                                            0 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    manualPaymentSelection.current = false;
+                                                                    setMethodId(
+                                                                        0,
+                                                                    );
+                                                                }}
+                                                            >
+                                                                {pc(
+                                                                    "reselectPayment",
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                </>
+                                            )}
                                         </div>
                                     )}
                                     {preview.expired && (
@@ -331,11 +403,23 @@ export function PlanSelection({
                             )}
                         </section>
                         <section
-                            className="purchase-breakdown"
+                            className={`purchase-breakdown${showingPrevious ? " is-requoting" : ""}`}
                             aria-label={pc("priceDetails")}
                         >
                             <h3>{pc("priceDetails")}</h3>
-                            <dl className="checkout-lines" aria-live="polite">
+                            {unified && (
+                                <span className="quote-snapshot-label">
+                                    {showingPrevious
+                                        ? pc("previousQuote")
+                                        : "\u00a0"}
+                                </span>
+                            )}
+                            <dl
+                                ref={quoteLines}
+                                className="checkout-lines"
+                                aria-live="polite"
+                                aria-busy={unified && preview.loading}
+                            >
                                 {!unified && quote.cycleSaving > 0 && (
                                     <>
                                         <div>
@@ -366,21 +450,25 @@ export function PlanSelection({
                                 <div>
                                     <dt>
                                         {tx("套餐价格")} ·{" "}
-                                        {tx(billingPeriods[period] || "")}
+                                        {tx(
+                                            billingPeriods[
+                                                unified ? displayPeriod : period
+                                            ] || "",
+                                        )}
                                     </dt>
                                     <dd>
-                                        {unified && !serverQuote
+                                        {unified && !displayQuote
                                             ? "—"
                                             : money(
                                                   unified
-                                                      ? serverQuote?.plan_amount
+                                                      ? displayQuote?.plan_amount
                                                       : quote.amount,
                                                   plan.currency,
                                               )}
                                     </dd>
                                 </div>
                                 {(unified
-                                    ? Number(serverQuote?.discount_amount) > 0
+                                    ? Number(displayQuote?.discount_amount) > 0
                                     : Boolean(coupon)) && (
                                     <div className="discount-line">
                                         <dt>
@@ -402,61 +490,61 @@ export function PlanSelection({
                                             −
                                             {money(
                                                 unified
-                                                    ? serverQuote?.discount_amount
+                                                    ? displayQuote?.discount_amount
                                                     : quote.couponSaving,
                                                 plan.currency,
                                             )}
                                         </dd>
                                     </div>
                                 )}
-                                {unified && serverQuote && (
+                                {unified && displayQuote && (
                                     <>
-                                        {Number(serverQuote.surplus_amount) >
+                                        {Number(displayQuote.surplus_amount) >
                                             0 && (
                                             <div>
                                                 <dt>{pc("surplusCredit")}</dt>
                                                 <dd>
                                                     −
                                                     {money(
-                                                        serverQuote.surplus_amount,
+                                                        displayQuote.surplus_amount,
                                                         plan.currency,
                                                     )}
                                                 </dd>
                                             </div>
                                         )}
-                                        {Number(serverQuote.refund_amount) >
+                                        {Number(displayQuote.refund_amount) >
                                             0 && (
                                             <div>
                                                 <dt>{pc("surplusRefund")}</dt>
                                                 <dd>
                                                     +
                                                     {money(
-                                                        serverQuote.refund_amount,
+                                                        displayQuote.refund_amount,
                                                         plan.currency,
                                                     )}
                                                 </dd>
                                             </div>
                                         )}
-                                        {Number(serverQuote.balance_amount) >
+                                        {Number(displayQuote.balance_amount) >
                                             0 && (
                                             <div>
                                                 <dt>{tx("余额抵扣")}</dt>
                                                 <dd>
                                                     −
                                                     {money(
-                                                        serverQuote.balance_amount,
+                                                        displayQuote.balance_amount,
                                                         plan.currency,
                                                     )}
                                                 </dd>
                                             </div>
                                         )}
-                                        {Number(serverQuote.handling_amount) >
+                                        {Number(displayQuote.handling_amount) >
                                             0 && (
                                             <div>
                                                 <dt>{tx("支付手续费")}</dt>
                                                 <dd>
                                                     {money(
-                                                        serverQuote.handling_amount,
+                                                        displayQuote.handling_amount,
                                                         plan.currency,
                                                     )}
                                                 </dd>
@@ -489,9 +577,18 @@ export function PlanSelection({
                     </div>
                 </fieldset>
                 <div className="purchase-footer">
-                    <div className="purchase-footer-total" aria-live="polite">
+                    <div
+                        className={`purchase-footer-total${showingPrevious ? " is-requoting" : ""}`}
+                        aria-live="polite"
+                        aria-busy={unified && preview.loading}
+                    >
                         <span className="purchase-footer-context">
-                            {plan.name} · {tx(billingPeriods[period] || "")}
+                            {plan.name} ·{" "}
+                            {tx(
+                                billingPeriods[
+                                    unified ? displayPeriod : period
+                                ] || "",
+                            )}
                         </span>
                         <span>
                             {unified
@@ -502,14 +599,19 @@ export function PlanSelection({
                                           : "estimatedSubtotal",
                                   )}
                         </span>
+                        {unified && (
+                            <span className="quote-snapshot-label">
+                                {showingPrevious
+                                    ? pc("previousQuote")
+                                    : "\u00a0"}
+                            </span>
+                        )}
                         <strong>
                             {unified
-                                ? serverQuote &&
-                                  !preview.loading &&
-                                  !preview.error
+                                ? displayQuote
                                     ? money(
-                                          serverQuote.payment_amount,
-                                          serverQuote.payment_currency,
+                                          displayQuote.payment_amount,
+                                          displayQuote.payment_currency,
                                       )
                                     : "—"
                                 : money(quote.subtotal, plan.currency)}

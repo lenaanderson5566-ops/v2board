@@ -1038,7 +1038,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "Coupons are temporarily unavailable. Please try again later.",
     "retryIn": "Retry in {{seconds}}s",
-    "reselectPayment": "Choose payment method again"
+    "reselectPayment": "Choose payment method again",
+    "previousQuote": "Previous quote"
   },
   "profile": {
     "intro": "View your sign-in email and manage your language and connected services.",

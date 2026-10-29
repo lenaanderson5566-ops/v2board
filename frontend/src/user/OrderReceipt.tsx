@@ -1,4 +1,5 @@
 import { CheckCircle2, CircleX, ArrowLeft, ReceiptText } from "lucide-react";
+import { useEffect, useRef } from "react";
 import { bytes, money as formatMoney, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { e } from "../shared/experience-copy";
@@ -6,7 +7,27 @@ import { c, minuteDate } from "../shared/credit-copy";
 import { billingPeriods, orderOriginalAmount } from "./billing-flow";
 import { OrderHelp } from "./OrderHelp";
 
-export function OrderReceipt({ order }: { order: Row }) {
+export function OrderReceipt({
+    order,
+    embedded = false,
+}: {
+    order: Row;
+    embedded?: boolean;
+}) {
+    const statusPanel = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (!embedded || !statusPanel.current) return;
+        const bounds = statusPanel.current.getBoundingClientRect();
+        if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
+            return;
+        statusPanel.current.scrollIntoView?.({
+            block: "nearest",
+            behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
+                ?.matches
+                ? "instant"
+                : "smooth",
+        });
+    }, [embedded, order.status]);
     const money = (amount: unknown) =>
         formatMoney(amount, order.currency || "CNY");
     const cancelled = Number(order.status) === 2,
@@ -18,11 +39,14 @@ export function OrderReceipt({ order }: { order: Row }) {
         fee = Number(order.handling_amount || 0);
     return (
         <article className="order-receipt">
-            <a className="receipt-back" href="#/order">
-                <ArrowLeft size={16} />
-                {c("back")}
-            </a>
+            {!embedded && (
+                <a className="receipt-back" href="#/order">
+                    <ArrowLeft size={16} />
+                    {c("back")}
+                </a>
+            )}
             <div
+                ref={statusPanel}
                 className={`receipt-status ${cancelled ? "cancelled" : applied ? "applied" : "completed"}`}
             >
                 <Icon size={28} aria-hidden="true" />

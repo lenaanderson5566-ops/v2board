@@ -143,6 +143,7 @@ export function Subscribe() {
 export function Plans({planId}: {planId?:number} = {}) {
     if (planId) return <UnifiedCheckout key={planId} planId={planId}
         initialPeriod={new URLSearchParams(location.hash.split("?")[1]).get("period") || undefined}
+        initialOrder={new URLSearchParams(location.hash.split("?")[1]).get("order") || undefined}
         replaceTradeNo={new URLSearchParams(location.hash.split("?")[1]).get("replace") || undefined}/>;
     return <SubscriptionPurchase />;
 }

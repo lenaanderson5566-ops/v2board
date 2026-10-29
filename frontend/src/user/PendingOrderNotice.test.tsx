@@ -38,3 +38,11 @@ it("replaces payment and cancellation actions when provisioning starts", () => {
     expect(screen.queryByRole("link", { name: "继续支付" })).toBeNull();
     expect(screen.queryByRole("button", { name: /取消/ })).toBeNull();
 });
+it("continues an order in its parent checkout without navigation or a payment request", () => {
+    const resume = vi.fn();
+    render(<PendingOrderNotice order={order} reload={vi.fn()} onContinue={resume} />);
+    fireEvent.click(screen.getByRole("button", { name: "继续支付" }));
+    expect(resume).toHaveBeenCalledWith("pending-1");
+    expect(request).not.toHaveBeenCalled();
+    expect(screen.queryByRole("link", { name: "继续支付" })).toBeNull();
+});

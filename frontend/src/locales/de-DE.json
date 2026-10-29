@@ -1038,7 +1038,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "Gutscheine sind vorübergehend nicht verfügbar. Bitte später erneut versuchen.",
     "retryIn": "In {{seconds}} s erneut versuchen",
-    "reselectPayment": "Zahlungsart erneut auswählen"
+    "reselectPayment": "Zahlungsart erneut auswählen",
+    "previousQuote": "Letztes Angebot"
   },
   "profile": {
     "intro": "Sehen Sie sich Ihre Anmelde-E-Mail an und verwalten Sie Ihre Sprache und verbundene Dienste.",

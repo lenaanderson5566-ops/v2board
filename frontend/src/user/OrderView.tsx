@@ -13,9 +13,13 @@ import { PaymentCheckout, type InitialPayment } from "./PaymentCheckout";
 export function OrderView({
     tradeNo,
     initialPayment,
+    embedded = false,
+    onStatusChange,
 }: {
     tradeNo: string;
     initialPayment?: InitialPayment;
+    embedded?: boolean;
+    onStatusChange?: (status: number) => void;
 }) {
     const [confirmation] = useState(() => ({
         tradeNo,
@@ -28,14 +32,28 @@ export function OrderView({
     }, [tradeNo]);
     const d = useData<Row>(query("user/order/detail", { trade_no: tradeNo }));
     useEffect(() => {
-        if (d.data && [2, 3, 4].includes(Number(d.data.status)))
+        if (d.data && String(d.data.trade_no) === tradeNo)
+            onStatusChange?.(Number(d.data.status));
+    }, [tradeNo, d.data?.trade_no, d.data?.status, onStatusChange]);
+    useEffect(() => {
+        if (!embedded && d.data && [2, 3, 4].includes(Number(d.data.status)))
             window.scrollTo({ top: 0, behavior: "instant" });
-    }, [tradeNo, d.data?.status]);
+    }, [tradeNo, d.data?.status, embedded]);
     return (
         <div className="order-view" aria-busy={d.loading}>
-            {d.data ? (
+            {embedded && (
+                <p className="inline-order-refresh muted" role="status">
+                    {d.loading ? e("refreshing") : "\u00a0"}
+                </p>
+            )}
+            {d.data && String(d.data.trade_no) !== tradeNo ? (
+                <div className="alert" role="alert">
+                    {tx("订单状态暂不可用，请刷新后重试。")}
+                    <button onClick={d.reload}>{tx("刷新")}</button>
+                </div>
+            ) : d.data ? (
                 <>
-                    {d.loading && (
+                    {!embedded && d.loading && (
                         <p className="pad muted" role="status">
                             {e("refreshing")}
                         </p>
@@ -51,9 +69,10 @@ export function OrderView({
                         order={d.data}
                         reload={d.reload}
                         initialPayment={confirmedPayment}
+                        embedded={embedded}
                     />
                 </>
-            ) : (
+            ) : embedded && d.loading ? null : (
                 <State {...d} retry={d.reload}>
                     <></>
                 </State>
@@ -66,14 +85,17 @@ function OrderDetail({
     order,
     reload,
     initialPayment,
+    embedded,
 }: {
     order: Row;
     reload: () => void;
     initialPayment?: InitialPayment;
+    embedded?: boolean;
 }) {
     return (
         <PaymentCheckout
             order={order}
+            embedded={embedded}
             initialPayment={initialPayment}
             reload={reload}
             renderCard={(method, pay) => (

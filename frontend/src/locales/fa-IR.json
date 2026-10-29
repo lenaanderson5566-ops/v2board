@@ -1038,7 +1038,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "بارگیری کوپن‌ها موقتاً ممکن نیست. لطفاً بعداً دوباره تلاش کنید.",
     "retryIn": "تلاش مجدد پس از {{seconds}} ثانیه",
-    "reselectPayment": "انتخاب دوباره روش پرداخت"
+    "reselectPayment": "انتخاب دوباره روش پرداخت",
+    "previousQuote": "برآورد قبلی"
   },
   "profile": {
     "intro": "ایمیل ورود، زبان و سرویس‌های متصل را مدیریت کنید.",

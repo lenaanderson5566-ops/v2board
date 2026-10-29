@@ -8,7 +8,7 @@ vi.mock("../shared/i18n",()=>({tx:(key:string)=>key,locale:()=>"en-US",setLangua
 vi.mock("react-i18next",()=>({useTranslation:()=>({})}));
 vi.mock("../shared/LanguagePicker",()=>({LanguagePicker:()=>null}));
 vi.mock("../shared/WorkspaceSkeleton",()=>({WorkspaceSkeleton:()=> <p>Loading</p>,LandingSkeleton:()=>null}));
-vi.mock("./UserAuth",()=>({UserAuth:()=> <p>Sign in</p>}));
+vi.mock("./UserAuth",()=>({UserAuth:({redirectPath}:any)=> <><p>Sign in</p><output data-testid="login-return">{redirectPath}</output></>}));
 vi.mock("./AnalyticsPrivacy",()=>({AnalyticsPrivacy:()=>null,AnalyticsPrivacyFooter:()=>null,PrivacyFooterLinks:()=>null}));
 vi.mock("./EmbeddedBrowserNotice",()=>({BrowserAccessGate:({children}:any)=>children}));
 vi.mock("./chat-layout",()=>({installChatLayout:()=>()=>{}}));
@@ -37,4 +37,14 @@ it("ignores initial account loading after the shell is unmounted",async()=>{
     let finish!:(value:any)=>void;mocks.read.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
     const view=render(<App/>);await waitFor(()=>expect(mocks.read).toHaveBeenCalled());view.unmount();
     await act(async()=>finish({data:{id:42,language:"en-US"}}));expect(mocks.language).not.toHaveBeenCalled();
+});
+it("retains the inline order reference after session expiry without carrying payment instructions",async()=>{
+    history.replaceState(null,"","#/plan/1?period=year_price");
+    mocks.read.mockResolvedValue({data:{id:42,email:"viewer@example.test",language:"en-US",account_status:{state:"new"}}});
+    render(<App/>);
+    await screen.findByText("Protected workspace");
+    history.replaceState(null,"","#/plan/1?order=resume_123&pay=true&requestKey=secret");
+    act(()=>window.dispatchEvent(new Event("auth-expired")));
+    await screen.findByText("Sign in");
+    expect(screen.getByTestId("login-return").textContent).toBe("plan/1?order=resume_123");
 });

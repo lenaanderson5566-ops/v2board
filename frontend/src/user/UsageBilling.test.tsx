@@ -27,7 +27,7 @@ vi.mock("../shared/api", () => ({
     bytes: (s: number) => `${s} B`,
     money: (s: number) => `¥${s / 100}`,
 }));
-vi.mock("../shared/i18n", () => ({ tx: (s: string) => s }));
+vi.mock("../shared/i18n", () => ({ tx: (s: string) => s, locale: () => "zh-CN" }));
 vi.mock("../shared/credit-copy", () => ({
     c: (key: string) => key,
     minuteDate: (value: unknown) => String(value || "—"),

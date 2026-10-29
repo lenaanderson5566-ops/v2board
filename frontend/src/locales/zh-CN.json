@@ -1036,7 +1036,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "优惠券暂时无法加载，请稍后重试。",
     "retryIn": "{{seconds}} 秒后重试",
-    "reselectPayment": "重新选择支付方式"
+    "reselectPayment": "重新选择支付方式",
+    "previousQuote": "上次报价"
   },
   "profile": {
     "intro": "查看登录邮箱，管理个人语言偏好与已连接的服务。",

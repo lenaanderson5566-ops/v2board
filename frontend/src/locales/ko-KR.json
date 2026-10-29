@@ -1036,7 +1036,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "쿠폰을 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
     "retryIn": "{{seconds}}초 후 재시도",
-    "reselectPayment": "결제 수단 다시 선택"
+    "reselectPayment": "결제 수단 다시 선택",
+    "previousQuote": "이전 견적"
   },
   "profile": {
     "intro": "로그인 이메일, 언어 및 연결된 서비스를 관리하세요.",

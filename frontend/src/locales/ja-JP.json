@@ -1036,7 +1036,8 @@
     "speedValue": "{{value}} Mbps",
     "couponUnavailable": "クーポンを読み込めません。しばらくしてから再試行してください。",
     "retryIn": "{{seconds}}秒後に再試行",
-    "reselectPayment": "支払い方法を選び直す"
+    "reselectPayment": "支払い方法を選び直す",
+    "previousQuote": "前回の見積もり"
   },
   "profile": {
     "intro": "ログインメール、言語設定、連携サービスを管理します。",

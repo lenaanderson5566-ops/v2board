@@ -844,7 +844,8 @@
     "bilibili": "嗶哩嗶哩",
     "alipay": "支付寶",
     "dingtalk": "釘釘",
-    "wecom": "企業微信"
+    "wecom": "企業微信",
+    "pageRecovery": "請重新載入此頁，或透過導覽開啟其他頁面。"
   },
   "ux": {
     "cancel": "取消",
@@ -893,7 +894,10 @@
     "official": "官方下載",
     "mirror": "鏡像下載",
     "unavailable": "暫未提供",
-    "hint": "請選擇適合裝置系統和晶片的版本。"
+    "hint": "請選擇適合裝置系統和晶片的版本。",
+    "installThenImport": "安裝用戶端後，返回此處匯入訂閱。",
+    "officialUnavailable": "官方下載暫不可用，請使用可用鏡像或選擇其他用戶端。",
+    "continueImport": "已安裝，繼續匯入"
   },
   "fastaiDownload": {
     "dedicated": "本站專用",
@@ -938,7 +942,8 @@
   "clientImport": {
     "invalid": "訂閱設定暫不可用，請重新整理後再試。",
     "copied": "已複製，請在用戶端的訂閱管理中貼上並更新設定。",
-    "opened": "請在用戶端確認匯入並更新設定。若用戶端未開啟，請先安裝用戶端或複製訂閱連結手動匯入。"
+    "opened": "請在用戶端確認匯入並更新設定。若用戶端未開啟，請先安裝用戶端或複製訂閱連結手動匯入。",
+    "manualUrl": "訂閱連結"
   },
   "landing": {
     "inviteStart": "受邀註冊",

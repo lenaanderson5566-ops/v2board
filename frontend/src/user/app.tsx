@@ -43,6 +43,7 @@ import {
 } from "../shared/api";
 
 import { UserAuth } from "./UserAuth";
+import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { UserStatusGate } from "./AccountEntry";
 import { AnnouncementCenter } from "./AnnouncementCenter";
 import { InviteCampaign } from "./InviteCampaign";
@@ -154,6 +155,7 @@ function UserApp() {
         if (!open) return;
         const previous = document.body.style.overflow;
         const previousFocus = document.activeElement as HTMLElement | null;
+        const openedAtPath = location.hash.slice(2).split("?")[0];
         document.body.style.overflow = "hidden";
         sidebar.current?.querySelector<HTMLElement>("button, a[href]")?.focus();
         const escape = (event: KeyboardEvent) => {
@@ -179,7 +181,8 @@ function UserApp() {
         return () => {
             document.body.style.overflow = previous;
             window.removeEventListener("keydown", escape);
-            previousFocus?.focus();
+            if (location.hash.slice(2).split("?")[0] === openedAtPath)
+                previousFocus?.focus();
         };
     }, [open]);
     useEffect(() => {
@@ -364,9 +367,11 @@ function UserApp() {
                   ? "plan"
                   : navigationCurrent;
     const content = (
-        <React.Suspense fallback={<WorkspaceSkeleton />}>
-            <UserContent current={current} path={path} />
-        </React.Suspense>
+        <ErrorBoundary key={path} message={tx("pageRecovery", { ns: "experience" })}>
+            <React.Suspense fallback={<WorkspaceSkeleton />}>
+                <UserContent current={current} path={path} />
+            </React.Suspense>
+        </ErrorBoundary>
     );
     return (
         <UserStatusGate
@@ -380,6 +385,7 @@ function UserApp() {
             }
         >
             <div className="app user">
+                <WorkspaceNavigation path={path} title={tx(item?.label || "总览")} inert={mobile && open} />
                 {open && (
                     <div
                         className="nav-backdrop"
@@ -387,8 +393,12 @@ function UserApp() {
                     />
                 )}
                 <aside
+                    id="user-primary-navigation"
                     ref={sidebar}
                     inert={mobile && !open}
+                    role={mobile && open ? "dialog" : undefined}
+                    aria-modal={mobile && open ? true : undefined}
+                    aria-label={tx("工作空间")}
                     className={open ? "open" : ""}
                 >
                     <button
@@ -463,6 +473,7 @@ function UserApp() {
                                 className="mobile-menu icon-button"
                                 aria-label={tx("打开导航")}
                                 aria-expanded={open}
+                                aria-controls="user-primary-navigation"
                                 onClick={() => setOpen(!open)}
                             >
                                 <Menu />
@@ -477,7 +488,7 @@ function UserApp() {
                             <AccountMenu user={user} logout={handleLogout} />
                         </div>
                     </header>
-                    <main>
+                    <main id="workspace-main" tabIndex={-1} aria-label={tx(item?.label || "总览")}>
                         {!path.startsWith("order/") && (
                             <div className="page-heading">
                                 <div>
@@ -544,5 +555,31 @@ function UserApp() {
                     </nav>
             </div>
         </UserStatusGate>
+    );
+}
+
+function WorkspaceNavigation({ path, title, inert }: { path: string; title: string; inert: boolean }) {
+    const initialTitle = useRef(document.title);
+    const previousPath = useRef(path);
+    useEffect(() => {
+        document.title = `${title} · ${boot.title}`;
+    }, [title]);
+    useEffect(() => () => { document.title = initialTitle.current; }, []);
+    useEffect(() => {
+        if (previousPath.current !== path) {
+            document.getElementById("workspace-main")?.focus({ preventScroll: true });
+            previousPath.current = path;
+        }
+    }, [path]);
+    return (
+        <a className="product-skip" href="#workspace-main" inert={inert} onClick={(event) => {
+            // This app uses hash routing: a skip action must not change the route.
+            event.preventDefault();
+            const main = document.getElementById("workspace-main");
+            main?.focus({ preventScroll: true });
+            main?.scrollIntoView({ block: "start", behavior: "instant" });
+        }}>
+            {tx("skip", { ns: "landing" })}
+        </a>
     );
 }

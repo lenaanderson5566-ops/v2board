@@ -101,9 +101,11 @@ describe("public product entry", () => {
         render(<Landing />);
         expect(
             screen
-                .getAllByRole("link", { name: "start" })
+                .getAllByRole("link", { name: "signIn" })
                 .every((link) => link.getAttribute("href") === "/app#/login"),
         ).toBe(true);
+        expect(screen.queryByRole("link", { name: "start" })).toBeNull();
+        expect(document.querySelector('a[href="/app#/register"]')).toBeNull();
         expect(document.querySelector('a[href="/app#/ticket"]')).toBeNull();
         expect(
             screen.getByRole("link", { name: "服务条款" }).getAttribute("href"),
@@ -129,6 +131,18 @@ it("labels invitation-only entry clearly", () => {
             .every((el) => el.getAttribute("href") === "/app#/register"),
     ).toBe(true);
 });
+
+it.each(["original", "minimal"])(
+    "provides a skip link to focusable main content on the %s landing",
+    (style) => {
+        mocks.boot.landingStyle = style;
+        render(<Landing />);
+        expect(screen.getByRole("link", { name: "skip" }).getAttribute("href"))
+            .toBe("#landing-content");
+        expect(screen.getByRole("main").id).toBe("landing-content");
+        expect(screen.getByRole("main").tabIndex).toBe(-1);
+    },
+);
 
 it.each(["original", "minimal"])(
     "removes the statistics preference entry from the %s landing footer",

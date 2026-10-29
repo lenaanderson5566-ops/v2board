@@ -10,7 +10,7 @@ export function RegistrationEmail({ value, onChange }: { value: string; onChange
     return <div className="auth-field">
         <label htmlFor="registration-email-name">{tx("邮箱地址")}</label>
         <div className="auth-email-selector" dir="ltr">
-            <input id="registration-email-name" type="text" autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck={false} required value={username}
+            <input id="registration-email-name" name="email" type="text" autoComplete="email" inputMode="email" enterKeyHint="next" autoCapitalize="none" spellCheck={false} required value={username}
                 onChange={(event) => {
                     const next = event.target.value.trim();
                     onChange(next.includes("@") ? next : `${next}@${domain}`);

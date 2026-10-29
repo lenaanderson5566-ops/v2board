@@ -846,7 +846,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "Rechargez cette page ou ouvrez une autre section depuis le menu de navigation."
   },
   "ux": {
     "cancel": "Annuler",
@@ -895,7 +896,10 @@
     "official": "Téléchargement officiel",
     "mirror": "Téléchargement miroir",
     "unavailable": "Non disponible",
-    "hint": "Choisissez la version pour votre système d'exploitation et votre processeur."
+    "hint": "Choisissez la version pour votre système d'exploitation et votre processeur.",
+    "installThenImport": "Installez le client, puis revenez ici pour importer votre abonnement.",
+    "officialUnavailable": "Le téléchargement officiel est indisponible. Utilisez un miroir disponible ou choisissez un autre client.",
+    "continueImport": "Déjà installé ? Continuer l’importation"
   },
   "fastaiDownload": {
     "dedicated": "Client du site",
@@ -940,7 +944,8 @@
   "clientImport": {
     "invalid": "Abonnement indisponible. Actualisez et réessayez.",
     "copied": "Copié. Collez dans le gestionnaire d’abonnements de votre client et mettez à jour.",
-    "opened": "Confirmez l’importation et actualisez la configuration dans le client. Si le client ne s’ouvre pas, installez-le ou copiez le lien d’abonnement pour l’importer manuellement."
+    "opened": "Confirmez l’importation et actualisez la configuration dans le client. Si le client ne s’ouvre pas, installez-le ou copiez le lien d’abonnement pour l’importer manuellement.",
+    "manualUrl": "Lien d’abonnement"
   },
   "landing": {
     "inviteStart": "Rejoindre sur invitation",

@@ -846,7 +846,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "Recarregue esta página ou abra outra seção pelo menu de navegação."
   },
   "ux": {
     "cancel": "Cancelar",
@@ -895,7 +896,10 @@
     "official": "Download oficial",
     "mirror": "Download alternativo",
     "unavailable": "Indisponível",
-    "hint": "Escolha a versão para seu sistema operacional e processador."
+    "hint": "Escolha a versão para seu sistema operacional e processador.",
+    "installThenImport": "Instale o cliente e volte aqui para importar sua assinatura.",
+    "officialUnavailable": "O download oficial está indisponível. Use um espelho disponível ou escolha outro cliente.",
+    "continueImport": "Já instalou? Continuar a importação"
   },
   "fastaiDownload": {
     "dedicated": "Cliente do site",
@@ -940,7 +944,8 @@
   "clientImport": {
     "invalid": "Assinatura indisponível. Atualize e tente novamente.",
     "copied": "Copiado. Cole no gerenciador de assinaturas do cliente e atualize.",
-    "opened": "Confirme a importação e atualize a configuração no cliente. Se o cliente não abrir, instale-o ou copie o link da assinatura para importá-lo manualmente."
+    "opened": "Confirme a importação e atualize a configuração no cliente. Se o cliente não abrir, instale-o ou copie o link da assinatura para importá-lo manualmente.",
+    "manualUrl": "Link da assinatura"
   },
   "landing": {
     "inviteStart": "Entrar por convite",

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { completePages } from "../paginated-data";
 import { WorkspaceSkeleton } from "../WorkspaceSkeleton";
@@ -172,16 +172,26 @@ export function State({
                 </div>
             </div>
         );
-    if (loading && boot.mode === "user")
-        return data != null ? (
-            <div className="refreshing-content" aria-busy="true">
-                <span className="refresh-status" role="status">
-                    {e("refreshing")}
-                </span>
-                {children}
-            </div>
-        ) : (
-            <WorkspaceSkeleton />
+    if (boot.mode === "user")
+        return (
+            <>
+                {loading && (data != null ? (
+                    <span key="refresh" className="sr-only" role="status">
+                        {e("refreshing")}
+                    </span>
+                ) : <WorkspaceSkeleton key="loading" />)}
+                {error && (
+                    <div key="error" className="alert" role="alert">
+                        {error}
+                        {retry && <button type="button" onClick={retry}>{tx("重试")}</button>}
+                    </div>
+                )}
+                {/* Keep the same child subtree during background refreshes and failures.
+                    Wrapping it only while loading remounts forms and payment controls. */}
+                <Fragment key="content">
+                    {(data != null || (!loading && !error)) && children}
+                </Fragment>
+            </>
         );
     if (loading)
         return (

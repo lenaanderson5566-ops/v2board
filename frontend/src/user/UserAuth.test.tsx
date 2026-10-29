@@ -418,3 +418,82 @@ it("prevents repeated submission while single-step registration is in flight", a
     complete({ data: true });
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("dashboard"));
 });
+
+it("reuses the current email code when returning to edit account details", async () => {
+    page();
+    credentials();
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(document.activeElement).toBe(screen.getByLabelText("邮箱验证码"));
+    fireEvent.click(screen.getByRole("button", { name: "edit" }));
+    fireEvent.change(screen.getByLabelText("邮箱地址"), {
+        target: { value: "REVIEW@example.test" },
+    });
+    fireEvent.change(screen.getByLabelText("密码", { exact: true }), {
+        target: { value: "Updated-test-phrase!23" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(screen.getByLabelText("邮箱验证码"));
+    fireEvent.change(screen.getByLabelText("邮箱验证码"), {
+        target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "create" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("dashboard"));
+    expect(mocks.request).toHaveBeenCalledWith(
+        "passport/auth/register",
+        expect.objectContaining({ password: "Updated-test-phrase!23" }),
+    );
+});
+
+it("requests a code for the corrected email instead of reusing another address", async () => {
+    page();
+    credentials();
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    fireEvent.click(screen.getByRole("button", { name: "edit" }));
+    fireEvent.change(screen.getByLabelText("邮箱地址"), {
+        target: { value: "corrected@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    await screen.findByRole("heading", { name: "verify" });
+    expect(mocks.request.mock.calls).toEqual([
+        ["passport/comm/sendEmailVerify", expect.objectContaining({ email: "review@example.test" })],
+        ["passport/comm/sendEmailVerify", expect.objectContaining({ email: "corrected@example.test" })],
+    ]);
+});
+
+it.each(["123 456", "123-456", "\n123456\n"])("accepts a complete formatted code pasted from email: %j", async (pasted) => {
+    page("forget");
+    fireEvent.change(screen.getByLabelText("邮箱地址"), {
+        target: { value: "review@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    const input = await screen.findByLabelText("邮箱验证码") as HTMLInputElement;
+    fireEvent.paste(input, { clipboardData: { getData: () => pasted } });
+    expect(input.value).toBe("123456");
+    expect(input.checkValidity()).toBe(true);
+});
+
+it("does not silently shorten an ambiguous pasted verification code", async () => {
+    page("forget");
+    fireEvent.change(screen.getByLabelText("邮箱地址"), {
+        target: { value: "review@example.test" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "next" }));
+    const input = await screen.findByLabelText("邮箱验证码") as HTMLInputElement;
+    expect(fireEvent.paste(input, { clipboardData: { getData: () => "1234567" } })).toBe(false);
+    expect(input.value).toBe("");
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+});
+
+it("exposes stable credentials to password managers without changing login requirements", () => {
+    page("login");
+    const email = screen.getByLabelText("邮箱地址") as HTMLInputElement;
+    const password = screen.getByLabelText("密码", { exact: true }) as HTMLInputElement;
+    expect(email.name).toBe("email");
+    expect(email.autocomplete).toBe("username");
+    expect(password.name).toBe("password");
+    expect(password.autocomplete).toBe("current-password");
+});

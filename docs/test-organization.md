@@ -83,6 +83,12 @@ V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，�
 - Lightsail 诊断断言覆盖执行编号关联、AWS Request ID 与响应元数据、敏感内容排除，以及日志不可写时原有失败和恢复行为保持不变。
 - 用户功能开关复用 EmailInvites、HelpSupport、QuickStart 和 BillingFlow 前端用例；套餐关闭切换的目录、详情、历史套餐续费与到期边界归入现有 `commerce` 模块，在隔离数据库执行。
 
+## 用户体验回归归属
+
+继续复用 UserAuth、Landing、BillingFlow、QuickStart、ClientDownload、app、UXResilience、HelpSupport、AccountSessions、UsageBilling、TrafficCredits 及 localization。覆盖验证码复用和格式化粘贴、注册开关入口、手机套餐总价及空态恢复、客户端安装返回、受限复制与异步反馈失效；表单及购买窗口在后台刷新和失败后不重挂载，初始未知余额不显示为零，失败可原地重试。
+
+导航回归覆盖 hash 跳过不离开当前页、跨页聚焦主内容、同页付款 query 保留输入焦点、抽屉关闭与局部错误边界恢复。保留既有付款金额、幂等、报价缓存、渠道与匿名统计断言；全量前端回归与 TypeScript/生产打包通过后，使用现有忽略目录的合成夹具做布局检查，不为各次优化新增测试运行器，也不执行真实支付或修改生产数据。
+
 ## 文档与测试清理
 
 验证文档只维护当前入口、覆盖范围及验收边界，不累积每轮测试计数、旧发布流水或本机临时路径。历史结果由 Git 和忽略的测试输出保存。前后台验收方式见 [前后台验证](frontend-validation.md)。合并测试后同步清单、命令及引用，保留原断言并在隔离副本执行受影响模块。

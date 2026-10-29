@@ -844,7 +844,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "이 페이지를 새로고침하거나 탐색 메뉴에서 다른 페이지를 여세요."
   },
   "ux": {
     "cancel": "취소",
@@ -893,7 +894,10 @@
     "official": "공식 다운로드",
     "mirror": "미러 다운로드",
     "unavailable": "제공되지 않음",
-    "hint": "운영체제와 프로세서에 맞는 버전을 선택하세요."
+    "hint": "운영체제와 프로세서에 맞는 버전을 선택하세요.",
+    "installThenImport": "클라이언트를 설치한 후 여기로 돌아와 구독을 가져오세요.",
+    "officialUnavailable": "공식 다운로드를 사용할 수 없습니다. 사용 가능한 미러나 다른 클라이언트를 선택하세요.",
+    "continueImport": "설치 완료, 가져오기 계속"
   },
   "fastaiDownload": {
     "dedicated": "사이트 전용",
@@ -938,7 +942,8 @@
   "clientImport": {
     "invalid": "구독 설정을 사용할 수 없습니다. 새로고침 후 다시 시도하세요.",
     "copied": "복사했습니다. 앱의 구독 관리에 붙여넣고 업데이트하세요.",
-    "opened": "클라이언트에서 가져오기를 확인하고 설정을 업데이트하세요. 클라이언트가 열리지 않으면 설치하거나 구독 링크를 복사하여 수동으로 가져오세요."
+    "opened": "클라이언트에서 가져오기를 확인하고 설정을 업데이트하세요. 클라이언트가 열리지 않으면 설치하거나 구독 링크를 복사하여 수동으로 가져오세요.",
+    "manualUrl": "구독 링크"
   },
   "landing": {
     "inviteStart": "초대로 가입",

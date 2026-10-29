@@ -82,11 +82,14 @@ export function UserAuth({
             (boot.inviteRequired && !invitation) ||
             (Boolean(invitation) && !invitationComplete));
     const heading = useRef<HTMLHeadingElement>(null);
+    const verificationInput = useRef<HTMLInputElement>(null);
+    const verificationEmail = useRef("");
     const submitting = useRef(false);
     const [suspended, setSuspended] = useState(false);
     const { remaining: cooldown, start: startCooldown } = useCooldown();
     useEffect(() => {
-        heading.current?.focus();
+        if (step === 2) verificationInput.current?.focus();
+        else heading.current?.focus();
     }, [step]);
     const score = passwordScore(password);
     const title = registered
@@ -113,11 +116,19 @@ export function UserAuth({
             const domainError = registrationEmailError(email);
             if (domainError) throw new Error(domainError);
         }
+        // Returning to edit account details must not send another email while
+        // the existing code for this address is still in its resend cooldown.
+        const destination = email.trim().toLowerCase();
+        if (cooldown > 0 && verificationEmail.current === destination) {
+            setSent(true);
+            return;
+        }
         await request("passport/comm/sendEmailVerify", {
             email: email.trim(),
             isforget: forget ? 1 : 0,
             ...(register && invitation ? { invitation } : {}),
         });
+        verificationEmail.current = destination;
         setSent(true);
         startCooldown();
     }
@@ -186,6 +197,7 @@ export function UserAuth({
             <div className="auth-password">
                 <input
                     required
+                    name="password"
                     aria-label={forget ? tx("新密码") : tx("密码")}
                     type={reveal ? "text" : "password"}
                     minLength={register || forget ? 8 : undefined}
@@ -195,6 +207,7 @@ export function UserAuth({
                     autoComplete={
                         register || forget ? "new-password" : "current-password"
                     }
+                    enterKeyHint={verify && step === 1 ? "next" : "go"}
                     onChange={(event) => setPassword(event.target.value)}
                 />
                 <button
@@ -387,8 +400,10 @@ export function UserAuth({
                                                         </span>
                                                         <input
                                                             type="email"
-                                                            autoComplete="email"
+                                                            name="email"
+                                                            autoComplete={register || forget ? "email" : "username"}
                                                             inputMode="email"
+                                                            enterKeyHint="next"
                                                             autoCapitalize="none"
                                                             spellCheck={false}
                                                             required
@@ -452,10 +467,13 @@ export function UserAuth({
                                                         </span>
                                                         <div className="auth-code-row">
                                                             <input
+                                                                ref={verificationInput}
+                                                                name="emailCode"
                                                                 aria-label={tx(
                                                                     "邮箱验证码",
                                                                 )}
                                                                 inputMode="numeric"
+                                                                enterKeyHint={forget ? "next" : "go"}
                                                                 autoComplete="one-time-code"
                                                                 type="text"
                                                                 pattern="[0-9]{6}"
@@ -463,6 +481,16 @@ export function UserAuth({
                                                                 maxLength={6}
                                                                 required
                                                                 value={code}
+                                                                onPaste={(event) => {
+                                                                    const pasted = event.clipboardData.getData("text").trim();
+                                                                    const digits = pasted.replace(/[\s-]/g, "");
+                                                                    if (/^[0-9]{6}$/.test(digits)) {
+                                                                        event.preventDefault();
+                                                                        setCode(digits);
+                                                                    } else if (/^[0-9\s-]+$/.test(pasted) && digits.length > 6) {
+                                                                        event.preventDefault();
+                                                                    }
+                                                                }}
                                                                 onChange={(
                                                                     event,
                                                                 ) =>

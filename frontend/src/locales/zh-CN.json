@@ -844,7 +844,8 @@
     "bilibili": "哔哩哔哩",
     "alipay": "支付宝",
     "dingtalk": "钉钉",
-    "wecom": "企业微信"
+    "wecom": "企业微信",
+    "pageRecovery": "请重新加载此页，或通过导航打开其他页面。"
   },
   "ux": {
     "cancel": "取消",
@@ -893,7 +894,10 @@
     "official": "官方下载",
     "mirror": "镜像下载",
     "unavailable": "暂未提供",
-    "hint": "请选择适合设备系统和芯片的版本。"
+    "hint": "请选择适合设备系统和芯片的版本。",
+    "installThenImport": "安装客户端后，返回此处导入订阅。",
+    "officialUnavailable": "官方下载暂不可用，请使用可用镜像或选择其他客户端。",
+    "continueImport": "已安装，继续导入"
   },
   "fastaiDownload": {
     "dedicated": "本站专用",
@@ -938,7 +942,8 @@
   "clientImport": {
     "invalid": "订阅配置暂不可用，请刷新页面后重试。",
     "copied": "已复制，请在客户端的订阅管理中粘贴并更新配置。",
-    "opened": "请在客户端确认导入并更新配置。若客户端未打开，请先安装客户端或复制订阅链接手动导入。"
+    "opened": "请在客户端确认导入并更新配置。若客户端未打开，请先安装客户端或复制订阅链接手动导入。",
+    "manualUrl": "订阅链接"
   },
   "landing": {
     "inviteStart": "受邀注册",

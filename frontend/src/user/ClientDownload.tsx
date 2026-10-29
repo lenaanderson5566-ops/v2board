@@ -2,7 +2,7 @@ import { useState } from "react";
 import { trackAction } from "./product-analytics";
 import { AccountList } from "./AppleAccounts";
 import { useTranslation } from "react-i18next";
-import { ArrowUpRight, Download, Globe } from "lucide-react";
+import { ArrowRight, ArrowUpRight, Download, Globe } from "lucide-react";
 import { boot } from "../shared/api";
 import { Modal } from "../shared/ui";
 import { clients, type ClientId } from "../shared/import-links";
@@ -48,6 +48,7 @@ export function ClientDownload({
 }) {
     const { t } = useTranslation("clientDownload");
     const { t: kind } = useTranslation("fastaiDownload");
+    const officialUrl = safeDownloadUrl(official);
     const variants = Object.entries(boot.clientMirrors || {}).filter(
         ([key, url]) =>
             key.startsWith(`${client}_${device}:`) && safeDownloadUrl(url),
@@ -76,20 +77,33 @@ export function ClientDownload({
                     {clients.find((item) => item.id === client)?.name}
                     <span>{device === "unknown" ? "" : device}</span>
                 </p>
-                <a
-                    className="download-source"
-                    onClick={() => trackAction("download")}
-                    href={safeDownloadUrl(official)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                >
-                    <Globe size={22} />
-                    <span>
-                        <strong>{t("official")}</strong>
-                        <small>{new URL(official).hostname}</small>
-                    </span>
-                    <ArrowUpRight size={18} />
-                </a>
+                <p className="muted download-next-step">
+                    {t("installThenImport", {
+                        defaultValue: "Install the client, then return here to import your subscription.",
+                    })}
+                </p>
+                {officialUrl ? (
+                    <a
+                        className="download-source"
+                        onClick={() => trackAction("download")}
+                        href={officialUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                    >
+                        <Globe size={22} />
+                        <span>
+                            <strong>{t("official")}</strong>
+                            <small>{new URL(officialUrl).hostname}</small>
+                        </span>
+                        <ArrowUpRight size={18} />
+                    </a>
+                ) : (
+                    <p role="status" className="muted">
+                        {t("officialUnavailable", {
+                            defaultValue: "The official download is unavailable. Use an available mirror or choose another client.",
+                        })}
+                    </p>
+                )}
                 {device !== "ios" && variants.length > 0 && !universal && (
                     <select
                         aria-label={t("hint")}
@@ -183,6 +197,12 @@ export function ClientDownload({
                 ) : (
                     <small className="muted">{t("hint")}</small>
                 )}
+                <button className="primary download-continue" onClick={close}>
+                    {t("continueImport", {
+                        defaultValue: "Installed? Continue to import",
+                    })}
+                    <ArrowRight size={17} aria-hidden="true" />
+                </button>
             </div>
         </Modal>
     );

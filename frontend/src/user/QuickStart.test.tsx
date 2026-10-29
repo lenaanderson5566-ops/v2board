@@ -7,6 +7,7 @@ import {
     fireEvent,
     cleanup,
     waitFor,
+    act,
 } from "@testing-library/react";
 vi.mock("../shared/api", () => ({ boot: { title: "Test" } }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
@@ -126,4 +127,64 @@ it("remembers each platform independently", () => {
  fireEvent.click(screen.getByRole("button", {name:"Android"}));
  expect(screen.getByRole("link", {name:/在 sing-box/})).toBeTruthy();
  expect(localStorage.getItem("v2board.import-client.android")).toBe("singbox");
+});
+
+it("returns from installation to the same selected client and import action", () => {
+    render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+    fireEvent.click(screen.getByRole("button", { name: "Windows" }));
+    fireEvent.click(screen.getByRole("button", { name: /sing-box/ }));
+    fireEvent.click(screen.getByRole("button", { name: "获取客户端" }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("continueImport", { ns: "clientDownload" }) }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("link", { name: /在 sing-box/ }).getAttribute("href")).toMatch(/^sing-box:\/\//);
+    expect(copy).not.toHaveBeenCalled();
+});
+
+it("keeps a selectable manual link available when clipboard access is blocked", async () => {
+    copy.mockRejectedValueOnce(new Error("Clipboard denied"));
+    render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+    fireEvent.click(screen.getByRole("button", { name: "Windows" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+    const manual = screen.getByLabelText(i18n.t("manualUrl", { ns: "clientImport" })) as HTMLInputElement;
+    expect(manual.closest("details")?.open).toBe(true);
+    expect(manual.readOnly).toBe(true);
+    expect(manual.value).toBe("https://example.com/sub?token=test&language=zh-CN&format=clash-verge");
+    fireEvent.focus(manual);
+    expect(manual.selectionStart).toBe(0);
+    expect(manual.selectionEnd).toBe(manual.value.length);
+});
+
+it("does not show stale copy feedback after changing the client", async () => {
+    let complete!: () => void;
+    copy.mockReturnValueOnce(new Promise<void>((resolve) => { complete = resolve; }));
+    render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+    fireEvent.click(screen.getByRole("button", { name: "Windows" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    fireEvent.click(screen.getByRole("button", { name: /sing-box/ }));
+    await act(async () => { complete(); });
+    expect(screen.queryByRole("button", { name: "已复制" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "已复制" })).toBeTruthy());
+    expect(copy).toHaveBeenLastCalledWith("https://example.com/sub?token=test&language=zh-CN&format=sing-box");
+});
+
+it("clears copy feedback when the subscription link changes", async () => {
+    const view = render(<SubscriptionImport inline url="https://example.com/sub?token=first" />);
+    fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "已复制" })).toBeTruthy());
+    view.rerender(<SubscriptionImport inline url="https://example.com/sub?token=updated" />);
+    expect(screen.queryByRole("button", { name: "已复制" })).toBeNull();
+    expect((screen.getByLabelText(i18n.t("manualUrl", { ns: "clientImport" })) as HTMLInputElement).value).toContain("token=updated");
+});
+it("clears earlier copy success when a later clipboard request fails", async () => {
+    render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+    fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    await waitFor(() => expect(screen.getByRole("button", { name: "已复制" })).toBeTruthy());
+    copy.mockRejectedValueOnce(new Error("Clipboard denied"));
+    fireEvent.click(screen.getByRole("button", { name: "已复制" }));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeTruthy());
+    expect(screen.queryByRole("button", { name: "已复制" })).toBeNull();
+    expect(screen.getByLabelText(i18n.t("manualUrl", { ns: "clientImport" })).closest("details")?.open).toBe(true);
 });

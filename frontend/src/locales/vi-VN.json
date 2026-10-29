@@ -844,7 +844,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "Tải lại trang này hoặc mở mục khác từ menu điều hướng."
   },
   "ux": {
     "cancel": "Hủy",
@@ -893,7 +894,10 @@
     "official": "Tải chính thức",
     "mirror": "Tải từ máy chủ dự phòng",
     "unavailable": "Chưa có",
-    "hint": "Chọn phiên bản phù hợp hệ điều hành và bộ xử lý."
+    "hint": "Chọn phiên bản phù hợp hệ điều hành và bộ xử lý.",
+    "installThenImport": "Cài đặt ứng dụng, sau đó quay lại đây để nhập cấu hình đăng ký.",
+    "officialUnavailable": "Không thể tải từ nguồn chính thức. Hãy dùng bản sao khả dụng hoặc chọn ứng dụng khác.",
+    "continueImport": "Đã cài đặt? Tiếp tục nhập"
   },
   "fastaiDownload": {
     "dedicated": "Dành cho trang này",
@@ -938,7 +942,8 @@
   "clientImport": {
     "invalid": "Cấu hình chưa khả dụng. Tải lại và thử lại.",
     "copied": "Đã sao chép. Dán vào mục đăng ký của ứng dụng rồi cập nhật.",
-    "opened": "Xác nhận nhập và cập nhật cấu hình trong ứng dụng. Nếu ứng dụng không mở, hãy cài đặt ứng dụng hoặc sao chép liên kết đăng ký để nhập thủ công."
+    "opened": "Xác nhận nhập và cập nhật cấu hình trong ứng dụng. Nếu ứng dụng không mở, hãy cài đặt ứng dụng hoặc sao chép liên kết đăng ký để nhập thủ công.",
+    "manualUrl": "Liên kết đăng ký"
   },
   "landing": {
     "inviteStart": "Đăng ký qua lời mời",

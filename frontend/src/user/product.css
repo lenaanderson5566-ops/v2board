@@ -1989,6 +1989,14 @@ body[data-console="user"] .client-family-header p {
 .app.user .user-page-content {
     min-width: 0;
 }
+.app.user #workspace-main,
+.app.user .main :is(h1, h2, input, select, textarea) {
+    scroll-margin-block-start: 80px;
+    scroll-margin-block-end: 96px;
+}
+.app.user #workspace-main:focus {
+    outline: none;
+}
 .app.user
     :is(
         .plan-price,

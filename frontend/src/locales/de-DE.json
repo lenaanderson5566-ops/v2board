@@ -846,7 +846,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "Laden Sie diese Seite neu oder öffnen Sie einen anderen Bereich über die Navigation."
   },
   "ux": {
     "cancel": "Abbrechen",
@@ -895,7 +896,10 @@
     "official": "Offizieller Download",
     "mirror": "Spiegel-Download",
     "unavailable": "Nicht verfügbar",
-    "hint": "Wählen Sie die Version für Ihr Betriebssystem und Ihren Prozessor."
+    "hint": "Wählen Sie die Version für Ihr Betriebssystem und Ihren Prozessor.",
+    "installThenImport": "Installieren Sie den Client und kehren Sie hierher zurück, um Ihr Abonnement zu importieren.",
+    "officialUnavailable": "Der offizielle Download ist nicht verfügbar. Nutzen Sie einen verfügbaren Spiegelserver oder wählen Sie einen anderen Client.",
+    "continueImport": "Installiert? Weiter zum Import"
   },
   "fastaiDownload": {
     "dedicated": "Site-Client",
@@ -940,7 +944,8 @@
   "clientImport": {
     "invalid": "Abonnement nicht verfügbar. Aktualisieren Sie und versuchen Sie es erneut.",
     "copied": "Kopiert. Fügen Sie es in den Abonnement-Manager Ihres Clients ein und aktualisieren Sie es.",
-    "opened": "Bestätigen Sie den Import und aktualisieren Sie die Konfiguration im Client. Falls sich der Client nicht öffnet, installieren Sie ihn oder kopieren Sie den Abonnementlink für den manuellen Import."
+    "opened": "Bestätigen Sie den Import und aktualisieren Sie die Konfiguration im Client. Falls sich der Client nicht öffnet, installieren Sie ihn oder kopieren Sie den Abonnementlink für den manuellen Import.",
+    "manualUrl": "Abonnement-Link"
   },
   "landing": {
     "inviteStart": "Treten Sie auf Einladung bei",

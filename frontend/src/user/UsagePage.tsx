@@ -187,9 +187,11 @@ export function UsagePage() {
                                 </div>
                             </State>
                         </section>
-                        <TrafficCredits
-                            balance={Number(info.data?.credit_balance || 0)}
-                        />
+                        <State {...info} retry={info.reload}>
+                            <TrafficCredits
+                                balance={Number(info.data?.credit_balance || 0)}
+                            />
+                        </State>
                     </div>
                     <section className="settings-section reset-section">
                         <div className="reset-section-intro">

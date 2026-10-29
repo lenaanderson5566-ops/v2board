@@ -1438,3 +1438,10 @@ body:has(.browser-notice) #custom-footer {
 .browser-notice-brand { flex-wrap: wrap; }
 .browser-continue { margin-top: 20px; width: 100%; }
 .browser-manual-address input { min-width: 0; width: 100%; }
+
+.download-next-step { margin: 0; line-height: 1.65; }
+.download-options .download-continue { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; width: 100%; margin-top: 8px; }
+.import-manual .import-fallback { flex-wrap: wrap; }
+.import-manual .import-fallback > div { flex: 1 1 220px; min-width: 0; }
+.import-manual-url { display: grid; gap: 8px; margin-top: 16px; font-size: 13px; min-width: 0; }
+.import-manual-url input { min-width: 0; width: 100%; min-height: 44px; font-size: 13px; direction: ltr; text-align: start; }

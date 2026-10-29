@@ -279,7 +279,7 @@ export function Tickets({
                         }
                     }}
                 >
-                    <State {...detail}>
+                    <State {...detail} retry={detail.reload}>
                         {isAdmin && detail.data && <div className="pad">{renderAccount?.(detail.data) || <>ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</>}<AdminTicketReplyStatus status={detail.data.status} replyStatus={detail.data.reply_status} /></div>}
                         <div className="messages">
                             {rows(detail.data?.message).map((m) => (

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { it, expect, vi, afterEach } from "vitest";
+import { useEffect, useState } from "react";
 import {
     render,
     screen,
@@ -119,6 +120,41 @@ it("keeps previous content after a refresh failure", () => {
     );
     expect(screen.getByText("Existing content")).toBeTruthy();
     expect(screen.getByRole("alert").textContent).toContain("offline");
+});
+it("preserves form drafts, focus and mounted actions through refresh and retry", () => {
+    const mounted = vi.fn(), unmounted = vi.fn();
+    function Draft() {
+        const [text, setText] = useState("");
+        useEffect(() => { mounted(); return unmounted; }, []);
+        return <input aria-label="In-progress choice" value={text} onChange={(event) => setText(event.target.value)} />;
+    }
+    const content = (loading: boolean, error = "") => (
+        <State data={{ id: 1 }} loading={loading} error={error} retry={() => {}}><Draft /></State>
+    );
+    const view = render(content(false));
+    const field = screen.getByRole("textbox") as HTMLInputElement;
+    fireEvent.change(field, { target: { value: "Unfinished choice" } });
+    field.focus();
+    view.rerender(content(true));
+    expect(screen.getByRole("status").textContent).toBeTruthy();
+    expect(screen.getByRole("textbox")).toBe(field);
+    expect(document.activeElement).toBe(field);
+    view.rerender(content(false, "Connection unavailable"));
+    expect(screen.getByRole("alert").textContent).toContain("Connection unavailable");
+    view.rerender(content(true));
+    view.rerender(content(false));
+    expect(field.value).toBe("Unfinished choice");
+    expect(document.activeElement).toBe(field);
+    expect(mounted).toHaveBeenCalledTimes(1);
+    expect(unmounted).not.toHaveBeenCalled();
+});
+it("does not expose initial content before data loads or after an initial failure", () => {
+    const content = (loading: boolean, error = "") => <State loading={loading} error={error} data={null}><p>Data-dependent action</p></State>;
+    const view = render(content(true));
+    expect(screen.queryByText("Data-dependent action")).toBeNull();
+    view.rerender(content(false, "Unavailable"));
+    expect(screen.queryByText("Data-dependent action")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toBe("Unavailable");
 });
 it("restores a closed draft, retains it on failure and clears it on success", async () => {
     const save = vi

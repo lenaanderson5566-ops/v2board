@@ -81,7 +81,7 @@ export function AccountSessions() {
                 <p className="muted">
                     {tx("位置根据登录 IP 估算，可能显示代理出口所在地。")}
                 </p>
-                <State {...sessions}>
+                <State {...sessions} retry={sessions.reload}>
                     <Table
                         data={Object.entries(sessions.data || {})
                             .sort(

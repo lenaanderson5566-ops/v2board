@@ -12,7 +12,8 @@ const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     reload: vi.fn(),
     forget: vi.fn(),
-    data: {} as Record<string, unknown>,
+    data: {} as Record<string, unknown> | null,
+    error: "",
 }));
 vi.mock("../shared/api", () => ({
     boot: { mode: "user" },
@@ -34,13 +35,14 @@ vi.mock("../shared/ui", async () => ({
         data: mocks.data,
         reload: mocks.reload,
         loading: false,
-        error: "",
+        error: mocks.error,
     }),
 }));
 import { AccountSessions } from "./AccountSessions";
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.language = "zh-CN";
+    mocks.error = "";
     mocks.request.mockResolvedValue({ data: true });
     mocks.data = {
         current: {
@@ -97,6 +99,22 @@ it("keeps the confirmation open and allows retry when revocation fails", async (
     );
     expect(mocks.forget).not.toHaveBeenCalled();
     expect(mocks.reload).not.toHaveBeenCalled();
+});
+it("retries a failed session list in place and restores session controls", () => {
+    const loaded = mocks.data;
+    mocks.data = null;
+    mocks.error = "sessions temporarily unavailable";
+    const view = render(<AccountSessions />);
+    expect(screen.getByRole("alert").textContent).toContain(mocks.error);
+    expect((screen.getByRole("button", { name: "退出全部会话" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(mocks.reload).toHaveBeenCalledTimes(1);
+    mocks.data = loaded;
+    mocks.error = "";
+    view.rerender(<AccountSessions />);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(screen.getAllByRole("button", { name: "退出登录" })).toHaveLength(2);
+    expect((screen.getByRole("button", { name: "退出全部会话" }) as HTMLButtonElement).disabled).toBe(false);
 });
 
 it.each([

@@ -65,3 +65,13 @@ it("requires architecture selection and serves the matching mirror",()=>{
  expect(screen.getByRole("link",{name:/镜像下载/}).getAttribute("href")).toBe("https://mirror.example/intel.dmg");
  } finally {boot.clientMirrors=old;}
 });
+
+it.each(["invalid", "javascript:alert(1)", "https://user:pass@example.com"])("keeps the mirror and return action usable for an invalid official URL: %s", (official) => {
+    const close = vi.fn();
+    render(<ClientDownload client="clash" device="windows" official={official} close={close} />);
+    expect(screen.queryByRole("link", { name: /官方下载/ })).toBeNull();
+    expect(screen.getByRole("link", { name: /镜像下载/ }).getAttribute("href")).toBe("https://mirror.example/clash.exe");
+    expect(screen.getByRole("status")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: i18n.t("continueImport", { ns: "clientDownload" }) }));
+    expect(close).toHaveBeenCalledTimes(1);
+});

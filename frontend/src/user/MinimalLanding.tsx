@@ -14,6 +14,9 @@ export default function MinimalLanding() {
 
     return (
         <div className="minimal-landing">
+            <a className="product-skip" href="#landing-content">
+                {t("skip")}
+            </a>
             <div className="minimal-landing-screen">
                 <header className="minimal-landing-header">
                     <a className="minimal-landing-brand" href="/">
@@ -24,7 +27,11 @@ export default function MinimalLanding() {
                     </a>
                     <LanguagePicker />
                 </header>
-                <main className="minimal-landing-main">
+                <main
+                    className="minimal-landing-main"
+                    id="landing-content"
+                    tabIndex={-1}
+                >
                     <div className="minimal-landing-copy">
                         <span className="minimal-landing-eyebrow">
                             <span aria-hidden="true" />

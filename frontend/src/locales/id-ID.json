@@ -846,7 +846,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "Muat ulang halaman ini atau buka bagian lain dari menu navigasi."
   },
   "ux": {
     "cancel": "Batal",
@@ -895,7 +896,10 @@
     "official": "Unduhan resmi",
     "mirror": "Unduhan cermin",
     "unavailable": "Tidak tersedia",
-    "hint": "Pilih versi untuk sistem operasi dan prosesor Anda."
+    "hint": "Pilih versi untuk sistem operasi dan prosesor Anda.",
+    "installThenImport": "Instal aplikasi, lalu kembali ke sini untuk mengimpor langganan.",
+    "officialUnavailable": "Unduhan resmi tidak tersedia. Gunakan mirror yang tersedia atau pilih aplikasi lain.",
+    "continueImport": "Sudah diinstal? Lanjutkan impor"
   },
   "fastaiDownload": {
     "dedicated": "Klien situs",
@@ -940,7 +944,8 @@
   "clientImport": {
     "invalid": "Langganan tidak tersedia. Segarkan dan coba lagi.",
     "copied": "Disalin. Tempelkan ke manajer langganan klien Anda dan perbarui.",
-    "opened": "Konfirmasikan impor dan perbarui konfigurasi di aplikasi. Jika aplikasi tidak terbuka, instal aplikasi atau salin tautan langganan untuk mengimpornya secara manual."
+    "opened": "Konfirmasikan impor dan perbarui konfigurasi di aplikasi. Jika aplikasi tidak terbuka, instal aplikasi atau salin tautan langganan untuk mengimpornya secara manual.",
+    "manualUrl": "Tautan langganan"
   },
   "landing": {
     "inviteStart": "Bergabung karena undangan",

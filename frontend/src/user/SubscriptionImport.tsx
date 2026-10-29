@@ -1,6 +1,6 @@
 import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { trackAction } from "./product-analytics";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     ArrowUpRight,
@@ -67,10 +67,21 @@ export function SubscriptionImport({
     const [copied, setCopied] = useState(false),
         [attempted, setAttempted] = useState(false),
         [error, setError] = useState("");
+    const copyRequest = useRef(0);
+    const language = locale();
+    useEffect(() => {
+        copyRequest.current += 1;
+        setCopied(false);
+        setAttempted(false);
+        setError("");
+        return () => {
+            copyRequest.current += 1;
+        };
+    }, [url, selected, device, language]);
     let link = "",
         raw = "";
     try {
-        const localized = localizedSubscriptionUrl(url, locale());
+        const localized = localizedSubscriptionUrl(url, language);
         raw = clientSubscriptionUrl(selected, localized);
         link = importLink(selected, localized, boot.title);
     } catch {
@@ -100,12 +111,17 @@ export function SubscriptionImport({
     }
     const policy = boot.clientPolicies?.[selected];
     async function copy() {
+        const attempt = ++copyRequest.current;
+        setCopied(false);
+        setError("");
         try {
             await navigator.clipboard.writeText(raw);
+            if (attempt !== copyRequest.current) return;
             trackAction("copy_success");
             setCopied(true);
             setError("");
         } catch {
+            if (attempt !== copyRequest.current) return;
             trackAction("copy_failed");
             setError(tx("复制失败，请使用一键导入或扫码。"));
         }
@@ -301,7 +317,7 @@ export function SubscriptionImport({
                 </a>
             </section>
             {enabled(selected) && (
-                <details className="import-manual">
+                <details className="import-manual" open={error ? true : undefined}>
                     <summary>
                         <QrCode size={17} />
                         {tx("扫码或手动添加")}
@@ -311,6 +327,16 @@ export function SubscriptionImport({
                             <p className="muted">
                                 {tx("在另一台设备上扫描，或复制链接到客户端。")}
                             </p>
+                            <label className="import-manual-url">
+                                <span>{t("manualUrl", { defaultValue: "Subscription link" })}</span>
+                                <input
+                                    readOnly
+                                    value={raw}
+                                    onFocus={(event) => event.currentTarget.select()}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                />
+                            </label>
                         </div>
                         <QRCodeSVG
                             value={raw}

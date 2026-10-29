@@ -846,7 +846,8 @@
     "bilibili": "bilibili",
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
-    "wecom": "WeCom"
+    "wecom": "WeCom",
+    "pageRecovery": "Reload this page or choose another section from the navigation."
   },
   "ux": {
     "cancel": "Cancel",
@@ -895,7 +896,10 @@
     "official": "Official download",
     "mirror": "Mirror download",
     "unavailable": "Not available",
-    "hint": "Choose the version for your operating system and processor."
+    "hint": "Choose the version for your operating system and processor.",
+    "installThenImport": "Install the client, then return here to import your subscription.",
+    "officialUnavailable": "The official download is unavailable. Use an available mirror or choose another client.",
+    "continueImport": "Installed? Continue to import"
   },
   "fastaiDownload": {
     "dedicated": "Site client",
@@ -940,7 +944,8 @@
   "clientImport": {
     "invalid": "Subscription unavailable. Refresh and try again.",
     "copied": "Copied. Paste in your client’s subscription manager and update.",
-    "opened": "Confirm the import and update the configuration in the client. If the client does not open, install it or copy the subscription link to import it manually."
+    "opened": "Confirm the import and update the configuration in the client. If the client does not open, install it or copy the subscription link to import it manually.",
+    "manualUrl": "Subscription link"
   },
   "landing": {
     "inviteStart": "Join by invitation",

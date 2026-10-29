@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
     request: vi.fn(),
     quoteRequest: vi.fn(),
     navigate: vi.fn(),
+    plansReload: vi.fn(),
     plans: [] as any[],
     orders: [] as any[],
     sub: {} as any,
@@ -102,7 +103,7 @@ vi.mock("../shared/ui", () => ({
                 ? mocks.subLoading
                 : path.startsWith("user/order/detail") && mocks.detailLoading,
         error: path === "user/getSubscribe" ? mocks.subError : "",
-        reload: vi.fn(),
+        reload: path === "user/plan/fetch" ? mocks.plansReload : vi.fn(),
     }),
     State: ({ children, loading, data }: any) =>
         loading && data ? <div>{children}</div> : children,
@@ -193,6 +194,7 @@ beforeEach(() => {
         };
     });
     mocks.navigate.mockReset();
+    mocks.plansReload.mockReset();
     mocks.plans = [plan];
     mocks.orders = [];
     mocks.sub = {};
@@ -275,6 +277,7 @@ it("shows the actual available period and lets users review their selection befo
     mocks.request.mockResolvedValue({ data: "created-order" });
     render(<SubscriptionPurchase />);
     expect(screen.getByText("/ 季付")).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "选择套餐" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
     expect(screen.queryByRole("radio", { name: /流量重置/ })).toBeNull();
     fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
@@ -627,6 +630,16 @@ it("one-time-only products are not shown in the subscription catalog", () => {
     render(<SubscriptionPurchase />);
     expect(screen.queryByText("CreditOnly")).toBeNull();
 });
+it("offers a fresh catalog request and help when no subscription is available", () => {
+    mocks.plans = [];
+    render(<SubscriptionPurchase />);
+    expect(screen.getByText("暂无可购买套餐")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "帮助中心" }).getAttribute("href"))
+        .toBe("#/knowledge");
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(mocks.plansReload).toHaveBeenCalledTimes(1);
+    expect(mocks.request).not.toHaveBeenCalled();
+});
 
 it("carries the yearly card selection into checkout and removes duplicate metadata", async () => {
     mocks.plans = [
@@ -692,6 +705,29 @@ it("defaults mobile details to the current plan and preserves selection when cha
     expect(view.container.querySelector(".mobile-active")?.id).toBe(
         "pricing-plan-2",
     );
+});
+it("compares actual cycle totals in mobile choices and keeps sold-out details available", () => {
+    mocks.plans = [
+        { ...plan, name: "Basic", capacity_limit: 0 },
+        { ...plan, id: 2, name: "Premium", quarter_price: 1800, year_price: 7200 },
+    ];
+    render(<SubscriptionPurchase />);
+    const choices = within(screen.getByRole("group", { name: "选择套餐" }));
+    const basic = choices.getByRole("button", { name: "Basic" });
+    const premium = choices.getByRole("button", { name: "Premium" });
+    expect(basic.textContent).toContain("¥9.00 · 季付");
+    expect(basic.textContent).toContain("暂时售罄");
+    expect(basic.getAttribute("aria-describedby")).toBe("pricing-choice-1");
+    expect(premium.textContent).toContain("¥18.00 · 季付");
+    expect(premium.getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "年付" }));
+    expect(basic.textContent).toContain("¥30.00 · 年付");
+    expect(premium.textContent).toContain("¥72.00 · 年付");
+    fireEvent.click(basic);
+    expect(document.querySelector(".mobile-active")?.id).toBe("pricing-plan-1");
+    expect((screen.getAllByRole("button", { name: "暂时售罄" })[0] as HTMLButtonElement).disabled)
+        .toBe(true);
+    expect(mocks.request).not.toHaveBeenCalled();
 });
 
 it("renders built-in payment icons from the API host", () => {

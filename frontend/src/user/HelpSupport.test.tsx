@@ -18,7 +18,7 @@ import {
     waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-const mocks = vi.hoisted(() => ({ detail:null as any, policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ detail:null as any, detailError: "", detailReload: vi.fn(), policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
 vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
@@ -39,11 +39,11 @@ vi.mock("../shared/ui", async (importOriginal) => ({
     ...(await importOriginal<typeof import("../shared/ui")>()),
     useData: vi.fn((path: string) => ({
         data: path === "user/info" ? { ticket_creation: mocks.policy } : path.includes("id=")
-            ? (mocks.detail || { subject: "现有工单", status: 1, message: [] })
+            ? (mocks.detailError ? null : mocks.detail || { subject: "现有工单", status: 1, message: [] })
             : mocks.tickets,
         loading: false,
-        error: "",
-        reload: vi.fn(),
+        error: path.includes("id=") ? mocks.detailError : "",
+        reload: path.includes("id=") ? mocks.detailReload : vi.fn(),
     })),
     Panel: ({
         children,
@@ -60,7 +60,6 @@ vi.mock("../shared/ui", async (importOriginal) => ({
             {children}
         </section>
     ),
-    State: ({ children }: { children: ReactNode }) => children,
     Table: () => null,
     Modal: ({ children, title }: { children: ReactNode; title: string }) => (
         <div role="dialog" aria-label={title}>
@@ -83,6 +82,10 @@ import { Tickets } from "./user";
 afterEach(cleanup);
 beforeEach(() => {
     mocks.policy = "allowed";
+    mocks.detail = null;
+    mocks.detailError = "";
+    mocks.detailReload.mockReset();
+    location.hash = "";
     mocks.tickets = [];
     mocks.request.mockReset();
     mocks.saveError.mockReset();
@@ -170,6 +173,21 @@ it("does not preload ticket detail until a ticket is opened",async()=>{
     const {useData}=await import("../shared/ui");vi.mocked(useData).mockClear();
     render(<Tickets/>);
     expect(useData).toHaveBeenCalledWith("");
+});
+it("retries a failed ticket detail without closing its dialog", () => {
+    location.hash = "#/ticket?ticketId=42";
+    mocks.detailError = "ticket temporarily unavailable";
+    const view = render(<Tickets />);
+    const dialog = screen.getByRole("dialog");
+    expect(screen.getByRole("alert").textContent).toContain(mocks.detailError);
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(mocks.detailReload).toHaveBeenCalledTimes(1);
+    mocks.detail = { id: 42, subject: "Recovered ticket", status: 1, message: [{ id: 8, is_me: true, message: "Existing message" }] };
+    mocks.detailError = "";
+    view.rerender(<Tickets />);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.getByText("Existing message")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
 });
 it("debounces knowledge searches and skips the unused category request",async()=>{
     vi.useFakeTimers();

@@ -138,6 +138,17 @@
 .app.user .mobile-plan-picker {
     display: none;
 }
+.app.user .pricing-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+}
+.app.user .pricing-empty-actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+}
 @media (max-width: 700px) {
     .app.user .pricing-toolbar {
         justify-content: center;
@@ -146,21 +157,50 @@
     .app.user .pricing-toolbar p {
         width: 100%;
     }
+    .app.user .pricing-cycle button {
+        min-width: 0;
+        flex: 1 1 auto;
+        padding-inline: 12px;
+        white-space: normal;
+    }
     .app.user .mobile-plan-picker {
-        display: flex;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
         gap: 8px;
-        overflow-x: auto;
-        padding: 2px 0 10px;
-        margin-bottom: 4px;
+        margin-bottom: 12px;
     }
     .app.user .mobile-plan-picker button {
-        flex: 1 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        justify-content: stretch;
+        justify-items: start;
+        align-content: start;
+        gap: 4px;
+        min-width: 0;
         min-height: 44px;
-        max-width: 220px;
         white-space: normal;
         overflow-wrap: anywhere;
-        padding: 10px 16px;
+        text-align: start;
+        padding: 12px;
         border-radius: 12px;
+    }
+    .app.user .mobile-plan-picker button > span {
+        display: grid;
+        gap: 3px;
+        line-height: 1.5;
+        font-size: 12px;
+    }
+    .app.user .mobile-plan-picker strong {
+        min-width: 0;
+        max-width: 100%;
+        font-weight: 600;
+        font-size: 14px;
+    }
+    .app.user .mobile-plan-price {
+        font-variant-numeric: tabular-nums;
+    }
+    .app.user .mobile-plan-status {
+        font-size: 11px;
     }
     .app.user .mobile-plan-picker button[aria-pressed="true"] {
         background: var(--brand);
@@ -294,10 +334,6 @@
     }
     .app.user .mobile-plan-picker {
         padding-bottom: 6px;
-    }
-    .app.user .mobile-plan-picker button {
-        white-space: nowrap;
-        max-width: none;
     }
 }
 

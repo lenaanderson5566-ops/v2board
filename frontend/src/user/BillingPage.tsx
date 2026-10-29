@@ -61,18 +61,18 @@ export function BillingPage() {
                     </div>
                 </State>
             </section>
-            <section className="settings-section">
-                <header>
-                    <h2>{tx("账户余额")}</h2>
-                    <button
-                        className="soft-button"
-                        onClick={() => setDialog("gift")}
-                    >
-                        <Gift size={16} />
-                        {tx("兑换礼品卡")}
-                    </button>
-                </header>
-                <State {...info} retry={info.reload}>
+            <State {...info} retry={info.reload}>
+                <section className="settings-section">
+                    <header>
+                        <h2>{tx("账户余额")}</h2>
+                        <button
+                            className="soft-button"
+                            onClick={() => setDialog("gift")}
+                        >
+                            <Gift size={16} />
+                            {tx("兑换礼品卡")}
+                        </button>
+                    </header>
                     <div className="settings-card balance-card">
                         <div className="settings-row">
                             <strong className="balance-amount">
@@ -88,12 +88,12 @@ export function BillingPage() {
                         </div>
                         <p className="muted">{b("balanceHelp")}</p>
                     </div>
-                </State>
-            </section>
-            <TrafficCredits
-                purchaseLabel
-                balance={Number(info.data?.credit_balance || 0)}
-            />
+                </section>
+                <TrafficCredits
+                    purchaseLabel
+                    balance={Number(info.data?.credit_balance || 0)}
+                />
+            </State>
             <section className="settings-section">
                 <header>
                     <h2>{b("transactions")}</h2>

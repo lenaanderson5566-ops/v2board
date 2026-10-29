@@ -15,10 +15,13 @@ const mocks = vi.hoisted(() => ({
     resets: {} as any,
     subscription: {} as any,
     orders: [] as any[],
+    info: null as any,
+    infoLoading: false,
+    infoError: "",
 }));
 vi.mock("../shared/api", () => ({
     query: (path:string, params:any) => path+"?"+new URLSearchParams(params),
-    boot: { currencySymbol: "¥" },
+    boot: { mode: "user", currencySymbol: "¥" },
     admin: (s: string) => "admin/" + s,
     request: mocks.request,
     navigate: mocks.navigate,
@@ -36,30 +39,25 @@ vi.mock("./pricing-copy", () => ({ pricingCopy: (s: string) => s }));
 vi.mock("../shared/billing-copy", () => ({ b: (s: string) => s }));
 vi.mock("../shared/experience-copy", () => ({ e: (s: string) => s }));
 vi.mock("./UsageChart", () => ({ UsageChart: () => <div>chart-30-days</div> }));
-vi.mock("../shared/ui", () => ({
+vi.mock("../shared/ui", async (importOriginal) => ({
+    ...(await importOriginal<typeof import("../shared/ui")>()),
     useData: (path: string) => ({
         data:
             path === "user/usage/reset"
                 ? mocks.resets
                 : path.startsWith("user/order/fetch")
                   ? mocks.orders
+                  : path === "user/credit/fetch"
+                    ? []
                   : path === "user/info"
-                    ? {
-                          email: "test@example.com",
-                          balance: 1234,
-                          u: 10,
-                          d: 20,
-                          transfer_enable: 100,
-                          account_status: { state: "active" },
-                      }
+                    ? mocks.info
                     : path.includes("Preview")
                       ? { count: 12 }
                       : mocks.subscription,
         reload: mocks.reload,
-        loading: false,
-        error: "",
+        loading: path === "user/info" && mocks.infoLoading,
+        error: path === "user/info" ? mocks.infoError : "",
     }),
-    State: ({ children }: any) => children,
     Empty: ({ text }: any) => <p>{text}</p>,
     Modal: ({ title, children, close }: any) => (
         <div role="dialog" aria-label={title}>
@@ -86,6 +84,17 @@ beforeEach(() => {
     mocks.navigate.mockReset();
     mocks.resets = { available: 2, can_reset: true, credits: [], history: [] };
     mocks.orders = [];
+    mocks.infoLoading = false;
+    mocks.infoError = "";
+    mocks.info = {
+        email: "test@example.com",
+        balance: 1234,
+        credit_balance: 456,
+        u: 10,
+        d: 20,
+        transfer_enable: 100,
+        account_status: { state: "active" },
+    };
     mocks.subscription = { plan: { id: 7, name: "Pro", reset_price: 200 }, expired_at: 2000000000, reset_day: 4, has_subscription: true };
 });
 afterEach(cleanup);
@@ -109,6 +118,43 @@ it("groups subscription, balance and transactions and opens redemption on demand
     fireEvent.click(screen.getByRole("button", { name: "完成" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.reload).toHaveBeenCalled();
+});
+it.each([BillingPage, UsagePage])("keeps unknown credit balances out of %s until account data is recovered", (Page) => {
+    const loaded = mocks.info;
+    mocks.info = null;
+    mocks.infoLoading = true;
+    const view = render(<Page />);
+    expect(screen.queryByText("0 B")).toBeNull();
+    expect(screen.queryByRole("button", { name: "buy" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "buyMore" })).toBeNull();
+    mocks.infoLoading = false;
+    mocks.infoError = "account temporarily unavailable";
+    view.rerender(<Page />);
+    expect(screen.queryByText("0 B")).toBeNull();
+    expect(screen.queryByRole("button", { name: "buy" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "buyMore" })).toBeNull();
+    const retries = screen.getAllByRole("button", { name: "重试" });
+    fireEvent.click(retries[retries.length - 1]);
+    expect(mocks.reload).toHaveBeenCalledTimes(1);
+    mocks.info = loaded;
+    mocks.infoError = "";
+    view.rerender(<Page />);
+    expect(screen.getByText("456 B")).toBeTruthy();
+    expect(screen.getByRole("button", { name: Page === BillingPage ? "buyMore" : "buy" })).toBeTruthy();
+});
+it.each([BillingPage, UsagePage])("retains a known credit balance and open purchase during refresh and failure in %s", (Page) => {
+    const view = render(<Page />);
+    fireEvent.click(screen.getByRole("button", { name: Page === BillingPage ? "buyMore" : "buy" }));
+    const dialog = screen.getByRole("dialog");
+    mocks.infoLoading = true;
+    view.rerender(<Page />);
+    expect(screen.getByText("456 B")).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    mocks.infoLoading = false;
+    mocks.infoError = "refresh temporarily unavailable";
+    view.rerender(<Page />);
+    expect(screen.getByText("456 B")).toBeTruthy();
+    expect(screen.getByRole("dialog")).toBe(dialog);
 });
 it("keeps recharge on the existing server order and payment flow", async () => {
     mocks.request.mockResolvedValue({ data: "new-order" });

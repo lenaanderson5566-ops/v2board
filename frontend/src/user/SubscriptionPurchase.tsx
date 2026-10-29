@@ -121,25 +121,52 @@ export function SubscriptionPurchase() {
                         ))}
                     </div>
                 </div>
-                <div
-                    className="mobile-plan-picker"
-                    role="group"
-                    aria-label={tx("选择套餐")}
-                >
-                    {cyclePlans.map((plan) => (
-                        <button
-                            key={plan.id}
-                            type="button"
-                            aria-pressed={
-                                Number(mobileActive?.id) === Number(plan.id)
-                            }
-                            aria-controls={`pricing-plan-${plan.id}`}
-                            onClick={() => setMobilePlanId(Number(plan.id))}
-                        >
-                            {plan.name}
-                        </button>
-                    ))}
-                </div>
+                {cyclePlans.length > 1 && (
+                    <div
+                        className="mobile-plan-picker"
+                        role="group"
+                        aria-label={tx("选择套餐")}
+                    >
+                        {cyclePlans.map((plan) => (
+                            <button
+                                key={plan.id}
+                                type="button"
+                                aria-label={plan.name}
+                                aria-describedby={`pricing-choice-${plan.id}`}
+                                aria-pressed={
+                                    Number(mobileActive?.id) === Number(plan.id)
+                                }
+                                aria-controls={`pricing-plan-${plan.id}`}
+                                onClick={() => setMobilePlanId(Number(plan.id))}
+                            >
+                                <strong>{plan.name}</strong>
+                                <span id={`pricing-choice-${plan.id}`}>
+                                    <span className="mobile-plan-price">
+                                        <bdi dir="ltr">
+                                            {money(
+                                                plan[activePeriod],
+                                                plan.currency,
+                                            )}
+                                        </bdi>
+                                        {" · "}
+                                        {tx(billingPeriods[activePeriod])}
+                                    </span>
+                                    {plan.capacity_limit != null &&
+                                        Number(plan.capacity_limit) <= 0 &&
+                                        Number(plan.id) !==
+                                            Number(
+                                                sub.data?.plan_id ||
+                                                    currentPlan?.id,
+                                            ) && (
+                                            <span className="mobile-plan-status">
+                                                {tx("暂时售罄")}
+                                            </span>
+                                        )}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+                )}
                 <div className="plans pricing-plans">
                     {cyclePlans.length ? (
                         cyclePlans.map((plan) => {
@@ -315,7 +342,15 @@ export function SubscriptionPurchase() {
                             );
                         })
                     ) : (
-                        <Empty text={tx("暂无可购买套餐")} />
+                        <div className="pricing-empty">
+                            <Empty text={tx("暂无可购买套餐")} />
+                            <div className="pricing-empty-actions">
+                                <button type="button" onClick={plans.reload}>
+                                    {tx("刷新")}
+                                </button>
+                                <a href="#/knowledge">{tx("帮助中心")}</a>
+                            </div>
+                        </div>
                     )}
                 </div>
                 {visiblePlans.length > 0 && (

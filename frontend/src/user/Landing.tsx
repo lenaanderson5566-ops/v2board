@@ -102,9 +102,11 @@ function OriginalLanding() {
                         <div className="landing-cta">
                             <a className="button primary" href={startHref}>
                                 {t(
-                                    boot.inviteRequired && !boot.registerClosed
-                                        ? "inviteStart"
-                                        : "start",
+                                    boot.registerClosed
+                                        ? "signIn"
+                                        : boot.inviteRequired
+                                          ? "inviteStart"
+                                          : "start",
                                 )}
                                 <ArrowRight size={17} aria-hidden="true" />
                             </a>
@@ -182,9 +184,11 @@ function OriginalLanding() {
                                 href={startHref}
                             >
                                 {t(
-                                    boot.inviteRequired && !boot.registerClosed
-                                        ? "inviteStart"
-                                        : "start",
+                                    boot.registerClosed
+                                        ? "signIn"
+                                        : boot.inviteRequired
+                                          ? "inviteStart"
+                                          : "start",
                                 )}
                                 <ArrowRight size={16} aria-hidden="true" />
                             </a>
@@ -278,9 +282,11 @@ function OriginalLanding() {
                     <p>{t("footer")}</p>
                     <a className="button primary" href={startHref}>
                         {t(
-                            boot.inviteRequired && !boot.registerClosed
-                                ? "inviteStart"
-                                : "start",
+                            boot.registerClosed
+                                ? "signIn"
+                                : boot.inviteRequired
+                                  ? "inviteStart"
+                                  : "start",
                         )}
                         <ArrowRight size={17} aria-hidden="true" />
                     </a>

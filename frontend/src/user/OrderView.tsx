@@ -104,7 +104,7 @@ function OrderDetail({
         />
     );
 }
-function StripeCard({
+export function StripeCard({
     method,
     onToken,
 }: {
@@ -144,6 +144,7 @@ function StripeCard({
             <div ref={host} />
             {error && <div className="alert">{error}</div>}
             <button
+                type="button"
                 className="primary space"
                 disabled={!ready || busy}
                 onClick={async () => {

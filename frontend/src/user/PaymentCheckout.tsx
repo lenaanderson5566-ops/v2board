@@ -1,9 +1,9 @@
 import { useAnalyticsPage } from "./product-analytics";
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
-import { PaymentMethodPicker } from "./PaymentMethodPicker";
+import { PaymentIcon, PaymentMethodPicker } from "./PaymentMethodPicker";
 import { c, minuteDate } from "../shared/credit-copy";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { ArrowLeft, LoaderCircle, ReceiptText } from "lucide-react";
 import {
@@ -24,6 +24,8 @@ import {
 import { pricingCopy as pc } from "./pricing-copy";
 import { PurchaseSteps } from "./PurchaseSteps";
 
+export type PaymentQuote = { amount: number; currency: string; fee: number };
+
 export type InitialPayment = {
     methodId: number;
     amount: number;
@@ -36,9 +38,13 @@ export function PaymentCheckout({
     renderCard,
     initialPayment,
     embedded = false,
+    compact = false,
+    onQuoteChange,
 }: {
     initialPayment?: InitialPayment;
     embedded?: boolean;
+    compact?: boolean;
+    onQuoteChange?: (quote: PaymentQuote | undefined) => void;
     order: Row;
     reload: () => void;
     renderCard: (
@@ -75,17 +81,20 @@ export function PaymentCheckout({
     const qrPanel = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (!embedded || !qr || !qrPanel.current) return;
-        const bounds = qrPanel.current.getBoundingClientRect();
+        const target = compact
+            ? qrPanel.current.querySelector("svg") || qrPanel.current
+            : qrPanel.current;
+        const bounds = target.getBoundingClientRect();
         if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
             return;
-        qrPanel.current.scrollIntoView?.({
-            block: "center",
+        target.scrollIntoView?.({
+            block: compact && window.innerWidth <= 800 ? "center" : "nearest",
             behavior: window.matchMedia?.("(prefers-reduced-motion: reduce)")
                 ?.matches
                 ? "instant"
                 : "smooth",
         });
-    }, [embedded, qr]);
+    }, [embedded, compact, qr]);
     const [waiting, setWaiting] = useState(
         due > 0 && Boolean(order.payment_id),
     );
@@ -99,6 +108,16 @@ export function PaymentCheckout({
     const [retryOpen, setRetryOpen] = useState(false);
     const [cancelOpen, setCancelOpen] = useState(false),
         [cardMethod, setCardMethod] = useState<number | null>(null);
+    const cardSession = useMemo(() => ({ method: cardMethod }), [cardMethod]);
+    const activeCardSession = useRef(cardSession);
+    activeCardSession.current = cardSession;
+    const mounted = useRef(false);
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+        };
+    }, []);
     const [pollError, setPollError] = useState("");
     const [pollStopped, setPollStopped] = useState(false);
     const [pollRun, setPollRun] = useState(0);
@@ -111,6 +130,35 @@ export function PaymentCheckout({
     const keyedMethod = useRef(initialPayment?.methodId);
     const refresh = useRef(reload);
     refresh.current = reload;
+    const serverPayment = JSON.stringify([
+        order.payment_id,
+        order.payment_amount,
+        order.payment_currency,
+        order.handling_amount,
+    ]);
+    const observedPayment = useRef(serverPayment);
+    const newServerPayment =
+        Boolean(order.payment_id) && observedPayment.current !== serverPayment;
+    useEffect(() => {
+        observedPayment.current = serverPayment;
+        if (!newServerPayment || status !== 0) return;
+        setSelected(Number(order.payment_id));
+        setIssuedFee(Number(order.handling_amount || 0));
+        setIssuedQuote({
+            amount: order.payment_amount,
+            currency: order.payment_currency,
+        });
+        setWaiting(true);
+        setCardMethod(null);
+        if (
+            Number(order.payment_id) !== selected ||
+            (order.payment_amount != null &&
+                Number(order.payment_amount) !== Number(issuedQuote.amount)) ||
+            (order.payment_currency &&
+                order.payment_currency !== issuedQuote.currency)
+        )
+            setQr("");
+    }, [serverPayment, status]);
     const method = methods.data?.find((item) => Number(item.id) === selected);
     const fee =
         status === 0
@@ -123,7 +171,28 @@ export function PaymentCheckout({
     const paymentCurrency = waiting
         ? issuedQuote.currency
         : method?.quoted_currency;
-    const awaitingConfirmation = waiting;
+    const awaitingConfirmation = waiting || newServerPayment;
+    const paymentLocked = useRef(false);
+    paymentLocked.current = awaitingConfirmation || status !== 0;
+    const displayedAmount = Number(
+        (status !== 0 ? order.payment_amount : paymentAmount) ?? due + fee,
+    );
+    const displayedCurrency = String(
+        (status !== 0 ? order.payment_currency : paymentCurrency) ||
+            order.currency ||
+            "CNY",
+    );
+    useEffect(() => {
+        onQuoteChange?.(
+            feeReady
+                ? {
+                      amount: displayedAmount,
+                      currency: displayedCurrency,
+                      fee,
+                  }
+                : undefined,
+        );
+    }, [feeReady, displayedAmount, displayedCurrency, fee, onQuoteChange]);
     useEffect(() => {
         if (
             !waiting &&
@@ -210,7 +279,8 @@ export function PaymentCheckout({
         };
     }, [status, waiting, order.trade_no, pollRun]);
     async function pay(id: number, token?: string) {
-        if (inFlight.current) return;
+        if (inFlight.current || paymentLocked.current || !mounted.current)
+            return;
         inFlight.current = true;
         if (paymentKey.current && keyedMethod.current !== id) {
             paymentKey.current = crypto.randomUUID();
@@ -304,7 +374,13 @@ export function PaymentCheckout({
                             ),
                     ),
                 );
-                setIssuedQuote({ amount: undefined, currency: undefined });
+                const confirmed = methods.data?.find(
+                    (item) => Number(item.id) === id,
+                );
+                setIssuedQuote({
+                    amount: confirmed?.quoted_amount,
+                    currency: confirmed?.quoted_currency,
+                });
                 setWaiting(true);
                 setPollRun((run) => run + 1);
                 setError(
@@ -324,7 +400,7 @@ export function PaymentCheckout({
             !initialPayment ||
             autoStarted.current ||
             status !== 0 ||
-            waiting ||
+            awaitingConfirmation ||
             methods.loading ||
             methods.error
         )
@@ -399,11 +475,55 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
+    const paymentDetails = (
+        <>
+            <input aria-label={tx("付款内容")} readOnly value={qr} />
+            <button
+                type="button"
+                onClick={async () => {
+                    try {
+                        await navigator.clipboard.writeText(qr);
+                    } catch {
+                        setError(tx("复制失败，请手动复制链接"));
+                    }
+                }}
+            >
+                {tx("复制")}
+            </button>
+        </>
+    );
+    const secondaryActions = (
+        <>
+            <div className="checkout-secondary">
+                <OrderHelp tradeNo={String(order.trade_no)} />
+                <div className="checkout-secondary-actions">
+                    {awaitingConfirmation ? (
+                        <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setRetryOpen(true)}
+                        >
+                            {tx("重新发起支付")}
+                        </button>
+                    ) : null}
+                    <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => setCancelOpen(true)}
+                    >
+                        {tx("取消订单")}
+                    </button>
+                </div>
+            </div>
+        </>
+    );
     if ([2, 3, 4].includes(status))
-        return <OrderReceipt order={order} embedded={embedded} />;
+        return (
+            <OrderReceipt order={order} embedded={embedded} compact={compact} />
+        );
     if (![0, 1].includes(status))
         return (
-            <div className="checkout-page">
+            <div className={compact ? "checkout-inline" : "checkout-page"}>
                 {!embedded && (
                     <a className="receipt-back" href="#/order">
                         <ArrowLeft size={16} />
@@ -412,12 +532,20 @@ export function PaymentCheckout({
                 )}
                 <div className="alert" role="alert">
                     {tx("订单状态暂不可用，请刷新后重试。")}
-                    <button onClick={reload}>{tx("刷新")}</button>
+                    <button type="button" onClick={reload}>
+                        {tx("刷新")}
+                    </button>
                 </div>
             </div>
         );
     return (
-        <div className={`checkout-page${embedded ? " checkout-embedded" : ""}`}>
+        <div
+            className={
+                compact
+                    ? "checkout-inline"
+                    : `checkout-page${embedded ? " checkout-embedded" : ""}`
+            }
+        >
             {!embedded && (
                 <a className="receipt-back" href="#/order">
                     <ArrowLeft size={16} />
@@ -461,175 +589,210 @@ export function PaymentCheckout({
             )}
             <div
                 className={
-                    status === 1
-                        ? "checkout-layout checkout-processing"
-                        : "checkout-layout"
+                    compact
+                        ? "checkout-inline-layout"
+                        : status === 1
+                          ? "checkout-layout checkout-processing"
+                          : "checkout-layout"
                 }
             >
-                <section className="checkout-summary">
-                    <span className="checkout-section-label">
-                        {tx("订单详情")}
-                    </span>
-                    <h2>
-                        {order.credit_bytes
-                            ? c("credits")
-                            : deposit
-                              ? tx("账户充值")
-                              : order.plan?.name}
-                    </h2>
-                    <p className="muted">
-                        {order.credit_bytes
-                            ? order.credit_snapshot?.name
-                            : tx(billingPeriods[order.period] || "账户充值")}
-                    </p>
-                    {Number(order.credit_bytes) > 0 && (
-                        <p className="checkout-product-quantity">
-                            {bytes(order.credit_bytes)}
-                        </p>
-                    )}
-                    <button
-                        className="checkout-details-toggle"
-                        type="button"
-                        aria-expanded={summaryOpen}
-                        onClick={() => setSummaryOpen((open) => !open)}
-                    >
-                        {tx("订单详情")}{" "}
-                        <span aria-hidden="true">
-                            {summaryOpen ? "−" : "+"}
+                {!compact && (
+                    <section className="checkout-summary">
+                        <span className="checkout-section-label">
+                            {tx("订单详情")}
                         </span>
-                    </button>
-                    <div
-                        className="checkout-details"
-                        data-expanded={summaryOpen}
-                    >
-                        <dl className="checkout-lines">
-                            <div>
-                                <dt>
-                                    {tx(
-                                        deposit
-                                            ? "充值金额"
-                                            : Number(order.credit_bytes) > 0
-                                              ? "额度价格"
-                                              : "套餐价格",
-                                    )}
-                                </dt>
-                                <dd>{money(orderOriginalAmount(order))}</dd>
-                            </div>
-                            {Number(order.discount_amount) > 0 && (
-                                <div>
-                                    <dt>{tx("优惠金额")}</dt>
-                                    <dd>−{money(order.discount_amount)}</dd>
-                                </div>
-                            )}
-                            {Number(order.surplus_amount) > 0 && (
-                                <div>
-                                    <dt>{tx("旧套餐折抵")}</dt>
-                                    <dd>
-                                        −
-                                        {money(
-                                            Number(order.surplus_amount) -
-                                                Number(
-                                                    order.refund_amount || 0,
-                                                ),
-                                        )}
-                                    </dd>
-                                </div>
-                            )}
-                            {Number(order.balance_amount) > 0 && (
-                                <div>
-                                    <dt>{tx("余额抵扣")}</dt>
-                                    <dd>−{money(order.balance_amount)}</dd>
-                                </div>
-                            )}
-                            {(fee > 0 || !feeReady) && (
-                                <div>
-                                    <dt>{tx("支付手续费")}</dt>
-                                    <dd>{feeReady ? money(fee) : "—"}</dd>
-                                </div>
-                            )}
-                            {status === 1 && (
-                                <div className="checkout-total">
-                                    <dt>{tx("合计")}</dt>
-                                    <dd>{money(due + fee)}</dd>
-                                </div>
-                            )}
-                            {Number(order.refund_amount) > 0 && (
-                                <div>
-                                    <dt>{tx("退回余额")}</dt>
-                                    <dd>{money(order.refund_amount)}</dd>
-                                </div>
-                            )}
-                        </dl>
-                        {deposit && Number(order.bounus) > 0 && (
-                            <div className="checkout-deposit-benefit">
-                                <span>
-                                    {tx("充值赠送")} +{money(order.bounus)}
-                                </span>
-                                <strong>
-                                    {tx("到账金额")} {money(order.get_amount)}
-                                </strong>
-                            </div>
+                        <h2>
+                            {order.credit_bytes
+                                ? c("credits")
+                                : deposit
+                                  ? tx("账户充值")
+                                  : order.plan?.name}
+                        </h2>
+                        <p className="muted">
+                            {order.credit_bytes
+                                ? order.credit_snapshot?.name
+                                : tx(
+                                      billingPeriods[order.period] ||
+                                          "账户充值",
+                                  )}
+                        </p>
+                        {Number(order.credit_bytes) > 0 && (
+                            <p className="checkout-product-quantity">
+                                {bytes(order.credit_bytes)}
+                            </p>
                         )}
-                        <details className="order-reference">
-                            <summary>{tx("订单信息")}</summary>
-                            <p>
-                                {tx("订单编号")}
-                                <br />
-                                <span dir="ltr">{order.trade_no}</span>
-                            </p>
-                            <p>
-                                {c("created")}
-                                <br />
-                                {minuteDate(order.created_at)}
-                            </p>
-                        </details>
-                    </div>
-                </section>
-                {status === 0 && (
-                    <section className="checkout-payment">
-                        <div
-                            className="checkout-amount"
-                            aria-live="polite"
-                            aria-atomic="true"
+                        <button
+                            type="button"
+                            className="checkout-details-toggle"
+                            aria-expanded={summaryOpen}
+                            onClick={() => setSummaryOpen((open) => !open)}
                         >
-                            <span>{tx("应付金额")}</span>
-                            <strong>{feeReady ? money(due + fee) : "—"}</strong>
-                            {paymentCurrency &&
-                                paymentCurrency !== order.currency &&
-                                paymentAmount != null && (
-                                    <div
-                                        className="checkout-conversion"
-                                        role="note"
-                                    >
-                                        <strong>
-                                            {tx("实际付款")}{" "}
-                                            {formatMoney(
-                                                paymentAmount,
-                                                paymentCurrency,
-                                            )}
-                                        </strong>
-                                        <p>
-                                            {tx(
-                                                "订单与余额币种保持不变，付款金额按确认时的汇率锁定。",
-                                            )}
-                                        </p>
-                                        <a
-                                            href="https://www.exchangerate-api.com"
-                                            target="_blank"
-                                            rel="noreferrer"
-                                        >
-                                            Rates By Exchange Rate API
-                                        </a>
+                            {tx("订单详情")}{" "}
+                            <span aria-hidden="true">
+                                {summaryOpen ? "−" : "+"}
+                            </span>
+                        </button>
+                        <div
+                            className="checkout-details"
+                            data-expanded={summaryOpen}
+                        >
+                            <dl className="checkout-lines">
+                                <div>
+                                    <dt>
+                                        {tx(
+                                            deposit
+                                                ? "充值金额"
+                                                : Number(order.credit_bytes) > 0
+                                                  ? "额度价格"
+                                                  : "套餐价格",
+                                        )}
+                                    </dt>
+                                    <dd>{money(orderOriginalAmount(order))}</dd>
+                                </div>
+                                {Number(order.discount_amount) > 0 && (
+                                    <div>
+                                        <dt>{tx("优惠金额")}</dt>
+                                        <dd>−{money(order.discount_amount)}</dd>
                                     </div>
                                 )}
+                                {Number(order.surplus_amount) > 0 && (
+                                    <div>
+                                        <dt>{tx("旧套餐折抵")}</dt>
+                                        <dd>
+                                            −
+                                            {money(
+                                                Number(order.surplus_amount) -
+                                                    Number(
+                                                        order.refund_amount ||
+                                                            0,
+                                                    ),
+                                            )}
+                                        </dd>
+                                    </div>
+                                )}
+                                {Number(order.balance_amount) > 0 && (
+                                    <div>
+                                        <dt>{tx("余额抵扣")}</dt>
+                                        <dd>−{money(order.balance_amount)}</dd>
+                                    </div>
+                                )}
+                                {(fee > 0 || !feeReady) && (
+                                    <div>
+                                        <dt>{tx("支付手续费")}</dt>
+                                        <dd>{feeReady ? money(fee) : "—"}</dd>
+                                    </div>
+                                )}
+                                {status === 1 && (
+                                    <div className="checkout-total">
+                                        <dt>{tx("合计")}</dt>
+                                        <dd>{money(due + fee)}</dd>
+                                    </div>
+                                )}
+                                {Number(order.refund_amount) > 0 && (
+                                    <div>
+                                        <dt>{tx("退回余额")}</dt>
+                                        <dd>{money(order.refund_amount)}</dd>
+                                    </div>
+                                )}
+                            </dl>
+                            {deposit && Number(order.bounus) > 0 && (
+                                <div className="checkout-deposit-benefit">
+                                    <span>
+                                        {tx("充值赠送")} +{money(order.bounus)}
+                                    </span>
+                                    <strong>
+                                        {tx("到账金额")}{" "}
+                                        {money(order.get_amount)}
+                                    </strong>
+                                </div>
+                            )}
+                            <details className="order-reference">
+                                <summary>{tx("订单信息")}</summary>
+                                <p>
+                                    {tx("订单编号")}
+                                    <br />
+                                    <span dir="ltr">{order.trade_no}</span>
+                                </p>
+                                <p>
+                                    {c("created")}
+                                    <br />
+                                    {minuteDate(order.created_at)}
+                                </p>
+                            </details>
                         </div>
-                        <h2>{tx(due > 0 ? "选择支付方式" : "确认开通")}</h2>
+                    </section>
+                )}
+                {compact && status === 1 && (
+                    <p role="status">
+                        {tx("支付已确认，正在开通")} ·{" "}
+                        {tx("开通结果将自动更新，请勿重复支付。")}
+                    </p>
+                )}
+                {status === 0 && (
+                    <section className="checkout-payment">
+                        {(!compact ||
+                            (paymentCurrency &&
+                                paymentCurrency !== order.currency &&
+                                paymentAmount != null)) && (
+                            <div
+                                className="checkout-amount"
+                                aria-live="polite"
+                                aria-atomic="true"
+                            >
+                                {!compact && (
+                                    <>
+                                        <span>{tx("应付金额")}</span>
+                                        <strong>
+                                            {feeReady ? money(due + fee) : "—"}
+                                        </strong>
+                                    </>
+                                )}
+                                {paymentCurrency &&
+                                    paymentCurrency !== order.currency &&
+                                    paymentAmount != null && (
+                                        <div
+                                            className="checkout-conversion"
+                                            role="note"
+                                        >
+                                            <strong>
+                                                {tx("实际付款")}{" "}
+                                                {formatMoney(
+                                                    paymentAmount,
+                                                    paymentCurrency,
+                                                )}
+                                            </strong>
+                                            <p>
+                                                {tx(
+                                                    "订单与余额币种保持不变，付款金额按确认时的汇率锁定。",
+                                                )}
+                                            </p>
+                                            <a
+                                                href="https://www.exchangerate-api.com"
+                                                target="_blank"
+                                                rel="noreferrer"
+                                            >
+                                                Rates By Exchange Rate API
+                                            </a>
+                                        </div>
+                                    )}
+                            </div>
+                        )}
+                        {compact ? (
+                            !awaitingConfirmation &&
+                            !busy && (
+                                <h3>
+                                    {tx(due > 0 ? "选择支付方式" : "确认开通")}
+                                </h3>
+                            )
+                        ) : (
+                            <h2>{tx(due > 0 ? "选择支付方式" : "确认开通")}</h2>
+                        )}
                         {due <= 0 && (
                             <p className="muted">
                                 {tx("无需外部付款，确认后将处理订单。")}
                             </p>
                         )}
-                        {due > 0 && (
+                        {due > 0 && (!compact || !awaitingConfirmation) && (
                             <p className="checkout-guidance">
                                 {e("paymentReturn")}
                             </p>
@@ -639,61 +802,98 @@ export function PaymentCheckout({
                                 {error}
                             </div>
                         )}
-                        {due > 0 && (
-                            <State {...methods} retry={methods.reload}>
-                                <PaymentMethodPicker
-                                    methods={methods.data || []}
-                                    selected={selected}
-                                    disabled={busy || awaitingConfirmation}
-                                    onSelect={(id) => {
-                                        setSelected(id);
-                                        setQr("");
-                                        setWaiting(false);
-                                        setError("");
-                                    }}
-                                />
-                                {!methods.data?.length && (
-                                    <p className="muted">
-                                        {tx("暂无可用支付方式，请联系客服。")}
-                                    </p>
-                                )}
-                            </State>
-                        )}
+                        {compact && (awaitingConfirmation || busy)
+                            ? method && (
+                                  <div className="checkout-method-confirmed">
+                                      <PaymentIcon
+                                          source={
+                                              method.icon || method.asset_icon
+                                          }
+                                      />
+                                      <span>
+                                          <strong>{method.name}</strong>
+                                          {method.category === "crypto" && (
+                                              <small>
+                                                  {method.asset} ·{" "}
+                                                  {method.network_name ||
+                                                      method.network}
+                                              </small>
+                                          )}
+                                      </span>
+                                  </div>
+                              )
+                            : due > 0 && (
+                                  <State
+                                      {...methods}
+                                      loading={
+                                          compact ? false : methods.loading
+                                      }
+                                      retry={methods.reload}
+                                  >
+                                      {compact && methods.loading && (
+                                          <p
+                                              role="status"
+                                              className="checkout-quote-status muted"
+                                          >
+                                              {tx("正在加载…")}
+                                          </p>
+                                      )}
+                                      <PaymentMethodPicker
+                                          methods={methods.data || []}
+                                          selected={selected}
+                                          disabled={
+                                              busy || awaitingConfirmation
+                                          }
+                                          onSelect={(id) => {
+                                              setSelected(id);
+                                              setQr("");
+                                              setWaiting(false);
+                                              setError("");
+                                          }}
+                                      />
+                                      {!methods.loading &&
+                                          !methods.data?.length && (
+                                              <p className="muted">
+                                                  {tx(
+                                                      "暂无可用支付方式，请联系客服。",
+                                                  )}
+                                              </p>
+                                          )}
+                                  </State>
+                              )}
                         {qr && (
                             <div ref={qrPanel} className="checkout-qr">
-                                {method && <p className="checkout-qr-channel"><strong>{method.name}</strong>
-                                    {method.category === "crypto" && <span>{method.asset} · {method.network_name || method.network}</span>}
-                                </p>}
+                                {method && !compact && (
+                                    <p className="checkout-qr-channel">
+                                        <strong>{method.name}</strong>
+                                        {method.category === "crypto" && (
+                                            <span>
+                                                {method.asset} ·{" "}
+                                                {method.network_name ||
+                                                    method.network}
+                                            </span>
+                                        )}
+                                    </p>
+                                )}
                                 <QRCodeSVG
                                     value={qr}
                                     size={200}
                                     marginSize={3}
                                 />
                                 <p>{tx("扫码支付后，页面会自动检查结果。")}</p>
-                                <input
-                                    aria-label={tx("付款内容")}
-                                    readOnly
-                                    value={qr}
-                                />
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await navigator.clipboard.writeText(
-                                                qr,
-                                            );
-                                        } catch {
-                                            setError(
-                                                tx("复制失败，请手动复制链接"),
-                                            );
-                                        }
-                                    }}
-                                >
-                                    {tx("复制")}
-                                </button>
+                                {compact ? (
+                                    <details className="checkout-payment-details">
+                                        <summary>{tx("付款内容")}</summary>
+                                        {paymentDetails}
+                                    </details>
+                                ) : (
+                                    paymentDetails
+                                )}
                             </div>
                         )}
                         <div className="checkout-confirm">
                             <button
+                                type="button"
                                 className="primary"
                                 disabled={
                                     busy ||
@@ -735,25 +935,14 @@ export function PaymentCheckout({
                                 {tx("正在等待支付确认，请勿重复付款。")}
                             </p>
                         )}
-                        <div className="checkout-secondary">
-                            <OrderHelp tradeNo={String(order.trade_no)} />
-                            <div className="checkout-secondary-actions">
-                                {awaitingConfirmation ? (
-                                    <button
-                                        disabled={busy}
-                                        onClick={() => setRetryOpen(true)}
-                                    >
-                                        {tx("重新发起支付")}
-                                    </button>
-                                ) : null}
-                                <button
-                                    disabled={busy}
-                                    onClick={() => setCancelOpen(true)}
-                                >
-                                    {tx("取消订单")}
-                                </button>
-                            </div>
-                        </div>
+                        {compact ? (
+                            <details className="checkout-order-actions">
+                                <summary>{tx("订单信息")}</summary>
+                                {secondaryActions}
+                            </details>
+                        ) : (
+                            secondaryActions
+                        )}
                     </section>
                 )}
             </div>
@@ -761,6 +950,7 @@ export function PaymentCheckout({
                 <div className="alert" role="status">
                     {tx("自动检查已暂停，订单仍可继续处理，请勿重复付款。")}
                     <button
+                        type="button"
                         onClick={() => {
                             setPollRun((run) => run + 1);
                             reload();
@@ -773,12 +963,16 @@ export function PaymentCheckout({
             {pollError && (
                 <div className="alert" role="alert">
                     {pollError}
-                    <button onClick={reload}>{tx("检查支付结果")}</button>
+                    <button type="button" onClick={reload}>
+                        {tx("检查支付结果")}
+                    </button>
                 </div>
             )}
             {status === 1 && (
                 <div className="checkout-processing-actions">
-                    <button onClick={reload}>{tx("检查支付结果")}</button>
+                    <button type="button" onClick={reload}>
+                        {tx("检查支付结果")}
+                    </button>
                     <OrderHelp tradeNo={String(order.trade_no)} />
                 </div>
             )}
@@ -793,6 +987,7 @@ export function PaymentCheckout({
                         <p>{e("retryPayment")}</p>
                         <div className="actions">
                             <button
+                                type="button"
                                 disabled={busy}
                                 onClick={() => {
                                     setRetryOpen(false);
@@ -802,6 +997,7 @@ export function PaymentCheckout({
                                 {tx("检查支付结果")}
                             </button>
                             <button
+                                type="button"
                                 disabled={busy}
                                 onClick={() => void restartPayment()}
                             >
@@ -826,12 +1022,17 @@ export function PaymentCheckout({
                         </p>
                         <div className="actions">
                             <button
+                                type="button"
                                 disabled={busy}
                                 onClick={() => setCancelOpen(false)}
                             >
                                 {tx("继续支付")}
                             </button>
-                            <button disabled={busy} onClick={cancel}>
+                            <button
+                                type="button"
+                                disabled={busy}
+                                onClick={cancel}
+                            >
                                 {tx(busy ? "提交中…" : "确认取消订单")}
                             </button>
                         </div>
@@ -849,9 +1050,11 @@ export function PaymentCheckout({
                         <p className="pad">
                             {tx("合计")} {money(due + fee)}
                         </p>
-                        {renderCard(cardMethod, (token) =>
-                            pay(cardMethod, token),
-                        )}
+                        {renderCard(cardMethod, (token) => {
+                            if (activeCardSession.current !== cardSession)
+                                return Promise.resolve();
+                            return pay(cardMethod, token);
+                        })}
                     </div>
                 </Modal>
             )}

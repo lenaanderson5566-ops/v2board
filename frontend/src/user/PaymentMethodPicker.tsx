@@ -10,7 +10,7 @@ export function paymentIconUrl(source: unknown) {
     return /^\/payment-icons\/[a-z0-9-]+\.(svg|png)$/.test(url)
         ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url : url;
 }
-function PaymentIcon({ source }: { source: unknown }) {
+export function PaymentIcon({ source }: { source: unknown }) {
     const [failed, setFailed] = useState(false);
     const url = paymentIconUrl(source);
     return !url || failed ? <CreditCard className="payment-method-icon" size={28} aria-hidden="true" />

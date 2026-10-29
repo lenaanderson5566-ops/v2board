@@ -4,6 +4,7 @@ import {
     useRef,
     useState,
     type FormEvent,
+    type ReactNode,
 } from "react";
 import { bytes, money, navigate, request, type Row } from "../shared/api";
 import { e } from "../shared/experience-copy";
@@ -13,6 +14,7 @@ import {
     periodSavings,
     purchasePeriods,
     purchaseQuote,
+    orderOriginalAmount,
     usablePurchaseCoupon,
 } from "./billing-flow";
 import { CouponPicker, type WalletCoupon } from "./CouponPicker";
@@ -20,7 +22,7 @@ import { pricingCopy as pc } from "./pricing-copy";
 import "./pricing.css";
 import { PaymentMethodPicker } from "./PaymentMethodPicker";
 import { useCheckoutQuote } from "./useCheckoutQuote";
-import type { InitialPayment } from "./PaymentCheckout";
+import type { InitialPayment, PaymentQuote } from "./PaymentCheckout";
 import { useAnalyticsPage } from "./product-analytics";
 export function PlanSelection({
     plan,
@@ -29,8 +31,16 @@ export function PlanSelection({
     unified = false,
     onOrderCreated,
     onQuoteConflict,
+    checkout,
+    order,
+    paymentContent,
+    paymentQuote,
 }: {
     unified?: boolean;
+    checkout?: { number: string; payment?: InitialPayment };
+    order?: Row;
+    paymentContent?: ReactNode;
+    paymentQuote?: PaymentQuote;
     onOrderCreated?: (orderNumber: string, payment: InitialPayment) => void;
     onQuoteConflict?: () => void;
     plan: Row;
@@ -38,16 +48,29 @@ export function PlanSelection({
     replaceTradeNo?: string;
 }) {
     useAnalyticsPage(plan.resetOnly ? null : "confirmation");
-    const available = plan.resetOnly ? ["reset_price"] : purchasePeriods(plan);
-    const [period, setPeriod] = useState(
+    const periods = plan.resetOnly ? ["reset_price"] : purchasePeriods(plan);
+    const available =
+        order?.period && !periods.includes(order.period)
+            ? [...periods, order.period]
+            : periods;
+    const [selectedPeriod, setPeriod] = useState(
         available.includes(plan.initialPeriod)
             ? plan.initialPeriod
             : available[0] || "",
     );
+    const period = order?.period || selectedPeriod;
     const [selection, setCoupon] = useState<WalletCoupon | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
     const submitting = useRef(false);
+    const paymentPanel = useRef<HTMLDivElement>(null);
+    const focusedOrder = useRef<string | undefined>(undefined);
+    useEffect(() => {
+        if (checkout?.payment && focusedOrder.current !== checkout.number) {
+            focusedOrder.current = checkout.number;
+            paymentPanel.current?.focus({ preventScroll: true });
+        }
+    }, [checkout]);
     const [methodId, setMethodId] = useState(0);
     const manualPaymentSelection = useRef(false);
     const checkedConflict = useRef(false);
@@ -62,7 +85,7 @@ export function PlanSelection({
             : null;
     const quote = purchaseQuote(plan, period, coupon?.discountPercent);
     const preview = useCheckoutQuote(
-        unified && !uncertain,
+        unified && !uncertain && !checkout,
         {
             plan_id: Number(plan.id),
             period,
@@ -90,13 +113,38 @@ export function PlanSelection({
     }, [serverQuote, period, quoteScope]);
     const previous =
         lastQuote.current?.scope === quoteScope ? lastQuote.current : undefined;
-    const displayQuote = serverQuote || previous?.data;
-    const displayPeriod = serverQuote ? period : previous?.period || period;
-    const showingPrevious = unified && !serverQuote && Boolean(displayQuote);
+    const displayQuote = order
+        ? {
+              ...order,
+              plan_amount: orderOriginalAmount(order),
+              handling_amount:
+                  Number(order.status) === 0
+                      ? paymentQuote?.fee
+                      : order.handling_amount,
+              payment_amount:
+                  paymentQuote?.amount ??
+                  order.payment_amount ??
+                  Number(order.total_amount) +
+                      Number(order.handling_amount || 0),
+              payment_currency:
+                  paymentQuote?.currency ||
+                  order.payment_currency ||
+                  order.currency ||
+                  plan.currency,
+          }
+        : serverQuote || previous?.data;
+    const displayPeriod = order
+        ? order.period
+        : serverQuote
+          ? period
+          : previous?.period || period;
+    const showingPrevious =
+        unified && !checkout && !serverQuote && Boolean(displayQuote);
     useLayoutEffect(() => {
         const lines = quoteLines.current;
         if (!unified || !lines) return;
         lines.style.minHeight = "";
+        if (checkout) return;
         const { width, height } = lines.getBoundingClientRect();
         const minimum =
             Math.abs(width - quoteSize.current.width) < 1
@@ -104,7 +152,7 @@ export function PlanSelection({
                 : height;
         quoteSize.current = { width, height: minimum };
         lines.style.minHeight = `${Math.ceil(minimum)}px`;
-    }, [unified, displayQuote]);
+    }, [unified, displayQuote, checkout]);
     useEffect(() => {
         if (serverQuote) setPaymentMethods(serverQuote.methods || []);
     }, [serverQuote]);
@@ -131,6 +179,7 @@ export function PlanSelection({
     async function submit(event: FormEvent) {
         event.preventDefault();
         if (
+            checkout ||
             submitting.current ||
             !period ||
             (unified &&
@@ -206,17 +255,17 @@ export function PlanSelection({
     }
     return (
         <form
-            className="purchase-selection compact-selection"
+            className={`purchase-selection compact-selection${checkout ? " has-confirmed-order" : ""}`}
             onSubmit={submit}
             aria-busy={busy}
         >
             <fieldset disabled={busy}>
-                <fieldset
-                    className="purchase-inputs"
-                    disabled={busy || uncertain}
-                >
-                    <div className="purchase-body">
-                        <section className="purchase-choices">
+                <div className="purchase-body">
+                    <section className="purchase-choices">
+                        <fieldset
+                            className="purchase-inputs"
+                            disabled={busy || uncertain || Boolean(checkout)}
+                        >
                             {unified && (
                                 <div className="checkout-product">
                                     <h3>{plan.name}</h3>
@@ -280,7 +329,13 @@ export function PlanSelection({
                                             {tx(billingPeriods[key])}
                                         </span>
                                         <strong>
-                                            {money(plan[key], plan.currency)}
+                                            {money(
+                                                order && key === order.period
+                                                    ? orderOriginalAmount(order)
+                                                    : plan[key],
+                                                order?.currency ||
+                                                    plan.currency,
+                                            )}
                                         </strong>
                                         {periodSavings(plan, key) > 0 && (
                                             <small
@@ -303,18 +358,38 @@ export function PlanSelection({
                                     </label>
                                 ))}
                             </div>
-                            <CouponPicker
-                                planId={Number(plan.id)}
-                                period={period}
-                                value={coupon?.id ?? null}
-                                amount={quote.amount}
-                                currency={plan.currency}
-                                onChange={(_id, selected) =>
-                                    setCoupon(selected ?? null)
-                                }
-                            />
-                            {unified && (
-                                <section className="checkout-method-section">
+                            {checkout ? (
+                                Number(displayQuote?.discount_amount) > 0 && (
+                                    <div className="checkout-confirmed-coupon">
+                                        <span>
+                                            {selection?.name || tx("优惠金额")}
+                                        </span>
+                                        <strong>
+                                            −
+                                            {money(
+                                                displayQuote?.discount_amount,
+                                                order?.currency ||
+                                                    plan.currency,
+                                            )}
+                                        </strong>
+                                    </div>
+                                )
+                            ) : (
+                                <CouponPicker
+                                    planId={Number(plan.id)}
+                                    period={period}
+                                    value={coupon?.id ?? null}
+                                    amount={quote.amount}
+                                    currency={plan.currency}
+                                    onChange={(_id, selected) =>
+                                        setCoupon(selected ?? null)
+                                    }
+                                />
+                            )}
+                        </fieldset>
+                        {unified && !checkout && (
+                            <section className="checkout-method-section">
+                                <>
                                     <h3>{tx("选择支付方式")}</h3>
                                     <p
                                         className="checkout-quote-status muted"
@@ -399,184 +474,188 @@ export function PlanSelection({
                                             </button>
                                         </p>
                                     )}
-                                </section>
-                            )}
-                        </section>
-                        <section
-                            className={`purchase-breakdown${showingPrevious ? " is-requoting" : ""}`}
-                            aria-label={pc("priceDetails")}
+                                </>
+                            </section>
+                        )}
+                    </section>
+                    <section
+                        className={`purchase-breakdown${showingPrevious ? " is-requoting" : ""}`}
+                        aria-label={pc("priceDetails")}
+                    >
+                        <h3>{pc("priceDetails")}</h3>
+                        {unified && !checkout && (
+                            <span className="quote-snapshot-label">
+                                {showingPrevious
+                                    ? pc("previousQuote")
+                                    : "\u00a0"}
+                            </span>
+                        )}
+                        <dl
+                            ref={quoteLines}
+                            className="checkout-lines"
+                            aria-live="polite"
+                            aria-busy={unified && preview.loading}
                         >
-                            <h3>{pc("priceDetails")}</h3>
-                            {unified && (
-                                <span className="quote-snapshot-label">
-                                    {showingPrevious
-                                        ? pc("previousQuote")
-                                        : "\u00a0"}
-                                </span>
-                            )}
-                            <dl
-                                ref={quoteLines}
-                                className="checkout-lines"
-                                aria-live="polite"
-                                aria-busy={unified && preview.loading}
-                            >
-                                {!unified && quote.cycleSaving > 0 && (
-                                    <>
-                                        <div>
-                                            <dt>
-                                                {pc("monthlyBaseline", {
-                                                    months: quote.months,
-                                                })}
-                                            </dt>
-                                            <dd>
-                                                {money(
-                                                    quote.baseline,
-                                                    plan.currency,
-                                                )}
-                                            </dd>
-                                        </div>
-                                        <div className="discount-line">
-                                            <dt>{pc("cycleDiscount")}</dt>
-                                            <dd>
-                                                −
-                                                {money(
-                                                    quote.cycleSaving,
-                                                    plan.currency,
-                                                )}
-                                            </dd>
-                                        </div>
-                                    </>
-                                )}
-                                <div>
-                                    <dt>
-                                        {tx("套餐价格")} ·{" "}
-                                        {tx(
-                                            billingPeriods[
-                                                unified ? displayPeriod : period
-                                            ] || "",
-                                        )}
-                                    </dt>
-                                    <dd>
-                                        {unified && !displayQuote
-                                            ? "—"
-                                            : money(
-                                                  unified
-                                                      ? displayQuote?.plan_amount
-                                                      : quote.amount,
-                                                  plan.currency,
-                                              )}
-                                    </dd>
-                                </div>
-                                {(unified
-                                    ? Number(displayQuote?.discount_amount) > 0
-                                    : Boolean(coupon)) && (
-                                    <div className="discount-line">
+                            {!unified && quote.cycleSaving > 0 && (
+                                <>
+                                    <div>
                                         <dt>
-                                            {tx("优惠金额")}
-                                            <small>
-                                                {!unified &&
-                                                    pc("couponBase", {
-                                                        percent:
-                                                            coupon!
-                                                                .discountPercent,
-                                                        amount: money(
-                                                            quote.amount,
-                                                            plan.currency,
-                                                        ),
-                                                    })}
-                                            </small>
+                                            {pc("monthlyBaseline", {
+                                                months: quote.months,
+                                            })}
                                         </dt>
                                         <dd>
-                                            −
                                             {money(
-                                                unified
-                                                    ? displayQuote?.discount_amount
-                                                    : quote.couponSaving,
+                                                quote.baseline,
                                                 plan.currency,
                                             )}
                                         </dd>
                                     </div>
-                                )}
-                                {unified && displayQuote && (
-                                    <>
-                                        {Number(displayQuote.surplus_amount) >
-                                            0 && (
-                                            <div>
-                                                <dt>{pc("surplusCredit")}</dt>
-                                                <dd>
-                                                    −
-                                                    {money(
-                                                        displayQuote.surplus_amount,
-                                                        plan.currency,
-                                                    )}
-                                                </dd>
-                                            </div>
-                                        )}
-                                        {Number(displayQuote.refund_amount) >
-                                            0 && (
-                                            <div>
-                                                <dt>{pc("surplusRefund")}</dt>
-                                                <dd>
-                                                    +
-                                                    {money(
-                                                        displayQuote.refund_amount,
-                                                        plan.currency,
-                                                    )}
-                                                </dd>
-                                            </div>
-                                        )}
-                                        {Number(displayQuote.balance_amount) >
-                                            0 && (
-                                            <div>
-                                                <dt>{tx("余额抵扣")}</dt>
-                                                <dd>
-                                                    −
-                                                    {money(
-                                                        displayQuote.balance_amount,
-                                                        plan.currency,
-                                                    )}
-                                                </dd>
-                                            </div>
-                                        )}
-                                        {Number(displayQuote.handling_amount) >
-                                            0 && (
-                                            <div>
-                                                <dt>{tx("支付手续费")}</dt>
-                                                <dd>
-                                                    {money(
-                                                        displayQuote.handling_amount,
-                                                        plan.currency,
-                                                    )}
-                                                </dd>
-                                            </div>
-                                        )}
-                                    </>
-                                )}
-                            </dl>
-                            <details className="purchase-fee-note">
-                                <summary>{pc("feeDetails")}</summary>
-                                <p>{pc("discountOrder")}</p>
-                                <p>
-                                    {tx(
-                                        "优惠、旧套餐折抵和余额抵扣以创建后的订单为准。创建订单会预占可用余额，取消订单后返还。",
-                                    )}
-                                </p>
-                            </details>
-                            {replaceTradeNo && (
-                                <p className="muted" role="note">
-                                    {pc("replaceConfirm")}
-                                </p>
+                                    <div className="discount-line">
+                                        <dt>{pc("cycleDiscount")}</dt>
+                                        <dd>
+                                            −
+                                            {money(
+                                                quote.cycleSaving,
+                                                plan.currency,
+                                            )}
+                                        </dd>
+                                    </div>
+                                </>
                             )}
-                            {error && (
-                                <div className="alert" role="alert">
-                                    {error}
-                                    <a href="#/order">{tx("查看订单记录")}</a>
+                            <div>
+                                <dt>
+                                    {tx("套餐价格")} ·{" "}
+                                    {tx(
+                                        billingPeriods[
+                                            unified ? displayPeriod : period
+                                        ] || "",
+                                    )}
+                                </dt>
+                                <dd>
+                                    {unified && !displayQuote
+                                        ? "—"
+                                        : money(
+                                              unified
+                                                  ? displayQuote?.plan_amount
+                                                  : quote.amount,
+                                              plan.currency,
+                                          )}
+                                </dd>
+                            </div>
+                            {(unified
+                                ? Number(displayQuote?.discount_amount) > 0
+                                : Boolean(coupon)) && (
+                                <div className="discount-line">
+                                    <dt>
+                                        {tx("优惠金额")}
+                                        <small>
+                                            {!unified &&
+                                                pc("couponBase", {
+                                                    percent:
+                                                        coupon!.discountPercent,
+                                                    amount: money(
+                                                        quote.amount,
+                                                        plan.currency,
+                                                    ),
+                                                })}
+                                        </small>
+                                    </dt>
+                                    <dd>
+                                        −
+                                        {money(
+                                            unified
+                                                ? displayQuote?.discount_amount
+                                                : quote.couponSaving,
+                                            plan.currency,
+                                        )}
+                                    </dd>
                                 </div>
                             )}
-                        </section>
-                    </div>
-                </fieldset>
-                <div className="purchase-footer">
+                            {unified && displayQuote && (
+                                <>
+                                    {Number(displayQuote.surplus_amount) >
+                                        0 && (
+                                        <div>
+                                            <dt>{pc("surplusCredit")}</dt>
+                                            <dd>
+                                                −
+                                                {money(
+                                                    displayQuote.surplus_amount,
+                                                    plan.currency,
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
+                                    {Number(displayQuote.refund_amount) > 0 && (
+                                        <div>
+                                            <dt>{pc("surplusRefund")}</dt>
+                                            <dd>
+                                                +
+                                                {money(
+                                                    displayQuote.refund_amount,
+                                                    plan.currency,
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
+                                    {Number(displayQuote.balance_amount) >
+                                        0 && (
+                                        <div>
+                                            <dt>{tx("余额抵扣")}</dt>
+                                            <dd>
+                                                −
+                                                {money(
+                                                    displayQuote.balance_amount,
+                                                    plan.currency,
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
+                                    {Number(displayQuote.handling_amount) >
+                                        0 && (
+                                        <div>
+                                            <dt>{tx("支付手续费")}</dt>
+                                            <dd>
+                                                {money(
+                                                    displayQuote.handling_amount,
+                                                    plan.currency,
+                                                )}
+                                            </dd>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </dl>
+                        <details className="purchase-fee-note">
+                            <summary>{pc("feeDetails")}</summary>
+                            <p>{pc("discountOrder")}</p>
+                            <p>
+                                {tx(
+                                    "优惠、旧套餐折抵和余额抵扣以创建后的订单为准。创建订单会预占可用余额，取消订单后返还。",
+                                )}
+                            </p>
+                        </details>
+                        {replaceTradeNo && (
+                            <p className="muted" role="note">
+                                {pc("replaceConfirm")}
+                            </p>
+                        )}
+                        {error && (
+                            <div className="alert" role="alert">
+                                {error}
+                                <a href="#/order">{tx("查看订单记录")}</a>
+                            </div>
+                        )}
+                    </section>
+                </div>
+                <div
+                    ref={paymentPanel}
+                    role={checkout ? "region" : undefined}
+                    aria-label={checkout ? tx("确认与支付") : undefined}
+                    tabIndex={checkout ? -1 : undefined}
+                    className={`purchase-footer${checkout ? " purchase-footer-confirmed" : ""}`}
+                >
                     <div
                         className={`purchase-footer-total${showingPrevious ? " is-requoting" : ""}`}
                         aria-live="polite"
@@ -592,14 +671,18 @@ export function PlanSelection({
                         </span>
                         <span>
                             {unified
-                                ? pc("amountDue")
+                                ? [1, 3].includes(Number(order?.status))
+                                    ? tx("实际付款")
+                                    : [2, 4].includes(Number(order?.status))
+                                      ? tx("订单信息")
+                                      : pc("amountDue")
                                 : pc(
                                       coupon
                                           ? "couponEstimate"
                                           : "estimatedSubtotal",
                                   )}
                         </span>
-                        {unified && (
+                        {unified && !checkout && (
                             <span className="quote-snapshot-label">
                                 {showingPrevious
                                     ? pc("previousQuote")
@@ -608,41 +691,52 @@ export function PlanSelection({
                         )}
                         <strong>
                             {unified
-                                ? displayQuote
-                                    ? money(
-                                          displayQuote.payment_amount,
-                                          displayQuote.payment_currency,
-                                      )
-                                    : "—"
+                                ? Number(order?.status) === 2
+                                    ? tx("已取消")
+                                    : Number(order?.status) === 4
+                                      ? tx("已折抵")
+                                      : checkout && order && !paymentQuote
+                                        ? "—"
+                                        : displayQuote
+                                          ? money(
+                                                displayQuote.payment_amount,
+                                                displayQuote.payment_currency,
+                                            )
+                                          : "—"
                                 : money(quote.subtotal, plan.currency)}
                         </strong>
                         <small>
                             {unified
-                                ? pc("quoteNotice")
+                                ? checkout
+                                    ? `${tx("订单编号")} ${checkout.number}`
+                                    : pc("quoteNotice")
                                 : pc("estimateExclusions")}
                         </small>
                     </div>
-                    <button
-                        className="primary purchase-primary"
-                        disabled={
-                            busy ||
-                            !period ||
-                            (unified &&
-                                !uncertain &&
-                                (!serverQuote?.quote_token ||
-                                    preview.loading ||
-                                    preview.expired ||
-                                    Boolean(preview.error)))
-                        }
-                    >
-                        {busy
-                            ? tx("提交中…")
-                            : uncertain
-                              ? tx("重试")
-                              : unified
-                                ? pc("confirmAndPay")
-                                : tx("创建订单并继续")}
-                    </button>
+                    {checkout && paymentContent}
+                    {!checkout && (
+                        <button
+                            className="primary purchase-primary"
+                            disabled={
+                                busy ||
+                                !period ||
+                                (unified &&
+                                    !uncertain &&
+                                    (!serverQuote?.quote_token ||
+                                        preview.loading ||
+                                        preview.expired ||
+                                        Boolean(preview.error)))
+                            }
+                        >
+                            {busy
+                                ? tx("提交中…")
+                                : uncertain
+                                  ? tx("重试")
+                                  : unified
+                                    ? pc("confirmAndPay")
+                                    : tx("创建订单并继续")}
+                        </button>
+                    )}
                 </div>
             </fieldset>
         </form>

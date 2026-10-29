@@ -10,9 +10,11 @@ import { OrderHelp } from "./OrderHelp";
 export function OrderReceipt({
     order,
     embedded = false,
+    compact = false,
 }: {
     order: Row;
     embedded?: boolean;
+    compact?: boolean;
 }) {
     const statusPanel = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -109,131 +111,133 @@ export function OrderReceipt({
                 </a>
                 <OrderHelp tradeNo={String(order.trade_no)} />
             </div>
-            <section className="receipt-card">
-                <div className="receipt-product">
-                    <h3>
-                        {credit
-                            ? c("creditOrder", {
-                                  amount: bytes(order.credit_bytes),
-                              })
-                            : deposit
-                              ? tx("账户充值")
-                              : order.plan?.name}
-                    </h3>
-                    {!deposit && (
-                        <span className="muted">
+            {!compact && (
+                <section className="receipt-card">
+                    <div className="receipt-product">
+                        <h3>
                             {credit
-                                ? order.credit_snapshot?.name ||
-                                  order.plan?.name
-                                : tx(
-                                      billingPeriods[order.period] ||
-                                          "订单详情",
-                                  )}
-                        </span>
-                    )}
-                </div>
-                <dl className="checkout-lines">
-                    {
-                        <div>
-                            <dt>
-                                {tx(
-                                    deposit
-                                        ? "充值金额"
-                                        : credit
-                                          ? "额度价格"
-                                          : "套餐价格",
-                                )}
-                            </dt>
-                            <dd>{money(orderOriginalAmount(order))}</dd>
-                        </div>
-                    }
-                    {!cancelled && Number(order.discount_amount) > 0 && (
-                        <div>
-                            <dt>{tx("优惠金额")}</dt>
-                            <dd>−{money(order.discount_amount)}</dd>
-                        </div>
-                    )}
-                    {!cancelled && Number(order.surplus_amount) > 0 && (
-                        <div>
-                            <dt>{tx("旧套餐折抵")}</dt>
-                            <dd>
-                                −
-                                {money(
-                                    Number(order.surplus_amount) -
-                                        Number(order.refund_amount || 0),
-                                )}
-                            </dd>
-                        </div>
-                    )}
-                    {Number(order.balance_amount) > 0 && (
-                        <div>
-                            <dt>
-                                {cancelled
-                                    ? c("balanceReturned")
-                                    : tx("余额抵扣")}
-                            </dt>
-                            <dd>
-                                {cancelled ? "+" : "−"}
-                                {money(order.balance_amount)}
-                            </dd>
-                        </div>
-                    )}
-                    {!cancelled && fee > 0 && (
-                        <div>
-                            <dt>{tx("支付手续费")}</dt>
-                            <dd>{money(fee)}</dd>
-                        </div>
-                    )}
-                    <div className="checkout-total">
-                        <dt>{cancelled ? c("quote") : c("paid")}</dt>
-                        <dd>{money(due + (cancelled ? 0 : fee))}</dd>
+                                ? c("creditOrder", {
+                                      amount: bytes(order.credit_bytes),
+                                  })
+                                : deposit
+                                  ? tx("账户充值")
+                                  : order.plan?.name}
+                        </h3>
+                        {!deposit && (
+                            <span className="muted">
+                                {credit
+                                    ? order.credit_snapshot?.name ||
+                                      order.plan?.name
+                                    : tx(
+                                          billingPeriods[order.period] ||
+                                              "订单详情",
+                                      )}
+                            </span>
+                        )}
                     </div>
-                    {!cancelled && Number(order.refund_amount) > 0 && (
-                        <div>
-                            <dt>{tx("退回余额")}</dt>
-                            <dd>{money(order.refund_amount)}</dd>
-                        </div>
-                    )}
-                    {order.payment_currency &&
-                        order.payment_currency !== order.currency && (
+                    <dl className="checkout-lines">
+                        {
                             <div>
-                                <dt>{tx("实际付款")}</dt>
+                                <dt>
+                                    {tx(
+                                        deposit
+                                            ? "充值金额"
+                                            : credit
+                                              ? "额度价格"
+                                              : "套餐价格",
+                                    )}
+                                </dt>
+                                <dd>{money(orderOriginalAmount(order))}</dd>
+                            </div>
+                        }
+                        {!cancelled && Number(order.discount_amount) > 0 && (
+                            <div>
+                                <dt>{tx("优惠金额")}</dt>
+                                <dd>−{money(order.discount_amount)}</dd>
+                            </div>
+                        )}
+                        {!cancelled && Number(order.surplus_amount) > 0 && (
+                            <div>
+                                <dt>{tx("旧套餐折抵")}</dt>
                                 <dd>
-                                    {formatMoney(
-                                        order.payment_amount,
-                                        order.payment_currency,
+                                    −
+                                    {money(
+                                        Number(order.surplus_amount) -
+                                            Number(order.refund_amount || 0),
                                     )}
                                 </dd>
                             </div>
                         )}
-                </dl>
-                {!cancelled && deposit && Number(order.bounus) > 0 && (
-                    <div className="checkout-deposit-benefit">
-                        <span>
-                            {tx("充值赠送")} +{money(order.bounus)}
-                        </span>
-                        <strong>
-                            {tx("到账金额")} {money(order.get_amount)}
-                        </strong>
-                    </div>
-                )}
-                <dl className="receipt-reference">
-                    <div>
-                        <dt>{tx("订单编号")}</dt>
-                        <dd dir="ltr">{order.trade_no}</dd>
-                    </div>
-                    <div>
-                        <dt>{c("created")}</dt>
-                        <dd>{minuteDate(order.created_at)}</dd>
-                    </div>
-                    {!cancelled && order.paid_at > 0 && (
-                        <div>
-                            <dt>{c("paidAt")}</dt>
-                            <dd>{minuteDate(order.paid_at)}</dd>
+                        {Number(order.balance_amount) > 0 && (
+                            <div>
+                                <dt>
+                                    {cancelled
+                                        ? c("balanceReturned")
+                                        : tx("余额抵扣")}
+                                </dt>
+                                <dd>
+                                    {cancelled ? "+" : "−"}
+                                    {money(order.balance_amount)}
+                                </dd>
+                            </div>
+                        )}
+                        {!cancelled && fee > 0 && (
+                            <div>
+                                <dt>{tx("支付手续费")}</dt>
+                                <dd>{money(fee)}</dd>
+                            </div>
+                        )}
+                        <div className="checkout-total">
+                            <dt>{cancelled ? c("quote") : c("paid")}</dt>
+                            <dd>{money(due + (cancelled ? 0 : fee))}</dd>
+                        </div>
+                        {!cancelled && Number(order.refund_amount) > 0 && (
+                            <div>
+                                <dt>{tx("退回余额")}</dt>
+                                <dd>{money(order.refund_amount)}</dd>
+                            </div>
+                        )}
+                        {order.payment_currency &&
+                            order.payment_currency !== order.currency && (
+                                <div>
+                                    <dt>{tx("实际付款")}</dt>
+                                    <dd>
+                                        {formatMoney(
+                                            order.payment_amount,
+                                            order.payment_currency,
+                                        )}
+                                    </dd>
+                                </div>
+                            )}
+                    </dl>
+                    {!cancelled && deposit && Number(order.bounus) > 0 && (
+                        <div className="checkout-deposit-benefit">
+                            <span>
+                                {tx("充值赠送")} +{money(order.bounus)}
+                            </span>
+                            <strong>
+                                {tx("到账金额")} {money(order.get_amount)}
+                            </strong>
                         </div>
                     )}
-                </dl>
-            </section>
+                    <dl className="receipt-reference">
+                        <div>
+                            <dt>{tx("订单编号")}</dt>
+                            <dd dir="ltr">{order.trade_no}</dd>
+                        </div>
+                        <div>
+                            <dt>{c("created")}</dt>
+                            <dd>{minuteDate(order.created_at)}</dd>
+                        </div>
+                        {!cancelled && order.paid_at > 0 && (
+                            <div>
+                                <dt>{c("paidAt")}</dt>
+                                <dd>{minuteDate(order.paid_at)}</dd>
+                            </div>
+                        )}
+                    </dl>
+                </section>
+            )}
         </article>
     );
 }

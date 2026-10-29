@@ -90,7 +90,9 @@ vi.mock("../shared/ui", () => ({
                       ? mocks.plans
                       : path === "user/order/fetch"
                         ? mocks.orders
-                        : path === "user/getSubscribe"
+                        : path.startsWith("user/plan/fetch?")
+                    ? mocks.plans.find(p => Number(p.id) === Number(new URLSearchParams(path.split("?")[1]).get("id")))
+                  : path === "user/getSubscribe"
                           ? mocks.sub
                           : path.startsWith("user/order/detail")
                             ? mocks.detail
@@ -1468,23 +1470,44 @@ it("labels the retained amount as previous and blocks confirmation after recalcu
 });
 
 it("creates an order and starts its QR payment in place once under StrictMode, then resumes without charging again", async () => {
-    mocks.detail = { ...order, trade_no: "inline-order", total_amount: 900, balance_amount: 0, discount_amount: 0 };
-    mocks.methods = [{ id: 11, name: "Alipay", payment: "TestQR", category: "wallet", quoted_amount: 900, quoted_currency: "CNY", quoted_fee: 0 }];
+    mocks.detail = { ...order, trade_no: "inline-order", total_amount: 810, balance_amount: 0, discount_amount: 90 };
+    mocks.methods = [{ id: 11, name: "Alipay", payment: "TestQR", category: "wallet", quoted_amount: 810, quoted_currency: "CNY", quoted_fee: 0 }];
     mocks.request.mockImplementation(async (path: string) => path === "user/order/save"
         ? { data: "inline-order" } : path === "user/order/checkout" ? { type: 0, data: "https://pay.example/inline-qr" } : { data: 0 });
     const scroll = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
     const view = render(<StrictMode><UnifiedCheckout initialPlan={plan} /></StrictMode>);
     const confirm = await screen.findByRole<HTMLButtonElement>("button", { name: "confirmAndPay{}" });
     await waitFor(() => expect(confirm.disabled).toBe(false));
+    fireEvent.click(view.container.querySelector(".checkout-coupon summary")!);
+    fireEvent.click(await screen.findByRole("radio", { name: /SAVE/ }));
+    await waitFor(() => expect(confirm.disabled).toBe(false));
+    const originalForm = confirm.closest("form");
+    const originalCycles = screen.getByRole("group", { name: "选择订阅周期" });
+    const quoteRequests = mocks.quoteRequest.mock.calls.length;
     fireEvent.click(confirm);
-    expect((await screen.findByRole("textbox", { name: "付款内容" }) as HTMLInputElement).value).toBe("https://pay.example/inline-qr");
+    const qrContent = await screen.findByDisplayValue("https://pay.example/inline-qr");
+    expect((qrContent as HTMLInputElement).value).toBe("https://pay.example/inline-qr");
+    expect(qrContent.closest("form")).toBe(originalForm);
+    expect(screen.getByRole("group", { name: "选择订阅周期" })).toBe(originalCycles);
+    expect(within(originalCycles).getByRole<HTMLInputElement>("radio", { name: /季付/ }).matches(":disabled")).toBe(true);
+    expect(view.container.querySelector(".checkout-summary")).toBeNull();
+    expect(view.container.querySelector(".checkout-confirmed-coupon")?.textContent).toContain("SAVE");
+    expect(view.container.querySelector(".checkout-confirmed-coupon")?.textContent).toContain("−¥0.90");
+    expect(view.container.querySelector(".purchase-footer-total strong")?.textContent).toBe("¥8.10");
+    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    expect(view.container.querySelectorAll(".payment-method-picker")).toHaveLength(0);
+    expect(view.container.querySelector(".checkout-method-confirmed")?.textContent).toContain("Alipay");
+    expect(qrContent.closest(".purchase-footer-confirmed")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "confirmAndPay{}" })).toBeNull();
+    fireEvent.submit(originalForm!);
+    expect(mocks.quoteRequest).toHaveBeenCalledTimes(quoteRequests);
     expect(location.hash).toBe("#/plan/1?order=inline-order");
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(scroll).not.toHaveBeenCalled();
     expect(screen.getAllByRole("heading", { name: "确认与支付" })).toHaveLength(1);
     expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/save")).toHaveLength(1);
     expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
-    expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", expect.objectContaining({ trade_no: "inline-order", method: 11, expected_payment_amount: 900, expected_payment_currency: "CNY", payment_request_key: expect.any(String) }), { timeoutMs: 45000 });
+    expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", expect.objectContaining({ trade_no: "inline-order", method: 11, expected_payment_amount: 810, expected_payment_currency: "CNY", payment_request_key: expect.any(String) }), { timeoutMs: 45000 });
     view.unmount();
     mocks.request.mockClear(); mocks.quoteRequest.mockClear();
     mocks.detail = { ...mocks.detail, payment_id: 11 };
@@ -1492,11 +1515,13 @@ it("creates an order and starts its QR payment in place once under StrictMode, t
     await screen.findByText("正在等待支付确认，请勿重复付款。");
     expect(mocks.request.mock.calls.filter(([path]) => ["user/order/save", "user/order/checkout"].includes(path))).toHaveLength(0);
     expect(mocks.quoteRequest).not.toHaveBeenCalled();
+    expect(within(screen.getByRole("group", { name: "选择订阅周期" })).getByRole<HTMLInputElement>("radio", { name: /季付/ }).checked).toBe(true);
+    expect(resumed.container.querySelector(".checkout-summary")).toBeNull();
     mocks.detail = { ...mocks.detail, status: 3 };
     resumed.rerender(<UnifiedCheckout planId={1} initialOrder="inline-order" />);
     await screen.findByText("订单已完成");
     expect(resumed.container.querySelector('.purchase-steps [aria-current="step"]')?.textContent).toContain("开通完成");
-    expect(screen.queryByRole("textbox", { name: "付款内容" })).toBeNull();
+    expect(screen.queryByDisplayValue("https://pay.example/inline-qr")).toBeNull();
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(location.hash).toBe("#/plan/1?order=inline-order");
     scroll.mockRestore();
@@ -1515,4 +1540,24 @@ it.each(["../order", "https://other.example/order", "bad/order", "a".repeat(65),
 it("keeps only an owned-order lookup reference in the login return path", () => {
     expect(purchaseReturnPath("#/plan/1?order=ORDER_abc-123&requestKey=secret&pay=true&return=https://elsewhere.example")).toBe("plan/1?order=ORDER_abc-123");
     expect(purchaseReturnPath("#/https://elsewhere.example")).toBeUndefined();
+});
+
+
+it("resumes in the original cycle layout with persisted totals and follows authoritative channel quotes", async () => {
+    mocks.detail = { ...order, trade_no: "saved-order", currency: "CNY", total_amount: 800, balance_amount: 0, discount_amount: 100 };
+    mocks.methods = [
+        { id: 11, name: "Alipay", quoted_amount: 800, quoted_currency: "CNY", quoted_fee: 0 },
+        { id: 12, name: "Fee channel", quoted_amount: 850, quoted_currency: "CNY", quoted_fee: 50 },
+    ];
+    mocks.plans = [{ ...plan, quarter_price: 5000 }];
+    const view = render(<UnifiedCheckout planId={1} initialOrder="saved-order" />);
+    const cycles = await screen.findByRole("group", { name: "选择订阅周期" });
+    expect(within(cycles).getByRole<HTMLInputElement>("radio", { name: /季付/ }).checked).toBe(true);
+    expect(within(cycles).getByText("¥9.00")).toBeTruthy();
+    expect(view.container.querySelector(".purchase-footer-total strong")?.textContent).toBe("¥8.00");
+    fireEvent.click(screen.getByRole("radio", { name: "Fee channel" }));
+    expect(view.container.querySelector(".purchase-footer-total strong")?.textContent).toBe("¥8.50");
+    expect(within(screen.getByRole("region", { name: "priceDetails{}" })).getByText("¥0.50")).toBeTruthy();
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
 });

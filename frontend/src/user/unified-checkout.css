@@ -98,7 +98,9 @@
     border-radius: 12px;
     background: var(--surface-soft);
 }
-.checkout-order-recovery > p { margin-top: 0; }
+.checkout-order-recovery > p {
+    margin-top: 0;
+}
 .unified-checkout .checkout-embedded > .checkout-heading {
     justify-content: flex-end;
     margin: 0 0 16px;
@@ -128,7 +130,10 @@
     font-size: 12px;
     color: var(--text-secondary);
 }
-.checkout-method-section .alert { flex-wrap: wrap; gap: 10px; }
+.checkout-method-section .alert {
+    flex-wrap: wrap;
+    gap: 10px;
+}
 @media (max-width: 800px) {
     .unified-checkout .purchase-selection {
         display: block;
@@ -169,4 +174,132 @@
         overflow-wrap: normal;
         word-break: normal;
     }
+}
+
+/* The confirmed order expands inside the existing cycle-selection form. */
+.unified-checkout .checkout-inline > .checkout-heading {
+    justify-content: flex-end;
+    margin: 0 0 12px;
+}
+.unified-checkout .checkout-inline .checkout-confirm {
+    position: static;
+    margin: 16px 0 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+.unified-checkout .checkout-inline .checkout-qr {
+    scroll-margin-block: 80px;
+}
+.unified-checkout .checkout-inline .checkout-guidance {
+    font-size: 12px;
+    line-height: 1.6;
+}
+.unified-checkout .checkout-inline .receipt-status h1 {
+    font-size: 20px;
+}
+.unified-checkout .purchase-footer-confirmed {
+    position: static;
+    grid-template-columns: minmax(0, 1fr);
+}
+
+.checkout-confirmed-coupon {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 16px;
+    padding-block: 14px;
+    border-block: 1px solid var(--line);
+    font-size: 13px;
+}
+.checkout-confirmed-coupon strong {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Keep the saved order review beside one active payment panel. */
+@media (min-width: 801px) {
+    .unified-checkout .has-confirmed-order .purchase-choices {
+        grid-column: 1;
+        grid-row: 1;
+    }
+    .unified-checkout .has-confirmed-order .purchase-breakdown {
+        grid-column: 1;
+        grid-row: 2;
+        align-self: start;
+    }
+    .unified-checkout .has-confirmed-order .purchase-footer-confirmed {
+        grid-column: 2;
+        grid-row: 1 / span 2;
+    }
+}
+.unified-checkout .has-confirmed-order .purchase-breakdown .checkout-lines {
+    min-block-size: 0;
+    margin-block: 12px;
+}
+.unified-checkout .checkout-inline > .checkout-heading {
+    margin-bottom: 8px;
+}
+.checkout-method-confirmed {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-block-size: 48px;
+    padding-block: 8px;
+    border-bottom: 1px solid var(--line);
+    font-size: 13px;
+}
+.checkout-method-confirmed > span {
+    display: grid;
+    gap: 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.checkout-method-confirmed small {
+    color: var(--text-secondary);
+}
+.unified-checkout .checkout-inline .checkout-qr {
+    border: 0;
+    padding: 12px 0 0;
+    margin-top: 8px;
+}
+.unified-checkout .checkout-inline .checkout-qr > p {
+    margin-block: 8px;
+}
+.checkout-payment-details,
+.checkout-order-actions {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+.checkout-payment-details > summary,
+.checkout-order-actions > summary {
+    display: list-item;
+    cursor: pointer;
+    padding-block: 12px;
+    min-block-size: 44px;
+    box-sizing: border-box;
+}
+.checkout-order-actions {
+    margin-top: 12px;
+    border-top: 1px solid var(--line);
+}
+.checkout-order-actions .checkout-secondary {
+    margin-top: 0;
+}
+.unified-checkout .checkout-inline .checkout-amount {
+    margin-bottom: 12px;
+    padding-bottom: 12px;
+}
+
+.checkout-method-confirmed .payment-method-icon {
+    width: 28px;
+    height: 28px;
+    max-width: 28px;
+    flex: 0 0 28px;
+    object-fit: contain;
+}
+
+.unified-checkout .checkout-inline .checkout-qr svg {
+    scroll-margin-block-start: 80px;
+    scroll-margin-block-end: calc(80px + env(safe-area-inset-bottom));
 }

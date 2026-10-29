@@ -952,6 +952,34 @@ it("does not create an order while the server quote is pending", async () => {
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.request).not.toHaveBeenCalled();
 });
+it("keeps crypto network selection explicit instead of restoring the default wallet", async () => {
+    const quote = mocks.quoteRequest.getMockImplementation()!;
+    mocks.quoteRequest.mockImplementation(async (body: any) => {
+        const result = await quote(body);
+        return { data: { ...result.data, methods: [
+            ...result.data.methods,
+            { id: 12, name: "TRON channel", category: "crypto", asset: "USDT", network: "tron", network_name: "TRON (TRC20)" },
+            { id: 13, name: "BSC channel", category: "crypto", asset: "USDT", network: "bsc", network_name: "BNB Smart Chain (BEP20)" },
+        ] } };
+    });
+    render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    const confirm = await screen.findByRole<HTMLButtonElement>("button", { name: "confirmAndPay{}" });
+    await waitFor(() => expect(confirm.disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "USDT" }));
+    fireEvent.click(screen.getByRole("radio", { name: /年付/ }));
+    await waitFor(() => expect(mocks.quoteRequest.mock.calls.at(-1)?.[0]).toEqual(
+        expect.objectContaining({ period: "year_price", quote_method: 0 }),
+    ));
+    expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(false);
+    expect(confirm.disabled).toBe(true);
+    expect(mocks.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("radio", { name: /BNB Smart Chain/ }));
+    await waitFor(() => expect(confirm.disabled).toBe(false));
+    expect((screen.getByRole("radio", { name: /BNB Smart Chain/ }) as HTMLInputElement).checked).toBe(true);
+    expect(mocks.quoteRequest.mock.calls.at(-1)?.[0].quote_method).toBe(13);
+    expect(mocks.request).not.toHaveBeenCalled();
+});
 it("ignores an obsolete quote after changing cycles", async () => {
     const quote = mocks.quoteRequest.getMockImplementation()!;
     let finish: (value: any) => void = () => {};

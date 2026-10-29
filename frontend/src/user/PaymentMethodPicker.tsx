@@ -3,6 +3,7 @@ import { Check, ChevronDown, CreditCard } from "lucide-react";
 import { normalizeApiOrigin } from "../shared/runtime-config";
 import { tx } from "../shared/i18n";
 import type { Row } from "../shared/api";
+import "./payment-method-picker.css";
 
 export function paymentIconUrl(source: unknown) {
     const url = typeof source === "string" ? source.trim() : "";
@@ -37,7 +38,7 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
     const option = (item: Row, crypto = false, showChannel = false) => {
         const networkName = String(item.network_name || item.network || "");
         const networkParts = networkName.match(/^(.*?)\s*\((TRC20|BEP20|ERC20)\)$/i);
-        return <label key={item.id} className={[selected === Number(item.id) ? "selected" : "", crypto ? "payment-network-option" : ""].filter(Boolean).join(" ")}>
+        return <label key={item.id} className={["payment-method-option", selected === Number(item.id) ? "selected" : "", crypto ? "payment-network-option" : ""].filter(Boolean).join(" ")}>
         <input type="radio" name={`${prefix}-payment-method`} checked={selected === Number(item.id)} onChange={() => onSelect(Number(item.id))} />
         <PaymentIcon key={String(crypto ? item.network_icon : item.icon)} source={crypto ? item.network_icon : item.icon} />
         <span className="payment-option-copy"><span className="payment-option-title">{crypto ? networkParts?.[1] || networkName : item.name}
@@ -47,7 +48,7 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
         </span>
     </label>;
     };
-    return <fieldset className="payment-options" disabled={disabled}>
+    return <fieldset className="payment-options payment-method-picker" disabled={disabled}>
         <legend className="sr-only">{tx("选择支付方式")}</legend>
         {groups.map((group, index) => {
             if (!group.crypto) return option(group.methods[0]);
@@ -59,9 +60,11 @@ export function PaymentMethodPicker({ methods, selected, disabled, onSelect }: {
                     setExpanded(isOpen ? "" : group.key);
                     if (!isOpen && !active) onSelect(group.methods.length === 1 ? Number(first.id) : 0);
                 }}>
-                    <span className="payment-selection-slot" aria-hidden="true">{active && !isOpen && <Check size={16} />}</span>
+                    <span className="payment-selection-slot" aria-hidden="true">{active && <Check size={11} strokeWidth={3} />}</span>
                     <PaymentIcon key={String(first.icon || first.asset_icon)} source={first.icon || first.asset_icon} />
-                    <span className="payment-option-copy"><span>{first.asset}{active && ` · ${active.network_name || active.network}`}</span></span>
+                    <span className="payment-option-copy"><span className="payment-option-title">{first.asset}</span>{" "}
+                        {active && <span className="payment-channel-name">{active.network_name || active.network}</span>}
+                    </span>
                     <ChevronDown size={18} className={isOpen ? "expanded" : ""} aria-hidden="true" />
                 </button>
                 <div id={`${prefix}-${index}`} className="payment-network-options" hidden={!isOpen}>

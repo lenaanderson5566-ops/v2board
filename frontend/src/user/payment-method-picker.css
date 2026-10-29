@@ -1,0 +1,186 @@
+.payment-method-picker.payment-options {
+    display: grid;
+    gap: 10px;
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    font-size: 14px;
+    line-height: 1.5;
+}
+.payment-method-picker .payment-method-option,
+.payment-method-picker.payment-options button.payment-crypto-heading {
+    display: grid;
+    grid-template-columns: 16px 28px minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+    min-height: 64px;
+    margin: 0;
+    padding: 14px 16px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--ink);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    box-shadow: none;
+}
+.payment-method-picker .payment-method-option.selected,
+.payment-method-picker .payment-crypto-group.has-selection {
+    border-color: var(--brand);
+    background: var(--brand-soft);
+}
+.payment-method-picker:not(:disabled) .payment-method-option:not(.selected):hover,
+.payment-method-picker:not(:disabled) .payment-crypto-heading:hover {
+    background: var(--surface-soft);
+}
+.payment-method-picker input[type="radio"] {
+    appearance: auto;
+    width: 16px;
+    min-width: 16px;
+    height: 16px;
+    min-height: 16px;
+    margin: 0;
+    padding: 0;
+    accent-color: var(--brand);
+    box-shadow: none;
+    cursor: inherit;
+}
+.payment-method-picker .payment-method-icon {
+    width: 28px;
+    height: 28px;
+    object-fit: contain;
+    object-position: center;
+    color: var(--text-secondary);
+}
+.payment-method-picker .payment-option-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+.payment-method-picker .payment-option-title {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+.payment-method-picker .payment-channel-name {
+    font-size: 12px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+.payment-method-picker .payment-crypto-group {
+    min-width: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+}
+.payment-method-picker.payment-options button.payment-crypto-heading {
+    grid-template-columns: 16px 28px minmax(0, 1fr) 18px;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    white-space: normal;
+}
+.payment-method-picker .payment-crypto-heading > svg:last-child {
+    justify-self: end;
+    color: var(--text-secondary);
+    transition: transform .15s;
+}
+.payment-method-picker .payment-crypto-heading > svg.expanded {
+    transform: rotate(180deg);
+}
+.payment-method-picker .payment-selection-slot {
+    display: grid;
+    place-items: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid var(--text-secondary);
+    border-radius: 50%;
+    background: var(--surface);
+}
+.payment-method-picker .has-selection .payment-selection-slot {
+    border-color: var(--brand);
+    background: var(--brand);
+    color: var(--on-brand);
+}
+.payment-method-picker .payment-network-options:not([hidden]) {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr));
+    gap: 8px;
+    padding: 12px;
+    border-top: 1px solid var(--line);
+    background: var(--surface-soft);
+}
+.payment-method-picker .payment-network-prompt {
+    grid-column: 1 / -1;
+    margin: 0 0 2px;
+    color: var(--text-secondary);
+    font-size: 12px;
+}
+.payment-method-picker .payment-network-option {
+    grid-template-columns: 16px 24px minmax(0, 1fr);
+    gap: 10px;
+    min-height: 76px;
+    padding: 12px;
+    border-radius: 8px;
+}
+.payment-method-picker .payment-network-option .payment-method-icon {
+    width: 24px;
+    height: 24px;
+}
+.payment-method-picker .payment-network-option .payment-option-title {
+    flex-direction: column;
+    align-items: flex-start;
+    font-weight: 500;
+}
+.payment-method-picker .payment-network-tag {
+    padding: 1px 5px;
+    border-radius: 4px;
+    background: var(--surface-soft);
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.5;
+    white-space: nowrap;
+}
+.payment-method-picker .payment-network-notice {
+    margin: 2px 0 0;
+    color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 1.6;
+}
+.payment-method-picker input[type="radio"]:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 3px;
+}
+.payment-method-picker .payment-crypto-heading:focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: -4px;
+}
+.payment-method-picker:disabled .payment-method-option,
+.payment-method-picker .payment-crypto-heading:disabled {
+    cursor: default;
+    opacity: .7;
+}
+@media (prefers-reduced-motion: reduce) {
+    .payment-method-picker .payment-crypto-heading > svg:last-child {
+        transition: none;
+    }
+}
+@media (forced-colors: active) {
+    .payment-method-picker .payment-method-option.selected,
+    .payment-method-picker .payment-crypto-group.has-selection {
+        border-color: Highlight;
+    }
+    .payment-method-picker .has-selection .payment-selection-slot {
+        background: Highlight;
+        color: HighlightText;
+    }
+}

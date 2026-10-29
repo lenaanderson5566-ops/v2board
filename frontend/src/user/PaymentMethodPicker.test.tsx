@@ -27,7 +27,7 @@ it("restores the selected network and disables changes while payment is pending"
     render(<PaymentMethodPicker methods={methods} selected={2} disabled={true} onSelect={vi.fn()} />);
     expect((screen.getByRole("radio", { name: /TRON/ }) as HTMLInputElement).checked).toBe(true);
     expect(screen.getByRole("button", { name: /USDT/ }).closest("fieldset")?.disabled).toBe(true);
-    expect(screen.getByRole("button", { name: "USDT · TRON (TRC20)" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "USDT TRON (TRC20)" })).toBeTruthy();
     expect(screen.queryByText("Channel A")).toBeNull();
 });
 it("keeps same-network channels distinguishable and selectable", () => {

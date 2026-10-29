@@ -98,3 +98,6 @@ V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，�
 
 
 生产恢复保护继续归入 `order-replacement`、`api-v10`、`payment-presentation` 与 `commerce-concurrency`：覆盖不传标识不能绕过未确认支付、处理中结果不能通过新标识重付，以及仅有预报价元数据的未支付订单展示。浏览器路由和短期确认交接复用 BillingFlow/app 用例；模拟夹具与运行输出不进入发布目录。
+
+
+加密货币支付排列复用 PaymentMethodPicker、BillingFlow、PaymentCheckout 与 PaymentPolling 回归；保留具体渠道选择、同网络多渠道区分、付款中禁用和图标兜底断言。BillingFlow 补充展开多网络币种后切换周期，不能被默认钱包抢回选择，只有选定具体网络并取得报价后才能确认。布局在既有合成预览中验收，不新增测试运行器或真实网关请求。

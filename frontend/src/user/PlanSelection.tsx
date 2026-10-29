@@ -41,6 +41,7 @@ export function PlanSelection({
     const [error, setError] = useState("");
     const submitting = useRef(false);
     const [methodId, setMethodId] = useState(0);
+    const manualPaymentSelection = useRef(false);
     const [paymentMethods, setPaymentMethods] = useState<Row[]>([]);
     const [uncertain, setUncertain] = useState(false);
     const submitted = useRef<
@@ -66,6 +67,7 @@ export function PlanSelection({
         if (
             !unified ||
             methodId ||
+            manualPaymentSelection.current ||
             !serverQuote ||
             Number(serverQuote.total_amount) <= 0
         )
@@ -78,6 +80,7 @@ export function PlanSelection({
     useEffect(() => {
         if (unified && preview.error && methodId) {
             setError(preview.error);
+            manualPaymentSelection.current = false;
             setMethodId(0);
         }
     }, [unified, preview.error, methodId]);
@@ -279,7 +282,10 @@ export function PlanSelection({
                                             methods={paymentMethods}
                                             selected={methodId}
                                             disabled={busy || uncertain}
-                                            onSelect={setMethodId}
+                                            onSelect={(id) => {
+                                                manualPaymentSelection.current = true;
+                                                setMethodId(id);
+                                            }}
                                         />
                                     )}
                                     {serverQuote &&

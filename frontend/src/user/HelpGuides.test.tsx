@@ -63,6 +63,15 @@ describe("self-service FAQ", () => {
         ]);
         expect(container.textContent).not.toContain("在总览中");
     });
+    it("accepts a shared query without creating another search field", () => {
+        const change = vi.fn();
+        const view = render(<HelpGuides search="GB" onSearchChange={change} showSearch={false} />);
+        expect(screen.queryByRole("searchbox")).toBeNull();
+        expect(view.container.querySelectorAll("details")).toHaveLength(1);
+        view.rerender(<HelpGuides search="unknown-topic" onSearchChange={change} showSearch={false} />);
+        fireEvent.click(screen.getByRole("button", { name: "清除筛选" }));
+        expect(change).toHaveBeenCalledWith("");
+    });
     it("searches the selected language", async () => {
         await i18n.changeLanguage("en-US");
         const { container } = render(<HelpGuides />);

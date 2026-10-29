@@ -44,6 +44,9 @@
 .minimal-landing-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 24px; margin-top: 32px; }
 .minimal-landing-actions a.minimal-landing-enter { margin-top: 0; }
 .minimal-landing-login { display: inline-flex; align-items: center; min-height: 44px; font-size: 14px; }
+.minimal-landing-decision { margin-top: 18px; max-width: 500px; color: var(--text-secondary); font-size: 12px; line-height: 1.7; }
+.minimal-landing-decision p { margin: 0 0 6px; }
+.minimal-landing-decision a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: var(--brand); text-decoration: underline; text-underline-offset: 4px; }
 .minimal-landing a:focus-visible { outline: 2px solid var(--brand); outline-offset: 5px; }
 @keyframes minimal-breathe { 50% { transform: translateY(-5px); } }
 @media (max-width: 800px) {

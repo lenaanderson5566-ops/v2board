@@ -115,6 +115,14 @@ function OriginalLanding() {
                                 <ChevronRight size={17} aria-hidden="true" />
                             </a>
                         </div>
+                        <div className="landing-decision">
+                            <p>{t("serviceScope", { defaultValue: "Device setup guidance and usage support. Third-party memberships are not included." })}</p>
+                            <p>{t("pricingBeforePayment", { defaultValue: "Creating an account is free. Plan prices and charges are shown before payment." })}</p>
+                            <a href="/app#/plan">
+                                {t("viewPlans", { defaultValue: "Sign in to view plans" })}
+                                <ArrowUpRight size={15} aria-hidden="true" />
+                            </a>
+                        </div>
                         <div
                             className="landing-platforms"
                             aria-label={t("tag")}

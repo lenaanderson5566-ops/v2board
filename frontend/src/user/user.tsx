@@ -169,9 +169,9 @@ export function Knowledge() {
         );
     return (
         <>
-            <HelpGuides />
             <Panel
-                title={tx("使用文档")}
+                title={tx("帮助中心")}
+                className="knowledge-search-panel"
                 actions={
                     <>
                         <select
@@ -186,14 +186,19 @@ export function Knowledge() {
                             ))}
                         </select>
                         <input
-                            placeholder={tx("搜索文档…")}
-                            aria-label={tx("搜索文档")}
+                            type="search"
+                            placeholder={tx("searchAll", { ns: "help", defaultValue: "Search questions and documents" })}
+                            aria-label={tx("searchAll", { ns: "help", defaultValue: "Search questions and documents" })}
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                         />
                     </>
                 }
             >
+                {null}
+            </Panel>
+            <HelpGuides search={keyword} onSearchChange={setKeyword} showSearch={false} />
+            <Panel title={tx("使用文档")}>
                 <State {...d} retry={d.reload}>
                     {Object.entries(d.data || {}).length ? (
                         Object.entries(d.data || {}).map(
@@ -224,7 +229,7 @@ export function Knowledge() {
                     title={article.data?.title || tx("文档")}
                     close={() => setId(null)}
                 >
-                    <State {...article}>
+                    <State {...article} retry={article.reload}>
                         <div className="pad">
                             <Html markdown value={article.data?.body} />
                         </div>
@@ -293,7 +298,7 @@ export function Invite() {
                         {
                             key: "transfer_amount",
                             label: e("transferAmount", {
-                                currency: "CNY",
+                                currency: v.currency,
                             }),
                             scale: 100,
                             min: 0.01,

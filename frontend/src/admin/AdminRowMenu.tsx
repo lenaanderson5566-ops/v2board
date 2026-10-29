@@ -8,8 +8,8 @@ export function AdminRowMenu({ children, context, label = "用户更多操作" }
     const [open, setOpen] = useState(false);
     const [position, setPosition] = useState({ left: 0, top: 0 });
     const focusLast = useRef(false);
-    const items = () => Array.from(menu.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") || [])
-        .filter(button => !button.closest('[hidden], [inert]') && getComputedStyle(button).visibility !== 'hidden');
+    const items = () => Array.from(menu.current?.querySelectorAll<HTMLElement>('button,a[href]') || [])
+        .filter(item => !item.matches(':disabled,[aria-disabled="true"]') && !item.closest('[hidden], [inert]') && getComputedStyle(item).visibility !== 'hidden' && getComputedStyle(item).display !== 'none');
     useLayoutEffect(() => {
         if (!open || context || !trigger.current || !menu.current) return;
         const anchor = trigger.current.getBoundingClientRect();
@@ -69,12 +69,12 @@ export function AdminRowMenu({ children, context, label = "用户更多操作" }
                 const buttons = items();
                 if (!buttons.length) return;
                 event.preventDefault();
-                const current = buttons.indexOf(document.activeElement as HTMLButtonElement);
+                const current = buttons.indexOf(document.activeElement as HTMLElement);
                 const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : (current + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length;
                 buttons[next]?.focus();
             }}
             onClick={event => {
-                if (open && menu.current?.contains(event.target as Node) && (event.target as HTMLElement).closest("button:not(:disabled)")) {
+                if (open && menu.current?.contains(event.target as Node) && (event.target as HTMLElement).closest('button:not(:disabled),a[href]:not([aria-disabled="true"])')) {
                     trigger.current?.focus();
                     setOpen(false);
                 }

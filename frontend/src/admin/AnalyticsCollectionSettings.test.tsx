@@ -19,6 +19,7 @@ vi.mock("../shared/api", async (original) => ({
 import { AnalyticsCollectionSettings } from "./AnalyticsCollectionSettings";
 import { Settings } from "./admin-settings";
 import { TargetStatisticsSettings, AdminTargetStatistics } from "./AdminTargetStatistics";
+import * as sharedUI from "../shared/ui";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
@@ -115,6 +116,66 @@ it("moves browser policies to a separate settings tab without changing saved key
             browser_policy_wechat: "prompt",
         }),
     );
+});
+
+it("retains unsaved settings and their editing baseline through loading, failure and new snapshots", async () => {
+    let snapshot: any = { safe: { browser_policy_wechat: "guide" } };
+    let loading = false, error = "";
+    const reload = vi.fn();
+    const useData = vi.spyOn(sharedUI, "useData").mockImplementation(((path: string) => ({
+        data: path.endsWith("config/fetch") ? snapshot : path.endsWith("configSchema") ? {} : null,
+        loading, error, reload, retryAt: 0,
+    })) as any);
+    api.request.mockResolvedValue({ data: true });
+    const view = render(<Settings section="browser" />);
+    try {
+        const policy = await screen.findByLabelText(/微信访问策略/) as HTMLSelectElement;
+        fireEvent.change(policy, { target: { value: "prompt" } });
+        loading = true;
+        snapshot = null;
+        view.rerender(<Settings section="browser" />);
+        expect(screen.getByLabelText(/微信访问策略/)).toBe(policy);
+        expect(policy.value).toBe("prompt");
+        loading = false; error = "临时读取失败";
+        view.rerender(<Settings section="browser" />);
+        expect(screen.getByLabelText(/微信访问策略/)).toBe(policy);
+        expect(policy.value).toBe("prompt");
+        error = "";
+        snapshot = { safe: { browser_policy_wechat: "block" } };
+        view.rerender(<Settings section="browser" />);
+        expect(policy.value).toBe("prompt");
+        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", { browser_policy_wechat: "prompt" }));
+    } finally {
+        view.unmount();
+        useData.mockRestore();
+    }
+});
+
+it("clears the settings dirty state after reverting fields and allows testing or switching without discard prompts", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("config/fetch")
+        ? { site: {}, email: { email_provider: "smtp", email_host: "smtp.example.test", email_from_address: "admin@example.test" }, safe: {} }
+        : {} }));
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const view = render(<Settings />);
+    try {
+        fireEvent.click(await screen.findByRole("button", { name: "邮件发送" }));
+        const host = await screen.findByLabelText(/SMTP服务器地址/) as HTMLInputElement;
+        const test = screen.getByRole("button", { name: "发送测试邮件" }) as HTMLButtonElement;
+        expect(test.disabled).toBe(false);
+        fireEvent.change(host, { target: { value: "changed.example.test" } });
+        expect(test.disabled).toBe(true);
+        expect(screen.getAllByText("有未保存的修改").length).toBeGreaterThan(0);
+        fireEvent.change(host, { target: { value: "smtp.example.test" } });
+        await waitFor(() => expect(test.disabled).toBe(false));
+        expect(screen.queryAllByText("有未保存的修改")).toHaveLength(0);
+        fireEvent.click(screen.getByRole("button", { name: "安全与注册" }));
+        expect(confirm).not.toHaveBeenCalled();
+        expect(screen.getByRole("button", { name: "安全与注册" }).getAttribute("aria-pressed")).toBe("true");
+    } finally {
+        view.unmount();
+        confirm.mockRestore();
+    }
 });
 
 it("applies target user filters only on submit and keeps shared pagination", async () => {

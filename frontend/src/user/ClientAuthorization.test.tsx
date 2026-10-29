@@ -84,7 +84,7 @@ describe("client browser authorization", () => {
         );
     });
     it("does not approve expired requests", async () => {
-        mocks.request.mockRejectedValue(new Error("expired"));
+        mocks.request.mockRejectedValue(Object.assign(new Error("expired"), { code: "CLIENT_AUTH_EXPIRED", status: 410 }));
         render(<ClientAuthorization user={{ email: "user@example.com" }} />);
         await screen.findByRole("alert");
         expect(
@@ -96,6 +96,100 @@ describe("client browser authorization", () => {
         ).toBe(true);
         expect(mocks.request).toHaveBeenCalledTimes(1);
     });
+});
+
+it("rechecks temporary read failures in place without approving automatically", async () => {
+    mocks.request.mockRejectedValueOnce(Object.assign(new Error("Unavailable"), { status: 503 }))
+        .mockResolvedValue({ data: { platform: "windows" } });
+    render(<ClientAuthorization user={{email:"user@example.test"}} />);
+    const retry = await screen.findByRole("button", {name:"authorizationRecheck"});
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+    fireEvent.click(retry);
+    await waitFor(()=>expect(screen.getByRole("button", {name:"确认登录"})).toHaveProperty("disabled",false));
+    expect(mocks.request.mock.calls.map(([path])=>path)).toEqual([
+        "user/client-authorization?authorization_id="+id,
+        "user/client-authorization?authorization_id="+id,
+    ]);
+    expect(location.assign).not.toHaveBeenCalled();
+});
+
+it("requires a fresh pending-state read and explicit consent after an unknown approval result", async () => {
+    const callback = `http://127.0.0.1:48321/fastai-auth/callback?code=${code}&state=${state}`;
+    mocks.request.mockResolvedValueOnce({data:{platform:"windows"}})
+        .mockRejectedValueOnce(new TypeError("Connection lost"))
+        .mockResolvedValueOnce({data:{platform:"windows"}})
+        .mockResolvedValueOnce({data:{callbackUrl:callback}});
+    vi.spyOn(history,"replaceState").mockImplementation(()=>{});
+    render(<ClientAuthorization user={{email:"user@example.test"}} />);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"确认登录"}));
+    fireEvent.click(await screen.findByRole("button",{name:"authorizationRecheck"}));
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    expect(mocks.request.mock.calls.filter(([path])=>path.endsWith("/approve"))).toHaveLength(1);
+    expect(location.assign).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"确认登录"}));
+    await screen.findByRole("link",{name:"返回 FastAI"});
+    expect(mocks.request.mock.calls.filter(([path])=>path.endsWith("/approve"))).toHaveLength(2);
+    expect(location.assign).toHaveBeenCalledTimes(1);
+});
+
+it("does not retry approval if rechecking finds the request was consumed or expired", async () => {
+    mocks.request.mockResolvedValueOnce({data:{platform:"windows"}})
+        .mockRejectedValueOnce(new TypeError("Connection lost"))
+        .mockRejectedValueOnce(Object.assign(new Error("Gone"),{code:"CLIENT_AUTH_EXPIRED",status:410}));
+    render(<ClientAuthorization user={{email:"user@example.test"}} />);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"确认登录"}));
+    fireEvent.click(await screen.findByRole("button",{name:"authorizationRecheck"}));
+    await screen.findByText("authorizationUnavailable");
+    expect(screen.queryByRole("button",{name:"authorizationRecheck"})).toBeNull();
+    expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",true);
+    expect(mocks.request.mock.calls.filter(([path])=>path.endsWith("/approve"))).toHaveLength(1);
+    expect(location.assign).not.toHaveBeenCalled();
+});
+
+it("honors a server cooldown without automatic queries or approval", async () => {
+    vi.useFakeTimers();
+    try {
+        mocks.request.mockRejectedValueOnce(Object.assign(new Error("Limited"),{status:429,retryAfter:2}))
+            .mockResolvedValue({data:{platform:"windows"}});
+        render(<ClientAuthorization user={{email:"user@example.test"}} />);
+        await act(async()=>{await Promise.resolve();});
+        const retry=screen.getByRole("button",{name:"retryIn"});
+        expect(retry).toHaveProperty("disabled",true);
+        fireEvent.click(retry);
+        expect(mocks.request).toHaveBeenCalledTimes(1);
+        await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+        expect(mocks.request).toHaveBeenCalledTimes(1);
+        fireEvent.click(screen.getByRole("button",{name:"authorizationRecheck"}));
+        await act(async()=>{await Promise.resolve();});
+        expect(mocks.request).toHaveBeenCalledTimes(2);
+        expect(mocks.request.mock.calls.filter(([path])=>path.endsWith("/approve"))).toHaveLength(0);
+    } finally {vi.useRealTimers();}
+});
+
+it("does not offer recovery through an unsafe approval callback", async () => {
+    mocks.request.mockResolvedValueOnce({data:{platform:"windows"}})
+        .mockResolvedValueOnce({data:{callbackUrl:`https://evil.example/?code=${code}&state=${state}`}});
+    render(<ClientAuthorization user={{email:"user@example.test"}} />);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"确认登录"}));
+    await screen.findByText("授权响应无效，请返回 App 重试。");
+    expect(screen.queryByRole("link",{name:"返回 FastAI"})).toBeNull();
+    expect(screen.queryByRole("button",{name:"authorizationRecheck"})).toBeNull();
+    expect(location.assign).not.toHaveBeenCalled();
+});
+
+it("ignores an approval response after its view is unmounted", async () => {
+    let finish!:(value:any)=>void;
+    mocks.request.mockResolvedValueOnce({data:{platform:"windows"}})
+        .mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+    const view=render(<ClientAuthorization user={{email:"user@example.test"}} />);
+    await waitFor(()=>expect(screen.getByRole("button",{name:"确认登录"})).toHaveProperty("disabled",false));
+    fireEvent.click(screen.getByRole("button",{name:"确认登录"}));
+    view.unmount();
+    await act(async()=>finish({data:{callbackUrl:`http://127.0.0.1:48321/fastai-auth/callback?code=${code}&state=${state}`}}));
+    expect(location.assign).not.toHaveBeenCalled();
 });
 
 it("loads a new authorization when the hash changes without reusing old consent",async()=>{

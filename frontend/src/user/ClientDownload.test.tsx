@@ -7,7 +7,8 @@ vi.mock("../shared/ui", () => ({ Modal: ({children}: any) => <div role="dialog">
 vi.mock("./AppleAccounts", () => ({ AccountList: () => <div>Account list loaded</div> }));
 import { boot } from "../shared/api";
 import { ClientDownload, mirrorDownload, safeDownloadUrl } from "./ClientDownload";
-beforeEach(async () => { await i18n.changeLanguage("zh-CN"); });
+import { FastaiDownload } from "./FastaiDownload";
+beforeEach(async () => { await i18n.changeLanguage("zh-CN"); boot.fastaiDownloads = undefined; });
 afterEach(cleanup);
 it("uses the universal Mac installer without requiring a chip selection",()=>{
  const old=boot.clientMirrors;
@@ -74,4 +75,49 @@ it.each(["invalid", "javascript:alert(1)", "https://user:pass@example.com"])("ke
     expect(screen.getByRole("status")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: i18n.t("continueImport", { ns: "clientDownload" }) }));
     expect(close).toHaveBeenCalledTimes(1);
+});
+const fastaiText = (key: string, fallback: string) => i18n.t(key, {ns:"fastaiDownload",defaultValue:fallback});
+const dedicated = (platform: string, architecture: string, url: string) => ({
+    platform, architecture, downloadUrl: url, latestVersion:"1.2.3",latestBuild:123,
+    minimumVersion:"1.0.0",channel:"stable",sha256:"a".repeat(64),publishedAt:"2030-01-01T00:00:00Z",
+}) as any;
+it("requires an explicit chip choice for multiple FastAI builds and offers one matching download", () => {
+    boot.fastaiDownloads=[dedicated("macos","arm64","https://download.example/apple.dmg"), dedicated("macos","x64","https://download.example/intel.dmg")];
+    render(<FastaiDownload />);
+    fireEvent.change(screen.getByRole("combobox",{name:/选择系统/}),{target:{value:"macos"}});
+    const selector=screen.getByRole("combobox",{name:fastaiText("architecture","Device chip")});
+    expect((selector as HTMLSelectElement).value).toBe("");
+    expect(screen.getByRole("option",{name:fastaiText("architectureApple","Apple Silicon (M1 or later, arm64)")})).toBeTruthy();
+    expect(screen.getByRole("option",{name:fastaiText("architectureIntelMac","Intel Mac (x64)")})).toBeTruthy();
+    expect(screen.queryByRole("link",{name:/下载 FastAI/})).toBeNull();
+    expect((screen.getByRole("button",{name:"下载 FastAI"}) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(selector,{target:{value:"x64"}});
+    expect(screen.getAllByRole("link",{name:/下载 FastAI/})).toHaveLength(1);
+    expect(screen.getByRole("link",{name:/下载 FastAI/}).getAttribute("href")).toBe("https://download.example/intel.dmg");
+});
+it("does not carry a chip selection to another platform", () => {
+    boot.fastaiDownloads=[dedicated("macos","arm64","https://download.example/apple.dmg"), dedicated("macos","x64","https://download.example/intel.dmg"),dedicated("windows","arm64","https://download.example/windows-arm.exe"),dedicated("windows","x64","https://download.example/windows-x64.exe")];
+    render(<FastaiDownload />);
+    const system=screen.getByRole("combobox",{name:/选择系统/});
+    fireEvent.change(system,{target:{value:"macos"}});
+    fireEvent.change(screen.getByRole("combobox",{name:fastaiText("architecture","Device chip")}),{target:{value:"x64"}});
+    fireEvent.change(system,{target:{value:"windows"}});
+    expect((screen.getByRole("combobox",{name:fastaiText("architecture","Device chip")}) as HTMLSelectElement).value).toBe("");
+    expect(screen.queryByRole("link",{name:/下载 FastAI/})).toBeNull();
+});
+it("prefers a configured universal FastAI installer without asking users to guess a chip", () => {
+    boot.fastaiDownloads=[dedicated("macos","arm64","https://download.example/apple.dmg"),dedicated("macos","universal","https://download.example/universal.dmg")];
+    render(<FastaiDownload />);
+    fireEvent.change(screen.getByRole("combobox",{name:/选择系统/}),{target:{value:"macos"}});
+    expect(screen.queryByRole("combobox",{name:fastaiText("architecture","Device chip")})).toBeNull();
+    expect(screen.getByText(fastaiText("architectureUniversal","Universal installer"))).toBeTruthy();
+    expect(screen.getByRole("link",{name:/下载 FastAI/}).getAttribute("href")).toBe("https://download.example/universal.dmg");
+});
+it("shows the chip requirement for a sole FastAI build and rejects unsafe release URLs", () => {
+    boot.fastaiDownloads=[dedicated("windows","x64","https://download.example/windows.exe"),dedicated("windows","arm64","javascript:alert(1)")];
+    render(<FastaiDownload />);
+    fireEvent.change(screen.getByRole("combobox",{name:/选择系统/}),{target:{value:"windows"}});
+    expect(screen.getByText(fastaiText("architectureX64","Intel / AMD 64-bit (x64)"))).toBeTruthy();
+    expect(screen.getAllByRole("link",{name:/下载 FastAI/})).toHaveLength(1);
+    expect(screen.getByRole("link",{name:/下载 FastAI/}).getAttribute("href")).toBe("https://download.example/windows.exe");
 });

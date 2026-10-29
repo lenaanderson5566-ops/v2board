@@ -101,6 +101,7 @@ it("shows mature cohorts, observed retention, honest renewal and percentile desc
     expect(screen.getByText(/不计算历史流失率/)).toBeTruthy();
     expect(screen.getByText(/不能证明订阅后的精确连接顺序/)).toBeTruthy();
     expect(screen.getByText(/登录留存按登录记录统计/)).toBeTruthy();
+    expect(screen.getByText(/不能代表全部访客/)).toBeTruthy();
 });
 it("keeps business reports available before telemetry migration and uses unavailable denominators", async () => {
     const data = fixture();
@@ -151,4 +152,11 @@ it("labels a payment-provider click separately from completed business payments"
     expect(
         screen.getByRole("heading", { name: "注册到首次使用 · 7 日观察窗" }),
     ).toBeTruthy();
+});
+it("explains opt-in sample coverage in the standalone experience report", async () => {
+    api.request.mockResolvedValue({ data: fixture() });
+    render(<JourneyAnalytics days={7} device="mobile" experienceOnly />);
+    expect(await screen.findByText(/不能代表全部访客/)).toBeTruthy();
+    expect(screen.getByText(/不应把体验事件会话数作为业务漏斗分母/)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "注册到首次使用 · 7 日观察窗" })).toBeNull();
 });

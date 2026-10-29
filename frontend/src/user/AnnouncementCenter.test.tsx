@@ -6,6 +6,7 @@ import {
     render,
     screen,
     waitFor,
+    act,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
@@ -14,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     detail: {} as any,
     loading: false,
     error: "",
+    retryAt: 0,
 }));
 vi.mock("../shared/api", () => ({
     request: mocks.request,
@@ -29,6 +31,7 @@ vi.mock("../shared/ui", () => ({
         reload: mocks.reload,
         loading: mocks.loading,
         error: mocks.error,
+        retryAt: mocks.retryAt,
     }),
     Html: ({ value }: any) => <div>{value}</div>,
     Modal: ({ title, children, close }: any) => (
@@ -64,6 +67,7 @@ beforeEach(() => {
     };
     mocks.loading = false;
     mocks.error = "";
+    mocks.retryAt = 0;
 });
 afterEach(cleanup);
 it("keeps notices out of the page until opened and only records a read after opening the detail", async () => {
@@ -132,4 +136,45 @@ it("shows private ticket links without acknowledging unseen replies",()=>{
  render(<AnnouncementCenter/>);fireEvent.click(screen.getByRole("button",{name:"unreadLabel 2"}));
  expect(screen.getByRole("link",{name:/ticketReply #42/}).getAttribute("href")).toBe("#/ticket?ticketId=42");
  expect(mocks.request).not.toHaveBeenCalled();
+});
+it("keeps known notices visible while respecting a list cooldown",async()=>{
+ vi.useFakeTimers();
+ try {
+  mocks.error="Limited";mocks.retryAt=Date.now()+2000;
+  render(<AnnouncementCenter/>);fireEvent.click(screen.getByRole("button",{name:"unreadLabel 1"}));
+  expect(screen.getByText("A short summary")).toBeTruthy();
+  const retry=screen.getByRole("button",{name:"retryIn"});expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);expect(mocks.reload).not.toHaveBeenCalled();
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+  expect(mocks.reload).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole("button",{name:"重试"}));expect(mocks.reload).toHaveBeenCalledTimes(1);
+ }finally {vi.useRealTimers();}
+});
+it("retains an opened article during a detail cooldown",async()=>{
+ vi.useFakeTimers();
+ try {
+  const view=render(<AnnouncementCenter/>);fireEvent.click(screen.getByRole("button",{name:"unreadLabel 1"}));fireEvent.click(screen.getByRole("button",{name:/Service update/}));
+  await act(async()=>{await Promise.resolve();});
+  mocks.error="Limited";mocks.retryAt=Date.now()+2000;view.rerender(<AnnouncementCenter/>);
+  expect(screen.getByText("Full announcement")).toBeTruthy();
+  const reloads=mocks.reload.mock.calls.length;
+  const retry=screen.getByRole("button",{name:"retryIn"});expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);expect(mocks.reload).toHaveBeenCalledTimes(reloads);
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+  expect(mocks.reload).toHaveBeenCalledTimes(reloads);
+  fireEvent.click(screen.getByRole("button",{name:"重试"}));expect(mocks.reload).toHaveBeenCalledTimes(reloads+1);
+ }finally {vi.useRealTimers();}
+});
+it("does not automatically resubmit a rate-limited read receipt",async()=>{
+ vi.useFakeTimers();
+ try {
+  mocks.request.mockRejectedValueOnce(Object.assign(new Error("Limited"),{status:429,retryAfter:2}));
+  render(<AnnouncementCenter/>);fireEvent.click(screen.getByRole("button",{name:"unreadLabel 1"}));fireEvent.click(screen.getByRole("button",{name:/Service update/}));
+  await act(async()=>{await Promise.resolve();});
+  const retry=screen.getByRole("button",{name:"retryIn"});expect((retry as HTMLButtonElement).disabled).toBe(true);
+  fireEvent.click(retry);expect(mocks.request).toHaveBeenCalledTimes(1);
+  await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});expect(mocks.request).toHaveBeenCalledTimes(1);
+  fireEvent.click(screen.getByRole("button",{name:"重试"}));await act(async()=>{await Promise.resolve();});
+  expect(mocks.request).toHaveBeenCalledTimes(2);
+ }finally {vi.useRealTimers();}
 });

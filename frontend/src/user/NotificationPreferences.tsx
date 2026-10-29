@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { request, type Row } from "../shared/api";
 import { ac } from "../shared/account-copy";
 import { tx } from "../shared/i18n";
@@ -6,11 +6,30 @@ import { ux } from "../shared/ux";
 
 type Preference = "announcement_email" | "remind_service" | "remind_expire" | "remind_traffic";
 type SaveState = "saving" | "saved" | "failed";
+const preferenceKeys: Preference[] = ["announcement_email", "remind_service", "remind_expire", "remind_traffic"];
 
 export function NotificationPreferences({ initial }: { initial: Row }) {
     const [values, setValues] = useState(initial);
     const [states, setStates] = useState<Partial<Record<Preference, SaveState>>>({});
     const pending = useRef(new Set<Preference>());
+    const latestServer = useRef(initial);
+    useEffect(() => {
+        latestServer.current = initial;
+        // Preserve in-flight optimistic choices; all other switches follow the
+        // latest account snapshot, including changes from another device.
+        setValues((current) => {
+            const next = { ...current };
+            for (const key of preferenceKeys)
+                if (!pending.current.has(key) && key in initial) next[key] = initial[key];
+            return next;
+        });
+        setStates((current) => {
+            const next = { ...current };
+            for (const key of preferenceKeys)
+                if (!pending.current.has(key) && key in initial) delete next[key];
+            return next;
+        });
+    }, [initial]);
     async function toggle(key: Preference) {
         if (pending.current.has(key)) return;
         pending.current.add(key);
@@ -21,7 +40,7 @@ export function NotificationPreferences({ initial }: { initial: Row }) {
             await request("user/update", { [key]: 1 - previous });
             setStates((current) => ({ ...current, [key]: "saved" }));
         } catch {
-            setValues((current) => ({ ...current, [key]: previous }));
+            setValues((current) => ({ ...current, [key]: key in latestServer.current ? (Number(latestServer.current[key]) === 1 ? 1 : 0) : previous }));
             setStates((current) => ({ ...current, [key]: "failed" }));
         } finally {
             pending.current.delete(key);

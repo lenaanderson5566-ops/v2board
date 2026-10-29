@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { bytes, money, navigate, type Row } from "../shared/api";
 import { e } from "../shared/experience-copy";
 import { tx } from "../shared/i18n";
 import { PlanDescription } from "../shared/PlanDescription";
 import { Empty, State, useData } from "../shared/ui";
 import { activePlan } from "../shared/user-experience";
+import type { V10WalletCoupon } from "../shared/v10-types";
+import { useRetryCountdown } from "../shared/use-retry-countdown";
 import {
     billingPeriodMonths,
     billingPeriods,
@@ -12,6 +14,7 @@ import {
     purchasePeriods,
     subscriptionAction,
     unfinishedOrder,
+    usablePurchaseCoupon,
 } from "./billing-flow";
 import { PendingOrderNotice } from "./PendingOrderNotice";
 import { pricingCopy as pc } from "./pricing-copy";
@@ -20,13 +23,25 @@ import "./pricing.css";
 import { UnifiedCheckout } from "./UnifiedCheckout";
 import { PurchaseSteps } from "./PurchaseSteps";
 import { PlanResetRule } from "./PurchaseRules";
+import { availableCouponIntent, catalogReturnPath, catalogSelection } from "./checkout-navigation";
 export function SubscriptionPurchase() {
     const plans = useData<Row[]>("user/plan/fetch");
     const orders = useData<Row[]>("user/order/fetch");
     const sub = useData("user/getSubscribe");
     const [selected, setSelected] = useState<Row | null>(null);
-    const [billingPeriod, setBillingPeriod] = useState("month_price");
-    const [mobilePlanId, setMobilePlanId] = useState<number | null>(null);
+    const [billingPeriod, setBillingPeriod] = useState(() => catalogSelection().period || "month_price");
+    const [mobilePlanId, setMobilePlanId] = useState<number | null>(() => catalogSelection().planId || null);
+    const [couponIntentId, setCouponIntentId] = useState(() => catalogSelection().couponId);
+    const requestedChoice = useRef(catalogSelection());
+    const intent = useRef({ id: couponIntentId, handled: false, manual: false });
+    const wallet = useData<V10WalletCoupon[]>(couponIntentId ? "user/coupon/wallet" : "");
+    const walletRetryIn = useRetryCountdown(wallet.retryAt);
+    const walletChecked = !wallet.loading && !wallet.error && Array.isArray(wallet.data);
+    const intendedCoupon = walletChecked
+        ? wallet.data?.find((coupon) => coupon.id === couponIntentId && availableCouponIntent(coupon))
+        : undefined;
+    const couponMatches = (plan: Row, period: string) => Boolean(intendedCoupon &&
+        usablePurchaseCoupon(intendedCoupon, Number(plan.id), period));
     const pending = unfinishedOrder(orders.data || []);
     const replaceable =
         pending &&
@@ -56,7 +71,16 @@ export function SubscriptionPurchase() {
         : cycles[0];
     const cyclePlans = visiblePlans.filter((plan) =>
         purchasePeriods(plan).includes(activePeriod),
-    );
+    ).sort((a, b) => intendedCoupon
+        ? Number(couponMatches(b, activePeriod)) - Number(couponMatches(a, activePeriod))
+        : 0);
+    const couponFitsCatalog = visiblePlans.some((plan) => purchasePeriods(plan).some((period) => couponMatches(plan, period)));
+    const couponFitsPeriod = cyclePlans.some((plan) => couponMatches(plan, activePeriod));
+    const intentMessage = !couponFitsCatalog
+        ? tx("couponIntentUnavailable", { ns: "pricing", defaultValue: "This coupon is unavailable for the plans shown. You can continue without it." })
+        : couponFitsPeriod
+          ? tx("couponIntentEligible", { ns: "pricing", defaultValue: "Eligible plans are shown first. Your selected coupon will be checked at checkout." })
+          : tx("couponIntentDifferentPeriod", { ns: "pricing", defaultValue: "This coupon does not apply to this period. Choose a different period to use it." });
     const mobileActive =
         cyclePlans.find((plan) => Number(plan.id) === mobilePlanId) ||
         cyclePlans.find(
@@ -76,16 +100,66 @@ export function SubscriptionPurchase() {
                 ),
         ) ||
         cyclePlans[0];
+    useEffect(() => {
+        const restore = () => {
+            if (location.hash.slice(2).split("?")[0] !== "plan") return;
+            const choice = catalogSelection();
+            requestedChoice.current = choice;
+            if (intent.current.id !== choice.couponId)
+                intent.current = { id: choice.couponId, handled: false, manual: false };
+            setCouponIntentId(choice.couponId);
+            setBillingPeriod(choice.period || "month_price");
+            setMobilePlanId(choice.planId || null);
+        };
+        window.addEventListener("hashchange", restore);
+        return () => window.removeEventListener("hashchange", restore);
+    }, []);
+    useEffect(() => {
+        if (!couponIntentId || intent.current.handled || intent.current.manual ||
+            !walletChecked || plans.loading || plans.error || !Array.isArray(plans.data) ||
+            sub.loading || sub.error) return;
+        intent.current.handled = true;
+        if (!intendedCoupon) return;
+        // Explicit catalog choices, including a checkout return, take precedence
+        // over coupon suggestions even when navigation remounts the catalog.
+        const choice = requestedChoice.current;
+        if ((choice.period && cycles.includes(choice.period)) ||
+            (choice.planId && visiblePlans.some((plan) => Number(plan.id) === choice.planId))) return;
+        // Locate a usable choice once. Later cycle/plan choices belong to the user.
+        for (const period of [billingPeriod, ...cycles.filter((key) => key !== billingPeriod)]) {
+            const matching = visiblePlans.filter((plan) => {
+                const same = Number(plan.id) === Number(sub.data?.plan_id || currentPlan?.id);
+                return purchasePeriods(plan).includes(period) &&
+                    usablePurchaseCoupon(intendedCoupon, Number(plan.id), period) &&
+                    (plan.capacity_limit == null || Number(plan.capacity_limit) > 0 || same) &&
+                    !(same && Number(plan.renew) === 0);
+            });
+            const match = matching.find((plan) => Number(plan.id) === mobilePlanId) || matching[0];
+            if (match) {
+                setBillingPeriod(period);
+                setMobilePlanId(Number(match.id));
+                break;
+            }
+        }
+    }, [couponIntentId, walletChecked, intendedCoupon, plans.data, plans.loading, plans.error, sub.data, sub.loading, sub.error]);
+    useEffect(() => {
+        if (!activePeriod || !mobileActive || location.hash.slice(2).split("?")[0] !== "plan") return;
+        history.replaceState(history.state, "", `#/${catalogReturnPath(mobileActive.id, activePeriod, couponIntentId)}`);
+    }, [activePeriod, mobileActive?.id, couponIntentId]);
     if (selected)
         return (
             <UnifiedCheckout
                 initialPlan={selected}
+                couponIntentId={couponIntentId}
                 replaceTradeNo={
                     !selected.resetOnly && replaceable
                         ? pending?.trade_no
                         : undefined
                 }
-                onBack={() => setSelected(null)}
+                onBack={(couponId) => {
+                    setCouponIntentId(couponId);
+                    setSelected(null);
+                }}
             />
         );
     return (
@@ -103,6 +177,19 @@ export function SubscriptionPurchase() {
                 )}
             </State>
             <State {...plans} retry={plans.reload}>
+                {couponIntentId && wallet.error && (
+                    <div className="pricing-guide" role="status">
+                        <span>{pc("couponUnavailable")}</span>{" "}
+                        <button type="button" disabled={wallet.loading || walletRetryIn > 0} onClick={wallet.reload}>
+                            {walletRetryIn > 0 ? pc("retryIn", { seconds: walletRetryIn }) : tx("重试")}
+                        </button>
+                    </div>
+                )}
+                {couponIntentId && walletChecked && !plans.loading && !plans.error && (
+                    <p className="pricing-guide" role="status">
+                        {intentMessage}
+                    </p>
+                )}
                 <div className="pricing-toolbar">
                     <p className="pricing-guide">{pc("catalogHint")}</p>
                     <div
@@ -114,7 +201,10 @@ export function SubscriptionPurchase() {
                             <button
                                 key={key}
                                 aria-pressed={activePeriod === key}
-                                onClick={() => setBillingPeriod(key)}
+                                onClick={() => {
+                                    intent.current.manual = true;
+                                    setBillingPeriod(key);
+                                }}
                             >
                                 {tx(billingPeriods[key])}
                             </button>
@@ -137,7 +227,10 @@ export function SubscriptionPurchase() {
                                     Number(mobileActive?.id) === Number(plan.id)
                                 }
                                 aria-controls={`pricing-plan-${plan.id}`}
-                                onClick={() => setMobilePlanId(Number(plan.id))}
+                                onClick={() => {
+                                    intent.current.manual = true;
+                                    setMobilePlanId(Number(plan.id));
+                                }}
                             >
                                 <strong>{plan.name}</strong>
                                 <span id={`pricing-choice-${plan.id}`}>
@@ -322,7 +415,7 @@ export function SubscriptionPurchase() {
                                         disabled={blocked}
                                         onClick={() => {
                                             navigate(
-                                                `plan/${plan.id}?period=${displayed}${replaceable ? `&replace=${encodeURIComponent(pending.trade_no)}` : ""}`,
+                                                `plan/${plan.id}?period=${displayed}${couponIntentId ? `&couponId=${couponIntentId}` : ""}${replaceable ? `&replace=${encodeURIComponent(pending.trade_no)}` : ""}`,
                                             );
                                             setSelected({
                                                 ...plan,

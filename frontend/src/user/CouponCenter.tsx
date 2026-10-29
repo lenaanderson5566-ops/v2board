@@ -9,6 +9,7 @@ import type { V10WalletCoupon } from "../shared/v10-types";
 import { pricingCopy as pc } from "./pricing-copy";
 import { couponRestrictions, couponStatus } from "./coupon-copy";
 import { JourneyIllustration } from "./JourneyIllustration";
+import { availableCouponIntent, catalogReturnPath } from "./checkout-navigation";
 
 export function ActivityCenter() {
     const offers = useCouponActivities();
@@ -225,8 +226,8 @@ export function MyCoupons() {
                             <span className="coupon-state">
                                 {couponStatus(coupon)}
                             </span>
-                            {coupon.status === "available" && (
-                                <a className="button soft-button" href="#/plan">
+                            {availableCouponIntent(coupon) && (
+                                <a className="button soft-button" href={`#/${catalogReturnPath(undefined, undefined, coupon.id)}`}>
                                     {tx("选择套餐使用")}
                                 </a>
                             )}

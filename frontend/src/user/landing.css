@@ -127,6 +127,23 @@
     gap: 12px;
     margin-top: 32px;
 }
+.landing-decision {
+    max-width: 500px;
+    margin-top: 18px;
+    color: var(--landing-muted);
+    font-size: 12px;
+    line-height: 1.7;
+}
+.landing-decision p { margin: 0 0 6px; }
+.landing-decision a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    color: var(--brand);
+    text-decoration: underline;
+    text-underline-offset: 4px;
+}
 .landing .button {
     min-height: 46px;
     display: inline-flex;

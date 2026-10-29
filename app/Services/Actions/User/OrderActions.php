@@ -21,12 +21,21 @@ class OrderActions
     public function fetch(Request $request)
     {
         $model = Order::where('user_id', $request->user['id'])
-            ->orderBy('created_at', 'DESC');
+            ->orderBy('created_at', 'DESC')->orderBy('id', 'DESC');
         if ($request->input('status') !== null) {
             $model->where('status', $request->input('status'));
         }
         $total = null;
         if ($request->is('api/v10/*')) {
+            if ($request->filled('order_number')) $model->where('trade_no', $request->input('order_number'));
+            // Orders store whole seconds. Round fractional boundaries upward so
+            // inclusive lower and exclusive upper bounds retain ISO precision.
+            foreach (['created_from'=>'>=', 'created_before'=>'<'] as $field=>$operator) {
+                if (!$request->filled($field)) continue;
+                $instant = new \DateTimeImmutable($request->input($field));
+                $seconds = $instant->getTimestamp() + ((int)$instant->format('u') > 0 ? 1 : 0);
+                $model->where('created_at', $operator, $seconds);
+            }
             $total=(clone $model)->count();
             $model->forPage((int)$request->input('current',1),(int)$request->input('page_size',20));
         }

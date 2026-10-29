@@ -1445,3 +1445,14 @@ body:has(.browser-notice) #custom-footer {
 .import-manual .import-fallback > div { flex: 1 1 220px; min-width: 0; }
 .import-manual-url { display: grid; gap: 8px; margin-top: 16px; font-size: 13px; min-width: 0; }
 .import-manual-url input { min-width: 0; width: 100%; min-height: 44px; font-size: 13px; direction: ltr; text-align: start; }
+.import-completion-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-block: 14px; }
+.import-completion-actions > :is(a, button) { min-height: 44px; white-space: normal; }
+.import-troubleshooting { margin-block: 14px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); }
+.import-troubleshooting h4 { margin: 0 0 10px; font-size: 14px; overflow-wrap: anywhere; }
+.import-troubleshooting ol { margin: 0; padding-inline-start: 20px; line-height: 1.7; }
+.import-troubleshooting li + li { margin-top: 8px; }
+.import-troubleshooting p { line-height: 1.7; }
+.knowledge-search-panel > .panel-head { flex-wrap: wrap; gap: 12px; }
+.knowledge-search-panel > .panel-head > .actions { flex: 1 1 320px; min-width: 0; flex-wrap: wrap; }
+.knowledge-search-panel .actions input { min-width: 0; max-width: 100%; flex: 1 1 200px; }
+.knowledge-search-panel .actions select { min-width: 0; max-width: 100%; }

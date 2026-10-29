@@ -80,10 +80,16 @@ const topics: {
     },
 ];
 
-export function HelpGuides() {
+export function HelpGuides({ search: controlledSearch, onSearchChange, showSearch = true }: {
+    search?: string;
+    onSearchChange?: (value: string) => void;
+    showSearch?: boolean;
+} = {}) {
     const { i18n } = useTranslation("help");
     const [category, setCategory] = useState<Category | "all">("all");
-    const [search, setSearch] = useState("");
+    const [localSearch, setLocalSearch] = useState("");
+    const search = controlledSearch ?? localSearch;
+    const setSearch = onSearchChange ?? setLocalSearch;
     const terms = search
         .trim()
         .toLocaleLowerCase()
@@ -102,7 +108,7 @@ export function HelpGuides() {
         <Panel title={tx("常见问题与问题排查")}>
             <div className="pad help-guides">
                 <p className="muted help-intro">{h("intro")}</p>
-                <div className="help-search">
+                {showSearch && <div className="help-search">
                     <Search size={18} aria-hidden="true" />
                     <input
                         type="search"
@@ -111,7 +117,7 @@ export function HelpGuides() {
                         value={search}
                         onChange={(event) => setSearch(event.target.value)}
                     />
-                </div>
+                </div>}
                 <div
                     className="help-categories"
                     role="group"

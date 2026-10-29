@@ -53,8 +53,11 @@ export function CreditPurchase({ close }: { close: () => void }) {
         catalog.data?.find((p) => Number(p.id) === selected) ||
         catalog.data?.[0];
     const pending = unfinishedOrder(orders.data || []);
+    const retryAt = Math.max(catalog.retryAt || 0, orders.retryAt || 0);
+    const checked = !catalog.loading && !orders.loading && !catalog.error && !orders.error &&
+        Array.isArray(catalog.data) && Array.isArray(orders.data) && retryAt <= Date.now();
     async function buy() {
-        if (!pack || lock.current || pending) return;
+        if (!pack || !checked || lock.current || pending) return;
         lock.current = true;
         setBusy(true);
         setError("");
@@ -86,6 +89,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
                 <State
                     loading={catalog.loading || orders.loading}
                     error={catalog.error || orders.error}
+                    retryAt={retryAt}
                     data={catalog.data && orders.data}
                     retry={() => {
                         catalog.reload();
@@ -105,7 +109,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
                                 onChange={(e) =>
                                     setSelected(Number(e.target.value))
                                 }
-                                disabled={busy}
+                                disabled={busy || !checked}
                             >
                                 {catalog.data?.map((item) => (
                                     <option key={item.id} value={item.id}>
@@ -126,7 +130,7 @@ export function CreditPurchase({ close }: { close: () => void }) {
 
                             <button
                                 className="primary"
-                                disabled={busy}
+                                disabled={busy || !checked}
                                 onClick={buy}
                             >
                                 {busy ? tx("提交中…") : c("checkout")}

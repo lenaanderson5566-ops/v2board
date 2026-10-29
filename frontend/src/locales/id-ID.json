@@ -652,7 +652,19 @@
     "了解删除影响": "Tinjau dampak penghapusan",
     "验证并确认": "Verifikasi dan konfirmasi",
     "删除前，请确认以下事项": "Sebelum menghapus, tinjau hal berikut",
-    "账户状态已检查，可以继续。": "Status akun telah diperiksa. Anda dapat melanjutkan."
+    "账户状态已检查，可以继续。": "Status akun telah diperiksa. Anda dapat melanjutkan.",
+    "搜索后台页面": "Cari halaman admin",
+    "输入页面名称或分组": "Masukkan nama halaman atau bagian",
+    "清除页面搜索": "Hapus pencarian halaman",
+    "未找到匹配页面，请尝试其他关键词。": "Tidak ada halaman yang cocok. Coba kata kunci lain.",
+    "订单快速查询": "Pencarian cepat pesanan",
+    "订单查询字段": "Kolom pencarian pesanan",
+    "订单查询内容": "Kata pencarian pesanan",
+    "输入订单号、邮箱或用户 ID": "Masukkan nomor pesanan, email, atau ID pengguna",
+    "已应用的订单筛选": "Filter pesanan yang diterapkan",
+    "移除订单筛选条件 {{index}}": "Hapus filter pesanan {{index}}",
+    "支付接口列表": "Antarmuka pembayaran",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Antarmuka pembayaran sementara tidak tersedia. Coba lagi sebelum menambahkan atau mengedit kanal."
   },
   "account": {
     "notificationAutoSave": "Perubahan disimpan secara otomatis",
@@ -706,7 +718,19 @@
     "resetSuccess": "Reset penggunaan. kuota Anda dipulihkan.",
     "inactive": "Langganan aktif diperlukan untuk menggunakan reset.",
     "emptyUsage": "Tidak ada gunanya untuk mengatur ulang. Tidak ada reset yang akan dihabiskan.",
-    "noCredits": "Tidak ada jatah reset tersimpan. Jatah dari administrator akan muncul di sini."
+    "noCredits": "Tidak ada jatah reset tersimpan. Jatah dari administrator akan muncul di sini.",
+    "expiresSoon": "Langganan berakhir dalam {{days}} hari.",
+    "findTransactions": "Cari transaksi",
+    "filtersApplied": "Filter diterapkan",
+    "allStatuses": "Semua status",
+    "timeRange": "Rentang waktu",
+    "allTime": "Semua waktu",
+    "lastDays": "{{days}} hari terakhir",
+    "orderNumber": "Nomor pesanan",
+    "exactOrderNumber": "Masukkan nomor pesanan lengkap",
+    "searchTransactions": "Cari",
+    "filteredTransactions": "Transaksi yang sesuai: {{count}}",
+    "noMatchingTransactions": "Tidak ada transaksi yang sesuai dengan filter ini. Sesuaikan atau atur ulang filter."
   },
   "credits": {
     "buyMore": "Beli kredit data tambahan",
@@ -847,7 +871,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Muat ulang halaman ini atau buka bagian lain dari menu navigasi."
+    "pageRecovery": "Muat ulang halaman ini atau buka bagian lain dari menu navigasi.",
+    "accountLoadFailed": "Informasi akun tidak dapat dimuat. Periksa koneksi lalu coba lagi.",
+    "languageLoadFailed": "Bahasa antarmuka yang tersimpan tidak dapat dimuat. Bahasa saat ini tetap dapat digunakan.",
+    "authorizationRetryHelp": "Status permintaan masuk belum dapat dipastikan. Periksa koneksi dan periksa kembali status permintaan sebelum mengonfirmasi.",
+    "authorizationRecheck": "Periksa status permintaan",
+    "authorizationUnavailable": "Permintaan masuk ini sudah tidak tersedia. Kembali ke aplikasi untuk memeriksa status masuk atau membuat permintaan baru.",
+    "invalidJson": "Masukkan JSON yang valid.",
+    "reorderHelp": "Seret untuk mengubah urutan, atau fokuskan pegangan pengurutan lalu gunakan ↑ / ↓."
   },
   "ux": {
     "cancel": "Batal",
@@ -908,7 +939,17 @@
     "title": "Klien yang berdedikasi",
     "guide": "Instal dan masuk dengan akun situs Anda untuk menyinkronkan langganan Anda. Tidak diperlukan tautan berlangganan.",
     "unavailable": "Tidak ada penginstal khusus yang tersedia untuk sistem ini. Pilih sistem lain atau klien yang kompatibel.",
-    "requirement": "Pilih arsitektur perangkat Anda. Koneksi memerlukan paket aktif atau kuota data yang tersedia."
+    "requirement": "Pilih arsitektur perangkat Anda. Koneksi memerlukan paket aktif atau kuota data yang tersedia.",
+    "architecture": "Chip perangkat",
+    "chooseArchitecture": "Pilih chip perangkat",
+    "architectureHelp": "Jika ragu, periksa informasi sistem perangkat. Pilih penginstal yang sesuai dengan chip perangkat.",
+    "architectureUniversal": "Penginstal universal",
+    "architectureApple": "Apple Silicon (M1 atau lebih baru, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD 64-bit (x64)",
+    "architectureX86": "Intel / AMD 32-bit (x86)",
+    "architectureArm64": "ARM 64-bit (arm64)",
+    "architectureArm": "ARM 32-bit (arm)"
   },
   "help": {
     "intro": "Temukan pertanyaan Anda dan ikuti langkah-langkahnya.",
@@ -939,13 +980,24 @@
     "qCancelled": "Apa yang terjadi pada saldo yang digunakan pada pesanan yang dibatalkan?",
     "aCancelled": "Membatalkan pesanan yang belum dibayar akan mengembalikan saldo akun yang telah dipotong, yang dapat Anda periksa di Penagihan. Tanda terima menunjukkan saldo yang dikembalikan; ini bukan pengembalian dana melalui penyedia pembayaran eksternal. Jangan membayar pesanan yang dibatalkan. Lakukan pemesanan baru jika diperlukan.",
     "qSecurity": "Bagaimana jika saya lupa kata sandi atau membuka tautan konfigurasi saya?",
-    "aSecurity": "Gunakan Lupa kata sandi di halaman masuk. Saat masuk, buka Keamanan akun dari avatar Anda untuk mengubah kata sandi atau mengatur ulang tautan berlangganan. Menyetel ulang akan membatalkan tautan lama, jadi impor lagi di setiap perangkat. Jangan pernah membagikan kata sandi, kode, atau tautan konfigurasi lengkap, termasuk di tiket."
+    "aSecurity": "Gunakan Lupa kata sandi di halaman masuk. Saat masuk, buka Keamanan akun dari avatar Anda untuk mengubah kata sandi atau mengatur ulang tautan berlangganan. Menyetel ulang akan membatalkan tautan lama, jadi impor lagi di setiap perangkat. Jangan pernah membagikan kata sandi, kode, atau tautan konfigurasi lengkap, termasuk di tiket.",
+    "searchAll": "Cari pertanyaan dan dokumen"
   },
   "clientImport": {
     "invalid": "Langganan tidak tersedia. Segarkan dan coba lagi.",
     "copied": "Disalin. Tempelkan ke manajer langganan klien Anda dan perbarui.",
     "opened": "Konfirmasikan impor dan perbarui konfigurasi di aplikasi. Jika aplikasi tidak terbuka, instal aplikasi atau salin tautan langganan untuk mengimpornya secara manual.",
-    "manualUrl": "Tautan langganan"
+    "manualUrl": "Tautan langganan",
+    "finishSetup": "Penyiapan selesai — lihat penggunaan",
+    "needHelp": "Mengalami kendala?",
+    "confirmConnection": "Pastikan koneksi berfungsi di aplikasi sebelum menyelesaikan penyiapan.",
+    "helpFor": "Atasi masalah {{client}}",
+    "helpInstall": "Pastikan aplikasi yang dipilih sudah terinstal, lalu coba buka kembali. Jika browser tidak membukanya, salin tautan atau impor langganan secara manual di bawah.",
+    "helpRefresh": "Di aplikasi, perbarui langganan yang diimpor lalu pilih koneksi yang tersedia.",
+    "helpIos": "Saat diminta oleh iOS, izinkan aplikasi menambahkan konfigurasi VPN lalu aktifkan koneksi.",
+    "helpAndroid": "Jika Android meminta izin koneksi VPN, konfirmasikan permintaan tersebut di aplikasi lalu aktifkan koneksi.",
+    "helpDesktop": "Ikuti petunjuk aplikasi untuk memberikan izin jaringan sistem yang diperlukan, lalu aktifkan koneksi.",
+    "contactSupport": "Jika tetap tidak dapat terhubung, hubungi dukungan dengan menyertakan perangkat, versi aplikasi, dan pesan kesalahan."
   },
   "landing": {
     "inviteStart": "Bergabung karena undangan",
@@ -992,7 +1044,10 @@
     "a3": "Kami menyediakan pengaturan dan panduan lingkungan, bukan akun atau keanggotaan AI pihak ketiga. Periksa setiap aplikasi untuk persyaratan pendaftaran dan pembayarannya.",
     "q4": "Di mana saya bisa mendapatkan bantuan?",
     "a4": "Setelah masuk, buka Pusat Bantuan untuk menelusuri jawaban umum atau mencari dokumentasi. Jika Anda masih memerlukan bantuan, hubungi dukungan di bagian bawah halaman. Lanjutkan percakapan yang ada untuk menjaga kemajuan bersama.",
-    "footer": "Untuk pengalaman yang lebih lancar dengan AI."
+    "footer": "Untuk pengalaman yang lebih lancar dengan AI.",
+    "serviceScope": "Panduan penyiapan perangkat dan dukungan penggunaan. Keanggotaan layanan pihak ketiga tidak termasuk.",
+    "pricingBeforePayment": "Pembuatan akun gratis. Harga paket dan biaya ditampilkan sebelum pembayaran.",
+    "viewPlans": "Masuk untuk melihat paket"
   },
   "pricing": {
     "quoteLoading": "Menghitung total…",
@@ -1062,7 +1117,14 @@
     "paymentQrFallback": "Kode QR juga dapat dipindai atau rincian pembayaran dapat disalin.",
     "mobileScanHelp": "Pindai dengan perangkat lain, atau ambil tangkapan layar lalu pindai melalui aplikasi pembayaran.",
     "copyPayment": "Salin rincian pembayaran",
-    "paymentCopied": "Rincian pembayaran disalin"
+    "paymentCopied": "Rincian pembayaran disalin",
+    "impactRenew": "Perpanjang paket ini untuk periode yang dipilih. Perpanjangan dan pengaturan ulang data merupakan proses terpisah; pemakaian data hanya diatur ulang sesuai aturan perpanjangan atau pengaturan ulang layanan.",
+    "impactSwitch": "Pergantian akan mengganti paket saat ini dan memulai periode yang dipilih setelah pesanan diproses. Kredit dari paket sebelumnya dan saldo yang dikembalikan ditampilkan pada rincian harga; sisa data paket lama tidak ditambahkan ke kuota baru.",
+    "impactResubscribe": "Aktifkan kembali paket ini untuk periode yang dipilih. Akses dan kuota paket diperbarui setelah pembayaran dikonfirmasi dan pesanan diproses.",
+    "impactSubscribe": "Paket dan periode yang dipilih diaktifkan setelah pembayaran dikonfirmasi dan pesanan diproses.",
+    "couponIntentEligible": "Paket yang memenuhi syarat ditampilkan terlebih dahulu. Kupon yang dipilih akan diperiksa kembali saat pembayaran.",
+    "couponIntentDifferentPeriod": "Kupon ini tidak berlaku untuk periode ini. Pilih periode lain untuk menggunakannya.",
+    "couponIntentUnavailable": "Kupon ini tidak dapat digunakan untuk paket yang ditampilkan. Anda dapat melanjutkan tanpa kupon."
   },
   "profile": {
     "intro": "Lihat email masuk Anda dan kelola bahasa serta layanan terhubung Anda.",
@@ -1092,7 +1154,8 @@
     "9": "Sembunyikan kata sandi",
     "10": "Disalin",
     "11": "Penyalinan gagal. Silakan salin secara manual.",
-    "12": "Terakhir diperiksa"
+    "12": "Terakhir diperiksa",
+    "unavailable": "Akun unduhan untuk sementara tidak tersedia. Silakan coba lagi nanti."
   },
   "banners": {
     "previous": "Spanduk sebelumnya",

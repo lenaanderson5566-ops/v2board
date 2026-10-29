@@ -1,15 +1,15 @@
 import { ArrowLeft } from "lucide-react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { navigate, query, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
 import { tx } from "../shared/i18n";
 import { PurchaseSteps } from "./PurchaseSteps";
 import { PlanSelection } from "./PlanSelection";
-import { checkoutOrderReference } from "./checkout-navigation";
+import { catalogReturnPath, catalogSelection, checkoutOrderReference, orderResumePath, purchaseCouponId, purchasePeriod } from "./checkout-navigation";
 import { StripeCard } from "./OrderView";
 import { PaymentCheckout } from "./PaymentCheckout";
 import type { InitialPayment, PaymentQuote } from "./PaymentCheckout";
-import { unfinishedOrder } from "./billing-flow";
+import { subscriptionAction, unfinishedOrder } from "./billing-flow";
 import { PendingOrderNotice } from "./PendingOrderNotice";
 import "./unified-checkout.css";
 
@@ -20,13 +20,15 @@ export function UnifiedCheckout({
     replaceTradeNo,
     onBack,
     initialOrder,
+    couponIntentId: initialCouponIntentId,
 }: {
     initialPlan?: Row;
     planId?: number;
     initialPeriod?: string;
     replaceTradeNo?: string;
-    onBack?: () => void;
+    onBack?: (couponIntentId?: number) => void;
     initialOrder?: string;
+    couponIntentId?: number;
 }) {
     const [checkout, setCheckout] = useState<
         { number: string; payment?: InitialPayment } | undefined
@@ -34,6 +36,8 @@ export function UnifiedCheckout({
         const number = checkoutOrderReference(initialOrder);
         return number ? { number } : undefined;
     });
+    const [couponIntentId, setCouponIntentId] = useState(() => checkoutOrderReference(initialOrder)
+        ? undefined : purchaseCouponId(initialCouponIntentId ?? catalogSelection().couponId));
     const [paymentQuote, setPaymentQuote] = useState<PaymentQuote>();
     const detail = useData<Row>(
         checkout
@@ -50,6 +54,7 @@ export function UnifiedCheckout({
         !initialPlan && planId ? query("user/plan/fetch", { id: planId }) : "",
     );
     const catalog = initialPlan || plan.data;
+    const subscription = useData<Row>("user/getSubscribe");
     const chosen = order?.plan
         ? {
               ...(Number(catalog?.id) === Number(order.plan_id) ? catalog : {}),
@@ -75,6 +80,12 @@ export function UnifiedCheckout({
             Number(pending.status) === 0 &&
             !pending.payment_id
         );
+    useEffect(() => {
+        if (!checkout) return;
+        const id = Number(chosen?.id || planId);
+        if (!Number.isSafeInteger(id) || id <= 0) return;
+        history.replaceState(history.state, "", `#/plan/${id}?order=${encodeURIComponent(checkout.number)}`);
+    }, [checkout?.number, chosen?.id, planId]);
     function showPayment(number: string, payment?: InitialPayment) {
         const id = Number(chosen?.id || planId);
         if (
@@ -90,6 +101,7 @@ export function UnifiedCheckout({
             `#/plan/${id}?order=${encodeURIComponent(number)}`,
         );
         setPaymentQuote(undefined);
+        setCouponIntentId(undefined);
         setCheckout({ number, payment });
     }
     return (
@@ -98,10 +110,10 @@ export function UnifiedCheckout({
                 className="receipt-back"
                 type="button"
                 onClick={() => {
-                    if (onBack) {
-                        onBack();
-                        navigate("plan");
-                    } else navigate("plan");
+                    onBack?.(checkout ? undefined : couponIntentId);
+                    const period = purchasePeriod(order?.period) || catalogSelection().period ||
+                        purchasePeriod(initialPeriod || chosen?.initialPeriod);
+                    navigate(catalogReturnPath(chosen?.id || planId, period, checkout ? undefined : couponIntentId));
                 }}
             >
                 <ArrowLeft size={16} />
@@ -119,15 +131,22 @@ export function UnifiedCheckout({
                     <PendingOrderNotice
                         order={pending}
                         reload={orders.reload}
-                        onContinue={(number) => showPayment(number)}
+                        onContinue={(number) => {
+                            const destination = orderResumePath(pending);
+                            if (destination.startsWith(`plan/${Number(chosen?.id || planId)}?`)) showPayment(number);
+                            else navigate(destination);
+                        }}
                     />
                 </div>
             ) : chosen ? (
                 <PlanSelection
                     unified
+                    couponIntentId={checkout ? undefined : couponIntentId}
+                    onCouponIntentDismiss={() => setCouponIntentId(undefined)}
                     plan={{
                         ...chosen,
                         initialPeriod: initialPeriod || chosen.initialPeriod,
+                        purchaseAction: subscription.data ? subscriptionAction(chosen, subscription.data) : chosen.purchaseAction,
                     }}
                     checkout={checkout}
                     order={order}

@@ -289,6 +289,9 @@ export function JourneyAnalytics({
                         </p>
                     ) : (
                         <>
+                            <p className="muted">
+                                体验统计仅代表已同意统计且成功上报的访问样本，不能代表全部访客，也不能直接计算全站首页到注册的转化率。付款及开通结果以订单和订阅业务记录为准，不应把体验事件会话数作为业务漏斗分母。
+                            </p>
                             {!x.enabled && (
                                 <p className="muted">
                                     匿名统计已关闭，仅展示仍在保留期内的历史样本。

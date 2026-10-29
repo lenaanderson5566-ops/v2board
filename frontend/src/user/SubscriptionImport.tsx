@@ -1,6 +1,6 @@
 import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { trackAction } from "./product-analytics";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
     ArrowUpRight,
@@ -67,6 +67,8 @@ export function SubscriptionImport({
     const [copied, setCopied] = useState(false),
         [attempted, setAttempted] = useState(false),
         [error, setError] = useState("");
+    const [helpOpen, setHelpOpen] = useState(false);
+    const helpId = useId();
     const copyRequest = useRef(0);
     const language = locale();
     useEffect(() => {
@@ -74,6 +76,7 @@ export function SubscriptionImport({
         setCopied(false);
         setAttempted(false);
         setError("");
+        setHelpOpen(false);
         return () => {
             copyRequest.current += 1;
         };
@@ -304,6 +307,37 @@ export function SubscriptionImport({
                 <p className="muted">
                     {tx("打开客户端，更新配置，选择可用线路并启用连接。")}
                 </p>
+                {enabled(selected) && <><p className="muted import-completion-help">
+                    {t("confirmConnection", { defaultValue: "Confirm the connection works in your client before finishing setup." })}
+                </p>
+                <div className="import-completion-actions">
+                    <a className="button soft-button" href="#/dashboard" onClick={() => setOpen(false)}>
+                        {t("finishSetup", { defaultValue: "Setup complete — view usage" })}
+                    </a>
+                    <button type="button" aria-expanded={helpOpen} aria-controls={helpId}
+                        onClick={() => { setHelpOpen((value) => !value); if (!helpOpen) trackAction("help_open"); }}>
+                        {t("needHelp", { defaultValue: "Having trouble?" })}
+                    </button>
+                </div>
+                {helpOpen && (
+                    <div className="import-troubleshooting" id={helpId}>
+                        <h4>{t("helpFor", { client: clients.find((client) => client.id === selected)?.name || selected,
+                            defaultValue: "Troubleshoot {{client}}" })}</h4>
+                        <ol>
+                            <li>{t("helpInstall", { defaultValue: "Check that the selected client is installed, then retry opening it. If the browser does not open it, copy or manually import the subscription below." })}</li>
+                            <li>{t("helpRefresh", { defaultValue: "In the client, refresh the imported subscription and select an available connection." })}</li>
+                            <li>{device === "ios"
+                                ? t("helpIos", { defaultValue: "When iOS asks, allow the client to add its VPN configuration, then enable the connection." })
+                                : device === "android"
+                                  ? t("helpAndroid", { defaultValue: "If Android asks to allow a VPN connection, confirm the request in the client and enable it." })
+                                  : t("helpDesktop", { defaultValue: "Follow the client’s prompts for required system network permissions, then enable the connection." })}</li>
+                        </ol>
+                        <p className="muted">{t("contactSupport", { defaultValue: "Still unable to connect? Contact support with your device, client version and error message." })}</p>
+                        <a href="#/ticket" className="import-guide" onClick={() => setOpen(false)}>
+                            {tx("联系客服 / 查看已有工单")}<ArrowUpRight size={15} aria-hidden="true" />
+                        </a>
+                    </div>
+                )}</>}
                 <a
                     className="import-guide"
                     href="#/knowledge"

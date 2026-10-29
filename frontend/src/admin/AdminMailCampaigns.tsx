@@ -3,6 +3,8 @@ import { Pager } from "../shared/ui";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { useData, Modal, Html, State } from "../shared/ui";
+import { useRetryCountdown } from "../shared/use-retry-countdown";
+import { tx } from "../shared/i18n";
 const reasons: Record<string, string> = {
     manual_blocklist: "人工禁发名单",
     account_disabled: "账户已禁用",
@@ -25,6 +27,7 @@ export function AdminMailCampaigns() {
     );
     const campaign = detail.data?.campaign,
         stats = detail.data?.stats;
+    const retryIn = useRetryCountdown(Math.max(list.retryAt || 0, detail.retryAt || 0));
     return (
         <section className="pad">
             <h3>群发记录</h3>
@@ -34,7 +37,7 @@ export function AdminMailCampaigns() {
                 服务商已接受人数；无回调不表示未送达。SMTP
                 通常无法确认最终送达。统计按收件人去重，不按重试次数累计。
             </p>
-            <State loading={list.loading} error={list.error}>
+            <State {...list} retry={list.reload}>
                 {null}
             </State>
             {(list.data || []).map((row) => (
@@ -61,7 +64,7 @@ export function AdminMailCampaigns() {
                 page={page}
                 total={list.total}
                 size={pageSize}
-                loading={list.loading}
+                loading={list.loading || retryIn > 0}
                 onChange={setPage}
                 onSizeChange={(size) => {
                     setPageSize(size);
@@ -70,7 +73,7 @@ export function AdminMailCampaigns() {
             />
             {id !== null && (
                 <Modal title="群发记录" close={() => setId(null)}>
-                    <State loading={detail.loading} error={detail.error}>
+                    <State {...detail} retry={detail.reload}>
                         {null}
                     </State>
                     {campaign && (
@@ -123,14 +126,13 @@ export function AdminMailCampaigns() {
                                     {reasons[r.reason] || "其他原因"}：{r.n}
                                 </p>
                             ))}
-                            <button
+                            <button type="button" disabled={detail.loading || list.loading || retryIn > 0}
+                                aria-busy={detail.loading || list.loading}
                                 onClick={() => {
                                     detail.reload();
                                     list.reload();
                                 }}
-                            >
-                                更新投递状态
-                            </button>
+                            >{retryIn > 0 ? tx("retryIn", { ns: "pricing", seconds: retryIn }) : "更新投递状态"}</button>
                         </div>
                     )}
                 </Modal>

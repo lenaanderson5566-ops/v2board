@@ -20,16 +20,18 @@ export default function AdminWorkspace({
     return (
         <EditorFieldContext.Provider value={adminEditorField}>
             <AdminShell
+                page={current}
                 current={
                     adminWorkspace(current)
                         ? adminWorkspace(current)!.root
                         : current === "invitation-rules"
                           ? "invitations"
-                          : current === "overview-system" || current === "overview-risk"
-                              ? "overview"
-                              : current === "plans-translations"
-                                ? "plans"
-                                : current
+                          : current === "overview-system" ||
+                              current === "overview-risk"
+                            ? "overview"
+                            : current === "plans-translations"
+                              ? "plans"
+                              : current
                 }
                 user={user}
                 logout={() => {

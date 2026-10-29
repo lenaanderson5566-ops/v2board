@@ -130,3 +130,18 @@ it("only available wallet entries have a purchase link", () => {
     expect(screen.getByRole("heading", { name: "Used" })).toBeTruthy();
     expect(mocks.request).not.toHaveBeenCalled();
 });
+it("carries only a safe wallet coupon ID into the plan catalog", () => {
+    mocks.wallet = [{ ...coupon, code: "private-code", token: "private-token", planIds: [2], billingPeriods: ["annual"] }];
+    render(<MyCoupons />);
+    expect(screen.getByRole("link", { name: "选择套餐使用" }).getAttribute("href")).toBe("#/plan?couponId=1");
+});
+it.each([-1, 0, 1.5, Number.MAX_SAFE_INTEGER + 1, "1&pay=true"])("does not offer a purchase intent for an unsafe coupon ID: %s", (id) => {
+    mocks.wallet = [{ ...coupon, id }];
+    render(<MyCoupons />);
+    expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
+});
+it("does not send an expired coupon into checkout even if the wallet status is stale", () => {
+    mocks.wallet = [{ ...coupon, expiresAt: "2020-01-01T00:00:00Z" }];
+    render(<MyCoupons />);
+    expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
+});

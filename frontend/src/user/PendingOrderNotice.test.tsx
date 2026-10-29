@@ -46,3 +46,12 @@ it("continues an order in its parent checkout without navigation or a payment re
     expect(request).not.toHaveBeenCalled();
     expect(screen.queryByRole("link", { name: "继续支付" })).toBeNull();
 });
+it.each([0,1])("resumes a subscription in the original plan confirmation for status %s",status=>{
+    render(<PendingOrderNotice order={{...order,status,plan_id:2,period:"year_price",type:2,credit_bytes:null}} reload={vi.fn()}/>);
+    expect(screen.getByRole("link",{name:status===0?"继续支付":"查看开通进度"}).getAttribute("href")).toBe("#/plan/2?order=pending-1");
+    expect(request).not.toHaveBeenCalled();
+});
+it.each([{period:"reset_price",plan_id:2},{period:"deposit",plan_id:2},{period:"year_price",plan_id:2,credit_bytes:10},{period:"year_price",plan_id:2,type:5}])("keeps special order recovery in its dedicated flow: %o",details=>{
+    render(<PendingOrderNotice order={{...order,...details}} reload={vi.fn()}/>);
+    expect(screen.getByRole("link",{name:"继续支付"}).getAttribute("href")).toBe("#/order/pending-1");
+});

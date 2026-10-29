@@ -41,6 +41,17 @@ export function UsagePage() {
         info.data?.account_status?.state === "active" &&
         info.data.account_status.is_available !== false &&
         !info.data.account_status.quota_exhausted;
+    const subscribed = sub.data?.has_subscription === true;
+    const serverTime = Number(info.data?.account_status?.server_time);
+    const expiresAt = Number(sub.data?.expired_at);
+    const renewalPlanId = Number(sub.data?.plan?.id);
+    const daysRemaining = subscribed && Number.isFinite(serverTime) && serverTime > 0 &&
+        Number.isFinite(expiresAt) && expiresAt > serverTime
+        ? Math.ceil((expiresAt - serverTime) / 86400) : 0;
+    const renewSoon = info.data?.account_status?.state === "active" &&
+        daysRemaining > 0 && daysRemaining <= 7 &&
+        Number.isSafeInteger(renewalPlanId) && renewalPlanId > 0 &&
+        [1, true, "1"].includes(sub.data?.plan?.renew);
     async function consume() {
         if (inFlight.current) return;
         inFlight.current = true;
@@ -69,13 +80,19 @@ export function UsagePage() {
                 className={`settings-row usage-heading ${usable ? "subscription-ready" : ""}`}
             >
                 <div>
-                    {usable && sub.data?.plan && (
+                    {usable && subscribed && sub.data?.plan && (
                         <div className="usage-current-plan">
                             <span className="subscription-label">{tx("当前套餐")}</span>
                             <strong className="subscription-name">{sub.data.plan.name}</strong>
                             <span className="subscription-expiry">
                                 {tx("订阅到期")} · {sub.data.expired_at ? date(sub.data.expired_at) : tx("长期有效")}
                             </span>
+                        </div>
+                    )}
+                    {usable && sub.data?.has_subscription === false && Number(info.data?.credit_balance) > 0 && (
+                        <div className="usage-current-plan">
+                            <strong className="subscription-name">{c("credits")}</strong>
+                            <span className="subscription-expiry">{c("noPlan")}</span>
                         </div>
                     )}
                     <p className="settings-intro">{b("usageIntro")}</p>
@@ -90,6 +107,15 @@ export function UsagePage() {
                     </a>
                 )}
             </div>
+            {renewSoon && (
+                <div className="usage-renewal-note" role="status">
+                    <span>{tx("expiresSoon", { ns: "billing", days: daysRemaining,
+                        defaultValue: "Your subscription expires in {{days}} day(s)." })}</span>
+                    <a href={`#/plan/${renewalPlanId}`}>
+                        {tx("续订套餐")}<ArrowUpRight size={15} aria-hidden="true" />
+                    </a>
+                </div>
+            )}
             <div
                 className="settings-tabs"
                 role="group"
@@ -116,11 +142,12 @@ export function UsagePage() {
                         <section className="settings-section">
                             <header>
                                 <h2>{e("quota")}</h2>
-                                <a href="#/order">{tx("管理订阅")}</a>
+                                <a href="#/plan">{tx("管理订阅")}</a>
                             </header>
                             <State
                                 loading={info.loading || sub.loading}
                                 error={info.error || sub.error}
+                                retryAt={Math.max(info.retryAt || 0, sub.retryAt || 0)}
                                 data={info.data && sub.data}
                                 retry={() => {
                                     info.reload();

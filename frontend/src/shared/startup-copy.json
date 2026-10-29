@@ -1,0 +1,16 @@
+{
+  "en": ["This page could not load", "Check your connection, then reload this page.", "Reload page"],
+  "zh-CN": ["页面暂时无法加载", "请检查网络连接后重新加载此页。", "重新加载"],
+  "zh-TW": ["頁面暫時無法載入", "請檢查網路連線後重新載入此頁。", "重新載入"],
+  "ja": ["ページを読み込めませんでした", "接続を確認してから、ページを再読み込みしてください。", "再読み込み"],
+  "ko": ["페이지를 불러올 수 없습니다", "연결을 확인한 후 이 페이지를 새로고침하세요.", "새로고침"],
+  "vi": ["Không thể tải trang", "Kiểm tra kết nối rồi tải lại trang này.", "Tải lại trang"],
+  "ru": ["Не удалось загрузить страницу", "Проверьте подключение и перезагрузите страницу.", "Перезагрузить"],
+  "fa": ["صفحه بارگیری نشد", "اتصال را بررسی کنید و این صفحه را دوباره بارگیری کنید.", "بارگیری دوباره"],
+  "es": ["No se pudo cargar la página", "Comprueba la conexión y vuelve a cargar esta página.", "Recargar página"],
+  "pt": ["Não foi possível carregar a página", "Verifique a conexão e recarregue esta página.", "Recarregar página"],
+  "fr": ["Impossible de charger la page", "Vérifiez votre connexion, puis rechargez cette page.", "Recharger la page"],
+  "de": ["Diese Seite konnte nicht geladen werden", "Prüfen Sie die Verbindung und laden Sie die Seite neu.", "Seite neu laden"],
+  "id": ["Halaman tidak dapat dimuat", "Periksa koneksi, lalu muat ulang halaman ini.", "Muat ulang halaman"],
+  "th": ["โหลดหน้านี้ไม่ได้", "ตรวจสอบการเชื่อมต่อแล้วโหลดหน้านี้ใหม่", "โหลดหน้าใหม่"]
+}

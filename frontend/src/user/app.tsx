@@ -44,6 +44,7 @@ import {
 
 import { UserAuth } from "./UserAuth";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
+import { useRetryCountdown } from "../shared/use-retry-countdown";
 import { UserStatusGate } from "./AccountEntry";
 import { AnnouncementCenter } from "./AnnouncementCenter";
 import { InviteCampaign } from "./InviteCampaign";
@@ -61,6 +62,7 @@ const UserContent = React.lazy(loadUserContent);
 const ClientAuthorization = React.lazy(() => import("./ClientAuthorization"));
 const Landing = React.lazy(() => import("./Landing"));
 import "./app-theme.css";
+import "./recovery.css";
 import "../shared/style.css";
 import "../shared/console.css";
 import { useTranslation } from "react-i18next";
@@ -108,11 +110,37 @@ function UserApp() {
         [loading, setLoading] = useState(true),
         [open, setOpen] = useState(false),
         [error, setError] = useState("");
+    const [sessionAttempt, setSessionAttempt] = useState(0);
+    const [sessionRevision, setSessionRevision] = useState(0);
+    const [sessionError, setSessionError] = useState(false);
+    const [sessionRetryAt, setSessionRetryAt] = useState(0);
+    const retryIn = useRetryCountdown(sessionRetryAt);
+    const [languagePending, setLanguagePending] = useState(false);
+    const [languageBusy, setLanguageBusy] = useState(false);
+    const languageRequest = useRef(0);
+    useEffect(() => () => { languageRequest.current += 1; }, [user?.id]);
+    useEffect(() => {
+        if (sessionError) document.getElementById("session-recovery-title")?.focus();
+    }, [sessionError]);
+    async function retryLanguage() {
+        if (!user || languageBusy) return;
+        const attempt = ++languageRequest.current;
+        setLanguageBusy(true);
+        try {
+            await applyAccountLanguage(user.language);
+            if (attempt === languageRequest.current) setLanguagePending(false);
+        } catch {
+            // Keep the current interface language and authenticated workspace available.
+        } finally {
+            if (attempt === languageRequest.current) setLanguageBusy(false);
+        }
+    }
     const [mobile, setMobile] = useState(
         () => matchMedia("(max-width: 800px)").matches,
     );
     const sidebar = useRef<HTMLElement>(null);
     const loggingOut = useRef(false);
+    const sessionEpoch = useRef(0);
     // Resume only known local purchase routes; never accept arbitrary return URLs.
     const purchaseReturn = useRef<string | undefined>(purchaseReturnPath(location.hash));
     const authorizationReturn = useRef<string | undefined>(
@@ -125,7 +153,12 @@ function UserApp() {
     async function handleLogout() {
         if (loggingOut.current) return;
         loggingOut.current = true;
+        sessionEpoch.current += 1;
+        setSessionRevision((revision) => revision + 1);
         clearCheckoutPayment();
+        languageRequest.current += 1;
+        setLanguagePending(false);
+        setLanguageBusy(false);
         try {
             await logoutSession();
             purchaseReturn.current = undefined;
@@ -187,6 +220,9 @@ function UserApp() {
     }, [open]);
     useEffect(() => {
         let active = true;
+        setSessionError(false);
+        setSessionRetryAt(0);
+        setLoading(!boot.landing);
         const fn = () => {
             const current = location.hash.slice(2).split("?")[0];
             if (!["login", "register", "forget"].includes(current))
@@ -207,12 +243,18 @@ function UserApp() {
             setOpen(false);
         };
         const expire = () => {
+            sessionEpoch.current += 1;
+            setSessionRevision((revision) => revision + 1);
             purchaseReturn.current = purchaseReturnPath(location.hash) || purchaseReturn.current;
             clearCheckoutPayment();
             active = false;
             setLoading(false);
             clearReadCache();
             setUser(null);
+            setSessionError(false);
+            setLanguagePending(false);
+            languageRequest.current += 1;
+            setLanguageBusy(false);
             if (location.hash.startsWith("#/client-authorize?")) {
                 setPath("client-authorize");
             } else {
@@ -252,12 +294,17 @@ function UserApp() {
                     return readRequest(
                         "user/info",
                         undefined,
-                        Boolean(verification),
+                        Boolean(verification) || sessionAttempt > 0,
                     );
                 })
                 .then(async (r) => {
                     if (!r || !active) return;
-                    await applyAccountLanguage(r.data.language);
+                    try {
+                        await applyAccountLanguage(r.data.language);
+                        if (active) setLanguagePending(false);
+                    } catch {
+                        if (active) setLanguagePending(true);
+                    }
                     if (!active) return;
                     setUser(r.data);
                     if (verification) {
@@ -267,8 +314,15 @@ function UserApp() {
                 })
                 .catch((e) => {
                     if (!active) return;
-                    setError(e.message);
-                    forgetBrowserSession();
+                    if (e.status === 401 || e.code === "SESSION_CHANGED") {
+                        forgetBrowserSession();
+                        expire();
+                        return;
+                    }
+                    // A read failure is not evidence that the server session expired.
+                    setSessionError(true);
+                    if (e.status === 429)
+                        setSessionRetryAt(Date.now() + Math.max(1, Number(e.retryAfter) || 60) * 1000);
                 })
                 .finally(() => { if (active) setLoading(false); });
         else setLoading(false);
@@ -277,7 +331,7 @@ function UserApp() {
             window.removeEventListener("hashchange", fn);
             window.removeEventListener("auth-expired", expire);
         };
-    }, []);
+    }, [sessionAttempt]);
     if (boot.landing)
         return (
             <React.Suspense fallback={<LandingSkeleton />}>
@@ -285,7 +339,23 @@ function UserApp() {
             </React.Suspense>
         );
     if (loading) return <WorkspaceSkeleton full />;
-    if (!user)
+    if (sessionError)
+        return (
+            <div className="access-page">
+                <div className="auth-language"><LanguagePicker /></div>
+                <section className="session-recovery" aria-labelledby="session-recovery-title">
+                    <h1 id="session-recovery-title" tabIndex={-1}>{tx("页面暂时无法加载")}</h1>
+                    <p role="alert">{tx("accountLoadFailed", { ns: "experience" })}</p>
+                    <button type="button" className="primary" disabled={retryIn > 0}
+                        onClick={() => setSessionAttempt((attempt) => attempt + 1)}>
+                        {retryIn > 0 ? tx("retryIn", { ns: "pricing", seconds: retryIn }) : tx("重试")}
+                    </button>
+                </section>
+                <AnalyticsPrivacyFooter />
+            </div>
+        );
+    if (!user) {
+        const loginEpoch = sessionRevision;
         return (
             <div className="access-page">
                 <div className="auth-language">
@@ -297,7 +367,11 @@ function UserApp() {
                     mode={
                         ["register", "forget"].includes(path) ? path : "login"
                     }
-                    onLogin={setUser}
+                    onLogin={(account, options) => {
+                        if (loginEpoch !== sessionEpoch.current) return false;
+                        setUser(account);
+                        setLanguagePending(!!options?.languagePending);
+                    }}
                     redirectPath={
                         authorizationReturn.current ?? purchaseReturn.current
                     }
@@ -305,6 +379,7 @@ function UserApp() {
                 <AnalyticsPrivacyFooter />
             </div>
         );
+    }
     if (path === "client-authorize")
         return (
             <div className="access-page">
@@ -489,6 +564,14 @@ function UserApp() {
                         </div>
                     </header>
                     <main id="workspace-main" tabIndex={-1} aria-label={tx(item?.label || "总览")}>
+                        {languagePending && (
+                            <div className="language-recovery" role="status">
+                                <span>{tx("languageLoadFailed", { ns: "experience" })}</span>
+                                <button type="button" disabled={languageBusy} onClick={retryLanguage}>
+                                    {tx(languageBusy ? "正在加载…" : "重试")}
+                                </button>
+                            </div>
+                        )}
                         {!path.startsWith("order/") && (
                             <div className="page-heading">
                                 <div>

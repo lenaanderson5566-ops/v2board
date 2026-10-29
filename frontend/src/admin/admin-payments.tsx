@@ -16,6 +16,7 @@ import {
 } from "./PaymentCategoryEditor";
 import { sortPayload } from "./admin-actions";
 import { AdminSwitch } from "./admin-switch";
+import { tx } from "../shared/i18n";
 import { SortButton } from "./admin-tools";
 import {
     paymentFields,
@@ -41,10 +42,12 @@ export function Payments() {
                 actions={
                     <>
                         {" "}
+                        <button type="button" disabled={deleting || d.loading || methods.loading}
+                            onClick={() => { d.reload(); methods.reload(); }}>{tx("刷新")}</button>
                         <SortButton
                             path={admin("payment/sort")}
                             kind="payments"
-                            items={d.data || []}
+                            items={!d.loading && !d.error ? d.data || [] : []}
                             onSaved={d.reload}
                         />
                         <button
@@ -52,6 +55,7 @@ export function Payments() {
                             disabled={
                                 methods.loading ||
                                 Boolean(methods.error) ||
+                                d.loading || Boolean(d.error) ||
                                 !methods.data?.length
                             }
                             onClick={() => setEditing({})}
@@ -63,14 +67,11 @@ export function Payments() {
             >
                 {error && <div className="alert" role="alert">{error}</div>}
                 {deleting && <div className="admin-refresh-note" role="status" data-saving="true">正在删除支付方式…</div>}
-                <State
-                    loading={d.loading || methods.loading}
-                    error={d.error || methods.error}
-                    retry={() => {
-                        d.reload();
-                        methods.reload();
-                    }}
-                >
+                {methods.error && <div className="pad" aria-label={tx("支付接口列表")}>
+                    <p className="muted">{tx("支付接口列表暂不可用，重试后可添加或编辑渠道。")}</p>
+                    <State {...methods} retry={methods.reload}>{null}</State>
+                </div>}
+                <State {...d} retry={d.reload}>
                     <Table
                         data={d.data || []}
                         columns={[
@@ -82,6 +83,7 @@ export function Payments() {
                                     <AdminSwitch
                                         label={`${r.name} 启用`}
                                         checked={Number(r.enable) === 1}
+                                        disabled={deleting || d.loading || Boolean(d.error)}
                                         onChange={async () => {
                                             await request(
                                                 admin("payment/show"),
@@ -98,21 +100,21 @@ export function Payments() {
                             ["payment", "支付接口"],
                             ["notify_url", "通知地址"],
                         ]}
-                        onReorder={async (items) => {
+                        onReorder={!d.loading && !d.error && !deleting ? async (items) => {
                             await request(
                                 admin("payment/sort"),
                                 sortPayload("payments", items),
                             );
                             d.reload();
-                        }}
+                        } : undefined}
                         actions={(r) => (
                             <>
-                                <button onClick={() => setEditing(r)}>
+                                <button disabled={deleting || d.loading || Boolean(d.error) || methods.loading || Boolean(methods.error) || !methods.data?.length} onClick={() => setEditing(r)}>
                                     编辑
                                 </button>
                                 <button
                                     className="danger"
-                                    disabled={deleting || d.loading}
+                                    disabled={deleting || d.loading || Boolean(d.error)}
                                     onClick={async () => {
                                         if (pending.current || !confirm(`确认删除支付方式「${r.name}」？`)) return;
                                         pending.current = true;

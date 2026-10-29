@@ -42,6 +42,16 @@ import { resources } from "./admin";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
+it("prioritizes order status and immutable order-currency amounts ahead of diagnostic columns", async () => {
+    const { ResourcePage } = await import("./admin");
+    api.request.mockResolvedValue({data:[{id:1,trade_no:"usd-order",currency:"USD",total_amount:1234,status:3,user_id:7}],total:1});
+    render(<ResourcePage resource={resources.orders}/>);
+    await screen.findByText("usd-order");
+    expect(screen.getByText("USD 12.34")).toBeTruthy();
+    const headers=screen.getAllByRole("columnheader").map(header=>header.textContent);
+    expect(headers.slice(0,4)).toEqual(["订单号","状态","金额","用户（ID / 邮箱）"]);
+    expect(headers.indexOf("金额")).toBeLessThan(headers.indexOf("套餐 ID"));
+});
 const order = {
     id: 1,
     trade_no: "order-1",
@@ -180,6 +190,107 @@ it("keeps commission amounts, records and approval out of order management", asy
     for (const text of ["佣金金额", "实际佣金", "佣金记录", "佣金审核"])
         expect(screen.queryByText(text)).toBeNull();
 });
+it("keeps order details primary and moves secondary actions into more without enabling completed-order writes", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+        const view = render(<OrdersPage />);
+        await screen.findByRole("button", { name: "订单详情" });
+        const actions = view.container.querySelector(".table-actions > .actions")!;
+        expect(within(actions as HTMLElement).getAllByRole("button").map(button => button.textContent)).toEqual(["订单详情", "更多操作"]);
+        expect(screen.queryByRole("link", { name: "查看用户" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "标记已付款" })).toBeNull();
+        fireEvent.click(within(actions as HTMLElement).getByRole("button", { name: "更多操作" }));
+        expect(screen.getByRole("link", { name: "查看用户" }).getAttribute("href")).toBe("#/users?user_id=7");
+        for (const name of ["标记已付款", "取消"]) {
+            const button = screen.getByRole("button", { name });
+            expect((button as HTMLButtonElement).disabled).toBe(true);
+            fireEvent.click(button);
+        }
+        expect(confirm).not.toHaveBeenCalled();
+        expect(api.request.mock.calls.some(([path]) => /order\/(paid|cancel)$/.test(String(path)))).toBe(false);
+    } finally { confirm.mockRestore(); }
+});
+it.each([["标记已付款", "order/paid"], ["取消", "order/cancel"]])("preserves confirmation and the existing API for unpaid order action %s", async (label, endpoint) => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    api.request.mockImplementation(async (path: string) => path.includes("order/fetch") ? { data: [{ ...order, status: 0 }], total: 1 } : { data: true });
+    try {
+        render(<OrdersPage />);
+        fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
+        fireEvent.click(screen.getByRole("button", { name: label }));
+        expect(confirm).toHaveBeenCalledWith("确认执行此操作？");
+        expect(api.request.mock.calls.some(([path]) => String(path).endsWith(endpoint))).toBe(false);
+        confirm.mockReturnValue(true);
+        fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+        fireEvent.click(screen.getByRole("button", { name: label }));
+        await waitFor(() => expect(api.request).toHaveBeenCalledWith(`test-admin/${endpoint}`, expect.objectContaining({ id: 1, trade_no: "order-1" })));
+        expect(api.request.mock.calls.filter(([path]) => String(path).endsWith(endpoint))).toHaveLength(1);
+    } finally { confirm.mockRestore(); }
+});
+it("keeps all order actions flat in the context menu", async () => {
+    const view = render(<OrdersPage />);
+    await screen.findByRole("button", { name: "订单详情" });
+    fireEvent.contextMenu(view.container.querySelector("tbody tr")!, { clientX: 100, clientY: 100 });
+    const context = screen.getByRole("menu");
+    expect(within(context).getByRole("button", { name: "订单详情" })).toBeTruthy();
+    expect(within(context).getByRole("link", { name: "查看用户" })).toBeTruthy();
+    expect(within(context).queryByRole("button", { name: "更多操作" })).toBeNull();
+    expect((within(context).getByRole("button", { name: "标记已付款" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((within(context).getByRole("button", { name: "取消" }) as HTMLButtonElement).disabled).toBe(true);
+});
+it("searches complete order history on submit while preserving unrelated status filters", async () => {
+    window.location.hash = "#/orders?status=0";
+    render(<OrdersPage />);
+    await screen.findByRole("button", { name: "订单详情" });
+    api.request.mockClear();
+    fireEvent.change(screen.getByLabelText("订单查询内容"), { target: { value: "order-123" } });
+    expect(api.request.mock.calls.some(([path]) => String(path).includes("order/fetch"))).toBe(false);
+    fireEvent.submit(screen.getByRole("form", { name: "订单快速查询" }));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => {
+        const query = new URLSearchParams(String(path).split("?")[1]);
+        return query.get("filter[0][key]") === "status" && query.get("filter[0][value]") === "0" &&
+            query.get("filter[1][key]") === "trade_no" && query.get("filter[1][value]") === "order-123";
+    })).toBe(true));
+    const summary = screen.getByLabelText("已应用的订单筛选");
+    expect(summary.textContent).toContain("待支付");
+    expect(summary.textContent).toContain("order-123");
+    fireEvent.click(within(summary).getByRole("button", { name: "移除订单筛选条件 2" }));
+    expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("");
+    expect(summary.textContent).toContain("待支付");
+});
+it("restores order search from applied filters and queries email without dropping advanced conditions", async () => {
+    render(<OrdersPage />);
+    await screen.findByRole("button", { name: "订单详情" });
+    fireEvent.change(screen.getByLabelText("订单查询字段"), { target: { value: "email" } });
+    fireEvent.change(screen.getByLabelText("订单查询内容"), { target: { value: "guest@example.com" } });
+    fireEvent.submit(screen.getByRole("form", { name: "订单快速查询" }));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => decodeURIComponent(String(path)).includes("guest@example.com"))).toBe(true));
+    cleanup();
+    render(<OrdersPage />);
+    expect((screen.getByLabelText("订单查询字段") as HTMLSelectElement).value).toBe("email");
+    expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("guest@example.com");
+});
+it("clears the user email draft together with its applied filter chip", async () => {
+    render(<UsersPage />);
+    await screen.findByRole("button", { name: "分配订单" });
+    fireEvent.change(screen.getByLabelText("搜索所有用户邮箱"), { target: { value: "guest@example.com" } });
+    fireEvent.submit(screen.getByRole("form", { name: "用户搜索与筛选" }));
+    fireEvent.click(screen.getByRole("button", { name: "移除筛选条件 1" }));
+    expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("");
+});
+it("ignores a late clipboard failure after a different user action has opened details", async () => {
+    let reject!: (error: Error) => void;
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: vi.fn(() => new Promise((_, fail) => { reject = fail; })) } });
+    api.request.mockImplementation(async (path: string) => path.includes("user/fetch") ? { data: [{ id: 7, email: "guest@example.com", subscribe_url: "https://example.test/private" }], total: 1 } : { data: [] });
+    render(<UsersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
+    fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    fireEvent.click(screen.getByRole("button", { name: "分配订单" }));
+    const dialog = await screen.findByRole("dialog");
+    reject(new Error("clipboard denied"));
+    await Promise.resolve();
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.queryByLabelText("用户订阅链接")).toBeNull();
+});
 it("searches invitation relationships and submits commission approval through the existing contract", async () => {
     render(<AdminInvitations />);
     await screen.findByText(/inviter@example.com/);
@@ -195,6 +306,7 @@ it("searches invitation relationships and submits commission approval through th
         ).toBe(true),
     );
     fireEvent.mouseDown(screen.getByRole("tab", { name: "佣金审核" }), { button: 0, ctrlKey: false });
+    fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
     fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
     fireEvent.change(await within(screen.getByRole("dialog")).findByRole("combobox"), {
         target: { value: "1" },
@@ -720,7 +832,7 @@ it.each([
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
     expect(legacyAdminMenu.some(([key])=>String(key)===route)).toBe(false);
     render(<AdminWorkspace path={route} user={{email:"preview@example.com"}} logout={()=>{}}/>);
-    expect(screen.getByRole("heading",{level:1,name:title})).toBeTruthy();
+    expect(screen.getByRole("heading",{level:1,name:tab})).toBeTruthy();
     expect(await screen.findByRole("tab",{name:tab,selected:true})).toBeTruthy();
     expect(screen.queryByRole("searchbox",{name:"搜索后台功能"})).toBeNull();
     const link=within(screen.getByRole("navigation",{name:"后台导航"})).getByRole("link",{name:title});
@@ -814,11 +926,15 @@ it("keeps a nested row action dialog mounted when the action list closes", async
 });
 it("opens row actions upward with the keyboard and skips hidden or disabled actions", async () => {
     const {AdminRowMenu}=await import("./AdminRowMenu");
-    render(<AdminRowMenu><button hidden>Hidden</button><button disabled>Disabled</button><button>First</button><button>Last</button></AdminRowMenu>);
+    render(<AdminRowMenu><button hidden>Hidden</button><button disabled>Disabled</button><button>First</button><a href="#/users">Related user</a><button>Last</button></AdminRowMenu>);
     fireEvent.keyDown(screen.getByRole("button",{name:"更多操作"}),{key:"ArrowUp"});
     expect(document.activeElement).toBe(screen.getByRole("button",{name:"Last"}));
     fireEvent.keyDown(document.activeElement!,{key:"Home"});
     expect(document.activeElement).toBe(screen.getByRole("button",{name:"First"}));
+    fireEvent.keyDown(document.activeElement!,{key:"ArrowDown"});
+    expect(document.activeElement).toBe(screen.getByRole("link",{name:"Related user"}));
+    fireEvent.keyDown(document.activeElement!,{key:"ArrowDown"});
+    expect(document.activeElement).toBe(screen.getByRole("button",{name:"Last"}));
 });
 it("measures row menu height before placing it near the viewport edge", async () => {
     const {AdminRowMenu}=await import("./AdminRowMenu");
@@ -850,4 +966,79 @@ it("keeps Telegram settings usable when member records are absent", async () => 
     render(<AdminTelegramCommunity disabled={false}/>);
     expect(await screen.findByRole("table")).toBeTruthy();
     expect(screen.getByRole("button",{name:"加入资格检查队列"})).toBeTruthy();
+});
+
+it("shows the returned row count when a management list omits its optional total", async () => {
+    const { ResourcePage } = await import("./admin");
+    api.request.mockResolvedValue({ data: [{ id: 1, name: "Group one" }, { id: 2, name: "Group two" }] });
+    render(<ResourcePage resource={resources.groups} />);
+    await screen.findByText("Group two");
+    expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("共 2 条");
+    const before = api.request.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    await waitFor(() => expect(api.request.mock.calls.length).toBeGreaterThan(before));
+    expect(api.request.mock.calls.every(([path, body]) => String(path).includes("server/group/fetch") && body === undefined)).toBe(true);
+});
+it("does not paginate or refetch a complete management list that has more than one page of rows without total metadata", async () => {
+    const { ResourcePage } = await import("./admin");
+    api.request.mockResolvedValue({ data: Array.from({ length: 25 }, (_, index) => ({ id: index + 1, name: `Complete group ${index + 1}` })) });
+    render(<ResourcePage resource={resources.groups} />);
+    await screen.findByText("Complete group 25");
+    expect(screen.getByText("Complete group 1")).toBeTruthy();
+    const pager = screen.getByRole("navigation", { name: "分页" });
+    expect(pager.textContent).toContain("共 25 条");
+    expect(pager.textContent).toContain("共 1 页");
+    expect(screen.queryByLabelText("每页显示行数")).toBeNull();
+    const reads = api.request.mock.calls.length;
+    for (const name of ["下一页", "末页"]) {
+        const button = within(pager).getByRole("button", { name });
+        expect((button as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.click(button);
+    }
+    expect(api.request.mock.calls).toHaveLength(reads);
+});
+it("returns to the last valid page after a successful refresh removes the final row", async () => {
+    const { ResourcePage } = await import("./admin");
+    let removed = false;
+    api.request.mockImplementation(async (path: string) => {
+        const params = new URLSearchParams(path.split("?")[1]);
+        const page = Number(params.get("current") || 1);
+        return { data: page === 2 ? removed ? [] : [{ id: 21, name: "Last group" }]
+            : Array.from({ length: 20 }, (_, index) => ({ id: index + 1, name: `Group ${index + 1}` })), total: removed ? 20 : 21 };
+    });
+    render(<ResourcePage resource={resources.groups} />);
+    await screen.findByText("Group 20");
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    await screen.findByText("Last group");
+    api.request.mockClear();
+    removed = true;
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    await screen.findByText("Group 20");
+    const pages = api.request.mock.calls.map(([path]) => new URLSearchParams(String(path).split("?")[1]).get("current"));
+    expect(pages).toEqual(["2", "1"]);
+    expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 1 页");
+});
+it("does not clamp a page based on unknown loading totals or a failed read", async () => {
+    const { ResourcePage } = await import("./admin");
+    let fail!: (error: Error) => void;
+    let waiting = true;
+    api.request.mockImplementation(async (path: string) => {
+        const page = new URLSearchParams(path.split("?")[1]).get("current");
+        if (page === "2" && waiting) return new Promise((_, reject) => { fail = reject; });
+        return { data: [{ id: page === "2" ? 21 : 1, name: page === "2" ? "Last group" : "First group" }], total: 21 };
+    });
+    render(<ResourcePage resource={resources.groups} />);
+    await screen.findByText("First group");
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    await waitFor(() => expect(fail).toBeTypeOf("function"));
+    const pageOneReads = () => api.request.mock.calls.filter(([path]) => new URLSearchParams(String(path).split("?")[1]).get("current") === "1").length;
+    expect(pageOneReads()).toBe(1);
+    fail(new Error("Page temporarily unavailable"));
+    await screen.findByText("Page temporarily unavailable");
+    expect(pageOneReads()).toBe(1);
+    waiting = false;
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await screen.findByText("Last group");
+    expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 2 页");
+    expect(pageOneReads()).toBe(1);
 });

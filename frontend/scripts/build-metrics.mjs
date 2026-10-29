@@ -32,10 +32,11 @@ export function buildMetrics(manifest, read) {
             [entry, ...(manifest[entry].dynamicImports || [])],
             false,
         );
-        const startupGzipBytes = [...startup].reduce(
-            (sum, file) => sum + gzipSync(read(file)).length,
-            0,
-        );
+        const startupAssets = [...startup].map((file) => {
+            const content = read(file);
+            return { file, bytes: content.length, gzipBytes: gzipSync(content).length };
+        });
+        const startupGzipBytes = startupAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0);
         if (startupGzipBytes > budget)
             warnings.push(
                 `${mode === "user" ? "用户端" : "管理端"}启动资源超过 gzip 预算 ${budget / 1024} KiB。`,
@@ -43,6 +44,11 @@ export function buildMetrics(manifest, read) {
         return {
             mode,
             startupGzipBytes,
+            startupBytes: startupAssets.reduce((sum, asset) => sum + asset.bytes, 0),
+            startupFileCount: startup.size,
+            largestStartupAssets: startupAssets
+                .sort((a, b) => b.gzipBytes - a.gzipBytes || a.file.localeCompare(b.file))
+                .slice(0, 5),
             budget,
             totalBytes: [...all].reduce(
                 (sum, file) => sum + read(file).length,

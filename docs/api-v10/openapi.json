@@ -4146,6 +4146,35 @@
             }
           },
           {
+            "name": "orderNumber",
+            "in": "query",
+            "description": "Exact order number within the authenticated account, using 1 to 64 ASCII letters, digits, underscores or hyphens. Unknown and other-account numbers both return the same empty result.",
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64,
+              "pattern": "^[A-Za-z0-9_-]+$"
+            }
+          },
+          {
+            "name": "createdFrom",
+            "in": "query",
+            "description": "Inclusive creation-time lower bound in UTC ISO 8601 with a Z suffix and optional one to three fractional-second digits. Orders store whole seconds; a nonzero fractional bound rounds upward to the next stored second.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "createdBefore",
+            "in": "query",
+            "description": "Exclusive creation-time upper bound in UTC ISO 8601 with a Z suffix and optional one to three fractional-second digits. Must be strictly after createdFrom, including fractional precision, when both are provided. Orders store whole seconds; a nonzero fractional bound rounds upward to the next stored second.",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
             "$ref": "#/components/parameters/QueryPage"
           },
           {
@@ -4231,7 +4260,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/fetch",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403."
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Optional status, exact order number and creation-time filters are combined before pagination; totals reflect the filtered owner-only result. Reads do not mutate orders or balances."
       }
     },
     "/me/orders/{orderNumber}/payments": {

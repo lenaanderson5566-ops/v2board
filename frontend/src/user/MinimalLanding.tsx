@@ -67,6 +67,14 @@ export default function MinimalLanding() {
                                 </a>
                             )}
                         </div>
+                        <div className="minimal-landing-decision">
+                            <p>{t("serviceScope", { defaultValue: "Device setup guidance and usage support. Third-party memberships are not included." })}</p>
+                            <p>{t("pricingBeforePayment", { defaultValue: "Creating an account is free. Plan prices and charges are shown before payment." })}</p>
+                            <a href="/app#/plan">
+                                {t("viewPlans", { defaultValue: "Sign in to view plans" })}
+                                <ArrowUpRight size={15} aria-hidden="true" />
+                            </a>
+                        </div>
                         <div className="minimal-scenarios">
                             <span>
                                 <PenLine size={15} aria-hidden="true" />

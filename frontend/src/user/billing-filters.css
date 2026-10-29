@@ -1,0 +1,55 @@
+.billing-history-filters {
+    margin-bottom: 16px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px;
+}
+.billing-history-filters summary {
+    cursor: pointer;
+    font-weight: 600;
+}
+.billing-history-filters summary span {
+    margin-inline-start: 12px;
+    color: var(--muted);
+    font-size: 0.85em;
+    font-weight: 400;
+}
+.billing-history-filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 16px;
+    align-items: end;
+}
+.billing-history-filters label {
+    display: flex;
+    flex: 1 1 140px;
+    flex-direction: column;
+    gap: 6px;
+    min-width: 0;
+}
+.billing-history-filters .billing-order-search {
+    flex: 2 1 220px;
+}
+.billing-history-filters input,
+.billing-history-filters select {
+    width: 100%;
+    min-width: 0;
+}
+.billing-filter-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+@media (max-width: 480px) {
+    .billing-history-filters label,
+    .billing-history-filters .billing-order-search {
+        flex-basis: 100%;
+    }
+    .billing-filter-actions {
+        width: 100%;
+    }
+    .billing-filter-actions button {
+        flex: 1;
+    }
+}

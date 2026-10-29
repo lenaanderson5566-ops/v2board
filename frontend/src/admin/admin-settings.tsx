@@ -121,7 +121,16 @@ export function Settings({ section }: { section?: string } = {}) {
         }
     }
     const [previewValues, setPreviewValues] = useState<Row | null>(null);
-    const source = d.data?.[group === "browser" ? "safe" : group] || {};
+    const latestSource = d.data?.[group === "browser" ? "safe" : group];
+    const editSource = useRef<{ group: string; value: Row } | undefined>(undefined);
+    // A background refresh must not replace the baseline of an unsaved form.
+    // Saving still sends only fields changed from this editing snapshot.
+    if (editSource.current?.group !== group || (!dirty && !saving && !d.loading && !d.error))
+        editSource.current = { group, value: latestSource || {} };
+    const source = editSource.current?.value || {};
+    const loadedGroup = useRef<string | undefined>(undefined);
+    if (d.data && schema.data && (group !== "site" || plans.data) && (group !== "subscribe" || creditGroups.data))
+        loadedGroup.current = group;
     const raw: Row = Object.fromEntries(
         Object.entries(source).filter(([key]) =>
             group === "browser"
@@ -305,6 +314,8 @@ export function Settings({ section }: { section?: string } = {}) {
                         </header>
                     )}
                     <State
+                        data={loadedGroup.current === group ? true : undefined}
+                        retryAt={Math.max(d.retryAt || 0, schema.retryAt || 0, plans.retryAt || 0, creditGroups.retryAt || 0)}
                         loading={
                             d.loading ||
                             schema.loading ||
@@ -371,9 +382,9 @@ export function Settings({ section }: { section?: string } = {}) {
                                 resolveFields={settingsFields}
                                 linkValues={linkSettings}
                                 onBusyChange={setSaving}
+                                onDirtyChange={setDirty}
                                 onDirty={() => {
                                     setSaved("");
-                                    setDirty(true);
                                     setActionResult("");
                                 }}
                                 validate={validateSettings}

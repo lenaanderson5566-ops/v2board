@@ -63,3 +63,52 @@ it("has one enable control and prevents duplicate deletion while showing errors 
         expect((button as HTMLButtonElement).disabled).toBe(false);
     } finally {confirm.mockRestore();}
 });
+
+it("keeps existing channels visible when payment interface discovery fails and retries only that read", async () => {
+    let available = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("payment/fetch")) return { data: [{ id: 8, name: "Existing wallet", payment: "EPay", enable: 1 }] };
+        if (path.endsWith("getPaymentMethods")) {
+            if (!available) throw new Error("接口目录不可用");
+            return { data: ["EPay"] };
+        }
+        return { data: true };
+    });
+    render(<Payments />);
+    expect(await screen.findByText("Existing wallet")).toBeTruthy();
+    expect(screen.getByText("支付接口列表暂不可用，重试后可添加或编辑渠道。")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "添加支付方式" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "编辑" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("switch", { name: "Existing wallet 启用" })).toBeTruthy();
+    const listReads = api.request.mock.calls.filter(([path]) => path.endsWith("payment/fetch")).length;
+    available = true;
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect((screen.getByRole("button", { name: "编辑" }) as HTMLButtonElement).disabled).toBe(false));
+    expect(api.request.mock.calls.filter(([path]) => path.endsWith("payment/fetch"))).toHaveLength(listReads);
+    expect(api.request.mock.calls.some(([path]) => /\/(show|drop|save)$/.test(path))).toBe(false);
+});
+
+it("retains channels during a failed refresh, disables stale writes and recovers with a read", async () => {
+    let fail = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("getPaymentMethods")) return { data: ["Stripe"] };
+        if (path.endsWith("payment/fetch")) {
+            if (fail) throw new Error("渠道刷新失败");
+            return { data: [{ id: 8, name: "Existing card", payment: "Stripe", enable: 1 }] };
+        }
+        return { data: true };
+    });
+    render(<Payments />);
+    await screen.findByText("Existing card");
+    fail = true;
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    await screen.findByText("渠道刷新失败");
+    expect(screen.getByText("Existing card")).toBeTruthy();
+    for (const name of ["编辑", "删除", "添加支付方式"])
+        expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    await waitFor(() => expect((screen.getByRole("button", { name: "编辑" }) as HTMLButtonElement).disabled).toBe(false));
+    expect(api.request.mock.calls.some(([path]) => /\/(show|drop|save)$/.test(path))).toBe(false);
+});

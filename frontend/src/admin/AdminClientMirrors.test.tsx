@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
-const mocks=vi.hoisted(()=>({request:vi.fn(),reload:vi.fn(),data:{items:[],published:{},targets:{cmfa:["cmfa_android"]}} as any}));
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+const mocks=vi.hoisted(()=>({request:vi.fn(),reload:vi.fn(),loading:false,error:"",data:{items:[],published:{},targets:{cmfa:["cmfa_android"]}} as any}));
 vi.mock("../shared/api",()=>({admin:(s:string)=>s,ops:(s:string)=>s,request:mocks.request,rows:(v:any)=>v||[],bytes:(v:any)=>String(v),date:(v:any)=>String(v)}));
-vi.mock("../shared/ui",()=>({useData:()=>({data:mocks.data,reload:mocks.reload}),State:({children}:any)=><>{children}</>}));
+vi.mock("../shared/ui",()=>({useData:()=>({data:mocks.data,reload:mocks.reload,loading:mocks.loading,error:mocks.error}),State:({children}:any)=><>{children}</>}));
 import { AdminClientMirrors } from "./AdminClientMirrors";
-afterEach(()=>{cleanup();vi.clearAllMocks();});
+afterEach(()=>{cleanup();vi.clearAllMocks();mocks.loading=false;mocks.error="";});
 it("uses current policy to skip disabled recommendations",async()=>{
  mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]},policyReasons:{cmfa:"客户端策略已禁用"}};
  const clients=[{id:"cmfa",version:"1.2.0",assets:[{id:8,name:"universal.apk",size:12}]}];
@@ -64,4 +64,77 @@ it("shows per-device reasons and opens manual selection after checking",async()=
  fireEvent.click(screen.getByRole("button",{name:"手动选择"}));
  expect((screen.getByLabelText("目标系统") as HTMLSelectElement).value).toBe("cmfa_android");
  expect(document.activeElement).toBe(screen.getByLabelText("官方安装包"));
+});
+
+it("prevents a second batch and stops following work when leaving during configuration reads",async()=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
+ let finish!: (result:any)=>void;
+ mocks.request.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
+ const view=render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
+ const start=screen.getByRole("button",{name:"下载全部推荐客户端"});
+ fireEvent.click(start);fireEvent.click(start);
+ expect(mocks.request).toHaveBeenCalledTimes(1);
+ expect((screen.getByRole("button",{name:"刷新状态"}) as HTMLButtonElement).disabled).toBe(true);
+ view.unmount();
+ await act(async()=>finish({data:{app:{}}}));
+ expect(mocks.request).toHaveBeenCalledTimes(1);
+ expect(mocks.reload).not.toHaveBeenCalled();
+});
+it("aborts an in-flight version check and never queues downloads after unmount",async()=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
+ let finish!: (result:any)=>void;
+ let signal!: AbortSignal;
+ mocks.request.mockImplementation(async(path:string,_body:any,options:any)=>{
+  if(path==="config/fetch")return {data:{app:{}}};
+  if(path==="client/releases/check"){signal=options.signal;return new Promise(resolve=>{finish=resolve;});}
+  return {data:mocks.data};
+ });
+ const view=render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
+ fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
+ await waitFor(()=>expect(signal).toBeTruthy());
+ view.unmount();
+ expect(signal.aborted).toBe(true);
+ await act(async()=>finish({data:[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}));
+ expect(mocks.request.mock.calls.some(call=>call[0]==="client/mirrors/download")).toBe(false);
+ expect(mocks.reload).not.toHaveBeenCalled();
+});
+it.each(["loading","error"])("blocks mutations when the mirror source is %s", condition=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
+ if(condition==="loading")mocks.loading=true;else mocks.error="刷新失败";
+ render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
+ expect((screen.getByRole("button",{name:"下载全部推荐客户端"}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));
+ expect(mocks.request).not.toHaveBeenCalled();
+});
+
+it("stops the batch on rate limiting and keeps retry and refresh disabled during its deadline",async()=>{
+ mocks.data={items:[],published:{},targets:{cmfa:["cmfa_android"]}};
+ mocks.request.mockRejectedValue(Object.assign(new Error("稍后重试"),{status:429,retryAfter:60}));
+ render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA",assets:[{id:8,name:"universal.apk",size:12}]}]}/>);
+ const start=screen.getByRole("button",{name:"下载全部推荐客户端"}) as HTMLButtonElement;
+ fireEvent.click(start);
+ await screen.findByText("稍后重试");
+ expect(start.disabled).toBe(true);
+ expect((screen.getByRole("button",{name:"刷新状态"}) as HTMLButtonElement).disabled).toBe(true);
+ fireEvent.click(start);
+ expect(mocks.request).toHaveBeenCalledTimes(1);
+ expect(mocks.reload).not.toHaveBeenCalled();
+});
+
+it("pauses background polling and version checks during a mutation cooldown",async()=>{
+ vi.useFakeTimers();
+ const visible=vi.spyOn(document,"visibilityState","get").mockReturnValue("visible");
+ mocks.data={items:[{id:"queued",client:"cmfa",target:"cmfa_android",status:"queued"}],published:{},targets:{cmfa:["cmfa_android"]}};
+ mocks.request.mockRejectedValue(Object.assign(new Error("稍后重试"),{status:429,retryAfter:60}));
+ const check=vi.fn();
+ const view=render(<AdminClientMirrors clients={[{id:"cmfa",name:"CMFA"}]} checkUpdates={check}/>);
+ try{
+  await act(async()=>{fireEvent.click(screen.getByRole("button",{name:"下载全部推荐客户端"}));});
+  const trigger=screen.getByRole("button",{name:"一键检查更新"}) as HTMLButtonElement;
+  expect(trigger.disabled).toBe(true);
+  fireEvent.click(trigger);
+  await act(async()=>{await vi.advanceTimersByTimeAsync(6000);});
+  expect(mocks.reload).not.toHaveBeenCalled();
+  expect(check).not.toHaveBeenCalled();
+ }finally{view.unmount();visible.mockRestore();vi.useRealTimers();}
 });

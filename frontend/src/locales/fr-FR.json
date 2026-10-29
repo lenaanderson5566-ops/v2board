@@ -652,7 +652,19 @@
     "了解删除影响": "Vérifier les conséquences",
     "验证并确认": "Vérifier et confirmer",
     "删除前，请确认以下事项": "Avant la suppression, vérifiez les points suivants",
-    "账户状态已检查，可以继续。": "État du compte vérifié. Vous pouvez continuer."
+    "账户状态已检查，可以继续。": "État du compte vérifié. Vous pouvez continuer.",
+    "搜索后台页面": "Rechercher des pages d’administration",
+    "输入页面名称或分组": "Saisissez le nom d’une page ou d’une section",
+    "清除页面搜索": "Effacer la recherche de pages",
+    "未找到匹配页面，请尝试其他关键词。": "Aucune page ne correspond. Essayez un autre mot-clé.",
+    "订单快速查询": "Recherche rapide de commandes",
+    "订单查询字段": "Champ de recherche des commandes",
+    "订单查询内容": "Terme de recherche des commandes",
+    "输入订单号、邮箱或用户 ID": "Saisissez un numéro de commande, une adresse e-mail ou un identifiant utilisateur",
+    "已应用的订单筛选": "Filtres de commandes appliqués",
+    "移除订单筛选条件 {{index}}": "Supprimer le filtre de commandes {{index}}",
+    "支付接口列表": "Interfaces de paiement",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Les interfaces de paiement sont temporairement indisponibles. Réessayez avant d’ajouter ou de modifier des canaux."
   },
   "account": {
     "notificationAutoSave": "Les modifications sont enregistrées automatiquement",
@@ -706,7 +718,19 @@
     "resetSuccess": "Réinitialisation de l'utilisation. Votre allocation est rétablie.",
     "inactive": "Un abonnement actif est requis pour utiliser une réinitialisation.",
     "emptyUsage": "Il n'est pas nécessaire de réinitialiser. Aucune réinitialisation ne sera dépensée.",
-    "noCredits": "Aucune réinitialisation en réserve. Celles accordées par l’administrateur apparaîtront ici."
+    "noCredits": "Aucune réinitialisation en réserve. Celles accordées par l’administrateur apparaîtront ici.",
+    "expiresSoon": "Votre abonnement expire dans {{days}} jour(s).",
+    "findTransactions": "Rechercher des transactions",
+    "filtersApplied": "Filtres appliqués",
+    "allStatuses": "Tous les statuts",
+    "timeRange": "Période",
+    "allTime": "Toute la période",
+    "lastDays": "{{days}} derniers jours",
+    "orderNumber": "Numéro de commande",
+    "exactOrderNumber": "Saisissez le numéro de commande complet",
+    "searchTransactions": "Rechercher",
+    "filteredTransactions": "Transactions correspondantes : {{count}}",
+    "noMatchingTransactions": "Aucune transaction ne correspond à ces filtres. Modifiez-les ou réinitialisez-les."
   },
   "credits": {
     "buyMore": "Acheter plus de crédits de données",
@@ -847,7 +871,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Rechargez cette page ou ouvrez une autre section depuis le menu de navigation."
+    "pageRecovery": "Rechargez cette page ou ouvrez une autre section depuis le menu de navigation.",
+    "accountLoadFailed": "Impossible de charger les informations du compte. Vérifiez votre connexion et réessayez.",
+    "languageLoadFailed": "Impossible de charger la langue d’interface enregistrée. La langue actuelle reste disponible.",
+    "authorizationRetryHelp": "Le statut de la demande de connexion n’a pas pu être confirmé. Vérifiez la connexion réseau et consultez à nouveau la demande avant de confirmer.",
+    "authorizationRecheck": "Vérifier le statut de la demande",
+    "authorizationUnavailable": "Cette demande de connexion n’est plus disponible. Retournez dans l’application pour vérifier le statut de la connexion ou lancer une nouvelle demande.",
+    "invalidJson": "Saisissez un JSON valide.",
+    "reorderHelp": "Faites glisser pour réordonner, ou placez le focus sur une poignée de tri et utilisez ↑ / ↓."
   },
   "ux": {
     "cancel": "Annuler",
@@ -908,7 +939,17 @@
     "title": "Client dédié",
     "guide": "Installez et connectez-vous avec votre compte de site pour synchroniser votre abonnement. Aucun lien d'abonnement n'est nécessaire.",
     "unavailable": "Aucun installateur dédié n'est disponible pour ce système. Choisissez un autre système ou un client compatible.",
-    "requirement": "Choisissez l'architecture de votre appareil. La connexion nécessite un forfait actif ou une allocation de données disponible."
+    "requirement": "Choisissez l'architecture de votre appareil. La connexion nécessite un forfait actif ou une allocation de données disponible.",
+    "architecture": "Processeur de l’appareil",
+    "chooseArchitecture": "Choisissez le processeur de l’appareil",
+    "architectureHelp": "En cas de doute, consultez les informations système de l’appareil. Choisissez le programme d’installation adapté à son processeur.",
+    "architectureUniversal": "Programme d’installation universel",
+    "architectureApple": "Apple Silicon (M1 ou ultérieur, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD 64 bits (x64)",
+    "architectureX86": "Intel / AMD 32 bits (x86)",
+    "architectureArm64": "ARM 64 bits (arm64)",
+    "architectureArm": "ARM 32 bits (arm)"
   },
   "help": {
     "intro": "Trouvez votre question et suivez les étapes.",
@@ -939,13 +980,24 @@
     "qCancelled": "Qu'arrive-t-il au solde utilisé sur une commande annulée ?",
     "aCancelled": "L'annulation d'une commande impayée renvoie tout solde de compte déduit, que vous pouvez vérifier dans Facturation. Le reçu indique le solde restitué ; il ne s'agit pas d'un remboursement via un prestataire de paiement externe. Ne payez pas une commande annulée. Passez une nouvelle commande si besoin.",
     "qSecurity": "Que se passe-t-il si j'oublie mon mot de passe ou expose mon lien de configuration ?",
-    "aSecurity": "Utilisez Mot de passe oublié sur la page de connexion. Une fois connecté, ouvrez Sécurité du compte depuis votre avatar pour modifier votre mot de passe ou réinitialiser le lien d'abonnement. La réinitialisation invalide l'ancien lien, donc importez à nouveau sur chaque appareil. Ne partagez jamais de mots de passe, de codes ou de liens de configuration complets, y compris dans les tickets."
+    "aSecurity": "Utilisez Mot de passe oublié sur la page de connexion. Une fois connecté, ouvrez Sécurité du compte depuis votre avatar pour modifier votre mot de passe ou réinitialiser le lien d'abonnement. La réinitialisation invalide l'ancien lien, donc importez à nouveau sur chaque appareil. Ne partagez jamais de mots de passe, de codes ou de liens de configuration complets, y compris dans les tickets.",
+    "searchAll": "Rechercher dans les questions et les documents"
   },
   "clientImport": {
     "invalid": "Abonnement indisponible. Actualisez et réessayez.",
     "copied": "Copié. Collez dans le gestionnaire d’abonnements de votre client et mettez à jour.",
     "opened": "Confirmez l’importation et actualisez la configuration dans le client. Si le client ne s’ouvre pas, installez-le ou copiez le lien d’abonnement pour l’importer manuellement.",
-    "manualUrl": "Lien d’abonnement"
+    "manualUrl": "Lien d’abonnement",
+    "finishSetup": "Configuration terminée : voir l’utilisation",
+    "needHelp": "Vous rencontrez un problème ?",
+    "confirmConnection": "Vérifiez dans le client que la connexion fonctionne avant de terminer la configuration.",
+    "helpFor": "Dépanner {{client}}",
+    "helpInstall": "Vérifiez que le client choisi est installé, puis réessayez de l’ouvrir. Si le navigateur ne l’ouvre pas, copiez l’abonnement ou importez-le manuellement avec le lien ci-dessous.",
+    "helpRefresh": "Actualisez l’abonnement importé dans le client et choisissez une connexion disponible.",
+    "helpIos": "Lorsque iOS le demande, autorisez le client à ajouter sa configuration VPN, puis activez la connexion.",
+    "helpAndroid": "Si Android demande d’autoriser une connexion VPN, confirmez la demande dans le client et activez-la.",
+    "helpDesktop": "Suivez les instructions du client pour accorder les autorisations réseau système nécessaires, puis activez la connexion.",
+    "contactSupport": "Si la connexion reste impossible, indiquez à l’assistance votre appareil, la version du client et le message d’erreur."
   },
   "landing": {
     "inviteStart": "Rejoindre sur invitation",
@@ -992,7 +1044,10 @@
     "a3": "Nous fournissons la configuration et les conseils de l'environnement, pas les comptes ou adhésions IA tiers. Vérifiez chaque application pour connaître ses conditions d'inscription et de paiement.",
     "q4": "Où puis-je trouver de l'aide ?",
     "a4": "Après vous être connecté, ouvrez le Centre d'aide pour parcourir les réponses courantes ou rechercher dans la documentation. Si vous avez encore besoin d'aide, contactez l'assistance en bas de la page. Poursuivez une conversation existante pour continuer à progresser ensemble.",
-    "footer": "Pour une expérience plus fluide avec l’IA."
+    "footer": "Pour une expérience plus fluide avec l’IA.",
+    "serviceScope": "Guides de configuration des appareils et assistance à l’utilisation. Les abonnements à des services tiers ne sont pas inclus.",
+    "pricingBeforePayment": "La création d’un compte est gratuite. Les tarifs et les frais sont affichés avant le paiement.",
+    "viewPlans": "Se connecter pour voir les offres"
   },
   "pricing": {
     "quoteLoading": "Calcul du total…",
@@ -1062,7 +1117,14 @@
     "paymentQrFallback": "Il est également possible de scanner le code QR ou de copier les informations de paiement.",
     "mobileScanHelp": "Scannez avec un autre appareil ou faites une capture d’écran pour la lire dans l’application de paiement.",
     "copyPayment": "Copier les informations de paiement",
-    "paymentCopied": "Informations de paiement copiées"
+    "paymentCopied": "Informations de paiement copiées",
+    "impactRenew": "Renouvelez cette offre pour la période choisie. Le renouvellement et la remise à zéro des données sont distincts : les données consommées ne sont remises à zéro que si les règles du service le prévoient.",
+    "impactSwitch": "Le changement remplace votre offre actuelle et la période choisie commence après le traitement de la commande. Le crédit de l’ancienne offre et tout solde restitué figurent dans le détail du prix ; les données inutilisées ne s’ajoutent pas au nouveau quota.",
+    "impactResubscribe": "Réactivez cette offre pour la période choisie. L’accès et le quota de données sont mis à jour après confirmation et traitement du paiement.",
+    "impactSubscribe": "L’offre et la période choisies sont activées après confirmation et traitement du paiement.",
+    "couponIntentEligible": "Les offres compatibles sont affichées en premier. Le coupon sélectionné sera à nouveau vérifié au moment du paiement.",
+    "couponIntentDifferentPeriod": "Ce coupon ne s’applique pas à cette période. Choisissez une autre période pour l’utiliser.",
+    "couponIntentUnavailable": "Ce coupon n’est pas disponible pour les offres affichées. Vous pouvez continuer sans l’utiliser."
   },
   "profile": {
     "intro": "Consultez votre e-mail de connexion et gérez votre langue et vos services connectés.",
@@ -1092,7 +1154,8 @@
     "9": "Masquer le mot de passe",
     "10": "Copié",
     "11": "La copie a échoué. Veuillez copier manuellement.",
-    "12": "Dernière vérification"
+    "12": "Dernière vérification",
+    "unavailable": "Les comptes de téléchargement sont temporairement indisponibles. Veuillez réessayer plus tard."
   },
   "banners": {
     "previous": "Bannière précédente",

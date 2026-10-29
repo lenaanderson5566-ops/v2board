@@ -188,3 +188,25 @@ it("clears earlier copy success when a later clipboard request fails", async () 
     expect(screen.queryByRole("button", { name: "已复制" })).toBeNull();
     expect(screen.getByLabelText(i18n.t("manualUrl", { ns: "clientImport" })).closest("details")?.open).toBe(true);
 });
+it("offers an explicit completion exit without assuming the client connected", () => {
+    render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+    const finish = i18n.t("finishSetup", { ns: "clientImport", defaultValue: "Setup complete — view usage" });
+    expect(screen.getByRole("link", { name: finish }).getAttribute("href")).toBe("#/dashboard");
+    expect(screen.getByText(i18n.t("confirmConnection", { ns: "clientImport", defaultValue: "Confirm the connection works in your client before finishing setup." }))).toBeTruthy();
+    expect(copy).not.toHaveBeenCalled();
+});
+it("shows device-specific troubleshooting and clears it when the selection changes", () => {
+    const view = render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+    fireEvent.click(screen.getByRole("button", { name: "Windows" }));
+    const needHelp = () => screen.getByRole("button", { name: i18n.t("needHelp", { ns: "clientImport", defaultValue: "Having trouble?" }) });
+    expect(view.container.querySelector(".import-troubleshooting")).toBeNull();
+    fireEvent.click(needHelp());
+    expect(needHelp().getAttribute("aria-expanded")).toBe("true");
+    expect(screen.getByText(i18n.t("helpDesktop", { ns: "clientImport", defaultValue: "Follow the client’s prompts for required system network permissions, then enable the connection." }))).toBeTruthy();
+    expect(screen.getByRole("link", { name: "联系客服 / 查看已有工单" }).getAttribute("href")).toBe("#/ticket");
+    fireEvent.click(screen.getByRole("button", { name: "iOS" }));
+    expect(view.container.querySelector(".import-troubleshooting")).toBeNull();
+    fireEvent.click(needHelp());
+    expect(screen.getByText(i18n.t("helpIos", { ns: "clientImport", defaultValue: "When iOS asks, allow the client to add its VPN configuration, then enable the connection." }))).toBeTruthy();
+    expect(view.container.querySelector(".import-troubleshooting h4")?.textContent).toContain("Shadowrocket");
+});

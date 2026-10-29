@@ -365,6 +365,9 @@ export const resources: Record<string, Resource> = {
         fetch: admin("order/fetch"),
         columns: [
             ["trade_no", "订单号"],
+            ["status", "状态", (r) => ["待支付", "开通中", "已取消", "已完成", "已折抵"][r.status]],
+            ["total_amount", "金额", (r) => money(r.total_amount, r.currency)],
+            ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
             [
                 "type",
                 "类型",
@@ -392,14 +395,12 @@ export const resources: Record<string, Resource> = {
                         }) as Row
                     )[r.period] || r.period,
             ],
-            ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
             ["plan_id", "套餐 ID"],
             [
                 "credit_bytes",
                 "额度数量",
                 (r) => (r.credit_bytes ? bytes(r.credit_bytes) : "—"),
             ],
-            ["total_amount", "金额", (r) => money(r.total_amount)],
             [
                 "commission_balance",
                 "佣金金额",
@@ -411,14 +412,6 @@ export const resources: Record<string, Resource> = {
                 (r) =>
                     ["待确认", "有效", "已发放", "无效"][
                         Number(r.commission_status)
-                    ],
-            ],
-            [
-                "status",
-                "状态",
-                (r) =>
-                    ["待支付", "开通中", "已取消", "已完成", "已折抵"][
-                        r.status
                     ],
             ],
             created,
@@ -1075,6 +1068,12 @@ export function ResourcePage({
             ...(resource === resources.routes ? { backend: "v2box" } : {}),
         }),
     );
+    const total = d.total || (Array.isArray(d.data) ? d.data.length : 0);
+    useEffect(() => {
+        if (d.loading || d.error || !Array.isArray(d.data)) return;
+        const last = d.total > 0 ? Math.max(1, Math.ceil(d.total / pageSize)) : 1;
+        if (page > last) setPage(last);
+    }, [d.loading, d.error, d.data, d.total, pageSize, page]);
     useEffect(() => {
         if (resource !== resources.clients) return;
         const timer = window.setInterval(() => {
@@ -1088,8 +1087,8 @@ export function ResourcePage({
         return () => window.clearInterval(timer);
     }, [resource, editing, d.loading, d.reload]);
     useEffect(() => {
-        onTotal?.(d.total);
-    }, [d.total, onTotal]);
+        onTotal?.(total);
+    }, [total, onTotal]);
     const key = resource.key || "id";
     const actionPending = useRef(false);
     const [actionBusy, setActionBusy] = useState(false);
@@ -1131,6 +1130,8 @@ export function ResourcePage({
         ))}
         {resource.drop && <button className="danger" disabled={actionBusy || d.loading || resource === resources.routes && Number(r.node_count) > 0} title={resource === resources.routes && Number(r.node_count) > 0 ? "请先解除服务引用" : undefined} onClick={() => action(resource.drop!, r)}>删除</button>}
     </>;
+    const customSecondaryActions = Boolean(extraActions &&
+        (resource === resources.users || resource.fetch === resources.orders.fetch));
     const list = (d.data || []).filter(r => {
         if (resource !== resources.routes) return true;
         if (routeUsage === "used" && !r.node_count || routeUsage === "unused" && r.node_count) return false;
@@ -1182,7 +1183,7 @@ export function ResourcePage({
                                 />
                             </div>
                         )}
-                        {(logKind || [resources.users, resources.orders, resources.online, resources.clients].includes(resource)) && (
+                        {(
                                 <Reload
                                     onClick={d.reload}
                                     loading={d.loading}
@@ -1486,25 +1487,25 @@ export function ResourcePage({
                                                       编辑
                                                   </button>
                                               )}
-                                          {resource !== resources.users || !extraActions ? secondaryActions(r) : null}
+                                          {!customSecondaryActions ? secondaryActions(r) : null}
                                           {resource === resources.routes && r.action === "sing_box" && <button onClick={() => setEditing({ ...r, id: undefined, copiedFrom: r.id, remarks: `${r.remarks} · 副本`, node_count: 0, used_by: [] })}>复制</button>}
-                                          {extraActions?.(r, context, resource === resources.users ? secondaryActions(r) : undefined)}
+                                          {extraActions?.(r, context, customSecondaryActions ? secondaryActions(r) : undefined)}
                                       </>
                                   )
                                 : undefined
                         }
                     />
-                    {(d.total > 0 || !d.loading) && (
+                    {(total > 0 || !d.loading) && (
                         <Pager
                             page={page}
-                            total={d.total}
-                            size={pageSize}
+                            total={d.total || list.length}
+                            size={d.total > 0 ? pageSize : Math.max(pageSize, list.length)}
                             loading={d.loading}
-                            onSizeChange={(size) => {
+                            onSizeChange={d.total > 0 ? (size) => {
                                 setPage(1);
                                 if (onPageSizeChange) onPageSizeChange(size);
                                 else setLocalPageSize(size);
-                            }}
+                            } : undefined}
                             onChange={setPage}
                         />
                     )}

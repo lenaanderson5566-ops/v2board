@@ -302,3 +302,60 @@ it("previews available savings without applying them or suggesting that a discou
     expect(summary.getAttribute("aria-describedby")).toBeTruthy();
     expect(change).not.toHaveBeenCalled();
 });
+it("resolves coupon intent from the current wallet once after it finishes loading", () => {
+    mocks.wallet = [coupon];
+    mocks.loading = true;
+    const change = vi.fn();
+    const view = render(<CouponPicker planId={1} period="month_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).not.toHaveBeenCalled();
+    mocks.loading = false;
+    view.rerender(<CouponPicker planId={1} period="month_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).toHaveBeenCalledExactlyOnceWith(1, coupon);
+    view.rerender(<CouponPicker planId={1} period="month_price" value={1} couponIntentId={1} onChange={change} />);
+    view.rerender(<CouponPicker planId={1} period="month_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).toHaveBeenCalledTimes(1);
+});
+it("respects a manual opt-out across wallet refreshes and cycle changes", () => {
+    mocks.wallet = [coupon];
+    const change = vi.fn(), manual = vi.fn();
+    const view = render(<CouponPicker planId={1} period="month_price" value={null} couponIntentId={1} onChange={change} onManualChange={manual} />);
+    view.rerender(<CouponPicker planId={1} period="month_price" value={1} couponIntentId={1} onChange={change} onManualChange={manual} />);
+    fireEvent.click(screen.getByLabelText("我的优惠券", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("radio", { name: "不使用优惠券" }));
+    expect(manual).toHaveBeenCalledOnce();
+    expect(change).toHaveBeenLastCalledWith(null, undefined);
+    mocks.wallet = [{ ...coupon }];
+    view.rerender(<CouponPicker planId={1} period="year_price" value={null} couponIntentId={1} onChange={change} onManualChange={manual} />);
+    expect(change).toHaveBeenCalledTimes(2);
+});
+it.each([
+    { id: 9 },
+    { status: "expired" },
+    { status: "reservedOrUsed" },
+    { expiresAt: "2020-01-01T00:00:00Z" },
+    { expiresAt: "invalid" },
+    { planIds: [2] },
+])("does not apply unowned, expired or incompatible wallet intent: %j", (restriction) => {
+    mocks.wallet = [{ ...coupon, ...restriction }];
+    const change = vi.fn();
+    render(<CouponPicker planId={1} period="month_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).not.toHaveBeenCalled();
+});
+it("does not force an incompatible cycle and can apply intent once the user chooses an eligible cycle", () => {
+    mocks.wallet = [{ ...coupon, billingPeriods: ["annual"] }];
+    const change = vi.fn();
+    const view = render(<CouponPicker planId={1} period="month_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).not.toHaveBeenCalled();
+    view.rerender(<CouponPicker planId={1} period="year_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).toHaveBeenCalledExactlyOnceWith(1, mocks.wallet[0]);
+    view.rerender(<CouponPicker planId={1} period="month_price" value={1} couponIntentId={1} onChange={change} />);
+    expect(change).toHaveBeenLastCalledWith(null);
+    view.rerender(<CouponPicker planId={1} period="year_price" value={null} couponIntentId={1} onChange={change} />);
+    expect(change).toHaveBeenCalledTimes(2);
+});
+it("does not replace a coupon that the user already selected", () => {
+    mocks.wallet = [coupon, { ...coupon, id: 2 }];
+    const change = vi.fn();
+    render(<CouponPicker planId={1} period="month_price" value={2} couponIntentId={1} onChange={change} />);
+    expect(change).not.toHaveBeenCalled();
+});

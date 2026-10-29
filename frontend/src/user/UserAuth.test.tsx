@@ -35,6 +35,7 @@ vi.mock("../shared/i18n", () => ({
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ux", () => ({ ux: (key: string) => key }));
 import { UserAuth } from "./UserAuth";
+import { applyAccountLanguage } from "../shared/i18n";
 function page(mode = "register", redirectPath?: string) {
     const onLogin = vi.fn();
     const view = render(
@@ -55,6 +56,7 @@ function credentials() {
     });
 }
 beforeEach(() => {
+    vi.mocked(applyAccountLanguage).mockReset().mockResolvedValue(undefined);
     mocks.request.mockReset();
     mocks.navigate.mockReset();
     mocks.boot.emailVerify = true;
@@ -81,6 +83,40 @@ it("returns to the pending app authorization after website sign-in", async () =>
     credentials();
     fireEvent.click(screen.getByRole("button", { name: "登录" }));
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(target));
+});
+it("completes sign-in with a recoverable language notice if the saved language cannot load", async () => {
+    vi.mocked(applyAccountLanguage).mockRejectedValueOnce(new Error("Language unavailable"));
+    const view=page("login", "plan/1?period=year_price");
+    credentials();
+    fireEvent.click(screen.getByRole("button",{name:"登录"}));
+    await waitFor(()=>expect(view.onLogin).toHaveBeenCalledWith({email:"review@example.test"},{languagePending:true}));
+    expect(mocks.navigate).toHaveBeenCalledWith("plan/1?period=year_price");
+    expect(screen.queryByRole("alert")).toBeNull();
+});
+it("does not navigate when a late sign-in completion is rejected by the session owner", async () => {
+    let finishLanguage!: () => void;
+    vi.mocked(applyAccountLanguage).mockReturnValueOnce(new Promise<void>((resolve)=>{finishLanguage=resolve;}));
+    const view=page("login", "plan/1?period=year_price");
+    view.onLogin.mockReturnValue(false);
+    credentials();
+    fireEvent.click(screen.getByRole("button",{name:"登录"}));
+    await waitFor(()=>expect(applyAccountLanguage).toHaveBeenCalled());
+    finishLanguage();
+    await waitFor(()=>expect(view.onLogin).toHaveBeenCalled());
+    expect(mocks.navigate).not.toHaveBeenCalled();
+});
+it("ignores sign-in completion after its form is unmounted", async () => {
+    let finishLanguage!: () => void;
+    vi.mocked(applyAccountLanguage).mockReturnValueOnce(new Promise<void>((resolve)=>{finishLanguage=resolve;}));
+    const view=page("login", "plan/1?period=year_price");
+    credentials();
+    fireEvent.click(screen.getByRole("button",{name:"登录"}));
+    await waitFor(()=>expect(applyAccountLanguage).toHaveBeenCalled());
+    view.unmount();
+    finishLanguage();
+    await Promise.resolve();
+    expect(view.onLogin).not.toHaveBeenCalled();
+    expect(mocks.navigate).not.toHaveBeenCalled();
 });
 
 it("shows the suspension entry when authenticated credentials are denied as banned", async () => {

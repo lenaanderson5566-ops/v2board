@@ -166,6 +166,67 @@ try {
     $assert($r->getStatusCode()===404,'Order ownership is enforced');
     [$r,$j]=$call('GET','/api/v10/me/orders?pageSize=1',[],$bearer);
     $assert($r->getStatusCode()===200 && count($j['data'])===1 && $j['meta']['pagination']['total']>=2 && $j['meta']['pagination']['pageSize']===1,'Pagination contract');
+    $billingUser=User::create(['email'=>Str::uuid().'@example.com','password'=>'x','token'=>Str::random(32),'uuid'=>(string)Str::uuid(),'balance'=>4321]);
+    $cleanupUsers[]=$billingUser;
+    $billingAuth=(new App\Services\AuthService($billingUser))->generateAuthData(Illuminate\Http\Request::create('/'));
+    $billingBearer='Bearer '.$billingAuth['auth_data'];
+    $billingStart=strtotime('2025-01-01T00:00:00Z');
+    $billingPrefix='bill-'.Str::random(8).'-';
+    $billingFixtures=[];
+    foreach ([['before',-1,3],['lower',0,3],['tie-old',60,3],['tie-new',60,3],['cancelled',120,2],['upper',86400,3],['after',86401,3]] as [$label,$offset,$status]) {
+        $billingFixtures[$label]=Order::create(['user_id'=>$billingUser->id,'plan_id'=>$plan->id,'period'=>'month_price','type'=>1,'trade_no'=>$billingPrefix.$label,'total_amount'=>1000,'status'=>$status,'created_at'=>$billingStart+$offset,'updated_at'=>$billingStart+$offset]);
+    }
+    $foreignBilling=Order::create(['user_id'=>$other->id,'plan_id'=>$plan->id,'period'=>'month_price','type'=>1,'trade_no'=>$billingPrefix.'foreign','total_amount'=>1000,'status'=>3,'created_at'=>$billingStart+60,'updated_at'=>$billingStart+60]);
+    $billingBefore=Order::whereIn('id',array_map(fn($order)=>$order->id,array_merge(array_values($billingFixtures),[$foreignBilling])))->orderBy('id')->get()->map(fn($order)=>$order->getAttributes())->all();
+    $billingRead=function(array $query) use ($call,$billingBearer) { return $call('GET','/api/v10/me/orders?'.http_build_query($query),[],$billingBearer); };
+    $billingWindow=['createdFrom'=>'2025-01-01T00:00:00Z','createdBefore'=>'2025-01-02T00:00:00Z'];
+    $billingNumbers=fn(array $payload)=>array_column($payload['data'],'orderNumber');
+    [$r,$j]=$billingRead($billingWindow);
+    $assert($r->getStatusCode()===200 && $billingNumbers($j)===array_map(fn($label)=>$billingFixtures[$label]->trade_no,['cancelled','tie-new','tie-old','lower']),'Billing range is owner-only, includes its lower boundary, excludes its upper boundary and sorts newest id first on ties');
+    $assert($j['meta']['pagination']['total']===4 && $j['meta']['pagination']['totalPages']===1,'Billing totals count only filtered owner results');
+    [$r,$j]=$billingRead(['createdFrom'=>$billingWindow['createdFrom']]);
+    $assert($r->getStatusCode()===200 && count($j['data'])===6 && !in_array($billingFixtures['before']->trade_no,$billingNumbers($j),true),'Billing lower bound works independently');
+    [$r,$j]=$billingRead(['createdBefore'=>$billingWindow['createdBefore']]);
+    $assert($r->getStatusCode()===200 && count($j['data'])===5 && $billingNumbers($j)[4]===$billingFixtures['before']->trade_no,'Billing upper bound works independently');
+    foreach (['completed'=>['tie-new','tie-old','lower'],'cancelled'=>['cancelled'],'unpaid'=>[]] as $status=>$expectedLabels) {
+        [$r,$j]=$billingRead($billingWindow+['status'=>$status]);
+        $assert($r->getStatusCode()===200 && $billingNumbers($j)===array_map(fn($label)=>$billingFixtures[$label]->trade_no,$expectedLabels) && $j['meta']['pagination']['total']===count($expectedLabels),'Billing status combines with owner and date filters: '.$status);
+    }
+    [$r,$j]=$billingRead(['orderNumber'=>$billingFixtures['lower']->trade_no]);
+    $assert($r->getStatusCode()===200 && $billingNumbers($j)===[$billingFixtures['lower']->trade_no] && $j['meta']['pagination']['total']===1,'Billing order search is exact');
+    foreach ([$billingPrefix, $billingPrefix.'missing', $foreignBilling->trade_no] as $number) {
+        [$r,$j]=$billingRead(['orderNumber'=>$number]);
+        $assert($r->getStatusCode()===200 && $j['data']===[] && $j['meta']['pagination']===['page'=>1,'pageSize'=>20,'total'=>0,'totalPages'=>0],'Partial, unknown and other-owner billing numbers have the same empty collection contract');
+    }
+    [$r,$j]=$billingRead($billingWindow+['status'=>'cancelled','orderNumber'=>$billingFixtures['lower']->trade_no]);
+    $assert($r->getStatusCode()===200 && $j['data']===[] && $j['meta']['pagination']['total']===0,'Exact order does not bypass other active billing filters');
+    [$r,$j]=$billingRead(['orderNumber'=>$billingFixtures['upper']->trade_no]+$billingWindow);
+    $assert($r->getStatusCode()===200 && $j['data']===[],'Exact order does not bypass the exclusive creation boundary');
+    foreach ([1=>['tie-new','tie-old'],2=>['lower'],3=>[]] as $page=>$expectedLabels) {
+        [$r,$j]=$billingRead($billingWindow+['status'=>'completed','page'=>$page,'pageSize'=>2]);
+        $assert($r->getStatusCode()===200 && $billingNumbers($j)===array_map(fn($label)=>$billingFixtures[$label]->trade_no,$expectedLabels) && $j['meta']['pagination']===['page'=>$page,'pageSize'=>2,'total'=>3,'totalPages'=>2],'Billing pagination keeps stable filtered totals and ordering on page '.$page);
+    }
+    [$r,$j]=$billingRead(['createdFrom'=>'2025-01-01T00:00:00.500Z','createdBefore'=>$billingWindow['createdBefore'],'status'=>'completed']);
+    $assert($r->getStatusCode()===200 && $billingNumbers($j)===[$billingFixtures['tie-new']->trade_no,$billingFixtures['tie-old']->trade_no],'Fractional lower bound excludes an order created earlier in the same second');
+    [$r,$j]=$billingRead(['createdFrom'=>$billingWindow['createdFrom'],'createdBefore'=>'2025-01-01T00:01:00.500Z']);
+    $assert($r->getStatusCode()===200 && $billingNumbers($j)===[$billingFixtures['tie-new']->trade_no,$billingFixtures['tie-old']->trade_no,$billingFixtures['lower']->trade_no],'Fractional upper bound includes orders created earlier in the same second');
+    [$r,$j]=$billingRead(['createdFrom'=>'2025-01-01T00:00:00.100Z','createdBefore'=>'2025-01-01T00:00:00.900Z']);
+    $assert($r->getStatusCode()===200 && $j['data']===[] && $j['meta']['pagination']['total']===0,'A positive subsecond interval is valid even when it contains no second-precision orders');
+    foreach ([
+        ['createdFrom'=>'not-a-date'],['createdBefore'=>'2025-02-30T00:00:00Z'],
+        ['createdFrom'=>'2025-01-01'],['createdBefore'=>'2025-01-02T00:00:00'],
+        ['createdFrom'=>'2025-01-01T00:00:00+00:00'],['createdBefore'=>'2025-01-02T08:00:00+08:00'],
+        ['createdFrom'=>'2025-01-02T00:00:00Z','createdBefore'=>'2025-01-01T00:00:00Z'],
+        ['createdFrom'=>'2025-01-01T00:00:00Z','createdBefore'=>'2025-01-01T00:00:00Z'],
+        ['createdFrom'=>'2025-01-01T00:00:00.900Z','createdBefore'=>'2025-01-01T00:00:00.100Z'],
+        ['createdFrom'=>'2025-01-01T00:00:00.1234Z'],['createdBefore'=>'2025-01-01T25:00:00Z'],
+        ['orderNumber'=>'bad number'],['orderNumber'=>'%'],['orderNumber'=>'bad/number'],['orderNumber'=>str_repeat('a',65)],
+    ] as $invalidFilter) {
+        [$r,$j]=$billingRead($invalidFilter);
+        $assert($r->getStatusCode()===422 && str_contains($r->headers->get('Content-Type'),'application/problem+json') && count(array_intersect(array_keys($invalidFilter),array_keys($j['errors'] ?? [])))>0 && !str_contains(json_encode($j),'validation.'),'Malformed billing filter returns a readable field problem: '.json_encode($invalidFilter));
+    }
+    $billingAfter=Order::whereIn('id',array_map(fn($order)=>$order->id,array_merge(array_values($billingFixtures),[$foreignBilling])))->orderBy('id')->get()->map(fn($order)=>$order->getAttributes())->all();
+    $assert($billingBefore===$billingAfter && $billingUser->fresh()->balance===4321,'Successful and invalid billing reads do not mutate orders or account balance');
     [$r,$j]=$call('GET','/api/v10/me/orders/'.$new,[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['status']==='unpaid' && $j['data']['billingPeriod']==='annual','Order enum contract');
     [$r,$j]=$call('POST','/api/v10/me/orders/'.$new.'/cancellation',[],$bearer);

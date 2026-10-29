@@ -9,9 +9,10 @@ export function PasskeySecurity() {
     const [state,setState]=useState<PasskeyState|null>(null),[error,setError]=useState(""),[busy,setBusy]=useState(false),[password,setPassword]=useState(""),[name,setName]=useState(""),[removing,setRemoving]=useState<number|null>(null);
     const lock=useRef(false);
     const operation=useRef<AbortController|null>(null);
+    const [loadAttempt,setLoadAttempt]=useState(0),[loading,setLoading]=useState(true);
     useEffect(()=>()=>operation.current?.abort(),[]);
     const load=async(signal:AbortSignal)=>{const data=await passkeyRequest<PasskeyState>("me/security/passkeys",undefined,"GET",signal);if(!signal.aborted)setState(data);};
-    useEffect(()=>{let live=true;passkeyRequest<PasskeyState>("me/security/passkeys").then(data=>{if(live)setState(data);}).catch(error=>{if(live)setError(passkeyError(error));});return()=>{live=false;};},[]);
+    useEffect(()=>{let live=true;const controller=new AbortController();setLoading(true);passkeyRequest<PasskeyState>("me/security/passkeys",undefined,"GET",controller.signal).then(data=>{if(live){setState(data);setError("");}}).catch(error=>{if(live&&!controller.signal.aborted)setError(passkeyError(error));}).finally(()=>{if(live)setLoading(false);});return()=>{live=false;controller.abort();};},[loadAttempt]);
     async function run(action:(signal:AbortSignal)=>Promise<void>) {if(lock.current)return;lock.current=true;const controller=new AbortController();operation.current=controller;setBusy(true);setError("");try{await action(controller.signal);}catch(error){if(!controller.signal.aborted)setError(passkeyError(error));}finally{lock.current=false;if(!controller.signal.aborted){setPassword("");setBusy(false);}}}
     if (!state && !error) return null;
     if (state && !state.enabled && state.credentials.length === 0) return null;
@@ -29,7 +30,7 @@ export function PasskeySecurity() {
                 {state.enabled && !passkeySupported() && <p className="muted">{tx("当前浏览器不支持 Passkey，请使用支持的 HTTPS 浏览器。")}</p>}
             </form>}
         </>}
-        {error && removing===null && <p role="alert" className="alert">{error}</p>}
+        {error && removing===null && <div role="alert" className="alert"><p>{error}</p>{!state && <button type="button" disabled={loading || busy} onClick={()=>{if(loading)return;setLoading(true);setLoadAttempt(value=>value+1);}}>{tx(loading ? "正在加载…" : "重试")}</button>}</div>}
         {removing!==null && <Modal title={tx("移除 Passkey")} close={()=>{if(!busy){setRemoving(null);setPassword("");setError("");}}}><form className="pad" onSubmit={event=>{event.preventDefault();void run(async(signal)=>{
             await passkeyRequest(`me/security/passkeys/${removing}`,{password},"DELETE",signal);if(signal.aborted)return;await logoutSession();window.dispatchEvent(new Event("auth-expired"));setRemoving(null);
         });}}><p>{tx("移除后此 Passkey 无法继续登录，所有账户会话将退出。可用密码重新登录。")}</p><label>{tx("当前密码")}<input required type="password" autoComplete="current-password" maxLength={128} value={password} onChange={event=>setPassword(event.target.value)} disabled={busy}/></label>{error && <p role="alert" className="alert">{error}</p>}<button type="submit" disabled={busy}>{tx("确认移除 Passkey")}</button></form></Modal>}

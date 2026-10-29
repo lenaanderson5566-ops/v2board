@@ -85,6 +85,10 @@ V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，�
 
 ## 用户体验回归归属
 
+账户初始读取、会话元数据失败、语言资源降级、真实认证失效及同页失效后新旧登录回调隔离归入 app/UserAuth；运行配置和 React 初始化前的恢复归入 runtime-config，十四语言启动兜底独立于完整 i18n 初始化。UXResilience 验证通用冷却提示只改变可用状态、不自动发请求，并保留已加载内容；原有 useData 限流断言保留。
+
+BillingFlow/PendingOrderNotice 覆盖安全套餐/周期保留、返回与登录恢复、不同待付款套餐路由、充值/额度/重置专用路径及操作影响说明。UsageBilling 验证旧套餐与独立额度显示一致、服务端时间的临期边界、长期有效及不可续订条件。HelpSupport/HelpGuides 验证单一搜索和文档失败重试；QuickStart 验证按设备排障、完成仅导航且不虚构连接成功。Landing、JourneyAnalytics 和 build-metrics 分别覆盖公开边界说明、统计样本解释和静态成本诊断；不增加 API、跟踪字段或并行测试运行器。
+
 继续复用 UserAuth、Landing、BillingFlow、QuickStart、ClientDownload、app、UXResilience、HelpSupport、AccountSessions、UsageBilling、TrafficCredits 及 localization。覆盖验证码复用和格式化粘贴、注册开关入口、手机套餐总价及空态恢复、客户端安装返回、受限复制与异步反馈失效；表单及购买窗口在后台刷新和失败后不重挂载，初始未知余额不显示为零，失败可原地重试。
 
 导航回归覆盖 hash 跳过不离开当前页、跨页聚焦主内容、同页付款 query 保留输入焦点、抽屉关闭与局部错误边界恢复。保留既有付款金额、幂等、报价缓存、渠道与匿名统计断言；全量前端回归与 TypeScript/生产打包通过后，使用现有忽略目录的合成夹具做布局检查，不为各次优化新增测试运行器，也不执行真实支付或修改生产数据。
@@ -123,3 +127,9 @@ V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，�
 手机入口继续归入 PaymentCheckout：明确区分网关 redirect、受支持官方 QR、Native 微信扫码及危险/未知协议，覆盖嵌套地址/凭据/控制符、重复打开不重复付款、复制成功/失败及同意门控统计。购买规则归入 BillingFlow、UsageBilling 和 v10-api，覆盖全部重置策略、继承/未知配置、周期与续费说明。product-analytics、JourneyAnalytics 与 localization 验证 payment_open 只表示点击，不当作付款成功、保持匿名字段和现有同意/GPC/DNT/采样限制；不为此新增统计运行器。
 
 后端复用 payment-presentation、api-v10、api-v10-inventory、admin-payment-diagnostics、backend-security、commerce 和 order-replacement：覆盖已归属订单返回原确认页、非订阅保留订单路径、可信 Origin/编码及任意返回地址拒绝，有效重置规则仅派生而不修改计划，新增点击事件不增加 PV/漏斗且拒绝敏感额外字段。实际脚本在不含站点环境文件/配置/缓存的副本和独立 MySQL/Redis 测试实例运行，邮件及网关使用测试替身。浏览器合成验证与真实渠道/真机联调的边界见 frontend-validation.md。
+
+用户次级页面继续复用 ClientAuthorization、Notifications、PasskeyLogin、AnnouncementCenter、AppleAccounts、TrafficCredits、ClientDownload、UsageBilling 和 localization。覆盖只读授权恢复与未知批准结果、逐字段通知同步、首次失败重试、429 冷却及关闭重开、刷新期间禁止额度下单、账户币种和多芯片安装包显式选择；不增加平行运行器。账单筛选归入 UsageBilling、v10-api 和 api-v10，验证完整历史分页、组合条件、日期和毫秒边界、所有者隔离、无效输入与只读不变性；契约只修改模块源后重生成全部七份发布物。实际后端脚本仍只在独立项目副本与隔离数据库运行，输出保存在忽略的 storage/app/test-organization。
+
+优惠券跨页意图归入既有 CouponCenter、CouponPicker 和 BillingFlow：覆盖安全 ID 与登录/返回保留、本人券包重查、限制套餐/周期优先选择、手动选择优先、清除后不再补回、过期/非本人/不适用券拒绝、已有订单丢弃提示、钱包失败和冷却恢复；保留原最终金额与付款幂等断言。
+
+后台完整性优化继续使用 AdminApp、admin-shell、admin-workspaces、Payments、AnalyticsCollectionSettings、AdminClients、AdminClientMirrors、AdminMailCampaigns、UXResilience、editor-field-context 和 localization 等现有模块。覆盖具体子页搜索/标题/焦点、手机菜单边界、会话临时失败恢复、显式订单查询与筛选保留、过期支付目录、无元数据列表与空末页、错误字段及多选关联、键盘排序及并发锁、设置草稿、离页终止后续镜像任务、429 退避与群发记录恢复。只改前端交互和展示，不新增 API、数据库迁移或平行测试运行器；合成页面和截图继续保存在忽略目录。

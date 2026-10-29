@@ -5,6 +5,7 @@ import { WorkspaceSkeleton } from "../WorkspaceSkeleton";
 import { e } from "../experience-copy";
 import { tx, locale } from "../i18n";
 import { boot, readRequest, type Row } from "../api";
+import { useRetryCountdown } from "../use-retry-countdown";
 
 export function useData<T = Row>(
     path: string,
@@ -130,6 +131,7 @@ export function State({
     error,
     children,
     retry,
+    retryAt = 0,
     data,
 }: {
     data?: unknown;
@@ -137,7 +139,14 @@ export function State({
     error: string;
     children: ReactNode;
     retry?: () => void;
+    retryAt?: number;
 }) {
+    const retryIn = useRetryCountdown(retryAt);
+    const retryButton = retry && (
+        <button type="button" disabled={loading || retryIn > 0} onClick={retry}>
+            {retryIn > 0 ? tx("retryIn", { ns: "pricing", seconds: retryIn }) : tx("重试")}
+        </button>
+    );
     if (boot.mode === "admin" && data != null)
         return (
             <div className="admin-data-state" aria-busy={loading}>
@@ -156,11 +165,7 @@ export function State({
                         <small className="admin-stale-warning">
                             {e("adminStale")}
                         </small>
-                        {retry && (
-                            <button type="button" onClick={retry}>
-                                {tx("重试")}
-                            </button>
-                        )}
+                        {retryButton}
                     </div>
                 )}
                 <div
@@ -183,7 +188,7 @@ export function State({
                 {error && (
                     <div key="error" className="alert" role="alert">
                         {error}
-                        {retry && <button type="button" onClick={retry}>{tx("重试")}</button>}
+                        {retryButton}
                     </div>
                 )}
                 {/* Keep the same child subtree during background refreshes and failures.
@@ -205,7 +210,7 @@ export function State({
             <>
                 <div className="alert" role="alert">
                     {error}
-                    {retry && <button onClick={retry}>{tx("重试")}</button>}
+                    {retryButton}
                 </div>
                 {data != null && children}
             </>

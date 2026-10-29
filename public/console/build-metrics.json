@@ -3,16 +3,74 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 279394,
+      "startupGzipBytes": 286520,
+      "startupBytes": 933644,
+      "startupFileCount": 16,
+      "largestStartupAssets": [
+        {
+          "file": "assets/ErrorBoundary-DcNC0M5d.js",
+          "bytes": 483881,
+          "gzipBytes": 146291
+        },
+        {
+          "file": "assets/render-app-OF5lZ3cJ.js",
+          "bytes": 209946,
+          "gzipBytes": 65511
+        },
+        {
+          "file": "assets/app-Igetsw86.js",
+          "bytes": 54928,
+          "gzipBytes": 17784
+        },
+        {
+          "file": "assets/app-Dk_C7jLN.css",
+          "bytes": 91075,
+          "gzipBytes": 16602
+        },
+        {
+          "file": "assets/invite-friends-DGdSdp4s.jpg",
+          "bytes": 16544,
+          "gzipBytes": 16225
+        }
+      ],
       "budget": 307200,
-      "totalBytes": 3019701,
-      "fileCount": 305
+      "totalBytes": 3186564,
+      "fileCount": 306
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 389033,
+      "startupGzipBytes": 396985,
+      "startupBytes": 1370527,
+      "startupFileCount": 19,
+      "largestStartupAssets": [
+        {
+          "file": "assets/ErrorBoundary-DcNC0M5d.js",
+          "bytes": 483881,
+          "gzipBytes": 146291
+        },
+        {
+          "file": "assets/AdminApp-pQou88l9.js",
+          "bytes": 489425,
+          "gzipBytes": 139431
+        },
+        {
+          "file": "assets/render-app-OF5lZ3cJ.js",
+          "bytes": 209946,
+          "gzipBytes": 65511
+        },
+        {
+          "file": "assets/AdminApp-DGyWLayj.css",
+          "bytes": 92984,
+          "gzipBytes": 15144
+        },
+        {
+          "file": "assets/browser-notice-oNYNxcCc.css",
+          "bytes": 39442,
+          "gzipBytes": 8810
+        }
+      ],
       "budget": 460800,
-      "totalBytes": 4291040,
+      "totalBytes": 4448157,
       "fileCount": 77
     }
   ],

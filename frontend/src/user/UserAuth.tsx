@@ -29,7 +29,7 @@ export function UserAuth({
 }: {
     mode: string;
     redirectPath?: string;
-    onLogin: (user: Row) => void;
+    onLogin: (user: Row, options?: { languagePending: boolean }) => boolean | void;
 }) {
     useAnalyticsPage(
         mode === "register"
@@ -85,6 +85,11 @@ export function UserAuth({
     const verificationInput = useRef<HTMLInputElement>(null);
     const verificationEmail = useRef("");
     const submitting = useRef(false);
+    const mounted = useRef(true);
+    useEffect(() => {
+        mounted.current = true;
+        return () => { mounted.current = false; };
+    }, []);
     const [suspended, setSuspended] = useState(false);
     const { remaining: cooldown, start: startCooldown } = useCooldown();
     useEffect(() => {
@@ -105,9 +110,17 @@ export function UserAuth({
               : tx("欢迎回来");
     async function completeLogin() {
         const info = await request("user/info");
-        await applyAccountLanguage(info.data.language);
-        onLogin(info.data);
-        navigate(redirectPath ?? "dashboard");
+        if (!mounted.current) return;
+        let languagePending = false;
+        try {
+            await applyAccountLanguage(info.data.language);
+        } catch {
+            languagePending = true;
+        }
+        if (!mounted.current) return;
+        const accepted = languagePending
+            ? onLogin(info.data, { languagePending }) : onLogin(info.data);
+        if (accepted !== false) navigate(redirectPath ?? "dashboard");
     }
     async function sendCode() {
         if (register) {

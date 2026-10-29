@@ -4,6 +4,7 @@ import { tx } from "../shared/i18n";
 import { c } from "../shared/credit-copy";
 import { Modal } from "../shared/ui";
 import { StatusBadge, orderStatusTone } from "../shared/StatusBadge";
+import { orderResumePath } from "./checkout-navigation";
 
 export function PendingOrderNotice({
     order,
@@ -76,7 +77,7 @@ export function PendingOrderNotice({
                     ) : (
                         <a
                             className="button primary"
-                            href={`#/order/${order.trade_no}`}
+                            href={`#/${orderResumePath(order)}`}
                         >
                             {tx(processing ? "查看开通进度" : "继续支付")}
                         </a>

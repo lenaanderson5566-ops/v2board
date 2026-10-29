@@ -650,7 +650,19 @@
     "了解删除影响": "Xem tác động của việc xóa",
     "验证并确认": "Xác minh và xác nhận",
     "删除前，请确认以下事项": "Trước khi xóa, hãy kiểm tra các mục sau",
-    "账户状态已检查，可以继续。": "Đã kiểm tra trạng thái tài khoản. Bạn có thể tiếp tục."
+    "账户状态已检查，可以继续。": "Đã kiểm tra trạng thái tài khoản. Bạn có thể tiếp tục.",
+    "搜索后台页面": "Tìm trang quản trị",
+    "输入页面名称或分组": "Nhập tên trang hoặc mục",
+    "清除页面搜索": "Xóa tìm kiếm trang",
+    "未找到匹配页面，请尝试其他关键词。": "Không tìm thấy trang phù hợp. Hãy thử từ khóa khác.",
+    "订单快速查询": "Tìm nhanh đơn hàng",
+    "订单查询字段": "Trường tìm kiếm đơn hàng",
+    "订单查询内容": "Nội dung tìm kiếm đơn hàng",
+    "输入订单号、邮箱或用户 ID": "Nhập mã đơn hàng, email hoặc ID người dùng",
+    "已应用的订单筛选": "Bộ lọc đơn hàng đang áp dụng",
+    "移除订单筛选条件 {{index}}": "Xóa bộ lọc đơn hàng {{index}}",
+    "支付接口列表": "Giao diện thanh toán",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Giao diện thanh toán tạm thời không khả dụng. Hãy thử lại trước khi thêm hoặc sửa kênh."
   },
   "account": {
     "notificationAutoSave": "Thay đổi được lưu tự động",
@@ -704,7 +716,19 @@
     "resetSuccess": "Đã đặt lại và khôi phục hạn mức.",
     "inactive": "Cần gói còn hiệu lực để dùng.",
     "emptyUsage": "Chưa có sử dụng cần đặt lại. Không trừ lượt.",
-    "noCredits": "Chưa có lượt dự trữ. Lượt được cấp sẽ hiện ở đây."
+    "noCredits": "Chưa có lượt dự trữ. Lượt được cấp sẽ hiện ở đây.",
+    "expiresSoon": "Gói đăng ký sẽ hết hạn trong vòng {{days}} ngày.",
+    "findTransactions": "Tìm giao dịch",
+    "filtersApplied": "Đã áp dụng bộ lọc",
+    "allStatuses": "Tất cả trạng thái",
+    "timeRange": "Khoảng thời gian",
+    "allTime": "Toàn bộ thời gian",
+    "lastDays": "{{days}} ngày qua",
+    "orderNumber": "Mã đơn hàng",
+    "exactOrderNumber": "Nhập đầy đủ mã đơn hàng",
+    "searchTransactions": "Tìm kiếm",
+    "filteredTransactions": "Giao dịch phù hợp: {{count}}",
+    "noMatchingTransactions": "Không có giao dịch phù hợp với các bộ lọc này. Hãy điều chỉnh hoặc đặt lại bộ lọc."
   },
   "credits": {
     "buyMore": "Mua thêm hạn mức",
@@ -845,7 +869,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Tải lại trang này hoặc mở mục khác từ menu điều hướng."
+    "pageRecovery": "Tải lại trang này hoặc mở mục khác từ menu điều hướng.",
+    "accountLoadFailed": "Không thể tải thông tin tài khoản. Hãy kiểm tra kết nối rồi thử lại.",
+    "languageLoadFailed": "Không thể tải ngôn ngữ giao diện đã lưu. Ngôn ngữ hiện tại vẫn được giữ lại.",
+    "authorizationRetryHelp": "Chưa thể xác nhận trạng thái yêu cầu đăng nhập. Hãy kiểm tra kết nối và truy vấn lại trạng thái yêu cầu trước khi xác nhận đăng nhập.",
+    "authorizationRecheck": "Kiểm tra lại trạng thái yêu cầu",
+    "authorizationUnavailable": "Yêu cầu đăng nhập này không còn khả dụng. Hãy quay lại ứng dụng để kiểm tra trạng thái đăng nhập hoặc tạo yêu cầu mới.",
+    "invalidJson": "Nhập JSON hợp lệ.",
+    "reorderHelp": "Kéo để sắp xếp lại, hoặc đặt tiêu điểm vào tay nắm sắp xếp rồi dùng ↑ / ↓."
   },
   "ux": {
     "cancel": "Hủy",
@@ -906,7 +937,17 @@
     "title": "Ứng dụng chuyên dụng",
     "guide": "Cài đặt và đăng nhập bằng tài khoản trang web để đồng bộ gói dịch vụ, không cần sao chép liên kết.",
     "unavailable": "Chưa có bộ cài riêng cho hệ thống này. Chọn hệ thống khác hoặc ứng dụng tương thích.",
-    "requirement": "Chọn kiến trúc phù hợp thiết bị. Kết nối cần gói còn hiệu lực hoặc lưu lượng khả dụng."
+    "requirement": "Chọn kiến trúc phù hợp thiết bị. Kết nối cần gói còn hiệu lực hoặc lưu lượng khả dụng.",
+    "architecture": "Chip của thiết bị",
+    "chooseArchitecture": "Chọn chip của thiết bị",
+    "architectureHelp": "Nếu chưa rõ, hãy xem thông tin hệ thống của thiết bị. Chọn bộ cài đặt phù hợp với chip.",
+    "architectureUniversal": "Bộ cài đặt đa kiến trúc",
+    "architectureApple": "Apple Silicon (M1 trở lên, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD 64 bit (x64)",
+    "architectureX86": "Intel / AMD 32 bit (x86)",
+    "architectureArm64": "ARM 64 bit (arm64)",
+    "architectureArm": "ARM 32 bit (arm)"
   },
   "help": {
     "intro": "Tìm câu hỏi và làm theo hướng dẫn.",
@@ -937,13 +978,24 @@
     "qCancelled": "Số dư đã trừ đi đâu khi hủy đơn?",
     "aCancelled": "Hủy đơn chưa thanh toán sẽ hoàn số dư tài khoản đã trừ; kiểm tra trong Hóa đơn. Đây không phải hoàn tiền qua nhà cung cấp thanh toán bên ngoài. Không thanh toán đơn đã hủy; hãy tạo đơn mới nếu cần.",
     "qSecurity": "Quên mật khẩu hoặc lộ liên kết cấu hình thì làm sao?",
-    "aSecurity": "Dùng Quên mật khẩu ở trang đăng nhập. Khi đã đăng nhập, mở Bảo mật tài khoản từ ảnh đại diện để đổi mật khẩu hoặc đặt lại liên kết đăng ký. Liên kết cũ mất hiệu lực, cần nhập lại trên mỗi thiết bị. Không chia sẻ mật khẩu, mã xác minh hay liên kết đầy đủ, kể cả trong yêu cầu hỗ trợ."
+    "aSecurity": "Dùng Quên mật khẩu ở trang đăng nhập. Khi đã đăng nhập, mở Bảo mật tài khoản từ ảnh đại diện để đổi mật khẩu hoặc đặt lại liên kết đăng ký. Liên kết cũ mất hiệu lực, cần nhập lại trên mỗi thiết bị. Không chia sẻ mật khẩu, mã xác minh hay liên kết đầy đủ, kể cả trong yêu cầu hỗ trợ.",
+    "searchAll": "Tìm câu hỏi và tài liệu hướng dẫn"
   },
   "clientImport": {
     "invalid": "Cấu hình chưa khả dụng. Tải lại và thử lại.",
     "copied": "Đã sao chép. Dán vào mục đăng ký của ứng dụng rồi cập nhật.",
     "opened": "Xác nhận nhập và cập nhật cấu hình trong ứng dụng. Nếu ứng dụng không mở, hãy cài đặt ứng dụng hoặc sao chép liên kết đăng ký để nhập thủ công.",
-    "manualUrl": "Liên kết đăng ký"
+    "manualUrl": "Liên kết đăng ký",
+    "finishSetup": "Hoàn tất cấu hình, xem mức sử dụng",
+    "needHelp": "Gặp sự cố?",
+    "confirmConnection": "Trước khi hoàn tất cấu hình, hãy kiểm tra kết nối hoạt động bình thường trong ứng dụng.",
+    "helpFor": "Khắc phục sự cố {{client}}",
+    "helpInstall": "Kiểm tra ứng dụng đã chọn đã được cài đặt, rồi thử mở lại. Nếu trình duyệt không mở được ứng dụng, hãy sao chép hoặc dùng liên kết bên dưới để nhập cấu hình đăng ký theo cách thủ công.",
+    "helpRefresh": "Trong ứng dụng, làm mới cấu hình đăng ký đã nhập và chọn kết nối khả dụng.",
+    "helpIos": "Khi iOS yêu cầu, hãy cho phép ứng dụng thêm cấu hình VPN, rồi bật kết nối.",
+    "helpAndroid": "Nếu Android yêu cầu cho phép kết nối VPN, hãy xác nhận trong ứng dụng rồi bật kết nối.",
+    "helpDesktop": "Làm theo hướng dẫn của ứng dụng để cấp các quyền mạng hệ thống cần thiết, rồi bật kết nối.",
+    "contactSupport": "Nếu vẫn không kết nối được, hãy liên hệ hỗ trợ và cung cấp thiết bị, phiên bản ứng dụng cùng thông báo lỗi."
   },
   "landing": {
     "inviteStart": "Đăng ký qua lời mời",
@@ -990,7 +1042,10 @@
     "a3": "Trang cung cấp thiết lập môi trường và hướng dẫn, không bao gồm tài khoản hay gói thành viên AI bên thứ ba. Xem yêu cầu đăng ký và thanh toán của từng ứng dụng.",
     "q4": "Có thể tìm trợ giúp ở đâu?",
     "a4": "Sau khi đăng nhập, mở Trung tâm trợ giúp để xem câu trả lời theo nhóm hoặc tìm tài liệu. Nếu chưa giải quyết được, liên hệ hỗ trợ ở cuối trang. Tiếp tục trao đổi cũ để tiện theo dõi.",
-    "footer": "Cho trải nghiệm AI thuận tiện hơn."
+    "footer": "Cho trải nghiệm AI thuận tiện hơn.",
+    "serviceScope": "Cung cấp hướng dẫn cấu hình thiết bị và hỗ trợ sử dụng. Không bao gồm quyền lợi thành viên của dịch vụ bên thứ ba.",
+    "pricingBeforePayment": "Tạo tài khoản miễn phí. Giá gói và chi tiết chi phí được hiển thị trước khi thanh toán.",
+    "viewPlans": "Đăng nhập để xem các gói"
   },
   "pricing": {
     "quoteLoading": "Đang tính tổng…",
@@ -1060,7 +1115,14 @@
     "paymentQrFallback": "Cũng có thể quét mã QR hoặc sao chép thông tin thanh toán.",
     "mobileScanHelp": "Quét bằng thiết bị khác hoặc chụp ảnh màn hình rồi quét trong ứng dụng thanh toán.",
     "copyPayment": "Sao chép thông tin thanh toán",
-    "paymentCopied": "Đã sao chép thông tin thanh toán"
+    "paymentCopied": "Đã sao chép thông tin thanh toán",
+    "impactRenew": "Gia hạn gói hiện tại theo kỳ hạn đã chọn. Gia hạn và đặt lại lưu lượng là hai quy trình riêng; lưu lượng đã dùng chỉ được đặt lại theo quy tắc gia hạn hoặc đặt lại của dịch vụ.",
+    "impactSwitch": "Việc chuyển gói sẽ thay thế gói hiện tại và bắt đầu kỳ hạn đã chọn sau khi đơn hàng được xử lý. Giá trị khấu trừ từ gói cũ và số tiền hoàn về số dư được hiển thị trong chi tiết chi phí; lưu lượng chưa dùng của gói cũ không được cộng vào hạn mức mới.",
+    "impactResubscribe": "Kích hoạt lại gói này theo kỳ hạn đã chọn. Quyền truy cập và hạn mức của gói được cập nhật sau khi thanh toán được xác nhận và xử lý.",
+    "impactSubscribe": "Kích hoạt gói và kỳ hạn đã chọn sau khi thanh toán được xác nhận và xử lý.",
+    "couponIntentEligible": "Các gói đủ điều kiện được hiển thị trước. Phiếu giảm giá đã chọn sẽ được kiểm tra lại khi thanh toán.",
+    "couponIntentDifferentPeriod": "Phiếu giảm giá này không áp dụng cho kỳ hiện tại. Hãy chọn kỳ khác để sử dụng.",
+    "couponIntentUnavailable": "Phiếu giảm giá này không áp dụng cho các gói đang hiển thị. Có thể tiếp tục mua mà không dùng phiếu giảm giá."
   },
   "profile": {
     "intro": "Xem email đăng nhập, quản lý ngôn ngữ và dịch vụ đã kết nối.",
@@ -1080,7 +1142,8 @@
     "9": "Ẩn mật khẩu",
     "10": "Đã sao chép",
     "11": "Không thể sao chép. Hãy sao chép thủ công.",
-    "12": "Kiểm tra gần nhất"
+    "12": "Kiểm tra gần nhất",
+    "unavailable": "Tài khoản tải xuống tạm thời không khả dụng. Vui lòng thử lại sau."
   },
   "banners": {
     "previous": "Trước",

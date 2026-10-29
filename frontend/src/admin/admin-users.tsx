@@ -83,6 +83,9 @@ export function UsersPage() {
             saved.direction === "ASC" ? "ASC" : "DESC",
         );
     useEffect(() => {
+        setEmail(String(filters.find(item => item.key === "email")?.value || ""));
+    }, [filters]);
+    useEffect(() => {
         try {
             localStorage.setItem(
                 userViewKey,
@@ -107,13 +110,20 @@ export function UsersPage() {
         } | null>(null);
     const params = { filter: filters, sort, sort_type: direction };
     const refresh = () => setRevision((v) => v + 1);
+    const copyGeneration = useRef(0);
+    useEffect(() => { copyGeneration.current += 1; }, [detail, filters]);
+    useEffect(() => () => { copyGeneration.current += 1; }, []);
     async function copy(row: Row) {
+        const generation = ++copyGeneration.current;
         setError("");
+        setNotice("");
         try {
             if (!row.subscribe_url) throw new Error("当前用户没有订阅链接");
             await navigator.clipboard.writeText(row.subscribe_url);
+            if (generation !== copyGeneration.current) return;
             setNotice(`已复制 ${row.email} 的订阅链接`);
         } catch (e) {
+            if (generation !== copyGeneration.current) return;
             setError((e as Error).message);
             setDetail({ kind: "link", row });
         }

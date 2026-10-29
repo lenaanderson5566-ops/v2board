@@ -652,7 +652,19 @@
     "了解删除影响": "Review the impact",
     "验证并确认": "Verify and confirm",
     "删除前，请确认以下事项": "Before deleting, review the following",
-    "账户状态已检查，可以继续。": "Account status checked. You can continue."
+    "账户状态已检查，可以继续。": "Account status checked. You can continue.",
+    "搜索后台页面": "Search admin pages",
+    "输入页面名称或分组": "Enter a page or section name",
+    "清除页面搜索": "Clear page search",
+    "未找到匹配页面，请尝试其他关键词。": "No pages match. Try another keyword.",
+    "订单快速查询": "Quick order search",
+    "订单查询字段": "Order search field",
+    "订单查询内容": "Order search value",
+    "输入订单号、邮箱或用户 ID": "Enter an order number, email or user ID",
+    "已应用的订单筛选": "Applied order filters",
+    "移除订单筛选条件 {{index}}": "Remove order filter {{index}}",
+    "支付接口列表": "Payment interfaces",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Payment interfaces are temporarily unavailable. Retry before adding or editing channels."
   },
   "account": {
     "notificationAutoSave": "Changes save automatically",
@@ -706,7 +718,19 @@
     "resetSuccess": "Usage reset. Your allowance is restored.",
     "inactive": "An active subscription is required to use a reset.",
     "emptyUsage": "There is no usage to reset. No reset will be spent.",
-    "noCredits": "No banked resets available. Resets granted by an administrator will appear here."
+    "noCredits": "No banked resets available. Resets granted by an administrator will appear here.",
+    "expiresSoon": "Your subscription expires in {{days}} day(s).",
+    "findTransactions": "Find transactions",
+    "filtersApplied": "Filters applied",
+    "allStatuses": "All statuses",
+    "timeRange": "Time range",
+    "allTime": "All time",
+    "lastDays": "Last {{days}} days",
+    "orderNumber": "Order number",
+    "exactOrderNumber": "Enter the complete order number",
+    "searchTransactions": "Search",
+    "filteredTransactions": "Matching transactions: {{count}}",
+    "noMatchingTransactions": "No transactions match these filters. Adjust or reset the filters."
   },
   "credits": {
     "buyMore": "Buy more credits",
@@ -847,7 +871,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Reload this page or choose another section from the navigation."
+    "pageRecovery": "Reload this page or choose another section from the navigation.",
+    "accountLoadFailed": "Account information could not load. Check your connection and retry.",
+    "languageLoadFailed": "Your saved interface language could not load. The current language remains available.",
+    "authorizationRetryHelp": "The sign-in request status could not be confirmed. Check your connection and query the request again before confirming.",
+    "authorizationRecheck": "Check request status",
+    "authorizationUnavailable": "This sign-in request is no longer available. Return to the app to check its sign-in status or start a new request.",
+    "invalidJson": "Enter valid JSON.",
+    "reorderHelp": "Drag to reorder, or focus a sort handle and use ↑ / ↓."
   },
   "ux": {
     "cancel": "Cancel",
@@ -908,7 +939,17 @@
     "title": "Dedicated client",
     "guide": "Install and sign in with your site account to sync your subscription. No subscription link is needed.",
     "unavailable": "No dedicated installer is available for this system. Choose another system or a compatible client.",
-    "requirement": "Choose your device architecture. Connecting requires an active plan or available data allowance."
+    "requirement": "Choose your device architecture. Connecting requires an active plan or available data allowance.",
+    "architecture": "Device chip",
+    "chooseArchitecture": "Choose your device chip",
+    "architectureHelp": "If unsure, check your device’s system information. Choose the installer that matches its chip.",
+    "architectureUniversal": "Universal installer",
+    "architectureApple": "Apple Silicon (M1 or later, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD 64-bit (x64)",
+    "architectureX86": "Intel / AMD 32-bit (x86)",
+    "architectureArm64": "ARM 64-bit (arm64)",
+    "architectureArm": "ARM 32-bit (arm)"
   },
   "help": {
     "intro": "Select a topic and follow the instructions.",
@@ -939,13 +980,24 @@
     "qCancelled": "Balance returns after order cancellation",
     "aCancelled": "Cancelling an unpaid order returns any deducted account balance, which you can check in Billing. The receipt shows the returned balance; this is not a refund through an external payment provider. Do not pay a cancelled order. Place a new order if needed.",
     "qSecurity": "Password recovery and exposed subscription links",
-    "aSecurity": "Use Forgot password on the sign-in page. When signed in, open Account security from your avatar to change your password or reset the subscription link. Resetting invalidates the old link, so import again on each device. Never share passwords, codes or full configuration links, including in tickets."
+    "aSecurity": "Use Forgot password on the sign-in page. When signed in, open Account security from your avatar to change your password or reset the subscription link. Resetting invalidates the old link, so import again on each device. Never share passwords, codes or full configuration links, including in tickets.",
+    "searchAll": "Search questions and documents"
   },
   "clientImport": {
     "invalid": "Subscription unavailable. Refresh and try again.",
     "copied": "Copied. Paste in your client’s subscription manager and update.",
     "opened": "Confirm the import and update the configuration in the client. If the client does not open, install it or copy the subscription link to import it manually.",
-    "manualUrl": "Subscription link"
+    "manualUrl": "Subscription link",
+    "finishSetup": "Setup complete — view usage",
+    "needHelp": "Having trouble?",
+    "confirmConnection": "Confirm the connection works in your client before finishing setup.",
+    "helpFor": "Troubleshoot {{client}}",
+    "helpInstall": "Check that the selected client is installed, then retry opening it. If the browser does not open it, copy or manually import the subscription below.",
+    "helpRefresh": "In the client, refresh the imported subscription and select an available connection.",
+    "helpIos": "When iOS asks, allow the client to add its VPN configuration, then enable the connection.",
+    "helpAndroid": "If Android asks to allow a VPN connection, confirm the request in the client and enable it.",
+    "helpDesktop": "Follow the client’s prompts for required system network permissions, then enable the connection.",
+    "contactSupport": "Still unable to connect? Contact support with your device, client version and error message."
   },
   "landing": {
     "inviteStart": "Join by invitation",
@@ -992,7 +1044,10 @@
     "a3": "We provide environment setup and guidance, not third-party AI accounts or memberships. Check each app for its registration and payment requirements.",
     "q4": "How is support provided?",
     "a4": "After signing in, open Help Center to browse common answers or search the documentation. If you still need help, contact support at the bottom of the page. Continue an existing conversation to keep progress together.",
-    "footer": "AI application setup and support"
+    "footer": "AI application setup and support",
+    "serviceScope": "Device setup guidance and usage support. Third-party memberships are not included.",
+    "pricingBeforePayment": "Creating an account is free. Plan prices and charges are shown before payment.",
+    "viewPlans": "Sign in to view plans"
   },
   "pricing": {
     "quoteLoading": "Calculating total…",
@@ -1062,7 +1117,14 @@
     "paymentQrFallback": "You can also scan the QR code or copy the payment details.",
     "mobileScanHelp": "Scan with another device, or take a screenshot and scan it in your payment app.",
     "copyPayment": "Copy payment details",
-    "paymentCopied": "Payment details copied"
+    "paymentCopied": "Payment details copied",
+    "impactRenew": "Renew this plan for the selected term. Renewal and data reset are separate; used data resets only when the service's renewal or reset rules apply.",
+    "impactSwitch": "Switching replaces your current plan and starts the selected term after processing. Previous-plan credit and any returned balance are shown in the price breakdown; unused plan data is not added to the new allowance.",
+    "impactResubscribe": "Reactivate this plan for the selected term. Access and plan allowance are updated after payment is confirmed and processed.",
+    "impactSubscribe": "Activate the selected plan and term after payment is confirmed and processed.",
+    "couponIntentEligible": "Eligible plans are shown first. Your selected coupon will be checked at checkout.",
+    "couponIntentDifferentPeriod": "This coupon does not apply to this period. Choose a different period to use it.",
+    "couponIntentUnavailable": "This coupon is unavailable for the plans shown. You can continue without it."
   },
   "profile": {
     "intro": "View your sign-in email and manage your language and connected services.",
@@ -1092,7 +1154,8 @@
     "9": "Hide password",
     "10": "Copied",
     "11": "Copy failed. Please copy manually.",
-    "12": "Last checked"
+    "12": "Last checked",
+    "unavailable": "Download accounts are temporarily unavailable. Please try again later."
   },
   "banners": {
     "previous": "Previous banner",

@@ -1,14 +1,14 @@
 // @vitest-environment jsdom
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {act,cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
-const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),brokenRoute:""}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),authenticated:true,brokenRoute:"",logins:[] as Array<(account:any,options?:any)=>void>}));
 vi.mock("../shared/api",()=>({boot:{mode:"user",title:"Test",landing:false},request:vi.fn(),readRequest:mocks.read,navigate:vi.fn(),clearReadCache:vi.fn(),logoutSession:vi.fn()}));
-vi.mock("../shared/browser-session",()=>({initializeBrowserSession:vi.fn().mockResolvedValue(undefined),hasBrowserSession:()=>true,forgetBrowserSession:vi.fn()}));
+vi.mock("../shared/browser-session",()=>({initializeBrowserSession:mocks.initialize,hasBrowserSession:()=>mocks.authenticated,forgetBrowserSession:mocks.forget}));
 vi.mock("../shared/i18n",()=>({tx:(key:string)=>key,locale:()=>"en-US",setLanguagePersistence:vi.fn(),applyAccountLanguage:mocks.language}));
 vi.mock("react-i18next",()=>({useTranslation:()=>({})}));
 vi.mock("../shared/LanguagePicker",()=>({LanguagePicker:()=>null}));
 vi.mock("../shared/WorkspaceSkeleton",()=>({WorkspaceSkeleton:()=> <p>Loading</p>,LandingSkeleton:()=>null}));
-vi.mock("./UserAuth",()=>({UserAuth:({redirectPath}:any)=> <><p>Sign in</p><output data-testid="login-return">{redirectPath}</output></>}));
+vi.mock("./UserAuth",()=>({UserAuth:({redirectPath,onLogin}:any)=> {mocks.logins.push(onLogin);return <><p>Sign in</p><output data-testid="login-return">{redirectPath}</output></>;}}));
 vi.mock("./AnalyticsPrivacy",()=>({AnalyticsPrivacy:()=>null,AnalyticsPrivacyFooter:()=>null,PrivacyFooterLinks:()=>null}));
 vi.mock("./EmbeddedBrowserNotice",()=>({BrowserAccessGate:({children}:any)=>children}));
 vi.mock("./chat-layout",()=>({installChatLayout:()=>()=>{}}));
@@ -22,7 +22,9 @@ vi.mock("./user-entry",()=>({default:({current}:any)=> {
 }}));
 import App from "./app";
 beforeEach(()=>{
-    mocks.read.mockReset();mocks.language.mockClear();mocks.brokenRoute="";
+    mocks.read.mockReset();mocks.language.mockReset().mockResolvedValue(undefined);mocks.brokenRoute="";
+    mocks.initialize.mockReset().mockResolvedValue(undefined);mocks.forget.mockClear();mocks.authenticated=true;
+    mocks.logins=[];
     document.title="Test";
     window.location.hash="#/dashboard";window.scrollTo=vi.fn();
     vi.stubGlobal("matchMedia",()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
@@ -56,6 +58,73 @@ const signedIn = () => mocks.read.mockResolvedValue({data:{id:42,email:"viewer@e
 const openRoute = (route:string) => act(()=>{
     history.replaceState(null,"",`#/${route}`);
     window.dispatchEvent(new HashChangeEvent("hashchange"));
+});
+it.each([new TypeError("Network unavailable"), Object.assign(new Error("Server failed"),{status:503})])("recovers temporary account failures without discarding the session: %s",async(problem)=>{
+    mocks.read.mockRejectedValueOnce(problem).mockResolvedValue({data:{id:42,email:"viewer@example.test",language:"en-US",account_status:{state:"active"}}});
+    render(<App/>);
+    expect(await screen.findByText("accountLoadFailed")).toBeTruthy();
+    expect(screen.queryByText("Sign in")).toBeNull();
+    expect(mocks.forget).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"重试"}));
+    expect(await screen.findByText("Protected workspace")).toBeTruthy();
+    expect(mocks.read).toHaveBeenLastCalledWith("user/info",undefined,true);
+    expect(mocks.forget).not.toHaveBeenCalled();
+});
+it("does not show a sign-in form until failed session metadata is successfully checked",async()=>{
+    mocks.initialize.mockRejectedValueOnce(new Error("Metadata unavailable"));
+    render(<App/>);
+    await screen.findByText("accountLoadFailed");
+    expect(screen.queryByText("Sign in")).toBeNull();
+    expect(mocks.read).not.toHaveBeenCalled();
+    mocks.authenticated=false;
+    fireEvent.click(screen.getByRole("button",{name:"重试"}));
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(mocks.forget).not.toHaveBeenCalled();
+});
+it("falls back to the current language and retries language loading without repeating authentication",async()=>{
+    signedIn();mocks.language.mockRejectedValueOnce(new Error("Language chunk unavailable")).mockResolvedValue(undefined);
+    render(<App/>);
+    expect(await screen.findByText("Protected workspace")).toBeTruthy();
+    expect(screen.getByText("languageLoadFailed")).toBeTruthy();
+    expect(mocks.forget).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button",{name:"重试"}));
+    await waitFor(()=>expect(screen.queryByText("languageLoadFailed")).toBeNull());
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+    expect(mocks.language).toHaveBeenCalledTimes(2);
+});
+it("clears the session only when authentication is known to have expired",async()=>{
+    mocks.read.mockRejectedValueOnce(Object.assign(new Error("Expired"),{status:401}));
+    render(<App/>);
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(mocks.forget).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("accountLoadFailed")).toBeNull();
+});
+it("does not accept a late login completion from before session invalidation",async()=>{
+    mocks.authenticated=false;
+    history.replaceState(null,"","#/login");
+    render(<App/>);
+    await screen.findByText("Sign in");
+    const lateLogin=mocks.logins.at(-1)!;
+    act(()=>window.dispatchEvent(new Event("auth-expired")));
+    act(()=>lateLogin({id:42,email:"stale@example.test",language:"en-US"}));
+    expect(screen.queryByText("Protected workspace")).toBeNull();
+    expect(screen.getByText("Sign in")).toBeTruthy();
+    act(()=>mocks.logins.at(-1)!({id:43,email:"current@example.test",language:"en-US"}));
+    expect(await screen.findByText("Protected workspace")).toBeTruthy();
+});
+it("respects account load cooldowns without automatic retries",async()=>{
+    vi.useFakeTimers();
+    try {
+        mocks.read.mockRejectedValueOnce(Object.assign(new Error("Limited"),{status:429,retryAfter:2}));
+        render(<App/>);
+        await act(async()=>{await Promise.resolve();});
+        expect((screen.getByRole("button",{name:"retryIn"}) as HTMLButtonElement).disabled).toBe(true);
+        fireEvent.click(screen.getByRole("button",{name:"retryIn"}));
+        expect(mocks.read).toHaveBeenCalledTimes(1);
+        await act(async()=>{await vi.advanceTimersByTimeAsync(2000);});
+        expect((screen.getByRole("button",{name:"重试"}) as HTMLButtonElement).disabled).toBe(false);
+        expect(mocks.read).toHaveBeenCalledTimes(1);
+    } finally {vi.useRealTimers();}
 });
 it("provides a skip action without changing the application route",async()=>{
     signedIn();

@@ -1,4 +1,13 @@
-import { useEffect, useState, useRef, useId, createContext, useContext, Fragment, type ReactNode } from "react";
+import {
+    useEffect,
+    useState,
+    useRef,
+    useId,
+    createContext,
+    useContext,
+    Fragment,
+    type ReactNode,
+} from "react";
 import { Eye, EyeOff, Check } from "lucide-react";
 import { parseDateTimeInput, displayTimeZone } from "../timezone";
 import { browserSessionKey } from "../browser-session";
@@ -63,6 +72,7 @@ export function Editor({
     linkValues,
     validate,
     onDirty,
+    onDirtyChange,
     onBusyChange,
     onValuesChange,
     draftKey,
@@ -78,6 +88,7 @@ export function Editor({
     linkValues?: (key: string, next: unknown, values: Row) => Row;
     validate?: (values: Row) => string | undefined;
     onDirty?: () => void;
+    onDirtyChange?: (dirty: boolean) => void;
     onBusyChange?: (busy: boolean) => void;
     onValuesChange?: (values: Row) => void;
     draftKey?: string;
@@ -96,6 +107,9 @@ export function Editor({
     };
     const cancel = useContext(ModalClose);
     const formId = useId();
+    const formElement = useRef<HTMLFormElement>(null);
+    const errorElement = useRef<HTMLDivElement>(null);
+    const [invalidField, setInvalidField] = useState<string | null>(null);
     const initialFields = resolveFields
         ? resolveFields(fields, initial)
         : fields;
@@ -132,7 +146,22 @@ export function Editor({
         [saved, setSaved] = useState(false),
         [revealed, setRevealed] = useState<Record<string, boolean>>({});
     const [cleanValue, setCleanValue] = useState(() => JSON.stringify(value));
+    useEffect(() => {
+        if (boot.mode !== "admin" || !error) return;
+        const label = invalidField
+            ? Array.from(
+                  formElement.current?.querySelectorAll<HTMLElement>(
+                      "[data-field]",
+                  ) || [],
+              ).find((element) => element.dataset.field === invalidField)
+            : undefined;
+        const control = label?.querySelector<HTMLElement>(
+            'input:not([type="hidden"]),select,textarea,[role="combobox"],button:not(:disabled)',
+        );
+        (control || errorElement.current)?.focus();
+    }, [error, invalidField]);
     const dirty = JSON.stringify(value) !== cleanValue;
+    useEffect(() => { onDirtyChange?.(dirty); }, [dirty, onDirtyChange]);
     useEffect(() => {
         if (!warnUnsaved || !dirty) return;
         const warn = (event: BeforeUnloadEvent) => {
@@ -190,15 +219,18 @@ export function Editor({
         );
         setSaved(false);
         setError("");
+        setInvalidField(null);
     }
     async function save(e: React.FormEvent) {
         e.preventDefault();
         if (submitting.current) return;
         submitting.current = true;
         setError("");
+        setInvalidField(null);
         setSaved(false);
         setBusy(true);
         onBusyChange?.(true);
+        let validatingField: Field | undefined;
         try {
             const body = { ...value };
             for (const field of fields)
@@ -207,6 +239,7 @@ export function Editor({
             const validationError = validate?.(value);
             if (validationError) throw new Error(validationError);
             for (const f of activeFields) {
+                validatingField = f;
                 if (
                     f.markdown &&
                     f.required &&
@@ -236,15 +269,26 @@ export function Editor({
                 )
                     body[f.key] = Number(body[f.key]);
                 body[f.key] = apiValue(f, body[f.key], tx);
-                if (f.type === "json" && typeof body[f.key] === "string")
-                    body[f.key] = body[f.key].trim()
-                        ? JSON.parse(body[f.key])
-                        : null;
+                if (f.type === "json" && typeof body[f.key] === "string") {
+                    try {
+                        body[f.key] = body[f.key].trim()
+                            ? JSON.parse(body[f.key])
+                            : null;
+                    } catch {
+                        throw new Error(
+                            tx("invalidJson", {
+                                ns: "experience",
+                                defaultValue: "Enter valid JSON.",
+                            }),
+                        );
+                    }
+                }
                 if (f.type === "datetime-local")
                     body[f.key] = body[f.key]
                         ? parseDateTimeInput(String(body[f.key]))
                         : null;
             }
+            validatingField = undefined;
             await onSave(body);
             if (draftKey) {
                 try {
@@ -257,7 +301,12 @@ export function Editor({
             setCleanValue(JSON.stringify(draftKey ? initial : value));
             setSaved(true);
         } catch (e) {
-            setError((e as Error).message);
+            setInvalidField(validatingField?.key || null);
+            setError(
+                validatingField
+                    ? `${tx(validatingField.label)}: ${(e as Error).message}`
+                    : (e as Error).message,
+            );
         } finally {
             submitting.current = false;
             setBusy(false);
@@ -266,12 +315,23 @@ export function Editor({
     }
     return (
         <form
+            ref={formElement}
             className="editor"
             data-unsaved={warnUnsaved && dirty ? "true" : undefined}
             onSubmit={save}
             onChange={() => setSaved(false)}
             aria-busy={busy}
         >
+            {boot.mode === "admin" && error && (
+                <div
+                    className="alert editor-error-summary"
+                    role="alert"
+                    tabIndex={-1}
+                    ref={errorElement}
+                >
+                    {error}
+                </div>
+            )}
             {activeFields.some((field) => field.type === "datetime-local") && (
                 <p className="muted">
                     {tx("日期时间按 {{zone}} 输入和显示。", {
@@ -282,6 +342,19 @@ export function Editor({
             {preview?.(value)}
             <fieldset className="field-grid" disabled={busy}>
                 {activeFields.map((f) => {
+                    const describedBy =
+                        [
+                            f.hint ? `${formId}-${f.key}-hint` : "",
+                            invalidField === f.key
+                                ? `${formId}-${f.key}-error`
+                                : "",
+                        ]
+                            .filter(Boolean)
+                            .join(" ") || undefined;
+                    const validity = {
+                        "aria-invalid": invalidField === f.key || undefined,
+                        "aria-describedby": describedBy,
+                    };
                     const extension = renderField?.(
                         f,
                         value[f.key],
@@ -302,6 +375,9 @@ export function Editor({
                                         : undefined
                                 }
                                 data-field={f.key}
+                                data-invalid={
+                                    invalidField === f.key || undefined
+                                }
                                 data-child={f.child || undefined}
                                 className={
                                     f.type === "textarea" ||
@@ -326,6 +402,7 @@ export function Editor({
                                             Number(value[f.key]) === 1
                                         }
                                         aria-label={tx(f.label)}
+                                        {...validity}
                                         className="toggle-control"
                                         onClick={() => {
                                             updateValue(
@@ -353,6 +430,7 @@ export function Editor({
                                         className="option-group"
                                         role="group"
                                         aria-label={tx(f.label)}
+                                        {...validity}
                                     >
                                         {(f.options || []).map(
                                             ([key, label]) => {
@@ -367,6 +445,7 @@ export function Editor({
                                                     <button
                                                         type="button"
                                                         role="checkbox"
+                                                        aria-label={label}
                                                         aria-checked={checked}
                                                         className={
                                                             checked
@@ -435,6 +514,8 @@ export function Editor({
                                     </div>
                                 ) : f.type === "select" ? (
                                     <select
+                                        aria-label={tx(f.label)}
+                                        {...validity}
                                         required={f.required}
                                         value={
                                             value[f.key] ??
@@ -463,6 +544,8 @@ export function Editor({
                                 ) : f.type === "textarea" ||
                                   f.type === "json" ? (
                                     <textarea
+                                        aria-label={tx(f.label)}
+                                        {...validity}
                                         placeholder={f.placeholder}
                                         rows={f.type === "json" ? 6 : 4}
                                         value={
@@ -493,6 +576,7 @@ export function Editor({
                                     >
                                         <input
                                             aria-label={tx(f.label)}
+                                            {...validity}
                                             list={
                                                 f.suggestions
                                                     ? `${formId}-${f.key}`
@@ -576,14 +660,26 @@ export function Editor({
                                         )}
                                     </div>
                                 )}{" "}
-                                {f.hint && <small>{f.hint}</small>}
+                                {f.hint && (
+                                    <small id={`${formId}-${f.key}-hint`}>
+                                        {f.hint}
+                                    </small>
+                                )}
+                                {invalidField === f.key && error && (
+                                    <small
+                                        className="editor-field-error"
+                                        id={`${formId}-${f.key}-error`}
+                                    >
+                                        {error}
+                                    </small>
+                                )}
                             </label>
                         </Fragment>
                     );
                 })}
             </fieldset>
             {children}
-            {error && (
+            {boot.mode !== "admin" && error && (
                 <div className="alert" role="alert">
                     {error}
                 </div>

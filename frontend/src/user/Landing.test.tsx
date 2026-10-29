@@ -133,6 +133,19 @@ it("labels invitation-only entry clearly", () => {
 });
 
 it.each(["original", "minimal"])(
+    "explains the service and charging boundary before sign-in on the %s landing",
+    (style) => {
+        mocks.boot.landingStyle = style;
+        render(<Landing />);
+        expect(screen.getByText("serviceScope")).toBeTruthy();
+        expect(screen.getByText("pricingBeforePayment")).toBeTruthy();
+        expect(screen.getByRole("link", { name: "viewPlans" }).getAttribute("href"))
+            .toBe("/app#/plan");
+        expect(screen.queryByText(/(?:CNY|USD|¥|\$)\s*\d/)).toBeNull();
+    },
+);
+
+it.each(["original", "minimal"])(
     "provides a skip link to focusable main content on the %s landing",
     (style) => {
         mocks.boot.landingStyle = style;

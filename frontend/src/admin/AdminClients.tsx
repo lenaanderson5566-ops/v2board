@@ -1,5 +1,5 @@
 import { AdminChoiceGroup } from "./AdminChoices";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
 import { supportedClients } from "../shared/import-links";
@@ -11,6 +11,7 @@ function Recommendations({ saved }: { saved: () => void }) {
     const [changes, setChanges] = useState<Row>({});
     const [busy, setBusy] = useState(false),
         [message, setMessage] = useState("");
+    const pending = useRef(false);
     const platforms = {
         android: "Android",
         windows: "Windows",
@@ -73,6 +74,8 @@ function Recommendations({ saved }: { saved: () => void }) {
                 <button
                     disabled={busy || !Object.keys(changes).length}
                     onClick={async () => {
+                        if (pending.current) return;
+                        pending.current = true;
                         setBusy(true);
                         setMessage("");
                         try {
@@ -84,6 +87,7 @@ function Recommendations({ saved }: { saved: () => void }) {
                         } catch (e) {
                             setMessage((e as Error).message);
                         } finally {
+                            pending.current = false;
                             setBusy(false);
                         }
                     }}

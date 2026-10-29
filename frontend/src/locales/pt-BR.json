@@ -652,7 +652,19 @@
     "了解删除影响": "Revisar as consequências",
     "验证并确认": "Verificar e confirmar",
     "删除前，请确认以下事项": "Antes de excluir, revise os itens a seguir",
-    "账户状态已检查，可以继续。": "Status da conta verificado. Você pode continuar."
+    "账户状态已检查，可以继续。": "Status da conta verificado. Você pode continuar.",
+    "搜索后台页面": "Buscar páginas da administração",
+    "输入页面名称或分组": "Digite o nome de uma página ou seção",
+    "清除页面搜索": "Limpar busca de páginas",
+    "未找到匹配页面，请尝试其他关键词。": "Nenhuma página encontrada. Tente outra palavra-chave.",
+    "订单快速查询": "Busca rápida de pedidos",
+    "订单查询字段": "Campo de busca de pedidos",
+    "订单查询内容": "Termo de busca de pedidos",
+    "输入订单号、邮箱或用户 ID": "Digite o número do pedido, e-mail ou ID do usuário",
+    "已应用的订单筛选": "Filtros de pedidos aplicados",
+    "移除订单筛选条件 {{index}}": "Remover filtro de pedidos {{index}}",
+    "支付接口列表": "Interfaces de pagamento",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "As interfaces de pagamento estão temporariamente indisponíveis. Tente novamente antes de adicionar ou editar canais."
   },
   "account": {
     "notificationAutoSave": "As alterações são salvas automaticamente",
@@ -706,7 +718,19 @@
     "resetSuccess": "Uso zerado. Sua franquia foi restaurada.",
     "inactive": "É necessária uma assinatura ativa para usar uma renovação.",
     "emptyUsage": "Não há uso para zerar. Nenhuma renovação será consumida.",
-    "noCredits": "Nenhuma renovação acumulada. As concessões do administrador aparecerão aqui."
+    "noCredits": "Nenhuma renovação acumulada. As concessões do administrador aparecerão aqui.",
+    "expiresSoon": "Sua assinatura vence em {{days}} dia(s).",
+    "findTransactions": "Buscar transações",
+    "filtersApplied": "Filtros aplicados",
+    "allStatuses": "Todos os status",
+    "timeRange": "Período",
+    "allTime": "Todo o período",
+    "lastDays": "Últimos {{days}} dias",
+    "orderNumber": "Número do pedido",
+    "exactOrderNumber": "Digite o número completo do pedido",
+    "searchTransactions": "Buscar",
+    "filteredTransactions": "Transações encontradas: {{count}}",
+    "noMatchingTransactions": "Nenhuma transação corresponde a esses filtros. Ajuste ou redefina os filtros."
   },
   "credits": {
     "buyMore": "Comprar mais créditos",
@@ -847,7 +871,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Recarregue esta página ou abra outra seção pelo menu de navegação."
+    "pageRecovery": "Recarregue esta página ou abra outra seção pelo menu de navegação.",
+    "accountLoadFailed": "Não foi possível carregar as informações da conta. Verifique a conexão e tente novamente.",
+    "languageLoadFailed": "Não foi possível carregar o idioma de interface salvo. O idioma atual continua disponível.",
+    "authorizationRetryHelp": "Não foi possível confirmar o status da solicitação de acesso. Verifique a conexão e consulte novamente a solicitação antes de confirmar.",
+    "authorizationRecheck": "Verificar status da solicitação",
+    "authorizationUnavailable": "Esta solicitação de acesso não está mais disponível. Volte ao aplicativo para verificar o status de acesso ou iniciar uma nova solicitação.",
+    "invalidJson": "Insira um JSON válido.",
+    "reorderHelp": "Arraste para reordenar ou foque em uma alça de ordenação e use ↑ / ↓."
   },
   "ux": {
     "cancel": "Cancelar",
@@ -908,7 +939,17 @@
     "title": "Cliente dedicado",
     "guide": "Instale e entre com sua conta do site para sincronizar a assinatura. Não é necessário um link.",
     "unavailable": "Não há instalador dedicado para este sistema. Escolha outro sistema ou um cliente compatível.",
-    "requirement": "Escolha a arquitetura do dispositivo. Para conectar, é necessário um plano ativo ou franquia disponível."
+    "requirement": "Escolha a arquitetura do dispositivo. Para conectar, é necessário um plano ativo ou franquia disponível.",
+    "architecture": "Processador do dispositivo",
+    "chooseArchitecture": "Selecione o processador do dispositivo",
+    "architectureHelp": "Em caso de dúvida, consulte as informações do sistema do dispositivo. Escolha o instalador compatível com o processador.",
+    "architectureUniversal": "Instalador universal",
+    "architectureApple": "Apple Silicon (M1 ou posterior, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD de 64 bits (x64)",
+    "architectureX86": "Intel / AMD de 32 bits (x86)",
+    "architectureArm64": "ARM de 64 bits (arm64)",
+    "architectureArm": "ARM de 32 bits (arm)"
   },
   "help": {
     "intro": "Encontre sua dúvida e siga as etapas.",
@@ -939,13 +980,24 @@
     "qCancelled": "O que acontece com o saldo usado em um pedido cancelado?",
     "aCancelled": "Ao cancelar um pedido não pago, o saldo descontado é devolvido e pode ser consultado em Cobrança. O recibo mostra o saldo devolvido; não é um reembolso pelo provedor externo. Não pague um pedido cancelado. Crie outro se necessário.",
     "qSecurity": "O que fazer se eu esquecer a senha ou expuser meu link de configuração?",
-    "aSecurity": "Use Esqueci a senha na página de login. Com a sessão iniciada, abra Segurança da conta pelo avatar para alterar a senha ou redefinir o link de assinatura. Isso invalida o link anterior, então importe novamente em cada dispositivo. Nunca compartilhe senhas, códigos ou links completos, nem em chamados."
+    "aSecurity": "Use Esqueci a senha na página de login. Com a sessão iniciada, abra Segurança da conta pelo avatar para alterar a senha ou redefinir o link de assinatura. Isso invalida o link anterior, então importe novamente em cada dispositivo. Nunca compartilhe senhas, códigos ou links completos, nem em chamados.",
+    "searchAll": "Pesquisar perguntas e documentos"
   },
   "clientImport": {
     "invalid": "Assinatura indisponível. Atualize e tente novamente.",
     "copied": "Copiado. Cole no gerenciador de assinaturas do cliente e atualize.",
     "opened": "Confirme a importação e atualize a configuração no cliente. Se o cliente não abrir, instale-o ou copie o link da assinatura para importá-lo manualmente.",
-    "manualUrl": "Link da assinatura"
+    "manualUrl": "Link da assinatura",
+    "finishSetup": "Configuração concluída: ver uso",
+    "needHelp": "Está com dificuldades?",
+    "confirmConnection": "Confirme no cliente se a conexão funciona antes de concluir a configuração.",
+    "helpFor": "Resolver problemas do {{client}}",
+    "helpInstall": "Verifique se o cliente selecionado está instalado e tente abri-lo novamente. Se o navegador não o abrir, copie a assinatura ou importe-a manualmente pelo link abaixo.",
+    "helpRefresh": "Atualize a assinatura importada no cliente e selecione uma conexão disponível.",
+    "helpIos": "Quando o iOS solicitar, permita que o cliente adicione a configuração VPN e ative a conexão.",
+    "helpAndroid": "Se o Android solicitar permissão para uma conexão VPN, confirme a solicitação no cliente e ative-a.",
+    "helpDesktop": "Siga as instruções do cliente para conceder as permissões de rede necessárias do sistema e ative a conexão.",
+    "contactSupport": "Se ainda não conseguir conectar, informe ao suporte o dispositivo, a versão do cliente e a mensagem de erro."
   },
   "landing": {
     "inviteStart": "Entrar por convite",
@@ -992,7 +1044,10 @@
     "a3": "Fornecemos configuração e orientação, não contas ou assinaturas de IA de terceiros. Consulte os requisitos de cadastro e pagamento de cada aplicativo.",
     "q4": "Onde encontro ajuda?",
     "a4": "Após entrar, abra a Central de ajuda para consultar respostas ou buscar documentação. Se ainda precisar de ajuda, contate o suporte no rodapé. Continue uma conversa existente para manter o acompanhamento.",
-    "footer": "Para uma experiência melhor com a IA."
+    "footer": "Para uma experiência melhor com a IA.",
+    "serviceScope": "Orientações de configuração de dispositivos e suporte de uso. Assinaturas de serviços de terceiros não estão incluídas.",
+    "pricingBeforePayment": "Criar uma conta é grátis. Os preços dos planos e as cobranças são exibidos antes do pagamento.",
+    "viewPlans": "Entre para ver os planos"
   },
   "pricing": {
     "quoteLoading": "Calculando o total…",
@@ -1062,7 +1117,14 @@
     "paymentQrFallback": "Também é possível escanear o código QR ou copiar os dados de pagamento.",
     "mobileScanHelp": "Escaneie com outro dispositivo ou faça uma captura de tela e leia-a no aplicativo de pagamento.",
     "copyPayment": "Copiar dados de pagamento",
-    "paymentCopied": "Dados de pagamento copiados"
+    "paymentCopied": "Dados de pagamento copiados",
+    "impactRenew": "Renove este plano pelo período selecionado. A renovação e a redefinição de dados são independentes; o consumo de dados só é zerado quando as regras de renovação ou redefinição do serviço se aplicam.",
+    "impactSwitch": "A troca substitui o plano atual, e o período selecionado começa após o processamento do pedido. O crédito do plano anterior e qualquer saldo devolvido aparecem no detalhamento do preço; os dados não utilizados não são somados à nova franquia.",
+    "impactResubscribe": "Reative este plano pelo período selecionado. O acesso e a franquia de dados são atualizados após a confirmação e o processamento do pagamento.",
+    "impactSubscribe": "O plano e o período selecionados são ativados após a confirmação e o processamento do pagamento.",
+    "couponIntentEligible": "Os planos elegíveis são exibidos primeiro. O cupom selecionado será verificado novamente no pagamento.",
+    "couponIntentDifferentPeriod": "Este cupom não se aplica a este período. Escolha outro período para usá-lo.",
+    "couponIntentUnavailable": "Este cupom não está disponível para os planos exibidos. Você pode continuar sem usá-lo."
   },
   "profile": {
     "intro": "Consulte seu e-mail de login e gerencie o idioma e os serviços vinculados.",
@@ -1092,7 +1154,8 @@
     "9": "Ocultar senha",
     "10": "Copiado",
     "11": "Não foi possível copiar. Copie manualmente.",
-    "12": "Última verificação"
+    "12": "Última verificação",
+    "unavailable": "As contas para download estão temporariamente indisponíveis. Tente novamente mais tarde."
   },
   "banners": {
     "previous": "Anterior",

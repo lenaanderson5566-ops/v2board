@@ -652,7 +652,19 @@
     "了解删除影响": "Auswirkungen prüfen",
     "验证并确认": "Prüfen und bestätigen",
     "删除前，请确认以下事项": "Vor dem Löschen bitte Folgendes prüfen",
-    "账户状态已检查，可以继续。": "Kontostatus geprüft. Sie können fortfahren."
+    "账户状态已检查，可以继续。": "Kontostatus geprüft. Sie können fortfahren.",
+    "搜索后台页面": "Admin-Seiten durchsuchen",
+    "输入页面名称或分组": "Name einer Seite oder eines Bereichs eingeben",
+    "清除页面搜索": "Seitensuche löschen",
+    "未找到匹配页面，请尝试其他关键词。": "Keine passenden Seiten gefunden. Versuchen Sie ein anderes Suchwort.",
+    "订单快速查询": "Schnellsuche nach Bestellungen",
+    "订单查询字段": "Suchfeld für Bestellungen",
+    "订单查询内容": "Suchbegriff für Bestellungen",
+    "输入订单号、邮箱或用户 ID": "Bestellnummer, E-Mail-Adresse oder Benutzer-ID eingeben",
+    "已应用的订单筛选": "Aktive Bestellfilter",
+    "移除订单筛选条件 {{index}}": "Bestellfilter {{index}} entfernen",
+    "支付接口列表": "Zahlungsschnittstellen",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Die Zahlungsschnittstellen sind vorübergehend nicht verfügbar. Versuchen Sie es erneut, bevor Sie Zahlungskanäle hinzufügen oder bearbeiten."
   },
   "account": {
     "notificationAutoSave": "Änderungen werden automatisch gespeichert",
@@ -706,7 +718,19 @@
     "resetSuccess": "Nutzung zurückgesetzt. Ihr Freibetrag wird wiederhergestellt.",
     "inactive": "Zur Nutzung eines Resets ist ein aktives Abonnement erforderlich.",
     "emptyUsage": "Es gibt keine Verwendung zum Zurücksetzen. Es wird kein Reset durchgeführt.",
-    "noCredits": "Keine gespeicherten Zurücksetzungen verfügbar. Vom Administrator gewährte Zurücksetzungen erscheinen hier."
+    "noCredits": "Keine gespeicherten Zurücksetzungen verfügbar. Vom Administrator gewährte Zurücksetzungen erscheinen hier.",
+    "expiresSoon": "Ihr Abonnement läuft in {{days}} Tag(en) ab.",
+    "findTransactions": "Transaktionen suchen",
+    "filtersApplied": "Filter angewendet",
+    "allStatuses": "Alle Status",
+    "timeRange": "Zeitraum",
+    "allTime": "Gesamter Zeitraum",
+    "lastDays": "Letzte {{days}} Tage",
+    "orderNumber": "Bestellnummer",
+    "exactOrderNumber": "Vollständige Bestellnummer eingeben",
+    "searchTransactions": "Suchen",
+    "filteredTransactions": "Passende Transaktionen: {{count}}",
+    "noMatchingTransactions": "Keine Transaktionen entsprechen diesen Filtern. Passen Sie die Filter an oder setzen Sie sie zurück."
   },
   "credits": {
     "buyMore": "Weitere Daten-Credits kaufen",
@@ -847,7 +871,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Laden Sie diese Seite neu oder öffnen Sie einen anderen Bereich über die Navigation."
+    "pageRecovery": "Laden Sie diese Seite neu oder öffnen Sie einen anderen Bereich über die Navigation.",
+    "accountLoadFailed": "Die Kontoinformationen konnten nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "languageLoadFailed": "Ihre gespeicherte Oberflächensprache konnte nicht geladen werden. Die aktuelle Sprache bleibt verfügbar.",
+    "authorizationRetryHelp": "Der Status der Anmeldeanfrage konnte nicht bestätigt werden. Prüfen Sie die Verbindung und rufen Sie den Status erneut ab, bevor Sie die Anmeldung bestätigen.",
+    "authorizationRecheck": "Anfragestatus prüfen",
+    "authorizationUnavailable": "Diese Anmeldeanfrage ist nicht mehr verfügbar. Prüfen Sie den Anmeldestatus in der App oder starten Sie eine neue Anfrage.",
+    "invalidJson": "Gültiges JSON eingeben.",
+    "reorderHelp": "Zum Sortieren ziehen oder den Sortiergriff fokussieren und ↑ / ↓ verwenden."
   },
   "ux": {
     "cancel": "Abbrechen",
@@ -908,7 +939,17 @@
     "title": "Dedizierter Client",
     "guide": "Installieren Sie Ihr Site-Konto und melden Sie sich an, um Ihr Abonnement zu synchronisieren. Es ist kein Abonnementlink erforderlich.",
     "unavailable": "Für dieses System ist kein spezielles Installationsprogramm verfügbar. Wählen Sie ein anderes System oder einen kompatiblen Client.",
-    "requirement": "Wählen Sie Ihre Gerätearchitektur. Für die Verbindung ist ein aktiver Tarif oder ein verfügbares Datenvolumen erforderlich."
+    "requirement": "Wählen Sie Ihre Gerätearchitektur. Für die Verbindung ist ein aktiver Tarif oder ein verfügbares Datenvolumen erforderlich.",
+    "architecture": "Prozessor des Geräts",
+    "chooseArchitecture": "Prozessor des Geräts auswählen",
+    "architectureHelp": "Prüfen Sie im Zweifel die Systeminformationen des Geräts. Wählen Sie das Installationspaket, das zum Prozessor passt.",
+    "architectureUniversal": "Universelles Installationspaket",
+    "architectureApple": "Apple Silicon (M1 oder neuer, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD 64-Bit (x64)",
+    "architectureX86": "Intel / AMD 32-Bit (x86)",
+    "architectureArm64": "ARM 64-Bit (arm64)",
+    "architectureArm": "ARM 32-Bit (arm)"
   },
   "help": {
     "intro": "Finden Sie Ihre Frage und befolgen Sie die Schritte.",
@@ -939,13 +980,24 @@
     "qCancelled": "Was passiert mit dem Guthaben, das für eine stornierte Bestellung verwendet wird?",
     "aCancelled": "Wenn Sie eine unbezahlte Bestellung stornieren, wird der abgezogene Kontostand zurückgegeben, den Sie in der Abrechnung überprüfen können. Die Quittung zeigt den zurückerstatteten Restbetrag; Hierbei handelt es sich nicht um eine Rückerstattung über einen externen Zahlungsanbieter. Zahlen Sie nicht für eine stornierte Bestellung. Geben Sie bei Bedarf eine neue Bestellung auf.",
     "qSecurity": "Was passiert, wenn ich mein Passwort vergesse oder meinen Konfigurationslink offenlege?",
-    "aSecurity": "Verwenden Sie „Passwort vergessen“ auf der Anmeldeseite. Wenn Sie angemeldet sind, öffnen Sie in Ihrem Avatar die Kontosicherheit, um Ihr Passwort zu ändern oder den Abonnementlink zurückzusetzen. Durch das Zurücksetzen wird der alte Link ungültig. Importieren Sie ihn daher auf jedem Gerät erneut. Geben Sie niemals Passwörter, Codes oder vollständige Konfigurationslinks weiter, auch nicht in Tickets."
+    "aSecurity": "Verwenden Sie „Passwort vergessen“ auf der Anmeldeseite. Wenn Sie angemeldet sind, öffnen Sie in Ihrem Avatar die Kontosicherheit, um Ihr Passwort zu ändern oder den Abonnementlink zurückzusetzen. Durch das Zurücksetzen wird der alte Link ungültig. Importieren Sie ihn daher auf jedem Gerät erneut. Geben Sie niemals Passwörter, Codes oder vollständige Konfigurationslinks weiter, auch nicht in Tickets.",
+    "searchAll": "Fragen und Dokumente durchsuchen"
   },
   "clientImport": {
     "invalid": "Abonnement nicht verfügbar. Aktualisieren Sie und versuchen Sie es erneut.",
     "copied": "Kopiert. Fügen Sie es in den Abonnement-Manager Ihres Clients ein und aktualisieren Sie es.",
     "opened": "Bestätigen Sie den Import und aktualisieren Sie die Konfiguration im Client. Falls sich der Client nicht öffnet, installieren Sie ihn oder kopieren Sie den Abonnementlink für den manuellen Import.",
-    "manualUrl": "Abonnement-Link"
+    "manualUrl": "Abonnement-Link",
+    "finishSetup": "Einrichtung abgeschlossen – Nutzung ansehen",
+    "needHelp": "Probleme bei der Einrichtung?",
+    "confirmConnection": "Prüfen Sie vor dem Abschluss der Einrichtung im Client, ob die Verbindung funktioniert.",
+    "helpFor": "Fehlerbehebung für {{client}}",
+    "helpInstall": "Prüfen Sie, ob der gewählte Client installiert ist, und versuchen Sie erneut, ihn zu öffnen. Falls der Browser ihn nicht öffnet, kopieren Sie das Abonnement oder importieren Sie es manuell über den Link unten.",
+    "helpRefresh": "Aktualisieren Sie das importierte Abonnement im Client und wählen Sie eine verfügbare Verbindung.",
+    "helpIos": "Erlauben Sie dem Client bei der iOS-Abfrage, seine VPN-Konfiguration hinzuzufügen, und aktivieren Sie anschließend die Verbindung.",
+    "helpAndroid": "Wenn Android um Erlaubnis für eine VPN-Verbindung bittet, bestätigen Sie die Anfrage im Client und aktivieren Sie die Verbindung.",
+    "helpDesktop": "Folgen Sie den Anweisungen des Clients für die erforderlichen Netzwerkberechtigungen des Systems und aktivieren Sie dann die Verbindung.",
+    "contactSupport": "Falls weiterhin keine Verbindung möglich ist, teilen Sie dem Support Ihr Gerät, die Clientversion und die Fehlermeldung mit."
   },
   "landing": {
     "inviteStart": "Treten Sie auf Einladung bei",
@@ -992,7 +1044,10 @@
     "a3": "Wir bieten Umgebungseinrichtung und Anleitung, keine KI-Konten oder Mitgliedschaften von Drittanbietern. Überprüfen Sie jede App auf ihre Registrierungs- und Zahlungsanforderungen.",
     "q4": "Wo finde ich Hilfe?",
     "a4": "Öffnen Sie nach der Anmeldung das Hilfecenter, um häufige Antworten zu durchsuchen oder die Dokumentation zu durchsuchen. Wenn Sie weiterhin Hilfe benötigen, wenden Sie sich unten auf der Seite an den Support. Setzen Sie ein bestehendes Gespräch fort, um gemeinsam Fortschritte zu erzielen.",
-    "footer": "Für ein reibungsloseres Erlebnis mit KI."
+    "footer": "Für ein reibungsloseres Erlebnis mit KI.",
+    "serviceScope": "Anleitungen zur Geräteeinrichtung und Unterstützung bei der Nutzung. Mitgliedschaften bei Drittanbietern sind nicht enthalten.",
+    "pricingBeforePayment": "Die Kontoerstellung ist kostenlos. Tarifpreise und Gebühren werden vor der Zahlung angezeigt.",
+    "viewPlans": "Anmelden, um Tarife anzusehen"
   },
   "pricing": {
     "quoteLoading": "Gesamtbetrag wird berechnet…",
@@ -1062,7 +1117,14 @@
     "paymentQrFallback": "Alternativ können Sie den QR-Code scannen oder die Zahlungsdaten kopieren.",
     "mobileScanHelp": "Scannen Sie mit einem anderen Gerät oder erstellen Sie einen Screenshot und lesen Sie ihn in der Zahlungs-App ein.",
     "copyPayment": "Zahlungsdaten kopieren",
-    "paymentCopied": "Zahlungsdaten kopiert"
+    "paymentCopied": "Zahlungsdaten kopiert",
+    "impactRenew": "Verlängern Sie diesen Tarif um den gewählten Zeitraum. Verlängerung und Datenrücksetzung sind getrennt; verbrauchtes Datenvolumen wird nur nach den Verlängerungs- oder Rücksetzungsregeln des Dienstes zurückgesetzt.",
+    "impactSwitch": "Der Wechsel ersetzt Ihren aktuellen Tarif; nach der Verarbeitung beginnt der gewählte Zeitraum. Die Gutschrift des bisherigen Tarifs und ein etwaiger Rückbetrag werden in der Preisübersicht angezeigt. Ungenutztes Datenvolumen wird nicht zum neuen Kontingent addiert.",
+    "impactResubscribe": "Reaktivieren Sie diesen Tarif für den gewählten Zeitraum. Nach Bestätigung und Verarbeitung der Zahlung werden Zugang und Datenkontingent aktualisiert.",
+    "impactSubscribe": "Nach Bestätigung und Verarbeitung der Zahlung werden der gewählte Tarif und Zeitraum aktiviert.",
+    "couponIntentEligible": "Passende Tarife werden zuerst angezeigt. Der ausgewählte Gutschein wird beim Bezahlen erneut geprüft.",
+    "couponIntentDifferentPeriod": "Dieser Gutschein gilt nicht für diesen Zeitraum. Wählen Sie einen anderen Zeitraum, um ihn zu nutzen.",
+    "couponIntentUnavailable": "Dieser Gutschein ist für die angezeigten Tarife nicht verfügbar. Sie können ohne Gutschein fortfahren."
   },
   "profile": {
     "intro": "Sehen Sie sich Ihre Anmelde-E-Mail an und verwalten Sie Ihre Sprache und verbundene Dienste.",
@@ -1092,7 +1154,8 @@
     "9": "Passwort verbergen",
     "10": "Kopiert",
     "11": "Kopieren fehlgeschlagen. Bitte manuell kopieren.",
-    "12": "Zuletzt überprüft"
+    "12": "Zuletzt überprüft",
+    "unavailable": "Download-Konten sind vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut."
   },
   "banners": {
     "previous": "Vorheriges Banner",

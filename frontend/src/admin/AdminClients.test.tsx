@@ -26,3 +26,18 @@ it("opens the policy route without loading recommendation settings",()=>{
  render(<AdminClients initialTab="policy"/>);
  expect(screen.getByText("Policy editor")).toBeTruthy();
 });
+
+it("submits recommendations once and preserves the selection after a failed save", async () => {
+ let reject!: (reason: Error) => void;
+ request.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject=fail; }));
+ render(<AdminClients/>);
+ fireEvent.change(screen.getByLabelText("macOS 主推荐"), {target:{value:"flclash"}});
+ const save=screen.getByRole("button",{name:"保存推荐"});
+ fireEvent.click(save);fireEvent.click(save);
+ expect(request).toHaveBeenCalledTimes(1);
+ expect((save as HTMLButtonElement).disabled).toBe(true);
+ reject(new Error("临时保存失败"));
+ await screen.findByText("临时保存失败");
+ expect((screen.getByLabelText("macOS 主推荐") as HTMLSelectElement).value).toBe("flclash");
+ expect((save as HTMLButtonElement).disabled).toBe(false);
+});

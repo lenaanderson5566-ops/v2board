@@ -71,6 +71,18 @@ describe('V10 wire contracts', () => {
     expect(result.total).toBe(21);
     expect(v10Request('user/plan/fetch').decode({data:[{quotaBytes:53687091200,monthlyPrice:1000}]}).data[0]).toEqual({transfer_enable:50,month_price:1000});
   });
+  it('maps server-side billing filters into the declared owner-scoped collection query', () => {
+    const source = new URLSearchParams({current:'2',page_size:'10',status:'3',order_number:'bill_2025-1',created_from:'2025-01-01T00:00:00.500Z',created_before:'2025-02-01T00:00:00Z',user_id:'999'});
+    const request = v10Request(`user/order/fetch?${source}`);
+    const url = new URL(request.url, 'https://example.com');
+    expect(url.pathname).toBe('/api/v10/me/orders');
+    expect(Object.fromEntries(url.searchParams)).toEqual({status:'completed',orderNumber:'bill_2025-1',createdFrom:'2025-01-01T00:00:00.500Z',createdBefore:'2025-02-01T00:00:00Z',page:'2',pageSize:'10'});
+    expect(request.method).toBe('GET');
+    expect(request.body).toBeUndefined();
+    const parameters = openapi.paths['/me/orders'].get.parameters;
+    expect(parameters.find(parameter => 'name' in parameter && parameter.name === 'orderNumber')).toMatchObject({in:'query',schema:{type:'string',maxLength:64,pattern:'^[A-Za-z0-9_-]+$'}});
+    for (const name of ['createdFrom','createdBefore']) expect(parameters.find(parameter => 'name' in parameter && parameter.name === name)).toMatchObject({in:'query',schema:{type:'string',format:'date-time'}});
+  });
   it('requires an explicit contract instead of silently sending old user APIs', () => {
     expect(() => v10Request('user/unknown')).toThrow('no V10 contract');
     expect(() => v10Request('user/order/detail')).toThrow('Missing resource identifier');

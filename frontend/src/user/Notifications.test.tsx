@@ -9,6 +9,7 @@ import {
     render,
     screen,
     waitFor,
+    act,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ request: vi.fn(), readRequest: vi.fn() }));
 vi.mock("../shared/api", () => ({
@@ -27,6 +28,7 @@ vi.mock("../shared/billing-copy", () => ({ b: (key: string) => key }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ux", () => ({ ux: (key: string) => key }));
 import { Notifications } from "./user";
+import { NotificationPreferences } from "./NotificationPreferences";
 afterEach(cleanup);
 beforeEach(() => {
     mocks.request.mockReset();
@@ -90,4 +92,37 @@ it("lets users explicitly opt into announcement emails", async () => {
     expect(announcement.getAttribute("aria-checked")).toBe("false");
     fireEvent.click(announcement);
     await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("user/update",{announcement_email:1}));
+});
+it("follows a fresh account snapshot and calculates the next change from the updated switch", async () => {
+    mocks.request.mockResolvedValue({data:true});
+    const view=render(<NotificationPreferences initial={{remind_expire:1,remind_traffic:0}}/>);
+    const expiry=screen.getByRole("switch",{name:"到期提醒"});
+    view.rerender(<NotificationPreferences initial={{remind_expire:0,remind_traffic:1}}/>);
+    expect(expiry.getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByRole("switch",{name:"quotaNotice"}).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(expiry);
+    await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("user/update",{remind_expire:1}));
+});
+it("syncs unrelated switches without overwriting a pending optimistic choice", async () => {
+    let fail!:(error:Error)=>void;
+    mocks.request.mockImplementationOnce(()=>new Promise((_,reject)=>{fail=reject;}));
+    const view=render(<NotificationPreferences initial={{remind_expire:1,remind_traffic:0}}/>);
+    const expiry=screen.getByRole("switch",{name:"到期提醒"});
+    fireEvent.click(expiry);
+    view.rerender(<NotificationPreferences initial={{remind_expire:1,remind_traffic:1}}/>);
+    expect(expiry.getAttribute("aria-checked")).toBe("false");
+    expect((expiry as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("switch",{name:"quotaNotice"}).getAttribute("aria-checked")).toBe("true");
+    await act(async()=>{fail(Error("Network failed"));});
+    expect(expiry.getAttribute("aria-checked")).toBe("true");
+    expect((expiry as HTMLButtonElement).disabled).toBe(false);
+});
+it("clears old saved feedback when a server refresh changes the preference", async () => {
+    mocks.request.mockResolvedValue({data:true});
+    const view=render(<NotificationPreferences initial={{remind_expire:1}}/>);
+    fireEvent.click(screen.getByRole("switch",{name:"到期提醒"}));
+    await screen.findByText("saved");
+    view.rerender(<NotificationPreferences initial={{remind_expire:1}}/>);
+    expect(screen.getByRole("switch",{name:"到期提醒"}).getAttribute("aria-checked")).toBe("true");
+    expect(screen.queryByText("saved")).toBeNull();
 });

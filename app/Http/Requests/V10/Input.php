@@ -45,6 +45,8 @@ final class Input
             'planId'=>'integer|min:0','replacementOrderNumber'=>'string|max:64',
             'billingPeriod'=>'string|in:monthly,quarterly,semiannual,annual,biennial,triennial,credits,reset,deposit',
             'orderNumber'=>'string|max:64','expectedPaymentAmount'=>'integer|min:1|max:1000000000','expectedPaymentCurrency'=>'in:CNY,USD',
+            'createdFrom'=>'string|date|regex:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/D',
+            'createdBefore'=>'string|date|regex:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/D',
             'paymentMethodId'=>'integer|min:0','paymentToken'=>'string|max:1024','depositAmount'=>'integer|min:1|max:9999998',
             'walletCouponId'=>'integer|min:1','couponId'=>'integer|min:1',
             'code'=>'string|max:128','giftCardCode'=>'string|max:128',
@@ -92,6 +94,9 @@ final class Input
             $rules[$field] = is_array($rule) ? array_merge(['nullable'],$rule) : 'nullable|'.$rule;
         }
         foreach ($required[$contract['key']] ?? [] as $field) $rules[$field]='required|'.($types[$field] ?? 'string');
+        if ($contract['key'] === 'User/OrderController@fetch') {
+            $rules['orderNumber']='nullable|string|max:64|regex:/^[A-Za-z0-9_-]+$/D';
+        }
         if (($contract['key'] === 'User/OrderController@save') && $request->input('billingPeriod')==='deposit') $rules['depositAmount']='required|'.$types['depositAmount'];
         if ($contract['key'] === 'User/OrderController@quote') {
             $rules['planId']='required|integer|min:1';
@@ -102,11 +107,16 @@ final class Input
             $rules['requestKey']='nullable|uuid|required_with:quoteToken';
         }
         $messages=['required'=>__('This field is required.')];
-        foreach (['string','email','max','min','digits','regex','integer','in','boolean','uuid'] as $rule) {
+        foreach (['string','email','max','min','digits','regex','integer','in','boolean','uuid','date','after'] as $rule) {
             $messages[$rule]=__('Please check the format and allowed range of this value.');
         }
         $validator=Validator::make($request->all(),$rules,$messages);
         $validator->after(function ($validator) use ($request,$contract) {
+            if ($contract['key'] === 'User/OrderController@fetch' && $validator->errors()->isEmpty()
+                && $request->filled('createdFrom') && $request->filled('createdBefore')
+                && new \DateTimeImmutable($request->input('createdBefore')) <= new \DateTimeImmutable($request->input('createdFrom'))) {
+                $validator->errors()->add('createdBefore',__('Please check the format and allowed range of this value.'));
+            }
             if ($contract['key'] !== 'User/OrderController@save' || $validator->errors()->isNotEmpty()) return;
             if (($request->input('billingPeriod')==='deposit') !== ((int)$request->input('planId')===0)) {
                 $validator->errors()->add('planId',__('The selected plan does not match the order type.'));

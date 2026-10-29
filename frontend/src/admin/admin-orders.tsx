@@ -8,6 +8,25 @@ import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
 import { ResourcePage, resources } from "./admin";
 import { AssignOrder } from "./admin-users";
+import { tx } from "../shared/i18n";
+import { AdminRowMenu } from "./AdminRowMenu";
+
+const orderSearchFields = [
+    ["trade_no", "订单号"],
+    ["email", "用户邮箱"],
+    ["user_id", "用户 ID"],
+    ["callback_no", "回调单号"],
+] as const;
+const orderFilterLabels: Row = {
+    email: "用户邮箱", trade_no: "订单号", status: "订单状态",
+    commission_status: "佣金状态", user_id: "用户 ID", invite_user_id: "邀请人 ID",
+    callback_no: "回调单号", commission_balance: "佣金金额（分）",
+};
+function orderFilterValue(filter: Row) {
+    const statuses = filter.key === "status" ? ["待支付", "开通中", "已取消", "已完成", "已折抵"]
+        : filter.key === "commission_status" ? ["待确认", "有效", "已发放", "无效"] : null;
+    return statuses?.[Number(filter.value)] || String(filter.value);
+}
 const commissionResource = {
     ...resources.orders,
     title: "佣金审核",
@@ -107,8 +126,12 @@ export function OrdersPage({
         [assign, setAssign] = useState(false),
         [revision, setRevision] = useState(0),
         [commission, setCommission] = useState<Row | null>(null);
-    const [searchField, setSearchField] = useState("invite_email");
-    const [searchText, setSearchText] = useState("");
+    const [searchField, setSearchField] = useState(() => commissionMode ? "invite_email"
+        : orderSearchFields.find(([key]) => filter.some(item => item.key === key))?.[0] || "trade_no");
+    const [searchText, setSearchText] = useState(() => String(filter.find(item => item.key === searchField)?.value || ""));
+    useEffect(() => {
+        if (!commissionMode) setSearchText(String(filter.find(item => item.key === searchField)?.value || ""));
+    }, [filter, searchField, commissionMode]);
     const plans = useData<Row[]>(admin("plan/fetch"));
     return (
         <>
@@ -128,7 +151,21 @@ export function OrdersPage({
                     ...(commissionMode ? { is_commission: 1 } : {}),
                 }}
                 toolbar={
-                    <div className="pad actions">
+                    <div className="pad actions admin-order-toolbar">
+                        {!commissionMode && <AdminFilterBar className="admin-order-quick-search" aria-label={tx("订单快速查询")}
+                            onSubmit={event => {
+                                event.preventDefault();
+                                const value = searchText.trim();
+                                setFilter(previous => [...previous.filter(item => item.key !== searchField),
+                                    ...(value ? [{ key: searchField, condition: searchField === "email" ? "模糊" : "=", value }] : [])]);
+                            }}>
+                            <select aria-label={tx("订单查询字段")} value={searchField} onChange={event => setSearchField(event.target.value)}>
+                                {orderSearchFields.map(([key, label]) => <option key={key} value={key}>{tx(label)}</option>)}
+                            </select>
+                            <input aria-label={tx("订单查询内容")} placeholder={tx("输入订单号、邮箱或用户 ID")}
+                                value={searchText} onChange={event => setSearchText(event.target.value)} />
+                            <button type="submit">{tx("查询")}</button>
+                        </AdminFilterBar>}
                         {commissionMode && (
                             <label>
                                 佣金状态{" "}
@@ -167,6 +204,13 @@ export function OrdersPage({
                                 </select>
                             </label>
                         )}
+                        {!commissionMode && filter.length > 0 && <div className="actions admin-order-filter-summary" aria-label={tx("已应用的订单筛选")}>
+                            {filter.map((item, index) => <span className="filter-chip" key={`${item.key}-${index}`}>
+                                {tx(orderFilterLabels[item.key] || item.key)} {item.condition} {tx(orderFilterValue(item))}
+                                <button type="button" aria-label={tx("移除订单筛选条件 {{index}}", { index: index + 1 })}
+                                    onClick={() => setFilter(previous => previous.filter((_, position) => position !== index))}>×</button>
+                            </span>)}
+                        </div>}
                         {commissionMode && (
                             <AdminFilterBar
 
@@ -262,9 +306,10 @@ export function OrdersPage({
                         )}
                     </div>
                 }
-                extraActions={(r) => (
+                extraActions={(r, context, secondary) => (
                     <>
                         <button onClick={() => setSelected(r)}>订单详情</button>
+                        <AdminRowMenu context={context} label={`${tx("订单")} ${r.trade_no}`}>
                         <a
                             className="button"
                             href={`#/users?user_id=${r.user_id}`}
@@ -284,6 +329,8 @@ export function OrdersPage({
                                 佣金审核
                             </button>
                         )}
+                        {secondary}
+                        </AdminRowMenu>
                     </>
                 )}
             />

@@ -1,4 +1,5 @@
 import type { Boot } from "./api";
+import startupCopy from "./startup-copy.json";
 
 export function normalizeApiOrigin(value: string): string {
     if (!value) return "";
@@ -85,11 +86,35 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
     document.title = window.V2BOARD.title;
 }
 
-export function startupError(error: unknown): void {
+// Startup recovery must work even when React, i18n or a language chunk failed to load.
+export function startupError(_error: unknown, retry = () => window.location.reload()): void {
     const root = document.getElementById("root");
     if (root) {
+        let language = window.V2BOARD?.mode === "admin" ? "zh-CN" : navigator.language;
+        try { language = localStorage.getItem("v2board.language") || language; } catch { /* Use browser language when storage is unavailable. */ }
+        const key = /^zh/i.test(language)
+            ? /TW|HK|MO|Hant/i.test(language) ? "zh-TW" : "zh-CN"
+            : language.toLowerCase().split("-")[0];
+        const [title, message, action] = Object.prototype.hasOwnProperty.call(startupCopy, key)
+            ? startupCopy[key as keyof typeof startupCopy] : startupCopy.en;
+        const panel = document.createElement("section");
+        panel.style.cssText = "box-sizing:border-box;max-width:560px;margin:15vh auto;padding:32px 24px;font:16px/1.7 system-ui,sans-serif;color:#182638";
+        panel.dir = key === "fa" ? "rtl" : "ltr";
+        panel.lang = language;
+        const heading = document.createElement("h1");
+        heading.textContent = title;
+        heading.tabIndex = -1;
+        heading.style.cssText = "font-size:24px;margin:0 0 12px";
+        const help = document.createElement("p");
+        help.textContent = message;
+        const button = document.createElement("button");
+        button.type = "button";
+        button.textContent = action;
+        button.style.cssText = "min-height:44px;padding:10px 20px;border:0;border-radius:10px;background:#153b70;color:white;font:inherit;cursor:pointer";
+        button.addEventListener("click", retry);
+        panel.append(heading, help, button);
         root.setAttribute("role", "alert");
-        root.textContent =
-            error instanceof Error ? error.message : "Frontend startup failed";
+        root.replaceChildren(panel);
+        heading.focus();
     }
 }

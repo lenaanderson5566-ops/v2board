@@ -652,7 +652,19 @@
     "了解删除影响": "Revisar las consecuencias",
     "验证并确认": "Verificar y confirmar",
     "删除前，请确认以下事项": "Antes de eliminar, revise lo siguiente",
-    "账户状态已检查，可以继续。": "Estado de la cuenta comprobado. Puede continuar."
+    "账户状态已检查，可以继续。": "Estado de la cuenta comprobado. Puede continuar.",
+    "搜索后台页面": "Buscar páginas de administración",
+    "输入页面名称或分组": "Introduce el nombre de una página o sección",
+    "清除页面搜索": "Borrar búsqueda de páginas",
+    "未找到匹配页面，请尝试其他关键词。": "No hay páginas coincidentes. Prueba otra palabra clave.",
+    "订单快速查询": "Búsqueda rápida de pedidos",
+    "订单查询字段": "Campo de búsqueda de pedidos",
+    "订单查询内容": "Término de búsqueda de pedidos",
+    "输入订单号、邮箱或用户 ID": "Introduce un número de pedido, correo electrónico o ID de usuario",
+    "已应用的订单筛选": "Filtros de pedidos aplicados",
+    "移除订单筛选条件 {{index}}": "Eliminar filtro de pedidos {{index}}",
+    "支付接口列表": "Interfaces de pago",
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Las interfaces de pago no están disponibles temporalmente. Vuelve a intentarlo antes de añadir o editar canales."
   },
   "account": {
     "notificationAutoSave": "Los cambios se guardan automáticamente",
@@ -706,7 +718,19 @@
     "resetSuccess": "Uso restablecido. Tus datos disponibles se han restaurado.",
     "inactive": "Se necesita una suscripción activa para usar un reinicio.",
     "emptyUsage": "No hay uso para restablecer. No se gastará ningún reinicio.",
-    "noCredits": "No hay reinicios guardados. Los concedidos por el administrador aparecerán aquí."
+    "noCredits": "No hay reinicios guardados. Los concedidos por el administrador aparecerán aquí.",
+    "expiresSoon": "Tu suscripción vence en {{days}} día(s).",
+    "findTransactions": "Buscar transacciones",
+    "filtersApplied": "Filtros aplicados",
+    "allStatuses": "Todos los estados",
+    "timeRange": "Período",
+    "allTime": "Todo el período",
+    "lastDays": "Últimos {{days}} días",
+    "orderNumber": "Número de pedido",
+    "exactOrderNumber": "Introduzca el número de pedido completo",
+    "searchTransactions": "Buscar",
+    "filteredTransactions": "Transacciones coincidentes: {{count}}",
+    "noMatchingTransactions": "Ninguna transacción coincide con estos filtros. Ajústelos o restablézcalos."
   },
   "credits": {
     "buyMore": "Comprar más créditos",
@@ -847,7 +871,14 @@
     "alipay": "Alipay",
     "dingtalk": "DingTalk",
     "wecom": "WeCom",
-    "pageRecovery": "Recarga esta página o abre otra sección desde el menú de navegación."
+    "pageRecovery": "Recarga esta página o abre otra sección desde el menú de navegación.",
+    "accountLoadFailed": "No se pudo cargar la información de la cuenta. Comprueba la conexión e inténtalo de nuevo.",
+    "languageLoadFailed": "No se pudo cargar el idioma de interfaz guardado. El idioma actual sigue disponible.",
+    "authorizationRetryHelp": "No se pudo confirmar el estado de la solicitud de inicio de sesión. Compruebe la conexión y consulte de nuevo la solicitud antes de confirmar.",
+    "authorizationRecheck": "Consultar el estado de la solicitud",
+    "authorizationUnavailable": "Esta solicitud de inicio de sesión ya no está disponible. Vuelva a la aplicación para comprobar el estado del inicio de sesión o iniciar una nueva solicitud.",
+    "invalidJson": "Introduce JSON válido.",
+    "reorderHelp": "Arrastra para cambiar el orden, o enfoca un control de ordenación y usa ↑ / ↓."
   },
   "ux": {
     "cancel": "Cancelar",
@@ -908,7 +939,17 @@
     "title": "Cliente dedicado",
     "guide": "Instala e inicia sesión con tu cuenta del sitio para sincronizar la suscripción. No necesitas un enlace.",
     "unavailable": "No hay un instalador dedicado para este sistema. Elige otro sistema o un cliente compatible.",
-    "requirement": "Elige la arquitectura de tu dispositivo. Para conectarte necesitas un plan activo o datos disponibles."
+    "requirement": "Elige la arquitectura de tu dispositivo. Para conectarte necesitas un plan activo o datos disponibles.",
+    "architecture": "Procesador del dispositivo",
+    "chooseArchitecture": "Seleccione el procesador del dispositivo",
+    "architectureHelp": "Si tiene dudas, consulte la información del sistema del dispositivo. Elija el instalador que corresponda a su procesador.",
+    "architectureUniversal": "Instalador universal",
+    "architectureApple": "Apple Silicon (M1 o posterior, arm64)",
+    "architectureIntelMac": "Intel Mac (x64)",
+    "architectureX64": "Intel / AMD de 64 bits (x64)",
+    "architectureX86": "Intel / AMD de 32 bits (x86)",
+    "architectureArm64": "ARM de 64 bits (arm64)",
+    "architectureArm": "ARM de 32 bits (arm)"
   },
   "help": {
     "intro": "Encuentra tu pregunta y sigue los pasos.",
@@ -939,13 +980,24 @@
     "qCancelled": "¿Qué ocurre con el saldo usado en un pedido cancelado?",
     "aCancelled": "Al cancelar un pedido sin pagar se devuelve el saldo descontado, que puedes consultar en Facturación. El recibo muestra el saldo devuelto; no es un reembolso del proveedor de pago externo. No pagues un pedido cancelado. Crea uno nuevo si lo necesitas.",
     "qSecurity": "¿Qué hago si olvido mi contraseña o se expone mi enlace de configuración?",
-    "aSecurity": "Usa Olvidé mi contraseña en la página de acceso. Con la sesión iniciada, abre Seguridad de la cuenta desde tu avatar para cambiar la contraseña o restablecer el enlace de suscripción. Esto invalida el enlace anterior, así que vuelve a importarlo en cada dispositivo. Nunca compartas contraseñas, códigos ni enlaces completos, tampoco en tickets."
+    "aSecurity": "Usa Olvidé mi contraseña en la página de acceso. Con la sesión iniciada, abre Seguridad de la cuenta desde tu avatar para cambiar la contraseña o restablecer el enlace de suscripción. Esto invalida el enlace anterior, así que vuelve a importarlo en cada dispositivo. Nunca compartas contraseñas, códigos ni enlaces completos, tampoco en tickets.",
+    "searchAll": "Buscar preguntas y documentos"
   },
   "clientImport": {
     "invalid": "Suscripción no disponible. Actualiza e inténtalo de nuevo.",
     "copied": "Copiado. Pégalo en el gestor de suscripciones de tu cliente y actualiza.",
     "opened": "Confirme la importación y actualice la configuración en el cliente. Si el cliente no se abre, instálelo o copie el enlace de suscripción para importarlo manualmente.",
-    "manualUrl": "Enlace de suscripción"
+    "manualUrl": "Enlace de suscripción",
+    "finishSetup": "Configuración completa: ver uso",
+    "needHelp": "¿Tienes problemas?",
+    "confirmConnection": "Comprueba que la conexión funciona en el cliente antes de finalizar la configuración.",
+    "helpFor": "Solucionar problemas de {{client}}",
+    "helpInstall": "Comprueba que el cliente seleccionado está instalado y vuelve a intentar abrirlo. Si el navegador no lo abre, copia la suscripción o impórtala manualmente con el enlace de abajo.",
+    "helpRefresh": "Actualiza la suscripción importada en el cliente y selecciona una conexión disponible.",
+    "helpIos": "Cuando iOS lo solicite, permite que el cliente añada su configuración VPN y activa la conexión.",
+    "helpAndroid": "Si Android solicita permiso para una conexión VPN, confirma la solicitud en el cliente y actívala.",
+    "helpDesktop": "Sigue las indicaciones del cliente para conceder los permisos de red necesarios del sistema y activa la conexión.",
+    "contactSupport": "Si sigues sin poder conectarte, contacta con soporte e indica el dispositivo, la versión del cliente y el mensaje de error."
   },
   "landing": {
     "inviteStart": "Unirse por invitación",
@@ -992,7 +1044,10 @@
     "a3": "Ofrecemos configuración y orientación, no cuentas ni membresías de IA de terceros. Consulta los requisitos de registro y pago de cada aplicación.",
     "q4": "¿Dónde encuentro ayuda?",
     "a4": "Después de iniciar sesión, abre el Centro de ayuda para consultar respuestas o buscar documentación. Si aún necesitas ayuda, contacta con soporte al pie de la página. Continúa la conversación existente para mantener el seguimiento.",
-    "footer": "Para una mejor experiencia con la IA."
+    "footer": "Para una mejor experiencia con la IA.",
+    "serviceScope": "Guías de configuración de dispositivos y asistencia de uso. No se incluyen suscripciones a servicios de terceros.",
+    "pricingBeforePayment": "Crear una cuenta es gratis. Los precios de los planes y los cargos se muestran antes de pagar.",
+    "viewPlans": "Inicia sesión para ver los planes"
   },
   "pricing": {
     "quoteLoading": "Calculando el total…",
@@ -1062,7 +1117,14 @@
     "paymentQrFallback": "También puede escanear el código QR o copiar los datos de pago.",
     "mobileScanHelp": "Escanee con otro dispositivo o haga una captura de pantalla y escanéela en la aplicación de pago.",
     "copyPayment": "Copiar datos de pago",
-    "paymentCopied": "Datos de pago copiados"
+    "paymentCopied": "Datos de pago copiados",
+    "impactRenew": "Renueva este plan por el período seleccionado. La renovación y el restablecimiento de datos son independientes; los datos consumidos solo se restablecen cuando corresponda según las reglas del servicio.",
+    "impactSwitch": "El cambio sustituye el plan actual y el período seleccionado comienza tras procesar el pedido. El crédito del plan anterior y cualquier saldo devuelto figuran en el desglose del precio; los datos sin usar no se suman a la nueva cuota.",
+    "impactResubscribe": "Reactiva este plan por el período seleccionado. El acceso y la cuota de datos se actualizan tras confirmar y procesar el pago.",
+    "impactSubscribe": "El plan y el período seleccionados se activan tras confirmar y procesar el pago.",
+    "couponIntentEligible": "Los planes compatibles se muestran primero. El cupón seleccionado se volverá a comprobar al pagar.",
+    "couponIntentDifferentPeriod": "Este cupón no se aplica a este período. Elija otro período para utilizarlo.",
+    "couponIntentUnavailable": "Este cupón no está disponible para los planes mostrados. Puede continuar sin utilizarlo."
   },
   "profile": {
     "intro": "Consulta tu correo de acceso y gestiona el idioma y los servicios vinculados.",
@@ -1092,7 +1154,8 @@
     "9": "Ocultar contraseña",
     "10": "Copiado",
     "11": "No se pudo copiar. Copia manualmente.",
-    "12": "Última comprobación"
+    "12": "Última comprobación",
+    "unavailable": "Las cuentas de descarga no están disponibles temporalmente. Inténtelo de nuevo más tarde."
   },
   "banners": {
     "previous": "Anterior",

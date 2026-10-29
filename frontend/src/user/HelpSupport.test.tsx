@@ -18,7 +18,7 @@ import {
     waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-const mocks = vi.hoisted(() => ({ detail:null as any, detailError: "", detailReload: vi.fn(), policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ knowledge:{} as any, detail:null as any, detailError: "", detailReload: vi.fn(), policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
 vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
@@ -38,7 +38,7 @@ vi.mock("../shared/api", () => ({
 vi.mock("../shared/ui", async (importOriginal) => ({
     ...(await importOriginal<typeof import("../shared/ui")>()),
     useData: vi.fn((path: string) => ({
-        data: path === "user/info" ? { ticket_creation: mocks.policy } : path.includes("id=")
+        data: path === "user/info" ? { ticket_creation: mocks.policy } : path.startsWith("user/knowledge/fetch") && !path.includes("id=") ? mocks.knowledge : path.includes("id=")
             ? (mocks.detailError ? null : mocks.detail || { subject: "现有工单", status: 1, message: [] })
             : mocks.tickets,
         loading: false,
@@ -83,6 +83,7 @@ afterEach(cleanup);
 beforeEach(() => {
     mocks.policy = "allowed";
     mocks.detail = null;
+    mocks.knowledge = {};
     mocks.detailError = "";
     mocks.detailReload.mockReset();
     location.hash = "";
@@ -195,7 +196,8 @@ it("debounces knowledge searches and skips the unused category request",async()=
         const {Knowledge}=await import("./user");
         const {useData}=await import("../shared/ui");vi.mocked(useData).mockClear();
         render(<Knowledge/>);
-        const input=screen.getByLabelText("搜索文档");
+        const input=screen.getByLabelText("searchAll");
+        expect(screen.getAllByRole("searchbox")).toHaveLength(1);
         fireEvent.change(input,{target:{value:"h"}});fireEvent.change(input,{target:{value:"help"}});
         let paths=vi.mocked(useData).mock.calls.map(([path])=>path);
         expect(paths.some(path=>path.includes("keyword=h"))).toBe(false);
@@ -204,4 +206,36 @@ it("debounces knowledge searches and skips the unused category request",async()=
         expect(paths.some(path=>path.includes("keyword=help"))).toBe(true);
         expect(paths.some(path=>path.includes("getCategory"))).toBe(false);
     } finally {vi.useRealTimers();}
+});
+it("uses the same search for FAQ answers and remote documents", async () => {
+    vi.useFakeTimers();
+    try {
+        const { Knowledge } = await import("./user");
+        const { useData } = await import("../shared/ui");
+        const view = render(<Knowledge />);
+        fireEvent.change(screen.getByRole("searchbox"), { target: { value: "qImport" } });
+        expect(view.container.querySelectorAll("details")).toHaveLength(1);
+        expect(screen.getByText("qImport")).toBeTruthy();
+        await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+        expect(vi.mocked(useData).mock.calls.some(([path]) => path.includes("keyword=qImport"))).toBe(true);
+        fireEvent.change(screen.getByRole("searchbox"), { target: { value: "unknown-topic" } });
+        fireEvent.click(screen.getByRole("button", { name: "clear" }));
+        expect((screen.getByRole("searchbox") as HTMLInputElement).value).toBe("");
+        expect(view.container.querySelectorAll("details")).toHaveLength(8);
+    } finally { vi.useRealTimers(); }
+});
+it("retries a failed knowledge article inside the same dialog", async () => {
+    const { Knowledge } = await import("./user");
+    mocks.knowledge = { Setup: [{ id: 8, title: "Client setup" }] };
+    mocks.detailError = "article temporarily unavailable";
+    const view = render(<Knowledge />);
+    fireEvent.click(screen.getByRole("button", { name: "Client setup" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    expect(mocks.detailReload).toHaveBeenCalledTimes(1);
+    mocks.detailError = "";
+    mocks.detail = { id: 8, title: "Client setup", body: "Recovered article" };
+    view.rerender(<Knowledge />);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.getByText("Recovered article")).toBeTruthy();
 });

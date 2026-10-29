@@ -14,6 +14,9 @@ const mocks = vi.hoisted(() => ({
     navigate: vi.fn(),
     orders: [] as any[],
     plans: [] as any[],
+    catalogState: {} as any,
+    orderState: {} as any,
+    stateProps: {} as any,
 }));
 vi.mock("../shared/api", () => ({
     boot: mocks.boot,
@@ -30,8 +33,9 @@ vi.mock("../shared/ui", () => ({
         reload: vi.fn(),
         loading: false,
         error: "",
+        ...(path === "user/credit/fetch" ? mocks.catalogState : mocks.orderState),
     }),
-    State: ({ children }: any) => children,
+    State: (props: any) => { mocks.stateProps = props; return props.children; },
     Modal: ({ children, title, close }: any) => (
         <div role="dialog" aria-label={title}>
             <button onClick={close}>close</button>
@@ -45,6 +49,9 @@ beforeEach(() => {
     mocks.request.mockReset();
     mocks.navigate.mockReset();
     mocks.orders = [];
+    mocks.catalogState = {};
+    mocks.orderState = {};
+    mocks.stateProps = {};
     mocks.plans = [
         { id: 8, name: "Small", bytes: 100, price: 1000 },
         { id: 9, name: "Large", bytes: 500, price: 3000 },
@@ -127,4 +134,42 @@ it("formats package names by capacity instead of administrative plan names", () 
     fireEvent.click(screen.getByRole("button", { name: "buy" }));
     expect(screen.getByRole("option", { name: "100 B credits — $10" })).toBeTruthy();
     expect(screen.queryByText(/Small|Large/)).toBeNull();
+});
+it("retains the package choice while rechecking availability and requires a successful check before purchase", async () => {
+    mocks.request.mockResolvedValue({data:"checked-order"});
+    const view = render(<TrafficCredits />);
+    fireEvent.click(screen.getByRole("button", {name:"buy"}));
+    fireEvent.change(screen.getByRole("combobox"), {target:{value:"9"}});
+    mocks.orderState = {loading:true};
+    view.rerender(<TrafficCredits />);
+    expect((screen.getByRole("combobox") as HTMLSelectElement).value).toBe("9");
+    expect((screen.getByRole("button", {name:"checkout"}) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", {name:"checkout"}));
+    expect(mocks.request).not.toHaveBeenCalled();
+    mocks.orderState = {};
+    view.rerender(<TrafficCredits />);
+    fireEvent.click(screen.getByRole("button", {name:"checkout"}));
+    await waitFor(()=>expect(mocks.request).toHaveBeenCalledWith("user/order/save", {plan_id:9,period:"onetime_price"}));
+});
+it.each(["catalog", "orders"])("blocks stale choices after a failed %s refresh and exposes the combined cooldown", (source) => {
+    const view=render(<TrafficCredits />);
+    fireEvent.click(screen.getByRole("button", {name:"buy"}));
+    const failed={error:"Limited",retryAt:Date.now()+5000};
+    if(source === "catalog") mocks.catalogState=failed;
+    else mocks.orderState=failed;
+    view.rerender(<TrafficCredits />);
+    expect(mocks.stateProps.retryAt).toBe(failed.retryAt);
+    expect(mocks.stateProps.error).toBe("Limited");
+    expect((screen.getByRole("button", {name:"checkout"}) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("combobox") as HTMLSelectElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", {name:"checkout"}));
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("does not purchase until the existing-order lookup is available", () => {
+    mocks.orderState={data:null};
+    render(<TrafficCredits />);
+    fireEvent.click(screen.getByRole("button", {name:"buy"}));
+    expect((screen.getByRole("button", {name:"checkout"}) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", {name:"checkout"}));
+    expect(mocks.request).not.toHaveBeenCalled();
 });

@@ -1906,7 +1906,10 @@
       "input": {
         "status": "status",
         "page": "current",
-        "pageSize": "page_size"
+        "pageSize": "page_size",
+        "orderNumber": "order_number",
+        "createdFrom": "created_from",
+        "createdBefore": "created_before"
       },
       "output": "array:order",
       "role": "user",

@@ -30,6 +30,45 @@ export function Table({
     const [dragged, setDragged] = useState<number | null>(null);
     const [reorderError, setReorderError] = useState("");
     const [reordering, setReordering] = useState(false);
+    const reorderPending = useRef(false);
+    const keyboardTarget = useRef<HTMLElement | null>(null);
+    const alive = useRef(true);
+    useEffect(() => {
+        alive.current = true;
+        return () => {
+            alive.current = false;
+        };
+    }, []);
+    useEffect(() => {
+        if (reordering || !keyboardTarget.current) return;
+        const target = keyboardTarget.current;
+        keyboardTarget.current = null;
+        if (target.isConnected && (document.activeElement === document.body || document.activeElement === target)) target.focus();
+    }, [reordering]);
+    async function reorder(from: number, to: number) {
+        if (
+            !onReorder ||
+            reorderPending.current ||
+            from === to ||
+            to < 0 ||
+            to >= data.length
+        )
+            return;
+        reorderPending.current = true;
+        setReordering(true);
+        setReorderError("");
+        try {
+            await onReorder(moveItem(data, from, to));
+        } catch (cause) {
+            if (alive.current) setReorderError((cause as Error).message);
+        } finally {
+            reorderPending.current = false;
+            if (alive.current) {
+                setDragged(null);
+                setReordering(false);
+            }
+        }
+    }
     const [context, setContext] = useState<{
         row: Row;
         x: number;
@@ -56,7 +95,17 @@ export function Table({
     return (
         <Viewport
             className={`${boot.mode === "admin" ? "" : "table-scroll"} ${compact ? "compact-mobile-table" : ""}`}
+            aria-busy={reordering || undefined}
         >
+            {onReorder && (
+                <p className="table-reorder-help muted">
+                    {tx("reorderHelp", {
+                        ns: "experience",
+                        defaultValue:
+                            "Drag to reorder, or focus a sort handle and use ↑ / ↓.",
+                    })}
+                </p>
+            )}
             {reorderError && (
                 <div className="alert" role="alert">
                     {reorderError}
@@ -146,28 +195,10 @@ export function Table({
                             }
                             onDrop={
                                 onReorder
-                                    ? async (e) => {
+                                    ? (e) => {
                                           e.preventDefault();
-                                          if (
-                                              dragged === null ||
-                                              dragged === i ||
-                                              reordering
-                                          )
-                                              return;
-                                          setReordering(true);
-                                          setReorderError("");
-                                          try {
-                                              await onReorder(
-                                                  moveItem(data, dragged, i),
-                                              );
-                                          } catch (error) {
-                                              setReorderError(
-                                                  (error as Error).message,
-                                              );
-                                          } finally {
-                                              setDragged(null);
-                                              setReordering(false);
-                                          }
+                                          if (dragged !== null)
+                                              void reorder(dragged, i);
                                       }
                                     : undefined
                             }
@@ -178,8 +209,30 @@ export function Table({
                                         type="button"
                                         draggable
                                         disabled={reordering}
-                                        aria-label={`排序 ${r.name || r.title || r.id}`}
+                                        aria-label={`${ux("sort")} ${r.name || r.title || r.id}`}
+                                        aria-keyshortcuts="ArrowUp ArrowDown"
                                         className="row-drag-handle"
+                                        onKeyDown={(event) => {
+                                            if (
+                                                event.altKey ||
+                                                event.ctrlKey ||
+                                                event.metaKey ||
+                                                ![
+                                                    "ArrowUp",
+                                                    "ArrowDown",
+                                                ].includes(event.key)
+                                            )
+                                                return;
+                                            event.preventDefault();
+                                            keyboardTarget.current = event.currentTarget;
+                                            void reorder(
+                                                i,
+                                                i +
+                                                    (event.key === "ArrowUp"
+                                                        ? -1
+                                                        : 1),
+                                            );
+                                        }}
                                         onDragStart={(e) => {
                                             e.dataTransfer.effectAllowed =
                                                 "move";
@@ -223,7 +276,11 @@ export function Table({
                     ))}
                 </tbody>
             </table>
-            {!data.length && <div className="table-empty-state"><Empty /></div>}
+            {!data.length && (
+                <div className="table-empty-state">
+                    <Empty />
+                </div>
+            )}
             {context &&
                 actions &&
                 createPortal(

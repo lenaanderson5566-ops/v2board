@@ -566,3 +566,9 @@
     color: var(--text-secondary);
     overflow-wrap: anywhere;
 }
+.purchase-rules .purchase-impact {
+    margin: 8px 0;
+    font-size: 12px;
+    line-height: 1.65;
+    overflow-wrap: anywhere;
+}

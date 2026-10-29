@@ -5,6 +5,10 @@ import {
     pendingCheckoutPayment,
     checkoutOrderReference,
     purchaseReturnPath,
+    catalogReturnPath,
+    catalogSelection,
+    orderResumePath,
+    purchasePeriod,
 } from "./checkout-navigation";
 import { Suspense, StrictMode } from "react";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
@@ -21,6 +25,11 @@ import {
 const mocks = vi.hoisted(() => ({
     couponsAvailable: true,
     couponPeriods: [] as string[],
+    couponPlanIds: [] as number[],
+    walletLoading: false,
+    walletError: "",
+    walletRetryAt: 0,
+    walletReload: vi.fn(),
     request: vi.fn(),
     quoteRequest: vi.fn(),
     navigate: vi.fn(),
@@ -78,7 +87,7 @@ vi.mock("../shared/ui", () => ({
                               discountPercent: 10,
                               expiresAt: "2030-01-01T00:00:00Z",
                               status: "available",
-                              planIds: [],
+                              planIds: mocks.couponPlanIds,
                               billingPeriods: mocks.couponPeriods,
                           },
                       ]
@@ -99,11 +108,12 @@ vi.mock("../shared/ui", () => ({
                             ? mocks.detail
                             : mocks.methods,
         loading:
-            path === "user/getSubscribe"
+            path === "user/coupon/wallet" ? mocks.walletLoading : path === "user/getSubscribe"
                 ? mocks.subLoading
                 : path.startsWith("user/order/detail") && mocks.detailLoading,
-        error: path === "user/getSubscribe" ? mocks.subError : "",
-        reload: path === "user/plan/fetch" ? mocks.plansReload : vi.fn(),
+        error: path === "user/coupon/wallet" ? mocks.walletError : path === "user/getSubscribe" ? mocks.subError : "",
+        retryAt: path === "user/coupon/wallet" ? mocks.walletRetryAt : 0,
+        reload: path === "user/coupon/wallet" ? mocks.walletReload : path === "user/plan/fetch" ? mocks.plansReload : vi.fn(),
     }),
     State: ({ children, loading, data }: any) =>
         loading && data ? <div>{children}</div> : children,
@@ -155,6 +165,11 @@ beforeEach(() => {
     history.replaceState(null, "", "#/plan");
     mocks.couponsAvailable = true;
     mocks.couponPeriods = [];
+    mocks.couponPlanIds = [];
+    mocks.walletLoading = false;
+    mocks.walletError = "";
+    mocks.walletRetryAt = 0;
+    mocks.walletReload.mockReset();
     mocks.request.mockReset();
     mocks.quoteRequest.mockReset();
     mocks.quoteRequest.mockImplementation(async (body: any) => {
@@ -324,7 +339,7 @@ it.each([0, 1])(
                     name: status === 0 ? "继续支付" : "查看开通进度",
                 })
                 .getAttribute("href"),
-        ).toBe("#/order/test-order");
+        ).toBe("#/plan/1?order=test-order");
         expect(
             (
                 screen.getByRole("button", {
@@ -1577,6 +1592,206 @@ it.each(["../order", "https://other.example/order", "bad/order", "a".repeat(65),
 it("keeps only an owned-order lookup reference in the login return path", () => {
     expect(purchaseReturnPath("#/plan/1?order=ORDER_abc-123&requestKey=secret&pay=true&return=https://elsewhere.example")).toBe("plan/1?order=ORDER_abc-123");
     expect(purchaseReturnPath("#/https://elsewhere.example")).toBeUndefined();
+});
+it("retains only validated catalog and billing choices across authentication", () => {
+    expect(purchaseReturnPath("#/plan/2?period=year_price&coupon=secret&payment=99")).toBe("plan/2?period=year_price");
+    expect(purchaseReturnPath("#/plan?period=half_year_price&selected=2&quote=secret")).toBe("plan?period=half_year_price&selected=2");
+    expect(purchaseReturnPath("#/plan/2?order=owned-1&period=year_price&pay=true")).toBe("plan/2?order=owned-1");
+    for (const period of ["reset_price", "onetime_price", "javascript:alert(1)", "https://other.example", "year_price&pay=true"]) {
+        expect(purchasePeriod(period)).toBeUndefined();
+        expect(purchaseReturnPath(`#/plan/2?period=${encodeURIComponent(period)}`)).toBe("plan/2");
+    }
+    expect(catalogSelection("#/plan?selected=-1&period=month_price&period=year_price")).toEqual({planId:undefined,period:undefined});
+    expect(catalogReturnPath("9007199254740992", "deposit")).toBe("plan");
+    expect(purchaseReturnPath("#/plan/9007199254740992?period=year_price")).toBeUndefined();
+});
+it("preserves safe coupon intent through catalog and authentication but drops it for an owned order", () => {
+    expect(catalogSelection("#/plan?couponId=7")).toEqual({ planId: undefined, period: undefined, couponId: 7 });
+    expect(catalogReturnPath(2, "year_price", 7)).toBe("plan?period=year_price&selected=2&couponId=7");
+    expect(purchaseReturnPath("#/plan/2?period=year_price&couponId=7&code=secret&token=secret&pay=true")).toBe("plan/2?period=year_price&couponId=7");
+    expect(purchaseReturnPath("#/plan?period=year_price&selected=2&couponId=7&quote=secret")).toBe("plan?period=year_price&selected=2&couponId=7");
+    expect(purchaseReturnPath("#/plan/2?order=owned-1&couponId=7&period=year_price")).toBe("plan/2?order=owned-1");
+    expect(catalogSelection("#/plan/2?order=owned-1&couponId=7").couponId).toBeUndefined();
+    for (const id of ["-1", "0", "1.5", "01", "1e3", "9007199254740992", "1&pay=true", "private-code"]) {
+        expect(purchaseReturnPath(`#/plan/2?couponId=${encodeURIComponent(id)}`)).toBe("plan/2");
+    }
+    expect(purchaseReturnPath("#/plan/2?couponId=7&couponId=8")).toBe("plan/2");
+});
+it("locates and prioritizes a coupon's eligible plan and cycle once while respecting subsequent choices", () => {
+    history.replaceState(null, "", "#/plan?couponId=7");
+    mocks.couponPlanIds = [2];
+    mocks.couponPeriods = ["annual"];
+    mocks.plans = [plan, { ...plan, id: 2, name: "Premium" }];
+    const view = render(<SubscriptionPurchase />);
+    expect(screen.getByRole("button", { name: "年付" }).getAttribute("aria-pressed")).toBe("true");
+    expect(view.container.querySelector(".pricing-plans article")?.id).toBe("pricing-plan-2");
+    expect(view.container.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
+    expect(screen.getByRole("status").textContent).toBe("couponIntentEligible");
+    expect(location.hash).toBe("#/plan?period=year_price&selected=2&couponId=7");
+    fireEvent.click(screen.getByRole("button", { name: "季付" }));
+    expect(screen.getByRole("button", { name: "季付" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("status").textContent).toBe("couponIntentDifferentPeriod");
+    view.rerender(<SubscriptionPurchase />);
+    expect(screen.getByRole("button", { name: "季付" }).getAttribute("aria-pressed")).toBe("true");
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+});
+it("treats an unowned coupon URL as an unavailable hint without changing catalog prices", () => {
+    history.replaceState(null, "", "#/plan?couponId=99");
+    render(<SubscriptionPurchase />);
+    expect(screen.getByRole("status").textContent).toBe("couponIntentUnavailable");
+    expect(screen.getByText("¥9.00")).toBeTruthy();
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("preserves a changed monthly cycle after a real checkout return remount with an annual coupon hint", async () => {
+    history.replaceState(null, "", "#/plan?couponId=7");
+    mocks.couponPeriods = ["annual"];
+    mocks.plans = [{ ...plan, month_price: 1000 }];
+    mocks.navigate.mockImplementation((path) => history.replaceState(null, "", `#/${path}`));
+    const original = render(<SubscriptionPurchase />);
+    expect(screen.getByRole("button", { name: "年付" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    original.unmount();
+    const checkout = render(<UnifiedCheckout planId={1} initialPeriod={catalogSelection().period} />);
+    await waitFor(() => expect(mocks.quoteRequest).toHaveBeenCalledWith(expect.objectContaining({ period: "year_price", wallet_coupon_id: 7 }), expect.anything()));
+    fireEvent.click(screen.getByRole("radio", { name: /月付/ }));
+    await waitFor(() => expect(mocks.quoteRequest.mock.calls.at(-1)?.[0]).toMatchObject({ period: "month_price" }));
+    expect(mocks.quoteRequest.mock.calls.at(-1)?.[0].wallet_coupon_id).toBeUndefined();
+    fireEvent.click(screen.getByRole("button", { name: "返回" }));
+    expect(location.hash).toBe("#/plan?period=month_price&selected=1&couponId=7");
+    checkout.unmount();
+    mocks.quoteRequest.mockClear();
+    const returned = render(<SubscriptionPurchase />);
+    expect(screen.getByRole("button", { name: "月付" }).getAttribute("aria-pressed")).toBe("true");
+    expect(returned.container.querySelector(".mobile-active")?.id).toBe("pricing-plan-1");
+    expect(screen.getByRole("status").textContent).toBe("couponIntentDifferentPeriod");
+    expect(location.hash).toBe("#/plan?period=month_price&selected=1&couponId=7");
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() => expect(mocks.quoteRequest).toHaveBeenCalled());
+    expect(mocks.quoteRequest.mock.calls.every(([body]) => body.period === "month_price" && !body.wallet_coupon_id)).toBe(true);
+    expect((screen.getByRole("radio", { name: /月付/ }) as HTMLInputElement).checked).toBe(true);
+});
+it.each(["period=quarter_price", "selected=2", "period=quarter_price&selected=2"])("keeps valid explicit catalog choices ahead of coupon suggestions: %s", (selection) => {
+    history.replaceState(null, "", `#/plan?${selection}&couponId=7`);
+    mocks.couponPeriods = ["annual"];
+    mocks.couponPlanIds = [1];
+    mocks.plans = [plan, { ...plan, id: 2, name: "Premium" }];
+    const view = render(<SubscriptionPurchase />);
+    expect(screen.getByRole("button", { name: "季付" }).getAttribute("aria-pressed")).toBe("true");
+    if (selection.includes("selected=2"))
+        expect(view.container.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
+    expect(screen.getByRole("status").textContent).toBe("couponIntentDifferentPeriod");
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+});
+it("keeps coupon intent recovery quiet and honors the wallet retry cooldown without blocking catalog browsing", async () => {
+    vi.useFakeTimers();
+    try {
+        history.replaceState(null, "", "#/plan?couponId=7");
+        mocks.walletError = "Too Many Attempts.";
+        mocks.walletRetryAt = Date.now() + 2000;
+        render(<SubscriptionPurchase />);
+        expect(screen.getByRole("status").textContent).toContain("couponUnavailable");
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(screen.queryByText("Too Many Attempts.")).toBeNull();
+        expect((screen.getByRole("button", { name: "subscribe{}" }) as HTMLButtonElement).disabled).toBe(false);
+        const retry = screen.getByRole("button", { name: /retryIn/ }) as HTMLButtonElement;
+        expect(retry.disabled).toBe(true);
+        fireEvent.click(retry);
+        expect(mocks.walletReload).not.toHaveBeenCalled();
+        await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
+        fireEvent.click(screen.getByRole("button", { name: "重试" }));
+        expect(mocks.walletReload).toHaveBeenCalledOnce();
+    } finally { vi.useRealTimers(); }
+});
+it("carries coupon intent into checkout and removes it permanently when the user opts out", async () => {
+    history.replaceState(null, "", "#/plan?couponId=7");
+    mocks.navigate.mockImplementation((path) => history.replaceState(null, "", `#/${path}`));
+    const view = render(<SubscriptionPurchase />);
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() => expect(mocks.quoteRequest).toHaveBeenCalledWith(expect.objectContaining({ plan_id: 1, period: "quarter_price", wallet_coupon_id: 7 }), expect.anything()));
+    expect(location.hash).toBe("#/plan/1?period=quarter_price&couponId=7");
+    fireEvent.click(screen.getByLabelText("我的优惠券", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("radio", { name: "不使用优惠券" }));
+    expect(location.hash).toBe("#/plan/1?period=quarter_price");
+    await waitFor(() => expect(mocks.quoteRequest.mock.calls.at(-1)?.[0].wallet_coupon_id).toBeUndefined());
+    fireEvent.click(screen.getByRole("button", { name: "返回" }));
+    expect(mocks.navigate).toHaveBeenLastCalledWith("plan?period=quarter_price&selected=1");
+    expect(view.container.querySelector(".subscription-catalog")).toBeTruthy();
+    mocks.quoteRequest.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "subscribe{}" }));
+    await waitFor(() => expect(mocks.quoteRequest).toHaveBeenCalled());
+    expect(mocks.quoteRequest.mock.calls.every(([body]) => !body.wallet_coupon_id)).toBe(true);
+});
+it("uses server quote verification when saving a coupon-intent order and strips intent from the resulting order URL", async () => {
+    history.replaceState(null, "", "#/plan/1?period=year_price&couponId=7");
+    mocks.request.mockResolvedValue({ data: "coupon-order" });
+    render(<UnifiedCheckout planId={1} initialPeriod="year_price" />);
+    await waitFor(() => expect((screen.getByRole("button", { name: "confirmAndPay{}" }) as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByRole("button", { name: "confirmAndPay{}" }));
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("user/order/save", expect.objectContaining({ plan_id: 1, period: "year_price", wallet_coupon_id: 7, checkout_quote: expect.any(String) })));
+    const saved = mocks.request.mock.calls.find(([path]) => path === "user/order/save")?.[1];
+    expect(saved).not.toHaveProperty("discount_amount");
+    expect(saved).not.toHaveProperty("total_amount");
+    expect(location.hash).toBe("#/plan/1?order=coupon-order");
+});
+it("discards coupon intent when resuming an owned order and never re-quotes the saved order", () => {
+    history.replaceState(null, "", "#/plan/1?order=test-order&couponId=7");
+    render(<UnifiedCheckout planId={1} initialOrder="test-order" />);
+    expect(location.hash).toBe("#/plan/1?order=test-order");
+    expect(screen.queryByLabelText("我的优惠券", { selector: "summary" })).toBeNull();
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+    expect(mocks.request).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "返回" }));
+    expect(mocks.navigate).toHaveBeenCalledWith("plan?period=quarter_price&selected=1");
+});
+it("restores the selected plan and annual term after returning from confirmation", async () => {
+    history.replaceState(null, "", "#/plan?period=year_price&selected=2");
+    mocks.plans = [{...plan,month_price:1000},{...plan,id:2,name:"Premium",month_price:2000}];
+    const view=render(<SubscriptionPurchase />);
+    expect(screen.getByRole("button",{name:"年付"}).getAttribute("aria-pressed")).toBe("true");
+    expect(view.container.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
+    fireEvent.click(within(view.container.querySelector(".mobile-active") as HTMLElement).getByRole("button",{name:"subscribe{}"}));
+    fireEvent.click(await screen.findByRole("button",{name:"返回"}));
+    expect(mocks.navigate).toHaveBeenLastCalledWith("plan?period=year_price&selected=2");
+    expect(screen.getByRole("button",{name:"年付"}).getAttribute("aria-pressed")).toBe("true");
+    expect(view.container.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
+});
+it("updates safe checkout context on cycle changes and re-quotes on a fresh checkout", async () => {
+    history.replaceState(null,"","#/plan/1?period=quarter_price");
+    const view=render(<UnifiedCheckout planId={1} initialPeriod="quarter_price" />);
+    await waitFor(()=>expect(mocks.quoteRequest).toHaveBeenCalled());
+    fireEvent.click(screen.getByRole("radio",{name:/年付/}));
+    expect(location.hash).toBe("#/plan/1?period=year_price");
+    await waitFor(()=>expect(mocks.quoteRequest).toHaveBeenLastCalledWith(expect.objectContaining({period:"year_price"}),expect.anything()));
+    view.unmount();
+    mocks.quoteRequest.mockClear();
+    render(<UnifiedCheckout planId={1} initialPeriod="year_price" />);
+    await waitFor(()=>expect(mocks.quoteRequest).toHaveBeenCalledWith(expect.objectContaining({period:"year_price"}),expect.anything()));
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it("routes pending orders to their own plan while special orders retain their dedicated page", () => {
+    expect(orderResumePath({...order,plan_id:2,type:2,credit_bytes:null})).toBe("plan/2?order=test-order");
+    for (const special of [{period:"deposit"},{period:"reset_price"},{period:"quarter_price",credit_bytes:1024},{plan_id:-1},{type:5}]) {
+        expect(orderResumePath({...order,...special})).toBe("order/test-order");
+    }
+});
+it("continues a different pending plan in that order's own confirmation",()=>{
+    mocks.orders=[{...order,plan_id:2,type:2,credit_bytes:null,payment_id:1}];
+    render(<UnifiedCheckout planId={1}/>);
+    fireEvent.click(screen.getByRole("button",{name:"继续支付"}));
+    expect(mocks.navigate).toHaveBeenCalledWith("plan/2?order=test-order");
+    expect(mocks.request).not.toHaveBeenCalled();
+    expect(mocks.quoteRequest).not.toHaveBeenCalled();
+});
+it.each([["renew","impactRenew"],["switchPlan","impactSwitch"],["resubscribe","impactResubscribe"],["subscribe","impactSubscribe"]])("explains %s without projecting a client-side expiry date",(action,key)=>{
+    render(<PurchaseRules plan={{...plan,purchaseAction:action}} period="year_price" />);
+    expect(screen.getByText(key)).toBeTruthy();
+});
+it("uses persisted order type instead of a stale catalog action",()=>{
+    render(<PurchaseRules plan={{...plan,purchaseAction:"switchPlan"}} period="year_price" orderType={2}/>);
+    expect(screen.getByText("impactRenew")).toBeTruthy();
+    expect(screen.queryByText("impactSwitch")).toBeNull();
 });
 
 

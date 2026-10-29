@@ -8,6 +8,7 @@ import { usablePurchaseCoupon } from "./billing-flow";
 import { tx } from "../shared/i18n";
 import type { V10WalletCoupon } from "../shared/v10-types";
 import { useRetryCountdown } from "../shared/use-retry-countdown";
+import { availableCouponIntent, purchaseCouponId } from "./checkout-navigation";
 
 import "./coupon-picker.css";
 
@@ -19,6 +20,8 @@ export function CouponPicker({
     onChange,
     amount = 0,
     currency = "CNY",
+    couponIntentId,
+    onManualChange,
 }: {
     planId: number;
     period: string;
@@ -26,6 +29,8 @@ export function CouponPicker({
     onChange: (id: number | null, coupon?: WalletCoupon) => void;
     amount?: number;
     currency?: string;
+    couponIntentId?: number;
+    onManualChange?: () => void;
 }) {
     const wallet = useData<WalletCoupon[]>("user/coupon/wallet");
     const retryIn = useRetryCountdown(wallet.retryAt);
@@ -33,8 +38,10 @@ export function CouponPicker({
     const name = useId();
     const summaryId = `${name}-summary`;
     const disclosure = useRef<HTMLDetailsElement>(null);
+    const handledIntents = useRef(new Set<number>());
+    const manualChoice = useRef(false);
     const usable = (coupon: WalletCoupon) =>
-        usablePurchaseCoupon(coupon, planId, period);
+        availableCouponIntent(coupon) && usablePurchaseCoupon(coupon, planId, period);
     const available = rows
         .filter(usable)
         .sort(
@@ -46,6 +53,22 @@ export function CouponPicker({
     const bestSaving = available.length
         ? Math.floor((amount * available[0].discountPercent) / 100)
         : 0;
+    useEffect(() => {
+        const id = purchaseCouponId(couponIntentId);
+        if (!id || handledIntents.current.has(id) || manualChoice.current ||
+            wallet.loading || wallet.error || !Array.isArray(wallet.data)) return;
+        const intended = rows.find((coupon) => coupon.id === id);
+        // An unavailable or unowned hint is consumed without applying anything.
+        // A valid but incompatible hint waits for an eligible cycle, never changes it.
+        if (!intended || !availableCouponIntent(intended) || value !== null) {
+            handledIntents.current.add(id);
+            return;
+        }
+        if (usable(intended)) {
+            handledIntents.current.add(id);
+            onChange(intended.id, intended);
+        }
+    }, [couponIntentId, wallet.data, wallet.loading, wallet.error, planId, period, value, onChange]);
     useEffect(() => {
         if (
             value !== null &&
@@ -76,6 +99,8 @@ export function CouponPicker({
                   : "已占用或使用",
         );
     function choose(coupon?: WalletCoupon) {
+        manualChoice.current = true;
+        onManualChange?.();
         onChange(coupon?.id ?? null, coupon);
         if (disclosure.current) {
             disclosure.current.open = false;

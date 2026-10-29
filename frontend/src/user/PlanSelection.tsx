@@ -25,6 +25,7 @@ import { useCheckoutQuote } from "./useCheckoutQuote";
 import type { InitialPayment, PaymentQuote } from "./PaymentCheckout";
 import { useAnalyticsPage } from "./product-analytics";
 import { PurchaseRules } from "./PurchaseRules";
+import { checkoutOrderReference, purchaseCouponId, purchasePeriod } from "./checkout-navigation";
 export function PlanSelection({
     plan,
     close,
@@ -36,12 +37,16 @@ export function PlanSelection({
     order,
     paymentContent,
     paymentQuote,
+    couponIntentId,
+    onCouponIntentDismiss,
 }: {
     unified?: boolean;
     checkout?: { number: string; payment?: InitialPayment };
     order?: Row;
     paymentContent?: ReactNode;
     paymentQuote?: PaymentQuote;
+    couponIntentId?: number;
+    onCouponIntentDismiss?: () => void;
     onOrderCreated?: (orderNumber: string, payment: InitialPayment) => void;
     onQuoteConflict?: () => void;
     plan: Row;
@@ -60,6 +65,17 @@ export function PlanSelection({
             : available[0] || "",
     );
     const period = order?.period || selectedPeriod;
+    useEffect(() => {
+        if (!unified || checkout || plan.resetOnly || !purchasePeriod(period)) return;
+        const path = location.hash.slice(2).split("?")[0];
+        if (path !== `plan/${Number(plan.id)}`) return;
+        const params = new URLSearchParams({ period });
+        const replacement = checkoutOrderReference(replaceTradeNo);
+        const intended = purchaseCouponId(couponIntentId);
+        if (intended) params.set("couponId", String(intended));
+        if (replacement) params.set("replace", replacement);
+        history.replaceState(history.state, "", `#/${path}?${params}`);
+    }, [unified, checkout, plan.id, plan.resetOnly, period, replaceTradeNo, couponIntentId]);
     const [selection, setCoupon] = useState<WalletCoupon | null>(null);
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
@@ -377,6 +393,8 @@ export function PlanSelection({
                                 )
                             ) : (
                                 <CouponPicker
+                                    couponIntentId={couponIntentId}
+                                    onManualChange={onCouponIntentDismiss}
                                     planId={Number(plan.id)}
                                     period={period}
                                     value={coupon?.id ?? null}
@@ -387,7 +405,7 @@ export function PlanSelection({
                                     }
                                 />
                             )}
-                            <PurchaseRules plan={plan} period={period} />
+                            <PurchaseRules plan={plan} period={period} orderType={order?.type} />
                         </fieldset>
                         {unified && !checkout && (
                             <section className="checkout-method-section">

@@ -41,3 +41,22 @@ it("hides disabled unused Passkey settings without a loading flash",async()=>{
 it("cancels a pending device request on navigation and ignores its late result",async()=>{
  let resolve!:(value:any)=>void;mocks.login.mockImplementation(()=>new Promise(r=>{resolve=r;}));const complete=vi.fn();const view=render(<PasskeyLogin onMfa={vi.fn()} onComplete={complete}/>);fireEvent.click(screen.getByRole("button"));const signal=mocks.login.mock.calls[0][0] as AbortSignal;view.unmount();expect(signal.aborted).toBe(true);resolve({authenticated:true});await Promise.resolve();expect(complete).not.toHaveBeenCalled();
 });
+it("recovers an initial credential-list failure with a read-only retry",async()=>{
+ mocks.request.mockRejectedValueOnce(new Error("Temporarily unavailable")).mockResolvedValueOnce({enabled:true,credentials:[]});
+ render(<PasskeySecurity/>);await screen.findByText("Temporarily unavailable");
+ fireEvent.click(screen.getByRole("button",{name:"重试"}));
+ await screen.findByRole("button",{name:"绑定 Passkey"});
+ expect(mocks.request).toHaveBeenCalledTimes(2);
+ for(const call of mocks.request.mock.calls) expect(call.slice(0,3)).toEqual(["me/security/passkeys",undefined,"GET"]);
+ expect(mocks.register).not.toHaveBeenCalled();expect(mocks.logout).not.toHaveBeenCalled();
+});
+it("cancels a retried credential-list load when the security section leaves",async()=>{
+ let finish!:(value:any)=>void;
+ mocks.request.mockRejectedValueOnce(new Error("Unavailable")).mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve;}));
+ const view=render(<PasskeySecurity/>);await screen.findByRole("button",{name:"重试"});
+ fireEvent.click(screen.getByRole("button",{name:"重试"}));
+ await waitFor(()=>expect(mocks.request).toHaveBeenCalledTimes(2));
+ const signal=mocks.request.mock.calls[1][3] as AbortSignal;view.unmount();
+ expect(signal.aborted).toBe(true);finish({enabled:true,credentials:[]});await Promise.resolve();
+ expect(mocks.register).not.toHaveBeenCalled();
+});

@@ -178,7 +178,7 @@ it("moves browser policies to a separate settings tab without changing saved key
     fireEvent.click(screen.getByRole("button", { name: "浏览器访问" }));
     const policy = await screen.findByLabelText(/微信访问策略/);
     fireEvent.change(policy, { target: { value: "prompt" } });
-    expect(screen.getByText("当前策略：提示后允许访问")).toBeTruthy();
+    expect(screen.getByText("微信 · 提示后允许访问")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "保存" }));
     await waitFor(() =>
         expect(api.request).toHaveBeenCalledWith("test-admin/config/save", {

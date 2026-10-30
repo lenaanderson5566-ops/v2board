@@ -1,6 +1,7 @@
 import { trackAction, useAnalyticsPage } from "./product-analytics";
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
+import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { PaymentIcon, PaymentMethodPicker } from "./PaymentMethodPicker";
 import { c, minuteDate } from "../shared/credit-copy";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -1084,6 +1085,7 @@ export function PaymentCheckout({
                                 {tx("正在等待支付确认，请勿重复付款。")}
                             </p>
                         )}
+                        {due > 0 && <BrowserHandoffHelp context="payment" disabled={busy} />}
                         {compact ? (
                             <details className="checkout-order-actions">
                                 <summary>{tx("订单信息")}</summary>

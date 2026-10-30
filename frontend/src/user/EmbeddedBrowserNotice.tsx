@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { currentDevice } from "../shared/user-experience";
 import { boot } from "../shared/api";
 import { browserHandoffUrl, browserPolicy } from "../shared/browser-access";
@@ -12,25 +12,38 @@ export function BrowserAccessGate({
     children: ReactNode;
     footer?: ReactNode;
 }) {
-    const [continued, setContinued] = useState(false);
+    const context = currentDevice();
+    const [continued, setContinued] = useState("");
     const policy =
         boot.mode === "user"
-            ? browserPolicy(currentDevice().embedded, boot.browserPolicies)
+            ? browserPolicy(context.embedded, boot.browserPolicies)
             : "allow";
-    if (policy === "allow" || continued) return children;
+    const identity = `${boot.mode}:${context.embedded}:${policy}`;
+    useEffect(() => { setContinued(""); }, [identity]);
+    if (policy === "allow" || (policy === "prompt" && continued === identity)) return children;
     return (
         <div className="access-page">
             <EmbeddedBrowserNotice
                 onContinue={
-                    policy === "prompt" ? () => setContinued(true) : undefined
+                    policy === "prompt" ? () => setContinued(identity) : undefined
                 }
             />
             {footer}
         </div>
     );
 }
-export function EmbeddedBrowserNotice({onContinue}: {onContinue?: () => void} = {}) {
+export function EmbeddedBrowserNotice({onContinue, compact = false}: {onContinue?: () => void; compact?: boolean} = {}) {
     const context = currentDevice();
+    const [href, setHref] = useState(() => location.href);
+    useEffect(() => {
+        const refresh = () => setHref(location.href);
+        window.addEventListener("hashchange", refresh);
+        window.addEventListener("popstate", refresh);
+        return () => {
+            window.removeEventListener("hashchange", refresh);
+            window.removeEventListener("popstate", refresh);
+        };
+    }, []);
     useAnalyticsPage(context.embedded ? (onContinue ? "browser_prompt" : "browser_guide") : null);
-    return <BrowserNoticeView {...context} title={boot.title} address={browserHandoffUrl(location.href)} onContinue={onContinue} onAction={trackAction} languagePicker={<LanguagePicker />} />;
+    return <BrowserNoticeView {...context} compact={compact} title={boot.title} address={browserHandoffUrl(href)} onContinue={onContinue} onAction={trackAction} languagePicker={<LanguagePicker />} />;
 }

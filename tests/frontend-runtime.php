@@ -10,9 +10,10 @@ mkdir($directory, 0700);
 try {
     config(['v2board.secure_path' => 'test-admin', 'v2board.smtp_password' => 'must-not-be-exported']);
     $assert(App\Services\BrowserAccess::policies() === App\Services\BrowserAccess::DEFAULTS, 'Conservative defaults, unknown apps allowed');
-    foreach (['allow','prompt','guide','invalid'] as $policy) {
-        config(['v2board.browser_policy_wechat'=>$policy]);
-        $assert(App\Services\BrowserAccess::policies()['wechat']===($policy==='invalid'?'guide':$policy), 'Policy validation and fallback');
+    foreach (['wechat','qq','weibo','wecom'] as $browser) $assert(App\Services\BrowserAccess::policies()[$browser]==='guide', 'Primary application defaults to guidance: '.$browser);
+    foreach (['wechat','wecom'] as $browser) foreach (['allow','prompt','guide','invalid'] as $policy) {
+        config(['v2board.browser_policy_'.$browser=>$policy]);
+        $assert(App\Services\BrowserAccess::policies()[$browser]===($policy==='invalid'?'guide':$policy), 'Explicit policy is preserved with safe fallback: '.$browser);
     }
     config(['v2board.browser_policy_wechat'=>'prompt']);
     $rules=App\Http\Requests\Admin\ConfigSave::allRules();
@@ -25,7 +26,14 @@ try {
     }
     foreach (['XiaoHongShu'=>'xiaohongshu','Aweme'=>'douyin','BiliApp'=>'bilibili','AlipayClient'=>'alipay','DingTalk'=>'dingtalk','MicroMessenger wxwork'=>'wecom'] as $ua=>$expected) {
         $assert(App\Services\BrowserAccess::classify($ua)['embedded']===$expected,'Application UA: '.$expected);
-        $assert(App\Services\BrowserAccess::policies()[$expected]==='allow','New platforms default allow');
+        $assert(App\Services\BrowserAccess::policies()[$expected]===($expected==='wecom'?'guide':'allow'),'Platform default follows its configured entry policy');
+    }
+    foreach ([['MicroMessenger/8 wxwork/4','wecom'],['DingTalk MicroMessenger wxwork/4','wecom'],['XiaoHongShu/9 MicroMessenger/8','xiaohongshu'],['MICROMESSENGER/8','wechat'],['Mobile QQ/9.0 MQQBrowser/15.0','qq'],['Mozilla Android;wv) Chrome/130','other'],['Mozilla Android;  wv; Chrome/130','other'],['[FB_IAB/FB4A;]','other'],['Instagram 300','other'],['MQQBrowser/15.0','none'],['NotQQ/9.0','none'],['NotInstagram/300','none'],['Mozilla iPhone AppleWebKit/605.1 Version/18.0 Mobile Safari/605.1','none'],['Mozilla Android Chrome/130 Mobile Safari/537.36','none'],[str_repeat('x',1024).' MicroMessenger/8','none']] as [$ua,$expected]) {
+        $classified=App\Services\BrowserAccess::classify($ua);
+        $assert($classified['embedded']===$expected,'Embedded attribution preserves marker boundaries and precedence: '.$expected);
+        $sqlCategory=Illuminate\Support\Facades\DB::selectOne('SELECT '.App\Services\BrowserAccess::logCategorySql().' AS category FROM (SELECT ? AS user_agent) AS sample',[$ua])->category;
+        $expectedCategory=$expected==='none' ? $classified['browser'] : ($expected==='other' ? 'embedded_other' : $expected);
+        $assert($sqlCategory===$expectedCategory,'Existing-log category agrees with bounded attribution: '.$expectedCategory);
     }
     foreach ([['Chrome/120.0 360SE','360',null],['Chrome/120.0 360EE','360',null],['Chrome/120.0 SE 2.X MetaSr 1.0','sogou',null],['Chrome/120.0 SogouMobileBrowser/6.2','sogou',6],['Chrome/120.0 QQBrowser/12.1','qqbrowser',12],['Chrome/120.0 UCBrowser/17.2','uc',17],['Chrome/117.0 SamsungBrowser/24.0','samsung',24],['Chrome/120.0','chrome',120],['EdgiOS/120.0','edge',120]] as [$ua,$family,$major]) {
         $classified=App\Services\BrowserAccess::classify($ua);
@@ -41,6 +49,9 @@ try {
     $assert(App\Support\FrontendRuntime::config('user', true)['landingStyle'] === 'original', 'Unknown landing style falls back to original');
     config(['v2board.landing_style' => 'original']);
     $assert($user['browserPolicies']['wechat']==='prompt','Policies exported with runtime without a new request');
+    $assert($user['browserPolicies']['wecom']==='guide','Unset or invalid WeCom policy exports the guidance default');
+    config(['v2board.browser_policy_wecom'=>'allow']);
+    $assert(App\Support\FrontendRuntime::config('user', false)['browserPolicies']['wecom']==='allow','Existing explicit WeCom allow setting is not overwritten');
     $assert($user['adminPath'] === '' && $user['opsPath'] === '', 'User configuration hides administrative paths');
     $assert($admin['adminPath'] === 'test-admin', 'Admin path preserved');
     $assert($user['landing'] === false && !array_key_exists('landing', $admin), 'Server and standalone landing selection');

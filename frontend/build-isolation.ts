@@ -78,6 +78,23 @@ export function userBundleIsolation(): Plugin {
                 [...chunk.imports, ...chunk.dynamicImports].forEach(visit);
             };
             visit(entry.fileName);
+            // The public browser gate must not fetch/evaluate the business shell
+            // through a shared or merged static chunk. Dynamic imports stay lazy.
+            const workspaceSeen = new Set<string>();
+            const visitEntryDependency = (name: string) => {
+                if (workspaceSeen.has(name)) return;
+                workspaceSeen.add(name);
+                const chunk = bundle[name];
+                if (!chunk || chunk.type !== "chunk") return;
+                if (Object.keys(chunk.modules).some(id => normalize(id).endsWith("/src/user/UserWorkspace.tsx")))
+                    this.error("Business workspace entered the public browser entry: " + name);
+                chunk.imports.forEach(visitEntryDependency);
+            };
+            const startupModules = ["/src/user/main.ts", "/src/user/app.tsx", "/src/shared/render-app.tsx"];
+            for (const chunk of Object.values(bundle)) {
+                if (chunk.type === "chunk" && Object.keys(chunk.modules).some(id => startupModules.some(module => normalize(id).endsWith(module))))
+                    visitEntryDependency(chunk.fileName);
+            }
         },
     };
 }

@@ -1,25 +1,10 @@
 import type { InitialPayment } from "./PaymentCheckout";
 import type { Row } from "../shared/api";
 import type { V10WalletCoupon } from "../shared/v10-types";
-
-const subscriptionPeriods = new Set([
-    "month_price", "quarter_price", "half_year_price", "year_price",
-    "two_year_price", "three_year_price",
-]);
-export function purchasePeriod(value: unknown): string | undefined {
-    return typeof value === "string" && subscriptionPeriods.has(value) ? value : undefined;
-}
-function purchasePlanId(value: unknown): number | undefined {
-    if (typeof value !== "number" && typeof value !== "string") return;
-    if (!/^[1-9]\d*$/.test(String(value))) return;
-    const id = Number(value);
-    return Number.isSafeInteger(id) ? id : undefined;
-}
+import { checkoutOrderReference, purchaseCouponId, purchasePeriod, purchasePlanId } from "../shared/navigation-intent";
+export { checkoutOrderReference, purchaseCouponId, purchasePeriod } from "../shared/navigation-intent";
 // A coupon URL carries intent only. The current owner's wallet and server quote
 // must authorize its use again; coupon codes and payment instructions stay out.
-export function purchaseCouponId(value: unknown): number | undefined {
-    return purchasePlanId(value);
-}
 export function availableCouponIntent(coupon: V10WalletCoupon): boolean {
     return Boolean(purchaseCouponId(coupon.id)) && coupon.status === "available" &&
         Date.parse(coupon.expiresAt) > Date.now();
@@ -59,9 +44,6 @@ export function orderResumePath(order: Row): string {
         : `order/${encodeURIComponent(String(order.trade_no || ""))}`;
 }
 
-export function checkoutOrderReference(value: string | null | undefined) {
-    return value && /^[a-zA-Z0-9_-]{1,64}$/.test(value) ? value : undefined;
-}
 export function purchaseReturnPath(hash: string): string | undefined {
     const [path, search] = hash.replace(/^#\//, "").split("?");
     if (
@@ -71,8 +53,10 @@ export function purchaseReturnPath(hash: string): string | undefined {
     )
         return;
     if (path.startsWith("plan/") && !purchasePlanId(path.split("/")[1])) return;
+    const incoming = new URLSearchParams(search);
+    const single = (key: string) => incoming.getAll(key).length === 1 ? incoming.get(key) : null;
     const order = /^plan\/[1-9]\d*$/.test(path)
-        ? checkoutOrderReference(new URLSearchParams(search).get("order"))
+        ? checkoutOrderReference(single("order"))
         : undefined;
     if (order) return `${path}?order=${encodeURIComponent(order)}`;
     const selection = catalogSelection(hash);
@@ -80,6 +64,8 @@ export function purchaseReturnPath(hash: string): string | undefined {
     const params = new URLSearchParams();
     if (selection.period) params.set("period", selection.period);
     if (selection.couponId) params.set("couponId", String(selection.couponId));
+    const replace = /^plan\/[1-9]\d*$/.test(path) ? checkoutOrderReference(single("replace")) : undefined;
+    if (replace) params.set("replace", replace);
     return /^plan\/[1-9]\d*$/.test(path) && params.size ? `${path}?${params}` : path;
 }
 

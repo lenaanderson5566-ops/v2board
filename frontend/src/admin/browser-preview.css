@@ -1,5 +1,24 @@
+.browser-preview {min-width:0}
+.browser-preview > p {line-height:1.7}
+.browser-entry-explanation {margin:18px 0;padding:12px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.browser-preview .browser-entry-explanation h4 {margin:0 0 6px}
+.browser-entry-explanation p {margin:0;color:var(--muted);font-size:12px;line-height:1.7}
+.browser-policy-modes {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:18px 0}
+.browser-policy-modes > div {padding:12px 14px;border:1px solid var(--line);border-radius:8px;min-width:0}
+.browser-policy-modes dt {font-size:13px;font-weight:600;margin-bottom:6px}
+.browser-policy-modes dd {margin:0;color:var(--muted);font-size:12px;line-height:1.7}
+.browser-policy-scope {font-size:12px;color:var(--muted)}
+.browser-preview h4 {font-size:13px;margin:20px 0 10px}
+.browser-policy-overview {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:20px}
+.browser-policy-overview button {min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 12px;text-align:start;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+.browser-policy-overview button[aria-pressed="true"] {border-color:var(--primary);background:var(--primary-soft,var(--surface))}
+.browser-policy-overview small {color:var(--muted);font-size:11px}
 .browser-preview-controls {display:flex;flex-wrap:wrap;gap:16px;align-items:end}
+.browser-preview-controls label {display:grid;gap:6px;min-width:0;max-width:100%}
+.browser-preview-summary {font-weight:600;margin:16px 0 4px}
+.browser-preview-simulation {font-size:12px}
 .browser-preview-frame {width:390px;max-width:100%;max-height:780px;overflow:auto;border:1px solid var(--line);border-radius:20px;margin:20px auto;background:var(--surface);--ink:var(--text);--text-secondary:var(--muted);--surface-soft:var(--surface);--surface-tint:var(--surface);--brand:var(--primary);--on-brand:#fff}
 .browser-preview-frame .browser-notice {min-height:0;padding:20px 14px;box-sizing:border-box}
 .browser-preview-frame .browser-notice-card {padding:24px 18px;box-sizing:border-box}
-.browser-preview-frame .browser-notice h1 {font-size:25px}
+.browser-preview-frame .browser-notice .browser-notice-heading {font-size:25px}
+@media(max-width:600px) {.browser-policy-modes {grid-template-columns:1fr}.browser-preview-controls {gap:12px}.browser-preview-controls label {flex:1 1 120px}.browser-policy-overview {grid-template-columns:repeat(2,minmax(0,1fr))}}

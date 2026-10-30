@@ -63,3 +63,20 @@ it("rejects backend chunks reached through user page navigation", () => {
         ),
     ).toThrow(/Backend modules/);
 });
+it.each(["merged", "static", "startup-static", "dynamic"])("keeps the workspace out of eager entry dependencies: %s", (mode) => {
+    const hook = userBundleIsolation().generateBundle as Function;
+    const bundle = {
+        "user.js": {type:"chunk",isEntry:true,fileName:"user.js",facadeModuleId:"/frontend/index.html",modules:{},imports:[],dynamicImports:["entry.js","render-app.js"]},
+        "entry.js": {
+            type:"chunk",fileName:"entry.js",
+            modules:{"/src/user/app.tsx":{},...(mode === "merged" ? {"/src/user/UserWorkspace.tsx":{}} : {})},
+            imports: mode === "static" ? ["workspace.js"] : [],
+            dynamicImports: mode === "dynamic" ? ["workspace.js"] : [],
+        },
+        "workspace.js": {type:"chunk",fileName:"workspace.js",modules:{"/src/user/UserWorkspace.tsx":{}},imports:[],dynamicImports:[]},
+        "render-app.js": {type:"chunk",fileName:"render-app.js",modules:{"/src/shared/render-app.tsx":{}},imports:mode === "startup-static" ? ["workspace.js"] : [],dynamicImports:[]},
+    };
+    const run=()=>hook.call({getModuleIds:()=>[],getModuleInfo:()=>null,error(message:string){throw new Error(message);}}, {}, bundle);
+    if (mode === "dynamic") expect(run).not.toThrow();
+    else expect(run).toThrow("Business workspace entered the public browser entry");
+});

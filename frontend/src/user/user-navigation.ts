@@ -19,11 +19,4 @@ export function userNavigation(state?: string) {
     ];
 }
 
-export function ticketOrderReference(path: string): string | undefined {
-    const parts = path.split("/");
-    if (parts[0] !== "ticket" || parts[1] !== "order" || parts.length !== 3) return;
-    try {
-        const value = decodeURIComponent(parts[2]);
-        return /^[a-zA-Z0-9_-]{1,64}$/.test(value) ? value : undefined;
-    } catch { return undefined; }
-}
+export { ticketOrderReference } from "../shared/navigation-intent";

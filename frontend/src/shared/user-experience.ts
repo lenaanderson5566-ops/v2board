@@ -5,13 +5,22 @@ export function deviceContext(
     platform = "",
     touchPoints = 0,
 ): { device: Device; embedded: string | null } {
-    const embedded = /XiaoHongShu/i.test(ua) ? "xiaohongshu" : /Aweme/i.test(ua) ? "douyin" : /BiliApp/i.test(ua) ? "bilibili" : /AlipayClient/i.test(ua) ? "alipay" : /DingTalk/i.test(ua) ? "dingtalk" : /wxwork/i.test(ua) ? "wecom" : /MicroMessenger/i.test(ua)
-        ? "WeChat"
-        : /\bQQ\//i.test(ua)
-          ? "QQ"
-          : /Weibo/i.test(ua)
-            ? "Weibo"
-            : /; wv\)|\bFBAN\/|\bFBAV\/|Instagram/i.test(ua) ? "Other" : null;
+    // Keep the presentation classifier bounded and aligned with BrowserAccess.
+    // A missing marker is inconclusive: normal Safari/Chrome must remain usable.
+    ua = typeof ua === "string" ? ua.slice(0, 1024) : "";
+    const contexts: [RegExp, string][] = [
+        [/wxwork/i, "wecom"],
+        [/XiaoHongShu/i, "xiaohongshu"],
+        [/Aweme/i, "douyin"],
+        [/BiliApp/i, "bilibili"],
+        [/AlipayClient/i, "alipay"],
+        [/DingTalk/i, "dingtalk"],
+        [/MicroMessenger/i, "WeChat"],
+        [/(?:^|[^a-z0-9_])QQ\//i, "QQ"],
+        [/Weibo/i, "Weibo"],
+        [/;\s*wv(?:[);\s]|$)|(?:^|[^a-z0-9_])(?:FBAN\/|FBAV\/|FB_IAB\/)|(?:^|[^a-z0-9_])Instagram(?:[ /;]|$)/i, "Other"],
+    ];
+    const embedded = contexts.find(([pattern]) => pattern.test(ua))?.[1] ?? null;
     const identity = `${ua} ${platform}`;
     const device: Device =
         /iPhone|iPad|iPod/i.test(ua) ||
@@ -30,9 +39,9 @@ export function deviceContext(
 }
 export function currentDevice() {
     return deviceContext(
-        navigator.userAgent,
-        navigator.platform,
-        navigator.maxTouchPoints,
+        navigator.userAgent || "",
+        navigator.platform || "",
+        navigator.maxTouchPoints || 0,
     );
 }
 export function activePlan(

@@ -65,6 +65,9 @@ vi.mock("./product-analytics", () => ({
 }));
 vi.mock("./PurchaseSteps", () => ({ PurchaseSteps: () => null }));
 vi.mock("./OrderHelp", () => ({ OrderHelp: () => null }));
+vi.mock("./EmbeddedBrowserNotice", () => ({
+    EmbeddedBrowserNotice: () => <p>browser guidance content</p>,
+}));
 vi.mock("./OrderReceipt", () => ({ OrderReceipt: () => null }));
 vi.mock("../shared/credit-copy", () => ({
     c: (value: string) => value,
@@ -98,6 +101,28 @@ afterEach(() => {
     mock.methods = originalMethods;
     vi.unstubAllGlobals();
     vi.clearAllMocks();
+});
+it("opens browser guidance without replacing checkout or initiating payment", async () => {
+    const ua = vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla iPhone MicroMessenger/8");
+    try {
+        renderCheckout();
+        const pay = await screen.findByRole("button", { name: "确认支付" });
+        fireEvent.click(screen.getByRole("button", { name: "browserPaymentHelp" }));
+        expect(screen.getByRole("dialog", { name: "browserHelpTitle" })).toBeTruthy();
+        expect(screen.getByText("browser guidance content")).toBeTruthy();
+        expect(screen.getByRole("button", { name: "确认支付" })).toBe(pay);
+        expect(mock.request.mock.calls.some(([path]) => path === "user/order/checkout")).toBe(false);
+        fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.getByRole("button", { name: "确认支付" })).toBe(pay);
+    } finally { ua.mockRestore(); }
+});
+it("does not show in-app browser guidance to a regular browser", () => {
+    const ua = vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla Chrome/140.0 Safari/537.36");
+    try {
+        renderCheckout();
+        expect(screen.queryByRole("button", { name: "browserPaymentHelp" })).toBeNull();
+    } finally { ua.mockRestore(); }
 });
 it("recalculates the exact network fee and submits its channel ID", async () => {
     mock.request.mockResolvedValue({

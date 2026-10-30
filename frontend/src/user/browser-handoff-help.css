@@ -1,0 +1,5 @@
+.browser-handoff-help { margin-block: 10px; min-width: 0; }
+.browser-handoff-help > button { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; min-height: 44px; padding: 8px 0; border: 0; background: transparent; color: var(--text-secondary, var(--muted)); text-align: start; font-size: 12px; line-height: 1.6; white-space: normal; }
+.browser-handoff-help > button > svg { flex: 0 0 auto; }
+.browser-handoff-help > button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.browser-handoff-help > button:disabled { cursor: wait; opacity: .6; }

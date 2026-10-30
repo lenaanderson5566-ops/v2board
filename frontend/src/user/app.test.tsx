@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {act,cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
-const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),authenticated:true,brokenRoute:"",logins:[] as Array<(account:any,options?:any)=>void>}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),workspaceLoaded:vi.fn(),gateAllowed:true,authenticated:true,brokenRoute:"",logins:[] as Array<(account:any,options?:any)=>void>}));
 vi.mock("../shared/api",()=>({boot:{mode:"user",title:"Test",landing:false},request:vi.fn(),readRequest:mocks.read,navigate:vi.fn(),clearReadCache:vi.fn(),logoutSession:vi.fn()}));
 vi.mock("../shared/browser-session",()=>({initializeBrowserSession:mocks.initialize,hasBrowserSession:()=>mocks.authenticated,forgetBrowserSession:mocks.forget}));
 vi.mock("../shared/i18n",()=>({tx:(key:string)=>key,locale:()=>"en-US",setLanguagePersistence:vi.fn(),applyAccountLanguage:mocks.language}));
@@ -10,7 +10,11 @@ vi.mock("../shared/LanguagePicker",()=>({LanguagePicker:()=>null}));
 vi.mock("../shared/WorkspaceSkeleton",()=>({WorkspaceSkeleton:()=> <p>Loading</p>,LandingSkeleton:()=>null}));
 vi.mock("./UserAuth",()=>({UserAuth:({redirectPath,onLogin}:any)=> {mocks.logins.push(onLogin);return <><p>Sign in</p><output data-testid="login-return">{redirectPath}</output></>;}}));
 vi.mock("./AnalyticsPrivacy",()=>({AnalyticsPrivacy:()=>null,AnalyticsPrivacyFooter:()=>null,PrivacyFooterLinks:()=>null}));
-vi.mock("./EmbeddedBrowserNotice",()=>({BrowserAccessGate:({children}:any)=>children}));
+vi.mock("./EmbeddedBrowserNotice",()=>({BrowserAccessGate:({children}:any)=>mocks.gateAllowed ? children : <p>Browser entry</p>}));
+vi.mock("./UserWorkspace",async(importOriginal)=>{
+    mocks.workspaceLoaded();
+    return importOriginal<typeof import("./UserWorkspace")>();
+});
 vi.mock("./chat-layout",()=>({installChatLayout:()=>()=>{}}));
 vi.mock("./AccountEntry",()=>({UserStatusGate:({children}:any)=>children}));
 vi.mock("./AnnouncementCenter",()=>({AnnouncementCenter:()=>null}));
@@ -21,15 +25,32 @@ vi.mock("./user-entry",()=>({default:({current}:any)=> {
     return <><p>Protected workspace</p><input aria-label="Page action" /></>;
 }}));
 import App from "./app";
+import { browserHandoffUrl } from "../shared/browser-access";
 beforeEach(()=>{
     mocks.read.mockReset();mocks.language.mockReset().mockResolvedValue(undefined);mocks.brokenRoute="";
-    mocks.initialize.mockReset().mockResolvedValue(undefined);mocks.forget.mockClear();mocks.authenticated=true;
+    mocks.initialize.mockReset().mockResolvedValue(undefined);mocks.forget.mockClear();mocks.authenticated=true;mocks.gateAllowed=true;
     mocks.logins=[];
     document.title="Test";
     window.location.hash="#/dashboard";window.scrollTo=vi.fn();
     vi.stubGlobal("matchMedia",()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
 });
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
+it("loads the business workspace only after the browser gate admits the page",async()=>{
+    mocks.gateAllowed=false;
+    mocks.read.mockResolvedValue({data:{id:42,language:"en-US",account_status:{state:"active"}}});
+    const view=render(<App/>);
+    expect(screen.getByText("Browser entry")).toBeTruthy();
+    await act(async()=>{await Promise.resolve();});
+    expect(mocks.workspaceLoaded).not.toHaveBeenCalled();
+    expect(mocks.initialize).not.toHaveBeenCalled();
+    expect(mocks.read).not.toHaveBeenCalled();
+    mocks.gateAllowed=true;
+    view.rerender(<App/>);
+    expect(await screen.findByText("Protected workspace", {}, {timeout:3000})).toBeTruthy();
+    expect(mocks.workspaceLoaded).toHaveBeenCalledTimes(1);
+    expect(mocks.initialize).toHaveBeenCalledTimes(1);
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+});
 it("does not restore an expired session from an earlier account request",async()=>{
     let finish!:(value:any)=>void;mocks.read.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));
     render(<App/>);await waitFor(()=>expect(mocks.read).toHaveBeenCalled());
@@ -38,6 +59,21 @@ it("does not restore an expired session from an earlier account request",async()
     await act(async()=>finish({data:{id:42,email:"old@example.test",language:"en-US",account_status:{state:"active"}}}));
     expect(screen.getByText("Sign in")).toBeTruthy();expect(screen.queryByText("Protected workspace")).toBeNull();
     expect(mocks.language).not.toHaveBeenCalled();
+});
+it.each([
+    ["#/subscribe?token=private", "subscribe"],
+    ["#/knowledge?verify=private", "knowledge"],
+    ["#/ticket/order/resume_123?requestKey=private", "ticket/order/resume_123"],
+    ["#/plan/1?period=year_price&couponId=7&replace=old_order&pay=true", "plan/1?period=year_price&couponId=7&replace=old_order"],
+    ["#/admin/users?token=private", ""],
+    ["#/client-authorize?authorizationId=invalid", ""],
+])("keeps only safe page context when another browser needs sign-in: %s",async(hash, expected)=>{
+    mocks.authenticated=false;
+    history.replaceState(null,"",new URL(browserHandoffUrl(new URL(hash,location.href).href)).hash);
+    render(<App/>);
+    await screen.findByText("Sign in");
+    expect(screen.getByTestId("login-return").textContent).toBe(expected);
+    expect(mocks.read).not.toHaveBeenCalled();
 });
 it("ignores initial account loading after the shell is unmounted",async()=>{
     let finish!:(value:any)=>void;mocks.read.mockImplementation(()=>new Promise(resolve=>{finish=resolve;}));

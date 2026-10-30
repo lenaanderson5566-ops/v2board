@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { trackAction } from "./product-analytics";
+import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { AccountList } from "./AppleAccounts";
 import { useTranslation } from "react-i18next";
 import { ArrowRight, ArrowUpRight, Download, Globe } from "lucide-react";
@@ -197,6 +198,7 @@ export function ClientDownload({
                 ) : (
                     <small className="muted">{t("hint")}</small>
                 )}
+                <BrowserHandoffHelp context="setup" />
                 <button className="primary download-continue" onClick={close}>
                     {t("continueImport", {
                         defaultValue: "Installed? Continue to import",

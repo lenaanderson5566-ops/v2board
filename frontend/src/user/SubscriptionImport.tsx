@@ -1,5 +1,6 @@
 import { iosDownloads, ClientDownload } from "./ClientDownload";
 import { trackAction } from "./product-analytics";
+import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -298,6 +299,7 @@ export function SubscriptionImport({
                         {t("opened")}
                     </p>
                 )}
+                <BrowserHandoffHelp context="setup" />
             </section>
             <section className="quick-step">
                 <h3>

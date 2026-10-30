@@ -1,6 +1,6 @@
 import React, { type ReactNode } from "react";
-import { Panel } from "./ui";
 import { tx } from "./i18n";
+// Startup recovery must not depend on rich-content parsers or form modules.
 export class ErrorBoundary extends React.Component<
     { children: ReactNode; message?: string },
     { error: string }
@@ -11,14 +11,18 @@ export class ErrorBoundary extends React.Component<
     }
     render() {
         return this.state.error ? (
-            <Panel title={tx("页面暂时无法加载")}>
+            <section className="panel">
+                <div className="panel-head">
+                    <h2>{tx("页面暂时无法加载")}</h2>
+                    <div className="actions" />
+                </div>
                 <div className="pad">
-                    <p>{this.props.message || this.state.error}</p>
+                    <p>{this.props.message || tx("无法完成操作，请刷新页面后重试。")}</p>
                     <button onClick={() => location.reload()}>
                         {tx("重新加载")}
                     </button>
                 </div>
-            </Panel>
+            </section>
         ) : (
             this.props.children
         );

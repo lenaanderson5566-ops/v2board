@@ -1,3 +1,7 @@
+import "../shared/style.css";
+import "../shared/console.css";
+import "./user-experience.css";
+import "./product.css";
 import {
     AnalyticsPrivacyFooter,
     PrivacyFooterLinks,
@@ -8,7 +12,6 @@ import {
     hasBrowserSession,
     forgetBrowserSession,
 } from "../shared/browser-session";
-import DOMPurify from "dompurify";
 import { installChatLayout } from "./chat-layout";
 import {
     tx,
@@ -30,6 +33,7 @@ import {
     ChevronRight,
     MonitorSmartphone,
     X,
+    RefreshCw,
 } from "lucide-react";
 import {
     boot,
@@ -44,10 +48,6 @@ import {
 import { UserAuth } from "./UserAuth";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { useRetryCountdown } from "../shared/use-retry-countdown";
-import { UserStatusGate } from "./AccountEntry";
-import { AnnouncementCenter } from "./AnnouncementCenter";
-import { InviteCampaign } from "./InviteCampaign";
-import { AccountMenu } from "./AccountMenu";
 
 import { clearCheckoutPayment, purchaseReturnPath } from "./checkout-navigation";
 import { browserReturnPath } from "../shared/browser-access";
@@ -58,6 +58,17 @@ import {
 } from "../shared/WorkspaceSkeleton";
 const loadUserContent = () => import("./user-entry");
 const UserContent = React.lazy(loadUserContent);
+const loadStatusGate = () => import("./UserStatusGate");
+const UserStatusGate = React.lazy(() => loadStatusGate().then(module => ({ default: module.UserStatusGate })));
+const loadHeaderControls = () => import("./WorkspaceHeaderControls");
+const WorkspaceHeaderControls = React.lazy(loadHeaderControls);
+const loadInviteCampaign = () => import("./InviteCampaign");
+const InviteCampaign = React.lazy(() => loadInviteCampaign().then(module => ({ default: module.InviteCampaign })));
+function warmAuthenticatedWorkspace() {
+    void loadStatusGate().catch(() => {});
+    void loadHeaderControls().catch(() => {});
+    void loadInviteCampaign().catch(() => {});
+}
 const ClientAuthorization = React.lazy(() => import("./ClientAuthorization"));
 const Landing = React.lazy(() => import("./Landing"));
 import { useTranslation } from "react-i18next";
@@ -78,11 +89,16 @@ export default function UserWorkspace() {
             document.getElementById("custom-footer")
         )
             return;
-        const footer = document.createElement("footer");
-        footer.id = "custom-footer";
-        footer.innerHTML = DOMPurify.sanitize(boot.footerHtml);
-        document.body.appendChild(footer);
-        return () => footer.remove();
+        let disposed = false;
+        let footer: HTMLElement | undefined;
+        void import("dompurify").then(({ default: DOMPurify }) => {
+            if (disposed || document.getElementById("custom-footer")) return;
+            footer = document.createElement("footer");
+            footer.id = "custom-footer";
+            footer.innerHTML = DOMPurify.sanitize(boot.footerHtml!);
+            document.body.appendChild(footer);
+        }).catch(() => { /* Optional footer must not block authentication or render unsanitized HTML. */ });
+        return () => { disposed = true; footer?.remove(); };
     }, []);
     useEffect(() => installChatLayout(), []);
     useTranslation();
@@ -93,6 +109,12 @@ export default function UserWorkspace() {
         [loading, setLoading] = useState(true),
         [open, setOpen] = useState(false),
         [error, setError] = useState("");
+    useEffect(() => {
+        if (user && !boot.landing && path !== "client-authorize") {
+            void loadUserContent().catch(() => {});
+            warmAuthenticatedWorkspace();
+        }
+    }, [user?.id, path === "client-authorize"]);
     const [sessionAttempt, setSessionAttempt] = useState(0);
     const [sessionRevision, setSessionRevision] = useState(0);
     const [sessionError, setSessionError] = useState(false);
@@ -263,8 +285,10 @@ export default function UserWorkspace() {
             forgetBrowserSession();
         }
         // Start code loading alongside the account request; do not delay authentication on it.
-        if (!boot.landing && hasBrowserSession())
+        if (!boot.landing && hasBrowserSession()) {
             void loadUserContent().catch(() => {});
+            if (location.hash.slice(2).split("?")[0] !== "client-authorize") warmAuthenticatedWorkspace();
+        }
         if (!boot.landing)
             initializeBrowserSession()
                 .then(async () => {
@@ -432,6 +456,7 @@ export default function UserWorkspace() {
         </ErrorBoundary>
     );
     return (
+        <React.Suspense fallback={<WorkspaceSkeleton full />}>
         <UserStatusGate
             onStatus={setUser}
             logout={handleLogout}
@@ -506,7 +531,11 @@ export default function UserWorkspace() {
                             </div>
                         ))}
                     </nav>
-                    <InviteCampaign />
+                    <WorkspaceAddonBoundary fallback={<InvitePlaceholder failed />}>
+                        <React.Suspense fallback={<InvitePlaceholder />}>
+                            <InviteCampaign />
+                        </React.Suspense>
+                    </WorkspaceAddonBoundary>
                     <div className="sidebar-bottom">
                         <div className="avatar">
                             {user.email?.slice(0, 1).toUpperCase()}
@@ -542,8 +571,11 @@ export default function UserWorkspace() {
                         </div>
                         <div className="actions header-controls">
                             <LanguagePicker />
-                            <AnnouncementCenter />
-                            <AccountMenu user={user} logout={handleLogout} />
+                            <WorkspaceAddonBoundary fallback={<HeaderControlsPlaceholder user={user} failed />}>
+                                <React.Suspense fallback={<HeaderControlsPlaceholder user={user} />}>
+                                    <WorkspaceHeaderControls user={user} logout={handleLogout} />
+                                </React.Suspense>
+                            </WorkspaceAddonBoundary>
                         </div>
                     </header>
                     <main id="workspace-main" tabIndex={-1} aria-label={tx(item?.label || "总览")}>
@@ -621,7 +653,41 @@ export default function UserWorkspace() {
                     </nav>
             </div>
         </UserStatusGate>
+        </React.Suspense>
     );
+}
+
+// Optional controls keep their own loading and error surfaces; content and
+// navigation stay usable when a secondary chunk is delayed or unavailable.
+class WorkspaceAddonBoundary extends React.Component<{
+    children: React.ReactNode; fallback: React.ReactNode;
+}, { failed: boolean }> {
+    state = { failed: false };
+    static getDerivedStateFromError() { return { failed: true }; }
+    render() { return this.state.failed ? this.props.fallback : this.props.children; }
+}
+
+function HeaderControlsPlaceholder({ user, failed = false }: { user: Row; failed?: boolean }) {
+    return <>
+        <span className="announcement-control">
+            {failed ? <button type="button" className="icon-button announcement-trigger"
+                aria-label={tx("重新加载")} title={tx("重新加载")} onClick={() => location.reload()}>
+                <RefreshCw size={18} aria-hidden="true" />
+            </button> : <span className="icon-button announcement-trigger" aria-hidden="true" />}
+        </span>
+        <span className="account-control" aria-hidden="true">
+            <span className="account-trigger"><span className="letter-avatar">{String(user.email || "?").trim().slice(0, 1).toUpperCase()}</span></span>
+        </span>
+    </>;
+}
+
+function InvitePlaceholder({ failed = false }: { failed?: boolean }) {
+    return <div style={{ margin: "12px 14px 0", minHeight: 112, flexShrink: 0,
+        padding: 14, border: "1px solid var(--line)", borderRadius: 14,
+        background: "var(--surface-tint)", boxSizing: "border-box" }}>
+        {failed ? <button type="button" onClick={() => location.reload()}>{tx("重新加载")}</button> :
+            <span aria-hidden="true" style={{ display: "block", height: 14, width: "60%", borderRadius: 6, background: "var(--line)" }} />}
+    </div>;
 }
 
 function WorkspaceNavigation({ path, title, inert }: { path: string; title: string; inert: boolean }) {

@@ -1,8 +1,7 @@
 import { localPreferences, sessionPreferences } from "./browser-storage";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
-import zhCN from "../locales/zh-CN.json";
-import enUS from "../locales/en-US.json";
+import startupCatalogs from "virtual:startup-catalogs";
 
 import { languages } from "./language-options";
 export { languages } from "./language-options";
@@ -24,11 +23,14 @@ export function resolvePreferredLanguage(values: readonly string[]): string {
     }
     return "en-US";
 }
-export type TranslationNamespace = keyof typeof enUS;
+type EnglishCatalog = typeof import("../locales/en-US.json");
+export type TranslationNamespace = keyof EnglishCatalog;
 export type TranslationKey<N extends TranslationNamespace> =
-    keyof (typeof enUS)[N];
+    keyof EnglishCatalog[N];
 type Catalog = Record<string, Record<string, string>>;
 const localeLoaders: Record<string, () => Promise<{ default: Catalog }>> = {
+    "zh-CN": () => import("../locales/zh-CN.json"),
+    "en-US": () => import("../locales/en-US.json"),
     "zh-TW": () => import("../locales/zh-TW.json"),
     "ja-JP": () => import("../locales/ja-JP.json"),
     "ko-KR": () => import("../locales/ko-KR.json"),
@@ -42,13 +44,25 @@ const localeLoaders: Record<string, () => Promise<{ default: Catalog }>> = {
     "id-ID": () => import("../locales/id-ID.json"),
     "th-TH": () => import("../locales/th-TH.json"),
 };
+const completeCatalogs = new Set<string>();
+const catalogRequests = new Map<string, Promise<Catalog>>();
+let workspaceLanguage = window.V2BOARD?.mode === "admin";
 async function loadCatalog(language: string): Promise<Catalog> {
-    const { default: catalog } = await localeLoaders[language]();
-    for (const [namespace, values] of Object.entries(catalog))
-        i18next.addResourceBundle(language, namespace, values, true, true);
-    return catalog;
+    let pending = catalogRequests.get(language);
+    if (!pending) {
+        pending = localeLoaders[language]().then(({ default: catalog }) => {
+            for (const [namespace, values] of Object.entries(catalog))
+                i18next.addResourceBundle(language, namespace, values, true, true);
+            completeCatalogs.add(language);
+            return catalog;
+        }).catch(error => { catalogRequests.delete(language); throw error; });
+        catalogRequests.set(language, pending);
+    }
+    return pending;
 }
-// One resource per language: common languages are bundled, others load on demand.
+export const hasCompleteCatalog = (language: string) => completeCatalogs.has(language);
+// The guide uses only a source-derived microcatalog. Business screens load the
+// current complete language, without downloading another complete fallback.
 i18next.use({
     type: "backend",
     init() {},
@@ -60,8 +74,8 @@ i18next.use({
             data: Record<string, string> | null,
         ) => void,
     ) {
-        if (!localeLoaders[language]) {
-            callback(null, {});
+        if (!localeLoaders[language] || (language === "en-US" && i18next.language !== "en-US" && !completeCatalogs.has(language))) {
+            callback(null, startupCatalogs[language]?.[namespace] || {});
             return;
         }
         loadCatalog(language).then(
@@ -71,21 +85,14 @@ i18next.use({
     },
 });
 const saved = localPreferences.getItem(languageKey);
-export const languageReady = i18next.use(initReactI18next).init({
+const initialLanguage =
+    window.V2BOARD?.mode === "admin" ? "zh-CN"
+        : saved && languages.some((l) => l.code === saved) ? saved
+            : resolvePreferredLanguage([...(navigator.languages || []), navigator.language || "en-US"]);
+const initialLanguageReady = i18next.use(initReactI18next).init({
     partialBundledLanguages: true,
-    resources: {
-        "zh-CN": zhCN,
-        "en-US": enUS,
-    },
-    lng:
-        window.V2BOARD?.mode === "admin"
-            ? "zh-CN"
-            : saved && languages.some((l) => l.code === saved)
-              ? saved
-              : resolvePreferredLanguage([
-                    ...(navigator.languages || []),
-                    navigator.language || "en-US",
-                ]),
+    resources: startupCatalogs,
+    lng: initialLanguage,
     supportedLngs: languages.map((l) => l.code),
     fallbackLng: "en-US",
     load: "currentOnly",
@@ -95,6 +102,31 @@ export const languageReady = i18next.use(initReactI18next).init({
     returnEmptyString: false,
     initAsync: false,
 });
+export const languageReady = initialLanguageReady.then(async value => {
+    if (window.V2BOARD?.mode === "admin") await loadCatalog("zh-CN");
+    return value;
+});
+const changeInstanceLanguage = i18next.changeLanguage.bind(i18next);
+// Preserve the public instance method's complete-catalog behavior for existing
+// callers. The entry's language picker uses the core-only helper below.
+i18next.changeLanguage = async (value, callback) => {
+    const target = value
+        ? i18next.services.languageUtils.getBestMatchFromCodes([value]) || "en-US"
+        : locale();
+    try {
+        await loadCatalog(target);
+        workspaceLanguage = true;
+        return await changeInstanceLanguage(value, callback);
+    } catch (error) {
+        callback?.(error, i18next.t.bind(i18next));
+        throw error;
+    }
+};
+export async function prepareWorkspaceLanguage() {
+    await languageReady;
+    await loadCatalog(locale());
+    workspaceLanguage = true;
+}
 function syncLanguage() {
     document.documentElement.lang = i18next.language;
     document.documentElement.dir = i18next.dir();
@@ -120,10 +152,7 @@ export function loginLanguagePreference() {
     };
 }
 async function ensureCatalog(value: string) {
-    if (
-        !i18next.hasResourceBundle(value, "translation") &&
-        localeLoaders[value]
-    ) {
+    if (!completeCatalogs.has(value) && localeLoaders[value]) {
         await loadCatalog(value);
     }
 }
@@ -133,12 +162,13 @@ export async function applyAccountLanguage(value: unknown) {
         return;
     await ensureCatalog(value);
     localPreferences.setItem(languageKey, value);
-    await i18next.changeLanguage(value);
+    workspaceLanguage = true;
+    await changeInstanceLanguage(value);
 }
 export async function changeLanguage(value: string) {
     if (!languages.some((l) => l.code === value)) return;
     // Do not change the saved preference if the language chunk cannot be downloaded.
-    await ensureCatalog(value);
+    if (workspaceLanguage) await ensureCatalog(value);
     // Save first: a failed request leaves the previous preference intact.
     const savedToAccount = persistLanguage
         ? await persistLanguage(value)
@@ -146,6 +176,6 @@ export async function changeLanguage(value: string) {
     if (savedToAccount) sessionPreferences.removeItem(pendingLanguageKey);
     else sessionPreferences.setItem(pendingLanguageKey, value);
     localPreferences.setItem(languageKey, value);
-    await i18next.changeLanguage(value);
+    await changeInstanceLanguage(value);
 }
 export default i18next;

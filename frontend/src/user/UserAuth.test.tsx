@@ -6,6 +6,7 @@ import {
     screen,
     fireEvent,
     waitFor,
+    act,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
@@ -481,6 +482,23 @@ it("reuses the current email code when returning to edit account details", async
         "passport/auth/register",
         expect.objectContaining({ password: "Updated-test-phrase!23" }),
     );
+});
+it("focuses the newly enabled verification field once without stealing focus after resend", async () => {
+    vi.useFakeTimers();
+    try {
+        page(); credentials();
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "next" })); });
+        expect(document.activeElement).toBe(screen.getByLabelText("邮箱验证码"));
+        await act(async () => { await vi.advanceTimersByTimeAsync(61000); });
+        let complete!: (value: any) => void;
+        mocks.request.mockImplementationOnce(() => new Promise(resolve => { complete = resolve; }));
+        const title = screen.getByRole("heading", { name: "verify" });
+        title.focus();
+        fireEvent.click(screen.getByRole("button", { name: "发送邮箱验证码" }));
+        expect((screen.getByLabelText("邮箱验证码") as HTMLInputElement).disabled || screen.getByLabelText("邮箱验证码").closest("fieldset")?.disabled).toBe(true);
+        await act(async () => { complete({ data: true }); });
+        expect(document.activeElement).toBe(title);
+    } finally { vi.useRealTimers(); }
 });
 
 it("requests a code for the corrected email instead of reusing another address", async () => {

@@ -1,6 +1,10 @@
 import { ticketOrderReference } from "./user-navigation";
 import { useAnalyticsPage } from "./product-analytics";
-import { ActivityCenter, MyCoupons } from "./CouponCenter";
+import { lazy, Suspense } from "react";
+import { WorkspaceSkeleton } from "../shared/WorkspaceSkeleton";
+const loadCoupons = () => import("./CouponCenter");
+const ActivityCenter = lazy(() => loadCoupons().then(module => ({ default: module.ActivityCenter })));
+const MyCoupons = lazy(() => loadCoupons().then(module => ({ default: module.MyCoupons })));
 import { FastaiDownload } from "./FastaiDownload";
 import { BannerStrip } from "../shared/BannerStrip";
 import {
@@ -15,7 +19,7 @@ import {
     Notifications,
     Traffic,
 } from "./user";
-import { AccountSecurity } from "./AccountSecurity";
+const AccountSecurity = lazy(() => import("./AccountSecurity").then(module => ({ default: module.AccountSecurity })));
 function UserBody({ current, path }: { current: string; path: string }) {
     const names = [
         "activities",
@@ -75,7 +79,7 @@ export default function UserContent(props: { current: string; path: string }) {
             {["dashboard", "overview", "subscribe"].includes(props.current) && (
                 <FastaiDownload />
             )}
-            <UserBody {...props} />
+            <Suspense fallback={<WorkspaceSkeleton />}><UserBody {...props} /></Suspense>
         </>
     );
 }

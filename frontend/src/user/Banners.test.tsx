@@ -44,6 +44,14 @@ vi.mock("../shared/ui", () => ({
     State: () => null,
     Modal: ({ children }: any) => <div>{children}</div>,
 }));
+vi.mock("../shared/ui/useData", () => ({
+    useData: () => ({
+        data: mocks.data,
+        error: "",
+        loading: false,
+        reload: vi.fn(),
+    }),
+}));
 import {
     BannerStrip,
     bannerUrl,

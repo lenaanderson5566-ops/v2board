@@ -1,4 +1,4 @@
-import { beforeEach, describe, it, expect, vi } from "vitest";
+import { beforeAll, beforeEach, describe, it, expect, vi } from "vitest";
 
 const session = vi.hoisted(() => ({ active: true, identity: "user:42", forgotten: vi.fn() }));
 vi.mock("./browser-session", () => ({
@@ -30,6 +30,9 @@ const {
     logoutSession,
     money,
 } = await import("./api");
+const { prepareWorkspaceLanguage } = await import("./i18n");
+// Business requests normally run only after the admitted workspace's language is ready.
+beforeAll(async () => { await prepareWorkspaceLanguage(); });
 describe("API client", () => {
     it("labels amounts CNY regardless of the legacy boot symbol", () => {
         expect(money(2880)).toBe("CNY 28.80");

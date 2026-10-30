@@ -83,6 +83,7 @@ export function UserAuth({
             (Boolean(invitation) && !invitationComplete));
     const heading = useRef<HTMLHeadingElement>(null);
     const verificationInput = useRef<HTMLInputElement>(null);
+    const verificationFocusPending = useRef(false);
     const verificationEmail = useRef("");
     const submitting = useRef(false);
     const mounted = useRef(true);
@@ -93,9 +94,17 @@ export function UserAuth({
     const [suspended, setSuspended] = useState(false);
     const { remaining: cooldown, start: startCooldown } = useCooldown();
     useEffect(() => {
-        if (step === 2) verificationInput.current?.focus();
-        else heading.current?.focus();
+        verificationFocusPending.current = step === 2;
+        if (step !== 2) heading.current?.focus();
     }, [step]);
+    useEffect(() => {
+        // The code field can mount before the sending request releases its
+        // disabled fieldset. Focus once when entering this step, never on resend.
+        if (step !== 2 || busy || !verificationFocusPending.current) return;
+        verificationInput.current?.focus();
+        if (document.activeElement === verificationInput.current)
+            verificationFocusPending.current = false;
+    }, [step, busy]);
     const score = passwordScore(password);
     const title = registered
         ? tx("登录")

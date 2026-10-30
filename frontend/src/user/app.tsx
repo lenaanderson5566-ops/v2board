@@ -2,15 +2,15 @@ import { lazy, Suspense } from "react";
 import { AnalyticsPrivacy, AnalyticsPrivacyFooter } from "./AnalyticsPrivacy";
 import { BrowserAccessGate } from "./EmbeddedBrowserNotice";
 import { WorkspaceSkeleton } from "../shared/WorkspaceSkeleton";
+import { prepareWorkspaceLanguage } from "../shared/i18n";
 import "./app-theme.css";
 import "./recovery.css";
-import "../shared/style.css";
-import "../shared/console.css";
-import "./user-experience.css";
-import "./product.css";
+import "./entry.css";
 
 // Rendering a lazy element does not request its module until the gate admits it.
-const UserWorkspace = lazy(() => import("./UserWorkspace"));
+const UserWorkspace = lazy(() => Promise.all([
+    import("./UserWorkspace"), prepareWorkspaceLanguage(),
+]).then(([workspace]) => workspace));
 
 export default function App() {
     return <>

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import {
     cleanup,
     fireEvent,
@@ -18,6 +18,9 @@ import { linkNode } from "./admin-linkage";
 import { AdminCitySelect } from "./admin-city-select";
 import { NodeNamePreview } from "./NodeNamePreview";
 import { AdminRegionSelect } from "./admin-region-select";
+import { prepareWorkspaceLanguage } from "../shared/i18n";
+// This isolated business editor bypasses renderApp and the workspace language gate.
+beforeAll(async () => { await prepareWorkspaceLanguage(); });
 afterEach(cleanup);
 it("limits city references to the selected country", () => {
     const { rerender } = render(

@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {act,cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
-const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),workspaceLoaded:vi.fn(),gateAllowed:true,authenticated:true,brokenRoute:"",logins:[] as Array<(account:any,options?:any)=>void>}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),workspaceLanguage:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),workspaceLoaded:vi.fn(),gateAllowed:true,authenticated:true,brokenRoute:"",brokenHeader:false,logins:[] as Array<(account:any,options?:any)=>void>}));
 vi.mock("../shared/api",()=>({boot:{mode:"user",title:"Test",landing:false},request:vi.fn(),readRequest:mocks.read,navigate:vi.fn(),clearReadCache:vi.fn(),logoutSession:vi.fn()}));
 vi.mock("../shared/browser-session",()=>({initializeBrowserSession:mocks.initialize,hasBrowserSession:()=>mocks.authenticated,forgetBrowserSession:mocks.forget}));
-vi.mock("../shared/i18n",()=>({tx:(key:string)=>key,locale:()=>"en-US",setLanguagePersistence:vi.fn(),applyAccountLanguage:mocks.language}));
+vi.mock("../shared/i18n",()=>({tx:(key:string)=>key,locale:()=>"en-US",setLanguagePersistence:vi.fn(),applyAccountLanguage:mocks.language,prepareWorkspaceLanguage:mocks.workspaceLanguage}));
 vi.mock("react-i18next",()=>({useTranslation:()=>({})}));
 vi.mock("../shared/LanguagePicker",()=>({LanguagePicker:()=>null}));
 vi.mock("../shared/WorkspaceSkeleton",()=>({WorkspaceSkeleton:()=> <p>Loading</p>,LandingSkeleton:()=>null}));
@@ -16,8 +16,8 @@ vi.mock("./UserWorkspace",async(importOriginal)=>{
     return importOriginal<typeof import("./UserWorkspace")>();
 });
 vi.mock("./chat-layout",()=>({installChatLayout:()=>()=>{}}));
-vi.mock("./AccountEntry",()=>({UserStatusGate:({children}:any)=>children}));
-vi.mock("./AnnouncementCenter",()=>({AnnouncementCenter:()=>null}));
+vi.mock("./UserStatusGate",()=>({UserStatusGate:({children}:any)=>children}));
+vi.mock("./AnnouncementCenter",()=>({AnnouncementCenter:()=>{if(mocks.brokenHeader)throw Error("Header chunk unavailable");return null;}}));
 vi.mock("./InviteCampaign",()=>({InviteCampaign:()=>null}));
 vi.mock("./AccountMenu",()=>({AccountMenu:()=>null}));
 vi.mock("./user-entry",()=>({default:({current}:any)=> {
@@ -25,9 +25,11 @@ vi.mock("./user-entry",()=>({default:({current}:any)=> {
     return <><p>Protected workspace</p><input aria-label="Page action" /></>;
 }}));
 import App from "./app";
+import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { browserHandoffUrl } from "../shared/browser-access";
 beforeEach(()=>{
-    mocks.read.mockReset();mocks.language.mockReset().mockResolvedValue(undefined);mocks.brokenRoute="";
+    mocks.read.mockReset();mocks.language.mockReset().mockResolvedValue(undefined);mocks.brokenRoute="";mocks.brokenHeader=false;
+    mocks.workspaceLanguage.mockReset().mockResolvedValue(undefined);
     mocks.initialize.mockReset().mockResolvedValue(undefined);mocks.forget.mockClear();mocks.authenticated=true;mocks.gateAllowed=true;
     mocks.logins=[];
     document.title="Test";
@@ -35,6 +37,15 @@ beforeEach(()=>{
     vi.stubGlobal("matchMedia",()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
 });
 afterEach(()=>{cleanup();vi.unstubAllGlobals();vi.restoreAllMocks();});
+it("shows a recoverable startup message without exposing failed chunk URLs",()=>{
+    vi.spyOn(console,"error").mockImplementation(()=>{});
+    const BrokenChunk=():never=>{throw new TypeError("Failed to fetch dynamically imported module: https://example.test/assets/private-chunk.js");};
+    render(<ErrorBoundary><BrokenChunk/></ErrorBoundary>);
+    expect(screen.getByRole("heading",{name:"页面暂时无法加载"})).toBeTruthy();
+    expect(screen.getByText("无法完成操作，请刷新页面后重试。")).toBeTruthy();
+    expect(screen.getByRole("button",{name:"重新加载"})).toBeTruthy();
+    expect(screen.queryByText(/private-chunk/)).toBeNull();
+});
 it("loads the business workspace only after the browser gate admits the page",async()=>{
     mocks.gateAllowed=false;
     mocks.read.mockResolvedValue({data:{id:42,language:"en-US",account_status:{state:"active"}}});
@@ -42,12 +53,19 @@ it("loads the business workspace only after the browser gate admits the page",as
     expect(screen.getByText("Browser entry")).toBeTruthy();
     await act(async()=>{await Promise.resolve();});
     expect(mocks.workspaceLoaded).not.toHaveBeenCalled();
+    expect(mocks.workspaceLanguage).not.toHaveBeenCalled();
     expect(mocks.initialize).not.toHaveBeenCalled();
     expect(mocks.read).not.toHaveBeenCalled();
     mocks.gateAllowed=true;
+    let finishLanguage!: () => void;
+    mocks.workspaceLanguage.mockReturnValueOnce(new Promise<void>(resolve => { finishLanguage = resolve; }));
     view.rerender(<App/>);
+    await waitFor(() => expect(mocks.workspaceLoaded).toHaveBeenCalledTimes(1));
+    expect(mocks.read).not.toHaveBeenCalled();
+    await act(async () => finishLanguage());
     expect(await screen.findByText("Protected workspace", {}, {timeout:3000})).toBeTruthy();
     expect(mocks.workspaceLoaded).toHaveBeenCalledTimes(1);
+    expect(mocks.workspaceLanguage).toHaveBeenCalledTimes(1);
     expect(mocks.initialize).toHaveBeenCalledTimes(1);
     expect(mocks.read).toHaveBeenCalledTimes(1);
 });
@@ -217,4 +235,28 @@ it("returns drawer focus when dismissed and focuses content after choosing anoth
     openRoute("knowledge");
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("main"));
+});
+it("keeps authenticated content and navigation usable when optional header controls fail",async()=>{
+    signedIn();mocks.brokenHeader=true;
+    vi.spyOn(console,"error").mockImplementation(()=>{});
+    render(<App/>);
+    expect(await screen.findByText("Protected workspace")).toBeTruthy();
+    expect(await screen.findByRole("button",{name:"重新加载"})).toBeTruthy();
+    expect(screen.getByRole("button",{name:"打开导航"})).toBeTruthy();
+    expect(screen.queryByText("Header chunk unavailable")).toBeNull();
+    expect(screen.queryByText("pageRecovery")).toBeNull();
+});
+it("loads and sanitizes an optional custom footer without delaying authentication",async()=>{
+    const {boot}=await import("../shared/api");
+    boot.footerHtml='<p>Optional footer</p><script>window.untrustedFooter=true</script><a href="javascript:alert(1)">Footer link</a>';
+    mocks.authenticated=false;
+    try {
+        render(<App/>);
+        expect(await screen.findByText("Sign in")).toBeTruthy();
+        const footer=await screen.findByText("Optional footer");
+        expect(footer.closest("footer")?.id).toBe("custom-footer");
+        expect(document.querySelector("#custom-footer script")).toBeNull();
+        expect(screen.getByText("Footer link").getAttribute("href")).toBeNull();
+        cleanup();expect(document.getElementById("custom-footer")).toBeNull();
+    } finally {delete boot.footerHtml;}
 });

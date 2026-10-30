@@ -1,6 +1,0 @@
-import{c as n,j as s,t as e}from"./experience-copy-BfqP4ddL.js";/**
- * @license lucide-react v0.468.0 - ISC
- *
- * This source code is licensed under the ISC license.
- * See the LICENSE file in the root directory of this source tree.
- */const r=n("ChevronDown",[["path",{d:"m6 9 6 6 6-6",key:"qrunsl"}]]);function l({full:a=!1}){return s.jsxs("div",{className:a?"workspace-skeleton full":"workspace-skeleton",role:"status","aria-busy":"true",children:[s.jsx("span",{className:"sr-only",children:e("\u6B63\u5728\u52A0\u8F7D\u5DE5\u4F5C\u7A7A\u95F4\u2026")}),s.jsx("div",{"aria-hidden":"true",className:"skeleton-heading"}),s.jsxs("div",{className:"skeleton-metrics","aria-hidden":"true",children:[s.jsx("i",{}),s.jsx("i",{}),s.jsx("i",{})]}),s.jsxs("div",{className:"skeleton-panels","aria-hidden":"true",children:[s.jsx("i",{}),s.jsx("i",{})]})]})}function t(){return s.jsxs("div",{className:"landing-skeleton",role:"status","aria-busy":"true",children:[s.jsx("span",{className:"sr-only",children:e("\u6B63\u5728\u52A0\u8F7D\u2026")}),s.jsx("div",{className:"landing-skeleton-bar","aria-hidden":"true"}),s.jsxs("div",{className:"landing-skeleton-hero","aria-hidden":"true",children:[s.jsxs("div",{children:[s.jsx("i",{}),s.jsx("i",{}),s.jsx("i",{})]}),s.jsx("div",{})]})]})}export{r as C,t as L,l as W};

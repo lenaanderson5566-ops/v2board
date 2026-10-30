@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { useData } from "./ui";
-import { Row, query } from "./api";
+import { useData } from "./ui/useData";
+import { query, type Row } from "./api";
 import { useTranslation } from "react-i18next";
 import "./banners.css";
 export function bannerUrl(value: unknown): string | undefined {

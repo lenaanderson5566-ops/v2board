@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { createContext, useContext, useState, type ReactNode } from "react";
-import { Modal } from "./ui";
+import { Modal } from "./ui/Modal";
 import { clearReadCache } from "./api";
 import { forgetBrowserSession } from "./browser-session";
 import { tx } from "./i18n";

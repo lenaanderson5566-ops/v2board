@@ -7,14 +7,15 @@ const mocks = vi.hoisted(() => ({
         reload: vi.fn(),
     },
 }));
-vi.mock("../shared/ui", () => ({
+vi.mock("../shared/ui/data", () => ({
     useData: () => mocks.info,
     State: ({ children }: any) => children,
 }));
 vi.mock("../shared/i18n", () => ({ tx: (key: string) => key }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/api", () => ({ date: () => "test expiry" }));
-import { AccountEntry, UserStatusGate } from "./AccountEntry";
+import { AccountEntry } from "./AccountEntry";
+import { UserStatusGate } from "./UserStatusGate";
 afterEach(cleanup);
 describe("account entry", () => {
     it("guides new users to a plan without offering a subscription import action", () => {

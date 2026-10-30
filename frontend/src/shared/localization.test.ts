@@ -1,6 +1,22 @@
 import { describe, it, expect, vi } from "vitest";
 import { readFileSync, readdirSync } from "node:fs";
 import ts from "typescript";
+import { gzipSync } from "node:zlib";
+import { fileURLToPath } from "node:url";
+import { startupCatalogs } from "../../locale-startup";
+const catalogLoads = vi.hoisted(() => ({ german: 0, thai: 0, failThai: false }));
+vi.mock("../locales/de-DE.json", async (original) => {
+    const catalog = await original<{ default: typeof import("../locales/de-DE.json") }>();
+    return { get default() { catalogLoads.german++; return catalog.default; } };
+});
+vi.mock("../locales/th-TH.json", async (original) => {
+    const catalog = await original<{ default: typeof import("../locales/th-TH.json") }>();
+    return { get default() {
+        catalogLoads.thai++;
+        if (catalogLoads.failThai) throw new Error("Catalog download unavailable");
+        return catalog.default;
+    } };
+});
 const storage = new Map<string, string>();
 const pending = new Map<string, string>();
 vi.stubGlobal("sessionStorage", {
@@ -26,6 +42,8 @@ const {
     setLanguagePersistence,
     loginLanguagePreference,
     applyAccountLanguage,
+    hasCompleteCatalog,
+    prepareWorkspaceLanguage,
 } = await import("./i18n");
 await languageReady;
 const resources = Object.fromEntries(
@@ -47,14 +65,68 @@ const catalogs = Object.fromEntries(
 );
 const placeholders = (v: string) =>
     [...v.matchAll(/{{\s*(\w+)\s*}}/g)].map((m) => m[1]).sort();
-await i18n.loadLanguages([
-    "es-ES",
-    "pt-BR",
-    "fr-FR",
-    "de-DE",
-    "id-ID",
-    "th-TH",
-]);
+describe("small public entry catalogs", () => {
+    it("derives every startup value from its single full catalog source", () => {
+        const core = startupCatalogs(fileURLToPath(new URL("../../", import.meta.url)));
+        expect(Object.keys(core).sort()).toEqual(languages.map(language => language.code).sort());
+        for (const { code } of languages) {
+            expect(core[code].experience.browserEntryTitle).toBe(resources[code].experience.browserEntryTitle);
+            expect(core[code].translation["界面语言"]).toBe(resources[code].translation["界面语言"]);
+            for (const [namespace, values] of Object.entries(core[code]))
+                for (const [key, value] of Object.entries(values)) expect(value).toBe(resources[code][namespace][key]);
+            expect(Object.keys(core[code].translation).length).toBeLessThan(Object.keys(resources[code].translation).length / 5);
+            expect(core[code].pricing).toBeUndefined();
+        }
+        // This is the executable ASCII representation used by the production build.
+        const script = JSON.stringify(core).replace(/[\u0080-\uffff]/g, char => "\\u" + char.charCodeAt(0).toString(16).padStart(4, "0"));
+        expect(gzipSync(script).length).toBeLessThan(20000);
+    });
+    it("switches the public guide using only microcatalogs", async () => {
+        expect(hasCompleteCatalog("en-US")).toBe(false);
+        expect(hasCompleteCatalog("zh-CN")).toBe(false);
+        expect(hasCompleteCatalog("fa-IR")).toBe(false);
+        await changeLanguage("fa-IR");
+        expect(i18n.t("browserEntryTitle", {ns: "experience"})).toBe(resources["fa-IR"].experience.browserEntryTitle);
+        expect(tx("界面语言")).toBe(resources["fa-IR"].translation["界面语言"]);
+        expect(document.documentElement.dir).toBe("rtl");
+        expect(hasCompleteCatalog("fa-IR")).toBe(false);
+        await changeLanguage("zh-TW");
+    });
+    it("loads the admitted workspace language without fetching complete English", async () => {
+        await prepareWorkspaceLanguage();
+        expect(hasCompleteCatalog("zh-TW")).toBe(true);
+        expect(hasCompleteCatalog("en-US")).toBe(false);
+        await i18n.loadNamespaces(["pricing", "billing"]);
+        expect(i18n.getResourceBundle("zh-TW", "pricing")).toEqual(resources["zh-TW"].pricing);
+        expect(hasCompleteCatalog("en-US")).toBe(false);
+    });
+    it("keeps public instance language changes complete and deduplicates simultaneous loads", async () => {
+        await Promise.all([i18n.changeLanguage("de-DE"), i18n.changeLanguage("de-DE")]);
+        expect(catalogLoads.german).toBe(1);
+        expect(hasCompleteCatalog("de-DE")).toBe(true);
+        expect(i18n.getResourceBundle("de-DE", "pricing")).toEqual(resources["de-DE"].pricing);
+        await i18n.changeLanguage("zh-TW");
+    });
+    it("preserves the selected language and preference after a failed full chunk, then permits retry", async () => {
+        const previous = storage.get(languageKey);
+        catalogLoads.failThai = true;
+        await expect(changeLanguage("th-TH")).rejects.toThrow("Catalog download unavailable");
+        expect(localeForTest()).toBe("zh-TW");
+        expect(storage.get(languageKey)).toBe(previous);
+        expect(hasCompleteCatalog("th-TH")).toBe(false);
+        catalogLoads.failThai = false;
+        await changeLanguage("th-TH");
+        expect(hasCompleteCatalog("th-TH")).toBe(true);
+        expect(catalogLoads.thai).toBe(2);
+        expect(tx("登录")).toBe(catalogs["th-TH"]["登录"]);
+        await i18n.changeLanguage("zh-TW");
+    });
+    it("keeps explicit bulk language preloading available", async () => {
+        await i18n.loadLanguages(["es-ES", "pt-BR", "fr-FR", "de-DE", "id-ID", "th-TH"]);
+        for (const code of ["es-ES", "pt-BR", "fr-FR", "de-DE", "id-ID", "th-TH"])
+            expect(i18n.getResourceBundle(code, "translation")).toEqual(resources[code].translation);
+    });
+});
 describe("landing and interactive control translations", () => {
     for (const { code } of languages)
         it(`${code} provides every feature namespace without missing keys`, () => {
@@ -101,10 +173,21 @@ describe("localization resources", () => {
     });
     it("loads only the requested extra catalog and keeps language switching translated", async () => {
         expect(i18n.hasResourceBundle("zh-TW", "translation")).toBe(true);
-        expect(i18n.hasResourceBundle("ja-JP", "translation")).toBe(false);
+        expect(hasCompleteCatalog("ja-JP")).toBe(false);
         await i18n.changeLanguage("ja-JP");
         expect(tx("登录")).toBe(catalogs["ja-JP"]["登录"]);
         expect(i18n.hasResourceBundle("ja-JP", "translation")).toBe(true);
+        expect(hasCompleteCatalog("ja-JP")).toBe(true);
+        await i18n.changeLanguage("zh-TW");
+    });
+    it("keeps complete catalog loading aligned with instance language aliases and unknown-language fallback", async () => {
+        for (const value of ["ja", "zh-Hant", "unsupported"])
+        {
+            await i18n.changeLanguage(value);
+            const resolved = localeForTest() || i18n.language;
+            expect(hasCompleteCatalog(resolved)).toBe(true);
+            expect(tx("登录")).toBe(catalogs[resolved]["登录"]);
+        }
         await i18n.changeLanguage("zh-TW");
     });
     for (const { code } of languages)

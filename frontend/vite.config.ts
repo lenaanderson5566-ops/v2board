@@ -1,9 +1,11 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { userBundleIsolation } from "./build-isolation";
+import { startupCatalogPlugin } from "./locale-startup";
 export default defineConfig({
     plugins: [
         react(),
+        startupCatalogPlugin(),
         userBundleIsolation(),
         {
             name: "ascii-script-output",

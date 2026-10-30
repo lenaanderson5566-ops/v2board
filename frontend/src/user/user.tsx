@@ -5,7 +5,8 @@ import { Bell, Settings } from "lucide-react";
 import { TelegramIntegration } from "./TelegramIntegration";
 import { NotificationPreferences } from "./NotificationPreferences";
 import { ac } from "../shared/account-copy";
-import { lazy, useState, useEffect } from "react";
+import { lazy, Suspense, useState, useEffect } from "react";
+import { WorkspaceSkeleton } from "../shared/WorkspaceSkeleton";
 import { NodeList } from "./NodeList";
 export { Tickets } from "../shared/Tickets";
 const AccountPreferences = lazy(() => import("./AccountPreferences").then((module) => ({ default: module.AccountPreferences })));
@@ -19,8 +20,8 @@ const SubscriptionImport = lazy(() => import("./SubscriptionImport").then((modul
 import { AccountEntry } from "./AccountEntry";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 
-import { OrderView } from "./OrderView";
-import { UnifiedCheckout } from "./UnifiedCheckout";
+const OrderView = lazy(() => import("./OrderView").then(module => ({ default: module.OrderView })));
+const UnifiedCheckout = lazy(() => import("./UnifiedCheckout").then(module => ({ default: module.UnifiedCheckout })));
 import { ArrowUpRight } from "lucide-react";
 import {
     request,
@@ -141,14 +142,18 @@ export function Subscribe() {
     );
 }
 export function Plans({planId}: {planId?:number} = {}) {
-    if (planId) return <UnifiedCheckout key={planId} planId={planId}
+    return <Suspense fallback={<WorkspaceSkeleton />}>
+        {planId ? <UnifiedCheckout key={planId} planId={planId}
         initialPeriod={new URLSearchParams(location.hash.split("?")[1]).get("period") || undefined}
         initialOrder={new URLSearchParams(location.hash.split("?")[1]).get("order") || undefined}
-        replaceTradeNo={new URLSearchParams(location.hash.split("?")[1]).get("replace") || undefined}/>;
-    return <SubscriptionPurchase />;
+        replaceTradeNo={new URLSearchParams(location.hash.split("?")[1]).get("replace") || undefined}/> :
+        <SubscriptionPurchase />}
+    </Suspense>;
 }
 export function Orders({ tradeNo }: { tradeNo?: string }) {
-    return tradeNo ? <OrderView tradeNo={tradeNo} /> : <BillingPage />;
+    return <Suspense fallback={<WorkspaceSkeleton />}>
+        {tradeNo ? <OrderView tradeNo={tradeNo} /> : <BillingPage />}
+    </Suspense>;
 }
 export function Knowledge() {
     const [language, setLanguage] = useState(locale()),

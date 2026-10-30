@@ -3,65 +3,102 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 254900,
-      "startupBytes": 865867,
+      "startupGzipBytes": 140167,
+      "startupBytes": 463398,
       "startupFileCount": 16,
       "largestStartupAssets": [
         {
-          "file": "assets/experience-copy-BfqP4ddL.js",
-          "bytes": 334135,
-          "gzipBytes": 86198
+          "file": "assets/render-app-BWG9I-pk.js",
+          "bytes": 210023,
+          "gzipBytes": 65538
         },
         {
-          "file": "assets/render-app-C4j8T2g5.js",
-          "bytes": 209989,
-          "gzipBytes": 65531
+          "file": "assets/createLucideIcon-yqLmi2Qj.js",
+          "bytes": 197981,
+          "gzipBytes": 51464
         },
         {
-          "file": "assets/ErrorBoundary-CEs6UyAl.js",
-          "bytes": 155411,
-          "gzipBytes": 61718
+          "file": "assets/app-C17g95iS.js",
+          "bytes": 12448,
+          "gzipBytes": 5182
         },
         {
-          "file": "assets/app-CPhcdoqQ.css",
-          "bytes": 89893,
-          "gzipBytes": 16417
+          "file": "assets/runtime-config-CRfRjY9P.js",
+          "bytes": 7697,
+          "gzipBytes": 3521
         },
         {
-          "file": "assets/browser-notice-B0HVDHQp.css",
-          "bytes": 39901,
-          "gzipBytes": 8900
+          "file": "assets/browser-access-EsTmL3DP.js",
+          "bytes": 8148,
+          "gzipBytes": 3384
         }
       ],
-      "budget": 307200,
-      "totalBytes": 3256449,
-      "fileCount": 311
+      "budget": 163840,
+      "firstViews": [
+        {
+          "view": "browserGuide",
+          "language": null,
+          "gzipBytes": 140167,
+          "bytes": 463398,
+          "fileCount": 16
+        },
+        {
+          "view": "login",
+          "language": "zh-CN",
+          "gzipBytes": 204637,
+          "bytes": 756883,
+          "fileCount": 22
+        },
+        {
+          "view": "landing",
+          "language": "zh-CN",
+          "gzipBytes": 217649,
+          "bytes": 799667,
+          "fileCount": 31
+        },
+        {
+          "view": "login",
+          "language": "en-US",
+          "gzipBytes": 207513,
+          "bytes": 725017,
+          "fileCount": 22
+        },
+        {
+          "view": "landing",
+          "language": "en-US",
+          "gzipBytes": 220525,
+          "bytes": 767801,
+          "fileCount": 31
+        }
+      ],
+      "totalBytes": 3348688,
+      "fileCount": 341
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 404710,
-      "startupBytes": 1402994,
-      "startupFileCount": 21,
+      "startupGzipBytes": 373895,
+      "startupBytes": 1269794,
+      "startupFileCount": 31,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-BhdT8hf2.js",
-          "bytes": 510370,
-          "gzipBytes": 144194
+          "file": "assets/AdminApp-BVoYWyCA.js",
+          "bytes": 511680,
+          "gzipBytes": 144459
         },
         {
-          "file": "assets/experience-copy-BfqP4ddL.js",
-          "bytes": 334135,
-          "gzipBytes": 86198
+          "file": "assets/render-app-BWG9I-pk.js",
+          "bytes": 210023,
+          "gzipBytes": 65538
         },
         {
-          "file": "assets/render-app-C4j8T2g5.js",
-          "bytes": 209989,
-          "gzipBytes": 65531
+          "file": "assets/createLucideIcon-yqLmi2Qj.js",
+          "bytes": 197981,
+          "gzipBytes": 51464
         },
         {
-          "file": "assets/ErrorBoundary-CEs6UyAl.js",
-          "bytes": 155411,
-          "gzipBytes": 61718
+          "file": "assets/admin-status-BtkRYrji.js",
+          "bytes": 117068,
+          "gzipBytes": 47653
         },
         {
           "file": "assets/AdminApp-wphZdmTY.css",
@@ -70,8 +107,8 @@
         }
       ],
       "budget": 460800,
-      "totalBytes": 4546609,
-      "fileCount": 80
+      "totalBytes": 4626564,
+      "fileCount": 92
     }
   ],
   "warnings": []

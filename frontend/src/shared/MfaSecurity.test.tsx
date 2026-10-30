@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     },
 }));
 vi.mock("./api", () => ({
+    boot: { mode: "user" },
     request: mocks.request,
     clearReadCache: mocks.clear,
 }));

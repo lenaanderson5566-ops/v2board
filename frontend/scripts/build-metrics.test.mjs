@@ -50,3 +50,27 @@ it("ranks the largest startup resources without counting a lazy-only asset", () 
     expect(report.modes[0].startupFileCount).toBe(3);
     expect(report.modes[0].fileCount).toBe(4);
 });
+
+it("includes the selected full catalog and workspace CSS in first usable view estimates", () => {
+    const manifest = {
+        "index.html": { file: "user.js", dynamicImports: ["app"] },
+        "admin.html": { file: "admin.js" },
+        app: { file: "app.js", imports: ["shared"], dynamicImports: ["workspace", "src/locales/zh-CN.json", "src/locales/en-US.json"] },
+        shared: { file: "shared.js" },
+        workspace: { name: "UserWorkspace", file: "workspace.js", imports: ["shared"], css: ["workspace.css"], assets: ["optional-invite.jpg"], dynamicImports: ["landing", "unused"] },
+        landing: { name: "Landing", file: "landing.js", css: ["landing.css"] },
+        "src/locales/zh-CN.json": { file: "zh.js" },
+        "src/locales/en-US.json": { file: "en.js" },
+        unused: { file: "unused.js" },
+    };
+    const content = Buffer.from("fixture");
+    const sizes = buildMetrics(manifest, () => content).modes[0];
+    expect(sizes.startupFileCount).toBe(3);
+    expect(sizes.firstViews).toEqual([
+        { view: "browserGuide", language: null, fileCount: 3, bytes: 3 * content.length, gzipBytes: 3 * gzipSync(content).length },
+        ...["zh-CN", "en-US"].flatMap(language => [
+            { view: "login", language, fileCount: 6, bytes: 6 * content.length, gzipBytes: 6 * gzipSync(content).length },
+            { view: "landing", language, fileCount: 8, bytes: 8 * content.length, gzipBytes: 8 * gzipSync(content).length },
+        ]),
+    ]);
+});

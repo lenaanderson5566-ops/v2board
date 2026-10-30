@@ -40,13 +40,14 @@ vi.mock("../shared/api", () => ({
 vi.mock("../shared/i18n", () => ({
     tx: (s: string, values?: any) =>
         s === "expiresSoon" ? `${s}:${values.days}`
-            : s === "resetBusinessZone" ? `${s}:${values.zone}`
+            : s === "resetBusinessTime" ? `${s}:${values.date}:${values.zone}`
             : ["resetAt", "resetPending", "resetFailed"].includes(s) ? `${s}:${values.date}` : s,
     locale: () => "zh-CN",
+    default: { t: (key: string) => key },
 }));
-vi.mock("../shared/credit-copy", () => ({
+vi.mock("../shared/credit-copy", async (original) => ({
+    ...(await original<typeof import("../shared/credit-copy")>()),
     c: (key: string) => key,
-    minuteDate: (value: unknown) => String(value || "—"),
 }));
 vi.mock("./pricing-copy", () => ({ pricingCopy: (s: string) => s }));
 vi.mock("../shared/billing-copy", () => ({ b: (s: string) => s }));
@@ -160,29 +161,69 @@ beforeEach(() => {
     };
 });
 afterEach(cleanup);
-it("explains the business reset zone only when the displayed reset uses a different zone", () => {
+it("shows the same reset instant in display and business zones, including a different calendar date", () => {
     mocks.subscription.reset_at = Date.parse("2026-11-01T00:00:00+08:00") / 1000;
     mocks.subscription.reset_timezone = "Asia/Shanghai";
     setDisplayTimeZone("UTC");
     const view = render(<UsagePage />);
-    expect(screen.getByText(`resetAt:${mocks.subscription.reset_at}`)).toBeTruthy();
-    expect(screen.getByText("resetBusinessZone:Asia/Shanghai (UTC+08:00)")).toBeTruthy();
+    expect(screen.getByText("resetAt:2026/10/31 16:00 UTC+00:00")).toBeTruthy();
+    expect(screen.getByText("resetBusinessTime:2026/11/01 00:00 UTC+08:00:Asia/Shanghai")).toBeTruthy();
     setDisplayTimeZone("Asia/Shanghai");
     view.rerender(<UsagePage />);
-    expect(screen.queryByText(/resetBusinessZone/)).toBeNull();
+    expect(screen.getByText("resetAt:2026/11/01 00:00 UTC+08:00")).toBeTruthy();
+    expect(screen.queryByText(/resetBusinessTime/)).toBeNull();
     setDisplayTimeZone("UTC");
     mocks.subscription.reset_at = null;
     view.rerender(<UsagePage />);
-    expect(screen.queryByText(/resetBusinessZone/)).toBeNull();
+    expect(screen.queryByText(/resetBusinessTime/)).toBeNull();
+});
+it("shows UTC midnight as 08:00 in the personal Shanghai display zone", () => {
+    configureTimeZone("UTC");
+    setDisplayTimeZone("Asia/Shanghai");
+    mocks.subscription.reset_at = Date.parse("2026-11-30T00:00:00Z") / 1000;
+    mocks.subscription.reset_timezone = "UTC";
+    render(<UsagePage />);
+    expect(screen.getByText("resetAt:2026/11/30 08:00 UTC+08:00")).toBeTruthy();
+    expect(screen.getByText("resetBusinessTime:2026/11/30 00:00 UTC+00:00:UTC")).toBeTruthy();
+});
+it.each([
+    ["2026-11-01T05:30:00Z", "05:30", "UTC-04:00"],
+    ["2026-11-01T06:30:00Z", "06:30", "UTC-05:00"],
+])("uses the represented instant's business offset across the DST fold: %s", (instant, utcTime, offset) => {
+    configureTimeZone("America/New_York");
+    setDisplayTimeZone("UTC");
+    mocks.subscription.reset_at = Date.parse(instant) / 1000;
+    mocks.subscription.reset_timezone = "America/New_York";
+    render(<UsagePage />);
+    expect(screen.getByText(`resetAt:2026/11/01 ${utcTime} UTC+00:00`)).toBeTruthy();
+    expect(screen.getByText(`resetBusinessTime:2026/11/01 01:30 ${offset}:America/New_York`)).toBeTruthy();
+});
+it("does not invent a business reset time for an invalid zone, invalid timestamp or absent subscription", () => {
+    mocks.subscription.reset_at = Date.parse("2026-11-30T00:00:00Z") / 1000;
+    mocks.subscription.reset_timezone = "Unknown/Zone";
+    const view = render(<UsagePage />);
+    expect(screen.getByText("resetAt:2026/11/30 08:00 UTC+08:00")).toBeTruthy();
+    expect(screen.queryByText(/resetBusinessTime/)).toBeNull();
+    mocks.subscription.reset_timezone = "UTC";
+    mocks.subscription.reset_at = Infinity;
+    view.rerender(<UsagePage />);
+    expect(screen.queryByText(/^resetAt:/)).toBeNull();
+    expect(screen.queryByText(/resetBusinessTime/)).toBeNull();
+    mocks.subscription.reset_at = Date.parse("2026-11-30T00:00:00Z") / 1000;
+    mocks.subscription.has_subscription = false;
+    view.rerender(<UsagePage />);
+    expect(screen.queryByText(/^resetAt:/)).toBeNull();
+    expect(screen.queryByText(/resetBusinessTime/)).toBeNull();
 });
 it.each([["pending", "resetPending"], ["failed", "resetFailed"]])(
     "shows an unconfirmed reset as %s without claiming the next reset or cleared usage",
     (state, label) => {
-        mocks.subscription.reset_at = 1793462400;
-        mocks.subscription.reset_timezone = "America/New_York";
+        mocks.subscription.reset_at = Date.parse("2026-11-30T00:00:00Z") / 1000;
+        mocks.subscription.reset_timezone = "UTC";
         mocks.subscription.reset_state = state;
         render(<UsagePage />);
-        expect(screen.getByText(`${label}:1793462400`)).toBeTruthy();
+        expect(screen.getByText(`${label}:2026/11/30 08:00 UTC+08:00`)).toBeTruthy();
+        expect(screen.getByText("resetBusinessTime:2026/11/30 00:00 UTC+00:00:UTC")).toBeTruthy();
         expect(screen.queryByText(/^resetAt:/)).toBeNull();
         expect(screen.getByText("30 B / 100 B", { exact: false })).toBeTruthy();
     },

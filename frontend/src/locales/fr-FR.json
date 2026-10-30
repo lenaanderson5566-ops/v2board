@@ -744,7 +744,7 @@
     "empty": "Aucun crédit de données disponible à l’achat",
     "access": "Les comptes existants conservent leurs limites de groupe de nœuds, de vitesse et de périphérique. Le premier accès utilise le package de crédits sélectionné.",
     "checkout": "Continuer à payer",
-    "resetAt": "Réinitialisation programmée : {{date}}",
+    "resetAt": "Réinitialisation prévue (votre fuseau horaire) : {{date}}",
     "noReset": "Pas de réinitialisation automatique avant expiration",
     "noPlanTitle": "Pas de forfait actif",
     "noPlan": "Aucun forfait actif. Les crédits de données peuvent être utilisés seuls.",
@@ -761,9 +761,10 @@
     "paidReset": "Réinitialisation payante",
     "paidResetHelp": "Réinitialisez la consommation du forfait sans utiliser de réinitialisation en réserve. L’expiration, la prochaine réinitialisation prévue et les crédits de données restent inchangés.",
     "creditOrder": "Crédits {{amount}}",
+    "resetBusinessTime": "Heure système correspondante : {{date}} · {{zone}}",
     "resetBusinessZone": "Les règles de réinitialisation utilisent {{zone}}. Le fuseau horaire d’affichage ne change pas l’heure de réinitialisation.",
-    "resetPending": "Réinitialisation en attente de confirmation · {{date}}",
-    "resetFailed": "Réinitialisation en attente d’une nouvelle tentative · {{date}}"
+    "resetPending": "Réinitialisation en attente de confirmation (votre fuseau horaire) : {{date}}",
+    "resetFailed": "Réinitialisation en attente d’une nouvelle tentative (votre fuseau horaire) : {{date}}"
   },
   "experience": {
     "adminRefreshing": "Mise à jour ; affichant les données précédemment chargées…",

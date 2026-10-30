@@ -744,7 +744,7 @@
     "empty": "Keine Daten-Credits zum Kauf verfügbar",
     "access": "Bestehende Konten behalten ihre Knotengruppen-, Geschwindigkeits- und Gerätelimits. Beim Erstzugang wird das gewählte Guthabenpaket genutzt.",
     "checkout": "Weiter zur Kasse",
-    "resetAt": "Geplanter Reset: {{date}}",
+    "resetAt": "Voraussichtliche Zurücksetzung (Ihre Zeitzone): {{date}}",
     "noReset": "Kein automatischer Reset vor Ablauf",
     "noPlanTitle": "Kein aktiver Tarif",
     "noPlan": "Kein aktiver Tarif. Daten-Credits können unabhängig genutzt werden.",
@@ -761,9 +761,10 @@
     "paidReset": "Kostenpflichtiges Zurücksetzen",
     "paidResetHelp": "Setzen Sie den Tarifverbrauch zurück, ohne eine gespeicherte Zurücksetzung zu nutzen. Ablaufdatum, geplanter Termin und Daten-Credits bleiben gleich.",
     "creditOrder": "{{amount}} Credits",
+    "resetBusinessTime": "Entsprechende Systemzeit: {{date}} · {{zone}}",
     "resetBusinessZone": "Die Regeln für die Zurücksetzung verwenden {{zone}}. Die Anzeigezeitzone ändert den Zeitpunkt der Zurücksetzung nicht.",
-    "resetPending": "Zurücksetzung wartet auf Bestätigung · {{date}}",
-    "resetFailed": "Zurücksetzung wartet auf erneuten Versuch · {{date}}"
+    "resetPending": "Zurücksetzung wartet auf Bestätigung (Ihre Zeitzone): {{date}}",
+    "resetFailed": "Zurücksetzung wartet auf erneuten Versuch (Ihre Zeitzone): {{date}}"
   },
   "experience": {
     "adminRefreshing": "Aktualisieren; Zeigt zuvor geladene Daten an…",

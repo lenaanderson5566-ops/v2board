@@ -218,3 +218,17 @@ it("does not cause a cross-tab reload loop when clearing an already anonymous se
     expect(stored.has("v2board.user.sessionRevision")).toBe(false);
     expect(window.location.reload).not.toHaveBeenCalled();
 });
+
+it("clears the previous account's display zone when signing out or changing accounts", async () => {
+    const sessions = await import("./browser-session");
+    const zone = await import("./timezone");
+    sessions.markBrowserAuthenticated(42);
+    zone.setDisplayTimeZone("Asia/Shanghai");
+    sessions.markBrowserAuthenticated(42);
+    expect(zone.displayTimeZone()).toBe("Asia/Shanghai");
+    sessions.markBrowserAuthenticated(99);
+    expect(zone.displayTimeZone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    zone.setDisplayTimeZone("Asia/Tokyo");
+    sessions.forgetBrowserSession();
+    expect(zone.displayTimeZone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+});

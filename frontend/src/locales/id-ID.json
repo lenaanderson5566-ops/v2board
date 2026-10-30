@@ -744,7 +744,7 @@
     "empty": "Tidak ada kredit data yang dapat dibeli",
     "access": "Akun yang ada mempertahankan batasan grup node, kecepatan, dan perangkatnya. Akses pertama kali menggunakan paket pulsa yang dipilih.",
     "checkout": "Lanjutkan ke pembayaran",
-    "resetAt": "Reset terjadwal: {{date}}",
+    "resetAt": "Perkiraan reset (zona waktu Anda): {{date}}",
     "noReset": "Tidak ada reset otomatis sebelum habis masa berlakunya",
     "noPlanTitle": "Tidak ada paket aktif",
     "noPlan": "Tidak ada paket aktif. Kredit data dapat digunakan secara mandiri.",
@@ -761,9 +761,10 @@
     "paidReset": "Reset berbayar",
     "paidResetHelp": "Reset pemakaian paket tanpa menggunakan jatah reset tersimpan. Masa berlaku, jadwal reset, dan saldo kredit data tidak berubah.",
     "creditOrder": "kredit {{amount}}",
+    "resetBusinessTime": "Waktu sistem yang setara: {{date}} · {{zone}}",
     "resetBusinessZone": "Aturan reset menggunakan {{zone}}. Zona waktu tampilan tidak mengubah waktu reset.",
-    "resetPending": "Reset menunggu konfirmasi · {{date}}",
-    "resetFailed": "Reset menunggu percobaan ulang · {{date}}"
+    "resetPending": "Reset menunggu konfirmasi (zona waktu Anda): {{date}}",
+    "resetFailed": "Reset menunggu percobaan ulang (zona waktu Anda): {{date}}"
   },
   "experience": {
     "adminRefreshing": "Memperbarui; menampilkan data yang dimuat sebelumnya…",

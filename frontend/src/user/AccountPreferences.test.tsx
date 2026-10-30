@@ -64,6 +64,7 @@ vi.mock("../shared/ui", () => ({
 import { AccountDeletion } from "./AccountDeletion";
 import { AccountPreferences } from "./AccountPreferences";
 import { TimeZonePicker } from "../shared/TimeZonePicker";
+import * as timeZone from "../shared/timezone";
 import { AnalyticsPrivacy } from "./AnalyticsPrivacy";
 import {
     privacyKey,
@@ -74,6 +75,7 @@ import { AccountSessions } from "./AccountSessions";
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();
+    timeZone.setDisplayTimeZone(null);
     vi.unstubAllGlobals();
     localStorage.clear();
     vi.clearAllMocks();
@@ -133,6 +135,8 @@ it("searches cities, IANA names and UTC offsets without saving draft changes", (
     expect(change).not.toHaveBeenCalled();
 });
 it("keeps the original zone after save failure, prevents duplicate saves and permits retry", async () => {
+    timeZone.setDisplayTimeZone("Asia/Shanghai");
+    const applyZone = vi.spyOn(timeZone, "setDisplayTimeZone");
     let rejectSave!: (error: Error) => void;
     mocks.request.mockReturnValueOnce(
         new Promise((_, reject) => {
@@ -149,6 +153,8 @@ it("keeps the original zone after save failure, prevents duplicate saves and per
     expect(screen.getByRole("dialog")).toBeTruthy();
     await act(async () => rejectSave(new Error("保存失败")));
     expect(screen.getByRole("alert").textContent).toBe("保存失败");
+    expect(timeZone.displayTimeZone()).toBe("Asia/Shanghai");
+    expect(applyZone).not.toHaveBeenCalled();
     expect(
         screen.getByRole("button", { name: "时间显示时区" }).textContent,
     ).toContain("上海");
@@ -159,9 +165,11 @@ it("keeps the original zone after save failure, prevents duplicate saves and per
         screen.getByRole("button", { name: "时间显示时区" }).textContent,
     ).toContain("UTC");
     expect(mocks.request).toHaveBeenCalledTimes(2);
+    expect(applyZone).not.toHaveBeenCalled();
 });
 
 it("persists the display zone and allows following the device again", async () => {
+    const applyZone = vi.spyOn(timeZone, "setDisplayTimeZone");
     mocks.request.mockResolvedValue({ data: true });
     const view = render(
         <AccountPreferences user={{ display_timezone: "Asia/Shanghai" }} />,
@@ -189,6 +197,58 @@ it("persists the display zone and allows following the device again", async () =
             display_timezone: null,
         }),
     );
+    expect(applyZone).not.toHaveBeenCalled();
+});
+
+it("ignores an earlier account save without unlocking the current account's pending selection", async () => {
+    let finishPrevious!: (result: { data: boolean }) => void;
+    let finishCurrent!: (result: { data: boolean }) => void;
+    mocks.request.mockReturnValueOnce(new Promise(resolve => { finishPrevious = resolve; }))
+        .mockReturnValueOnce(new Promise(resolve => { finishCurrent = resolve; }));
+    const applyZone = vi.spyOn(timeZone, "setDisplayTimeZone");
+    const view = render(<AccountPreferences user={{ id: 1, display_timezone: "Asia/Shanghai" }} />);
+    fireEvent.click(screen.getByRole("button", { name: "时间显示时区" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^UTC/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认选择" }));
+    expect(mocks.request).toHaveBeenCalledTimes(1);
+
+    view.rerender(<AccountPreferences user={{ id: 2, display_timezone: "Asia/Shanghai" }} />);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect((screen.getByRole("button", { name: "时间显示时区" }) as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "时间显示时区" }));
+    fireEvent.click(screen.getByRole("radio", { name: /跟随设备/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认选择" }));
+    expect(mocks.request).toHaveBeenCalledTimes(2);
+
+    await act(async () => finishPrevious({ data: true }));
+    expect(screen.getByRole("dialog")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "界面语言" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "时间显示时区" }).textContent).toContain("上海");
+    expect(applyZone).not.toHaveBeenCalled();
+
+    await act(async () => finishCurrent({ data: true }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("button", { name: "时间显示时区" }).textContent).toContain("跟随设备");
+    expect((screen.getByRole("button", { name: "界面语言" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(applyZone).not.toHaveBeenCalled();
+});
+
+it("does not apply a display zone or broadcast a refresh after the preferences component unmounts", async () => {
+    let finish!: (result: { data: boolean }) => void;
+    mocks.request.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+    const view = render(<AccountPreferences user={{ id: 1, display_timezone: "Asia/Shanghai" }} />);
+    fireEvent.click(screen.getByRole("button", { name: "时间显示时区" }));
+    fireEvent.click(screen.getByRole("radio", { name: /^UTC/ }));
+    fireEvent.click(screen.getByRole("button", { name: "确认选择" }));
+    view.unmount();
+
+    timeZone.setDisplayTimeZone("Europe/London");
+    const applyZone = vi.spyOn(timeZone, "setDisplayTimeZone");
+    const dispatch = vi.spyOn(window, "dispatchEvent");
+    await act(async () => finish({ data: true }));
+    expect(applyZone).not.toHaveBeenCalled();
+    expect(timeZone.displayTimeZone()).toBe("Europe/London");
+    expect(dispatch.mock.calls.some(([event]) => event.type === "data-changed")).toBe(false);
 });
 
 function privacyScreen(retentionDays = 30, enabled = true) {

@@ -744,7 +744,7 @@
     "empty": "No credits available to purchase",
     "access": "Existing accounts keep their node group, speed and device limits. First-time access uses the selected credit package.",
     "checkout": "Continue to checkout",
-    "resetAt": "Scheduled reset: {{date}}",
+    "resetAt": "Expected reset (your time zone): {{date}}",
     "noReset": "No automatic reset before expiry",
     "noPlanTitle": "No active plan",
     "noPlan": "No active plan. Credits can be used independently.",
@@ -761,9 +761,10 @@
     "paidReset": "Paid reset",
     "paidResetHelp": "Reset your plan traffic without using a banked reset. Your expiry date, scheduled reset and credit balance stay the same.",
     "creditOrder": "{{amount}} credits",
+    "resetBusinessTime": "Equivalent system time: {{date}} · {{zone}}",
     "resetBusinessZone": "Reset rules use {{zone}}. Your display time zone does not change the reset time.",
-    "resetPending": "Reset awaiting confirmation · {{date}}",
-    "resetFailed": "Reset awaiting retry · {{date}}"
+    "resetPending": "Reset awaiting confirmation (your time zone): {{date}}",
+    "resetFailed": "Reset awaiting retry (your time zone): {{date}}"
   },
   "experience": {
     "adminRefreshing": "Updating; showing previously loaded data…",

@@ -742,7 +742,7 @@
     "empty": "暫無可購買額度",
     "access": "既有帳戶沿用目前節點群組、速度與裝置限制；首次購買按所選額度規格開通。",
     "checkout": "繼續結帳",
-    "resetAt": "預定重設時間：{{date}}",
+    "resetAt": "預計重設（您的時區）：{{date}}",
     "noReset": "目前有效期內無自動重設",
     "noPlanTitle": "暫無有效方案",
     "noPlan": "目前沒有有效方案，可直接使用額度。",
@@ -759,9 +759,10 @@
     "paidReset": "付費重置",
     "paidResetHelp": "重置目前方案流量，不消耗儲備次數。訂閱到期時間、原定重置日期及額度餘額不變。",
     "creditOrder": "{{amount}} 額度",
+    "resetBusinessTime": "對應系統時間：{{date}} · {{zone}}",
     "resetBusinessZone": "重置規則採用 {{zone}}；個人顯示時區不會改變重置時間。",
-    "resetPending": "重置待確認 · {{date}}",
-    "resetFailed": "重置待重試 · {{date}}"
+    "resetPending": "重設待確認（您的時區）：{{date}}",
+    "resetFailed": "重設待重試（您的時區）：{{date}}"
   },
   "experience": {
     "adminRefreshing": "正在更新，暫時顯示上次載入的資料…",

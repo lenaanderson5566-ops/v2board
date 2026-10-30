@@ -1,4 +1,4 @@
-import { beforeAll, beforeEach, describe, it, expect, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, it, expect, vi } from "vitest";
 
 const session = vi.hoisted(() => ({ active: true, identity: "user:42", forgotten: vi.fn() }));
 vi.mock("./browser-session", () => ({
@@ -31,6 +31,7 @@ const {
     money,
 } = await import("./api");
 const { prepareWorkspaceLanguage } = await import("./i18n");
+const { configureTimeZone, displayTimeZone, dateTimeInput, setDisplayTimeZone } = await import("./timezone");
 // Business requests normally run only after the admitted workspace's language is ready.
 beforeAll(async () => { await prepareWorkspaceLanguage(); });
 describe("API client", () => {
@@ -416,4 +417,119 @@ it.each(["seconds", "date"])("preserves server rate-limit cooldown from Retry-Af
     expect(failure.retryAfter).toBeGreaterThan(0);
     expect(failure.retryAfter).toBeLessThanOrEqual(7);
     expect(failure.message).not.toContain("Too Many Attempts");
+});
+
+describe("account display time zone", () => {
+    beforeEach(async () => {
+        window.V2BOARD.mode = "user";
+        session.active = true;
+        session.identity = "user:42";
+        storage.clear();
+        configureTimeZone("UTC");
+        setDisplayTimeZone("Asia/Shanghai");
+        const { clearReadCache } = await import("./api");
+        clearReadCache();
+    });
+    afterEach(() => {
+        window.V2BOARD.mode = "user";
+        session.active = true;
+        session.identity = "user:42";
+        setDisplayTimeZone(null);
+        storage.clear();
+        vi.mocked(window.dispatchEvent).mockReset();
+    });
+    const accountReply = (zone: string | null) => new Response(JSON.stringify({
+        data: { id: 42, displayTimeZone: zone, systemTimeZone: "UTC" },
+    }), { status: 200 });
+    it("restores an explicit UTC preference on fresh account loads and preserves the reset instant", async () => {
+        const resetAt = "2026-11-30T00:00:00Z";
+        vi.stubGlobal("fetch", vi.fn()
+            .mockResolvedValueOnce(accountReply("UTC"))
+            .mockResolvedValueOnce(new Response(JSON.stringify({ data: { resetAt, resetTimezone: "UTC" } })))
+            .mockResolvedValueOnce(accountReply("UTC")));
+        await request("user/info");
+        expect(displayTimeZone()).toBe("UTC");
+        const subscription = await request<any>("user/getSubscribe");
+        expect(subscription.data.reset_at).toBe(Date.parse(resetAt) / 1000);
+        expect(dateTimeInput(subscription.data.reset_at)).toBe("2026-11-30T00:00");
+        setDisplayTimeZone(null); // Recreate a fresh login's unset display preference.
+        await request("user/info");
+        expect(displayTimeZone()).toBe("UTC");
+        expect(dateTimeInput(subscription.data.reset_at)).toBe("2026-11-30T00:00");
+    });
+    it("applies a confirmed setting before notifying readers and preserves null for following the device", async () => {
+        const sent = vi.fn().mockImplementation(async () => new Response(null, { status: 204 }));
+        vi.stubGlobal("fetch", sent);
+        const observed: string[] = [];
+        vi.mocked(window.dispatchEvent).mockImplementation((event) => {
+            if (event.type === "data-changed") observed.push(displayTimeZone());
+            return true;
+        });
+        await request("user/update", { display_timezone: "UTC" });
+        expect(observed).toEqual(["UTC"]);
+        expect(sent.mock.calls[0][1]).toMatchObject({ method: "PATCH", body: '{"displayTimeZone":"UTC"}' });
+        await request("user/update", { display_timezone: null });
+        expect(displayTimeZone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+        expect(JSON.parse(sent.mock.calls[1][1].body)).toEqual({ displayTimeZone: null });
+    });
+    it("retains the current preference when saving fails", async () => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('{"detail":"unavailable"}', { status: 503 })));
+        await expect(request("user/update", { display_timezone: "UTC" })).rejects.toMatchObject({ status: 503 });
+        expect(displayTimeZone()).toBe("Asia/Shanghai");
+    });
+    it("does not let a late account body overwrite a newly saved UTC preference", async () => {
+        let finish!: (value: unknown) => void;
+        const json = vi.fn(() => new Promise(resolve => { finish = resolve; }));
+        vi.stubGlobal("fetch", vi.fn()
+            .mockResolvedValueOnce({ ok: true, status: 200, json })
+            .mockResolvedValueOnce(new Response(null, { status: 204 })));
+        const older = request("user/info");
+        await vi.waitFor(() => expect(json).toHaveBeenCalled());
+        await request("user/update", { display_timezone: "UTC" });
+        finish({ data: { id: 42, displayTimeZone: "Asia/Shanghai", systemTimeZone: "UTC" } });
+        await older;
+        expect(displayTimeZone()).toBe("UTC");
+    });
+    it.each(["identity", "revision"])("ignores an account snapshot after its session %s changes", async (changed) => {
+        let finish!: (value: unknown) => void;
+        const json = vi.fn(() => new Promise(resolve => { finish = resolve; }));
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce({ ok: true, status: 200, json }));
+        const older = request("user/info");
+        await vi.waitFor(() => expect(json).toHaveBeenCalled());
+        if (changed === "identity") session.identity = "user:99";
+        else storage.set("v2board.user.sessionRevision", "new-login");
+        setDisplayTimeZone("UTC");
+        finish({ data: { displayTimeZone: "Asia/Shanghai", systemTimeZone: "UTC" } });
+        await older;
+        expect(displayTimeZone()).toBe("UTC");
+    });
+    it("ignores a completed preference save from a previous account", async () => {
+        let finish!: (response: Response) => void;
+        vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>(resolve => { finish = resolve; })));
+        const older = request("user/update", { display_timezone: "Asia/Tokyo" });
+        session.identity = "user:99";
+        setDisplayTimeZone("UTC");
+        finish(new Response(null, { status: 204 }));
+        await older;
+        expect(displayTimeZone()).toBe("UTC");
+    });
+    it("keeps a newer account read when an earlier response finishes last", async () => {
+        let finish!: (value: unknown) => void;
+        const json = vi.fn(() => new Promise(resolve => { finish = resolve; }));
+        vi.stubGlobal("fetch", vi.fn()
+            .mockResolvedValueOnce({ ok: true, status: 200, json })
+            .mockResolvedValueOnce(accountReply("UTC")));
+        const older = request("user/info");
+        await vi.waitFor(() => expect(json).toHaveBeenCalled());
+        await request("user/info");
+        finish({ data: { displayTimeZone: "Asia/Shanghai", systemTimeZone: "UTC" } });
+        await older;
+        expect(displayTimeZone()).toBe("UTC");
+    });
+    it("keeps administrator dates in the business zone when reading account identity", async () => {
+        window.V2BOARD.mode = "admin";
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(accountReply("Asia/Shanghai")));
+        await request("user/info");
+        expect(displayTimeZone()).toBe("UTC");
+    });
 });

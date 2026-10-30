@@ -742,7 +742,7 @@
     "empty": "購入できるクレジットはありません",
     "access": "既存アカウントのノードグループ・速度・端末制限は維持されます。初回は選択したパッケージが適用されます。",
     "checkout": "お支払いへ",
-    "resetAt": "リセット予定：{{date}}",
+    "resetAt": "リセット予定（お使いのタイムゾーン）：{{date}}",
     "noReset": "有効期限まで自動リセットはありません",
     "noPlanTitle": "有効なプランなし",
     "noPlan": "有効なプランはありません。クレジットは単独で使えます。",
@@ -759,9 +759,10 @@
     "paidReset": "有料リセット",
     "paidResetHelp": "予備のリセット回数を消費せずにプランの使用量をリセットします。有効期限、次回リセット日、追加容量は変わりません。",
     "creditOrder": "クレジット · {{amount}}",
+    "resetBusinessTime": "対応するシステム時刻：{{date}} · {{zone}}",
     "resetBusinessZone": "リセット規則には {{zone}} が適用されます。表示タイムゾーンを変えてもリセット時刻は変わりません。",
-    "resetPending": "リセット確認待ち · {{date}}",
-    "resetFailed": "リセット再試行待ち · {{date}}"
+    "resetPending": "リセット確認待ち（お使いのタイムゾーン）：{{date}}",
+    "resetFailed": "リセット再試行待ち（お使いのタイムゾーン）：{{date}}"
   },
   "experience": {
     "adminRefreshing": "更新中です。前回のデータを表示しています…",

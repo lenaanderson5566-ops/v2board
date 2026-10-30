@@ -742,7 +742,7 @@
     "empty": "Chưa có hạn mức để mua",
     "access": "Tài khoản hiện có giữ nhóm máy chủ, giới hạn tốc độ và thiết bị. Lần đầu áp dụng gói hạn mức đã chọn.",
     "checkout": "Tiếp tục thanh toán",
-    "resetAt": "Đặt lại dự kiến: {{date}}",
+    "resetAt": "Dự kiến đặt lại (múi giờ của bạn): {{date}}",
     "noReset": "Không tự đặt lại trước khi hết hạn",
     "noPlanTitle": "Không có gói còn hạn",
     "noPlan": "Không có gói còn hạn. Có thể dùng hạn mức độc lập.",
@@ -759,9 +759,10 @@
     "paidReset": "Đặt lại có phí",
     "paidResetHelp": "Đặt lại lưu lượng gói mà không dùng lượt dự trữ. Ngày hết hạn, lịch đặt lại và dung lượng bổ sung không thay đổi.",
     "creditOrder": "Hạn mức · {{amount}}",
+    "resetBusinessTime": "Thời gian hệ thống tương ứng: {{date}} · {{zone}}",
     "resetBusinessZone": "Quy tắc đặt lại sử dụng {{zone}}. Múi giờ hiển thị không làm thay đổi thời điểm đặt lại.",
-    "resetPending": "Đặt lại đang chờ xác nhận · {{date}}",
-    "resetFailed": "Đặt lại đang chờ thử lại · {{date}}"
+    "resetPending": "Đặt lại đang chờ xác nhận (múi giờ của bạn): {{date}}",
+    "resetFailed": "Đặt lại đang chờ thử lại (múi giờ của bạn): {{date}}"
   },
   "experience": {
     "adminRefreshing": "Đang cập nhật; hiển thị dữ liệu trước đó…",

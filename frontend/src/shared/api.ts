@@ -75,6 +75,9 @@ export const storageKey = `v2board.${boot.mode}${boot.apiBaseUrl ? "." + encodeU
 export const admin = (path: string) => `${boot.adminPath}/${path}`;
 export const ops = (path: string) => `${boot.opsPath}/${path}`;
 const readCache = createReadCache();
+let accountSettingsGeneration = 0;
+let accountReadSequence = 0;
+let appliedAccountReadSequence = 0;
 const cacheable = new Set([
     "user/info",
     "user/getSubscribe",
@@ -96,6 +99,7 @@ export function readRequest<T = Row>(
     );
 }
 export function clearReadCache() {
+    accountSettingsGeneration++;
     readCache.clear();
 }
 export async function logoutSession() {
@@ -121,7 +125,7 @@ function apiFailure(payload: unknown, status: number, authenticated: boolean, pr
     const errors = fields.errors !== null && typeof fields.errors === "object" && !Array.isArray(fields.errors)
         ? Object.values(fields.errors).flat().filter((value): value is string => typeof value === "string") : [];
     if (authenticated && (status === 401 || (status === 403 && ["未登录或登陆已过期", "登录已过期"].includes(message)))) {
-        readCache.clear();
+        clearReadCache();
         forgetBrowserSession();
         window.dispatchEvent(new Event("auth-expired"));
     }
@@ -141,8 +145,16 @@ export async function request<T = Row>(
     let observedFailure: "api_error" | "network_error" | null = null;
     // Checkout quotes use POST for structured input, but do not mutate account data.
     const readOnly = path.split("?")[0] === "user/order/quote";
-    if (body && !readOnly) readCache.clear();
+    if (body && !readOnly) clearReadCache();
     const token = hasBrowserSession();
+    const requestMode = boot.mode;
+    const identity = browserSessionKey();
+    const sessionRevision = localPreferences.getItem(`v2board.${requestMode}.sessionRevision`);
+    const settingsGeneration = accountSettingsGeneration;
+    const accountRead = path.split("?")[0] === "user/info" ? ++accountReadSequence : 0;
+    const sameSession = () => boot.mode === requestMode && browserSessionKey() === identity &&
+        hasBrowserSession() === token &&
+        localPreferences.getItem(`v2board.${requestMode}.sessionRevision`) === sessionRevision;
     const controller = new AbortController();
     let timedOut = false;
     const abort = () => controller.abort();
@@ -215,16 +227,24 @@ export async function request<T = Row>(
         )
             markBrowserAuthenticated((json.data as Row).accountId);
         if (body && !readOnly && boot.mode === "user" && path !== "passport/mfa/verifications") {
-            readCache.clear();
+            clearReadCache();
+            // Apply a confirmed preference before readers react to data-changed.
+            // Earlier account snapshots and callbacks from another session must
+            // not restore the old display zone after a successful save.
+            if (path === "user/update" && !(body instanceof FormData) &&
+                Object.hasOwn(body, "display_timezone") && sameSession())
+                setDisplayTimeZone(body.display_timezone);
             window.dispatchEvent(new Event("data-changed"));
         }
-        if (path.split("?")[0] === "user/info" && json.data) {
+        if (accountRead && json.data && sameSession() &&
+            accountRead > appliedAccountReadSequence && settingsGeneration === accountSettingsGeneration) {
+            appliedAccountReadSequence = accountRead;
             const account = json.data as Row;
             configureTimeZone(
                 account.system_timezone ||
                     boot.systemTimeZone ||
                     "Asia/Shanghai",
-                false,
+                boot.mode === "admin",
             );
             setDisplayTimeZone(account.display_timezone);
         }

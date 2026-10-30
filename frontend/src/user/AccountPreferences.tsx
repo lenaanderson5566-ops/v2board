@@ -6,16 +6,33 @@ import { useTranslation } from "react-i18next";
 import { changeLanguage, languages, locale, tx } from "../shared/i18n";
 import { p } from "./profile-copy";
 import { request, boot, type Row } from "../shared/api";
-import { setDisplayTimeZone } from "../shared/timezone";
 import "../shared/account-preferences.css";
 export function AccountPreferences({ user }: { user: Row }) {
     useTranslation();
     const [busy, setBusy] = useState(false);
     const [displayZone, setDisplayZone] = useState(user.display_timezone || "");
+    const saving = useRef(false);
+    const mounted = useRef(true);
+    const owner = useRef(user.id);
+    const saveGeneration = useRef(0);
+    if (owner.current !== user.id) {
+        owner.current = user.id;
+        saveGeneration.current += 1;
+    }
+    useEffect(() => {
+        mounted.current = true;
+        return () => {
+            mounted.current = false;
+            saveGeneration.current += 1;
+        };
+    }, []);
     useEffect(() => {
         setDisplayZone(user.display_timezone || "");
-    }, [user.display_timezone]);
-    const saving = useRef(false);
+    }, [user.id, user.display_timezone]);
+    useEffect(() => {
+        saving.current = false;
+        setBusy(false);
+    }, [user.id]);
     return (
         <section className="settings-section">
             <h2>{tx("账户信息")}</h2>
@@ -57,6 +74,7 @@ export function AccountPreferences({ user }: { user: Row }) {
                     </div>
                     <div className="preference-control">
                         <TimeZonePicker
+                            key={user.id}
                             id="profile-timezone"
                             label={tx("时间显示时区")}
                             value={displayZone}
@@ -76,20 +94,21 @@ export function AccountPreferences({ user }: { user: Row }) {
                                 if (saving.current) return;
                                 saving.current = true;
                                 setBusy(true);
-
+                                const account = user.id;
+                                const generation = ++saveGeneration.current;
+                                const current = () => mounted.current && owner.current === account && saveGeneration.current === generation;
                                 const zone = selected || null;
                                 try {
                                     await request("user/update", {
                                         display_timezone: zone,
                                     });
-                                    setDisplayTimeZone(zone);
-                                    setDisplayZone(selected);
-                                    window.dispatchEvent(
-                                        new Event("data-changed"),
-                                    );
+                                    // The request layer owns account-scoped display preferences.
+                                    if (current()) setDisplayZone(selected);
                                 } finally {
-                                    saving.current = false;
-                                    setBusy(false);
+                                    if (current()) {
+                                        saving.current = false;
+                                        setBusy(false);
+                                    }
                                 }
                             }}
                         />
@@ -107,6 +126,7 @@ export function AccountPreferences({ user }: { user: Row }) {
                     </div>
                     <div className="preference-control">
                         <SelectionPicker
+                            key={user.id}
                             id="profile-language"
                             label={tx("界面语言")}
                             value={locale()}
@@ -120,11 +140,16 @@ export function AccountPreferences({ user }: { user: Row }) {
                                 if (saving.current) return;
                                 saving.current = true;
                                 setBusy(true);
+                                const account = user.id;
+                                const generation = ++saveGeneration.current;
+                                const current = () => mounted.current && owner.current === account && saveGeneration.current === generation;
                                 try {
                                     await changeLanguage(selected);
                                 } finally {
-                                    saving.current = false;
-                                    setBusy(false);
+                                    if (current()) {
+                                        saving.current = false;
+                                        setBusy(false);
+                                    }
                                 }
                             }}
                         />

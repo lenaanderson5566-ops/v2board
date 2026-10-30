@@ -1,6 +1,7 @@
 import { localPreferences } from "./browser-storage";
 import { tx } from "./i18n";
 import { apiUrl } from "./runtime-config";
+import { setDisplayTimeZone } from "./timezone";
 
 const mode = () => window.V2BOARD.mode;
 const legacyKey = () =>
@@ -17,6 +18,7 @@ let observedRevision: string | null = null;
 let invalidated = false;
 let observing = false;
 function changedSession(): never {
+    setDisplayTimeZone(null);
     invalidated = true;
     authenticated = false;
     accountId = null;
@@ -43,6 +45,7 @@ function signalSessionChange() {
         ? revision : localPreferences.getItem(revisionKey());
 }
 export function forgetBrowserSession() {
+    setDisplayTimeZone(null);
     const changed = authenticated || accountId !== null;
     authenticated = false;
     accountId = null;
@@ -163,6 +166,7 @@ export async function browserFetch(url: string, options: RequestInit = {}) {
     return response;
 }
 export function markBrowserAuthenticated(id?: number) {
+    if (accountId !== (id ?? null)) setDisplayTimeZone(null);
     authenticated = true;
     accountId = id ?? null;
     signalSessionChange();

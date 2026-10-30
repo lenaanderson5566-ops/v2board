@@ -742,7 +742,7 @@
     "empty": "暂无可购买额度",
     "access": "已有账户沿用当前节点组、速度和设备限制；首次购买按所选额度规格开通。",
     "checkout": "继续结算",
-    "resetAt": "计划重置时间：{{date}}",
+    "resetAt": "预计重置（您的时区）：{{date}}",
     "noReset": "当前有效期内无自动重置",
     "noPlanTitle": "暂无有效套餐",
     "noPlan": "当前没有有效套餐，可直接使用额度。",
@@ -759,9 +759,10 @@
     "paidReset": "付费重置",
     "paidResetHelp": "重置当前套餐流量，不消耗储备次数。订阅到期时间、原定重置日期和额度余额不变。",
     "creditOrder": "{{amount}} 额度",
+    "resetBusinessTime": "对应系统时间：{{date}} · {{zone}}",
     "resetBusinessZone": "重置规则按 {{zone}} 执行，显示时区不会改变重置时刻。",
-    "resetPending": "重置待确认 · {{date}}",
-    "resetFailed": "重置待重试 · {{date}}"
+    "resetPending": "待确认重置（您的时区）：{{date}}",
+    "resetFailed": "待重试重置（您的时区）：{{date}}"
   },
   "experience": {
     "adminRefreshing": "正在更新，暂时显示上次加载的数据…",

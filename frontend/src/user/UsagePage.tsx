@@ -11,7 +11,7 @@ import { e } from "../shared/experience-copy";
 import { b } from "../shared/billing-copy";
 import { Modal, State, useData } from "../shared/ui";
 import { UsageChart } from "./UsageChart";
-import { displayTimeZone, utcOffsetLabel, validZone } from "../shared/timezone";
+import { displayTimeZone, validZone } from "../shared/timezone";
 
 export function UsagePage() {
     const info = useData("user/info"),
@@ -43,9 +43,8 @@ export function UsagePage() {
         ? sub.data.reset_timezone : undefined;
     const resetCopy = sub.data?.reset_state === "pending" ? "resetPending"
         : sub.data?.reset_state === "failed" ? "resetFailed" : "resetAt";
-    const resetRuleZone = Number.isFinite(resetAt) && resetAt > 0 && resetZone &&
-        sub.data?.has_subscription !== false && resetZone !== displayTimeZone()
-        ? `${resetZone} (${utcOffsetLabel(resetAt, resetZone)})` : undefined;
+    const validResetAt = Number.isFinite(resetAt) && resetAt > 0 && sub.data?.has_subscription !== false;
+    const showBusinessResetTime = validResetAt && resetZone && resetZone !== displayTimeZone();
     const usable =
         info.data?.account_status?.state === "active" &&
         info.data.account_status.is_available !== false &&
@@ -174,15 +173,11 @@ export function UsagePage() {
                                     </strong>
                                     <div className="settings-row">
                                         <span className="muted">
-                                            {sub.data?.reset_at
+                                            {validResetAt
                                                 ? tx(resetCopy, {
                                                       ns: "credits",
-                                                      defaultValue: resetCopy === "resetPending" ? "Reset awaiting confirmation · {{date}}" : resetCopy === "resetFailed" ? "Reset awaiting retry · {{date}}" : "Next reset · {{date}}",
-                                                      date: minuteDate(
-                                                          sub.data.reset_at,
-                                                          sub.data
-                                                              .reset_timezone,
-                                                      ),
+                                                      defaultValue: resetCopy === "resetPending" ? "Reset awaiting confirmation (your time zone): {{date}}" : resetCopy === "resetFailed" ? "Reset awaiting retry (your time zone): {{date}}" : "Scheduled reset (your time zone): {{date}}",
+                                                      date: minuteDate(resetAt),
                                                   })
                                                 : c(
                                                       sub.data
@@ -199,9 +194,9 @@ export function UsagePage() {
                                             </span>
                                         )}
                                     </div>
-                                    {resetRuleZone && <p className="muted">{tx("resetBusinessZone", {
-                                        ns: "credits", zone: resetRuleZone,
-                                        defaultValue: "Reset rules use {{zone}}. Your display time zone does not change the reset time.",
+                                    {showBusinessResetTime && <p className="muted">{tx("resetBusinessTime", {
+                                        ns: "credits", date: minuteDate(resetAt, resetZone), zone: resetZone,
+                                        defaultValue: "Corresponding system time: {{date}} · {{zone}}",
                                     })}</p>}
                                     {total > 0 && (
                                         <>

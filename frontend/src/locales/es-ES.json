@@ -744,7 +744,7 @@
     "empty": "No hay créditos disponibles para comprar",
     "access": "Las cuentas existentes conservan su grupo de nodos, velocidad y límite de dispositivos. El primer acceso usa el paquete de créditos seleccionado.",
     "checkout": "Continuar al pago",
-    "resetAt": "Reinicio programado: {{date}}",
+    "resetAt": "Reinicio previsto (tu zona horaria): {{date}}",
     "noReset": "Sin reinicio automático antes del vencimiento",
     "noPlanTitle": "Sin plan activo",
     "noPlan": "Sin plan activo. Los créditos pueden usarse de forma independiente.",
@@ -761,9 +761,10 @@
     "paidReset": "Reinicio de pago",
     "paidResetHelp": "Restablece los datos de tu plan sin usar un reinicio guardado. El vencimiento, el reinicio programado y el saldo de créditos no cambian.",
     "creditOrder": "{{amount}} créditos",
+    "resetBusinessTime": "Hora del sistema correspondiente: {{date}} · {{zone}}",
     "resetBusinessZone": "Las reglas de reinicio usan {{zone}}. La zona horaria de visualización no cambia la hora del reinicio.",
-    "resetPending": "Reinicio pendiente de confirmación · {{date}}",
-    "resetFailed": "Reinicio pendiente de reintento · {{date}}"
+    "resetPending": "Reinicio pendiente de confirmación (tu zona horaria): {{date}}",
+    "resetFailed": "Reinicio pendiente de reintento (tu zona horaria): {{date}}"
   },
   "experience": {
     "adminRefreshing": "Actualizando; se muestran los datos anteriores…",

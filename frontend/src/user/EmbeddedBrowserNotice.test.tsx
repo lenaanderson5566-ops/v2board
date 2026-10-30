@@ -112,9 +112,11 @@ describe("in-app browser guidance", () => {
             name: "copyAddress",
         });
         expect((address as HTMLInputElement).value).toBe(location.href);
-        expect(document.activeElement).toBe(address);
-        expect((address as HTMLInputElement).selectionStart).toBe(0);
-        expect((address as HTMLInputElement).selectionEnd).toBe(location.href.length);
+        await waitFor(() => {
+            expect(document.activeElement).toBe(address);
+            expect((address as HTMLInputElement).selectionStart).toBe(0);
+            expect((address as HTMLInputElement).selectionEnd).toBe(location.href.length);
+        });
         expect(screen.getByRole("status").textContent).toBe("browserCopyHelp");
         mocks.copy.mockResolvedValue(undefined);
         fireEvent.click(screen.getByRole("button", { name: "copyAddress" }));

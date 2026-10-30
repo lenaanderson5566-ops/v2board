@@ -744,7 +744,7 @@
     "empty": "Nenhum crédito disponível para compra",
     "access": "Contas existentes mantêm o grupo de nós, a velocidade e o limite de dispositivos. O primeiro acesso usa o pacote de créditos selecionado.",
     "checkout": "Continuar para o pagamento",
-    "resetAt": "Renovação programada: {{date}}",
+    "resetAt": "Renovação de dados prevista (seu fuso horário): {{date}}",
     "noReset": "Sem renovação automática antes do vencimento",
     "noPlanTitle": "Sem plano ativo",
     "noPlan": "Sem plano ativo. Os créditos podem ser usados de forma independente.",
@@ -761,9 +761,10 @@
     "paidReset": "Renovação paga",
     "paidResetHelp": "Zere o uso do plano sem usar uma renovação acumulada. O vencimento, a renovação programada e o saldo de créditos não mudam.",
     "creditOrder": "{{amount}} créditos",
+    "resetBusinessTime": "Horário correspondente do sistema: {{date}} · {{zone}}",
     "resetBusinessZone": "As regras de renovação de dados usam {{zone}}. O fuso horário de exibição não altera o horário da renovação.",
-    "resetPending": "Renovação de dados aguardando confirmação · {{date}}",
-    "resetFailed": "Renovação de dados aguardando nova tentativa · {{date}}"
+    "resetPending": "Renovação de dados aguardando confirmação (seu fuso horário): {{date}}",
+    "resetFailed": "Renovação de dados aguardando nova tentativa (seu fuso horário): {{date}}"
   },
   "experience": {
     "adminRefreshing": "Atualizando; exibindo os dados anteriores…",

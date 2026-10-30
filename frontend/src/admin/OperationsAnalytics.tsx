@@ -1,9 +1,10 @@
-import { Empty, Pager, TableViewport } from "../shared/ui";
 import { browserLabel } from "./browser-labels";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
+import { ReportTable } from "./ReportTable";
+export { ReportTable } from "./ReportTable";
 
 type Access = {
     available: boolean;
@@ -159,58 +160,6 @@ const states: Record<string, string> = {
     not_due: "未到执行时间",
     skipped_upgrade: "升级时跳过",
 };
-export function ReportTable({
-    headers,
-    rows,
-    pageSize,
-}: {
-    headers: string[];
-    rows: ReactNode[][];
-    pageSize?: number;
-}) {
-    const [page, setPage] = useState(0);
-    const size = pageSize || Math.max(rows.length, 1);
-    const pages = Math.max(1, Math.ceil(rows.length / size));
-    const current = Math.min(page, pages - 1);
-    return rows.length ? (
-        <>
-            <TableViewport>
-                <table>
-                    <thead>
-                        <tr>
-                            {headers.map((h) => (
-                                <th key={h} scope="col">
-                                    {h}
-                                </th>
-                            ))}
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows
-                            .slice(current * size, (current + 1) * size)
-                            .map((r, i) => (
-                                <tr key={i}>
-                                    {r.map((v, j) => (
-                                        <td key={j}>{v}</td>
-                                    ))}
-                                </tr>
-                            ))}
-                    </tbody>
-                </table>
-            </TableViewport>
-            {pages > 1 && (
-                <Pager
-                    page={current + 1}
-                    size={size}
-                    total={rows.length}
-                    onChange={(next) => setPage(next - 1)}
-                />
-            )}
-        </>
-    ) : (
-        <Empty text="当前范围暂无记录。" />
-    );
-}
 function Retention({ days, selected }: { days: number; selected: number }) {
     return (
         <p className="muted">

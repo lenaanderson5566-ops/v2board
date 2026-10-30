@@ -35,6 +35,56 @@ Http::fake(['*'=>Http::response(['error'=>['message'=>'secret upstream']],429)])
 try { $service->generate('Test','en-US','ja-JP'); throw new RuntimeException('rate limit accepted'); } catch (Illuminate\Validation\ValidationException $e) { $assert(strpos(json_encode($e->errors()),'secret upstream')===false,'upstream details hidden'); }
 config(['plan-translation.key'=>'']);
 try { $service->generate('Test','en-US','ja-JP'); throw new RuntimeException('missing key accepted'); } catch (Illuminate\Validation\ValidationException $e) { $checks++; }
+
+// Both public entry points retain configuration-before-locale validation,
+// including paths that will otherwise return without contacting the provider.
+$configurationCases = [
+    ['url'=>'', 'key'=>'test-key', 'source'=>'unsupported', 'target'=>'unsupported', 'field'=>'translation', 'message'=>'请先配置 Azure Translator 密钥和区域'],
+    ['url'=>'https://translator.example.test', 'key'=>'', 'source'=>'en-US', 'target'=>'en-US', 'field'=>'translation', 'message'=>'请先配置 Azure Translator 密钥和区域'],
+    ['url'=>'https://translator.example.test', 'key'=>'test-key', 'source'=>'unsupported', 'target'=>'en-US', 'field'=>'locale', 'message'=>'语言不受支持'],
+    ['url'=>'https://translator.example.test', 'key'=>'test-key', 'source'=>'en-US', 'target'=>'unsupported', 'field'=>'locale', 'message'=>'语言不受支持'],
+];
+foreach ($configurationCases as $case) {
+    foreach (['generate', 'translateTexts'] as $entry) {
+        config(['plan-translation.url'=>$case['url'], 'plan-translation.key'=>$case['key']]);
+        Http::swap(new Illuminate\Http\Client\Factory);
+        Http::fake(['*'=>Http::response([],200)]);
+        try {
+            $entry === 'generate'
+                ? $service->generate('', $case['source'], $case['target'])
+                : $service->translateTexts([], $case['source'], $case['target']);
+            throw new RuntimeException('Translation precondition bypassed: '.$entry);
+        } catch (Illuminate\Validation\ValidationException $error) {
+            $assert($error->errors()===[$case['field']=>[$case['message']]], $entry.' preserves validation order and error');
+        }
+        $assert(Http::recorded()->count()===0, $entry.' does not transmit invalid or unconfigured content');
+    }
+}
+config(['plan-translation.url'=>'https://translator.example.test', 'plan-translation.key'=>'test-key']);
+Http::swap(new Illuminate\Http\Client\Factory);
+Http::fake(['*'=>Http::response([],200)]);
+$assert($service->generate(" \n",'zh-CN','en-US')===" \n",'whitespace-only source retains its exact content');
+$assert($service->generate('<p>50 GB</p>','en-US','en-US')==='<p>50 GB</p>','same-language description remains unchanged');
+$assert($service->translateTexts(['50 GB',''],'en-US','en-US')===['50 GB',''],'same-language batch preserves every item');
+$assert(Http::recorded()->count()===0,'valid empty and same-language paths do not call the provider');
+try { $service->generate('[{"feature":"50 GB"}]','en-US','en-US'); throw new RuntimeException('same-language feature validation bypassed'); }
+catch (Illuminate\Validation\ValidationException $error) { $assert(isset($error->errors()['content']),'same-language features still require support metadata'); }
+
+foreach (['test-region', '', null] as $region) {
+    config(['plan-translation.url'=>'https://translator.example.test///', 'plan-translation.region'=>$region]);
+    Http::swap(new Illuminate\Http\Client\Factory);
+    Http::fake(['*'=>Http::response([['translations'=>[['text'=>'Translated 50 GB']]]],200)]);
+    $assert($service->translateTexts(['50 GB'],'zh-TW','ja-JP','html')===['Translated 50 GB'],'configured text translation result preserved');
+    $assert(Http::recorded(static function ($request) use ($region) {
+        parse_str(parse_url($request->url(), PHP_URL_QUERY), $query);
+        return $request->method()==='POST' && parse_url($request->url(), PHP_URL_PATH)==='/translate'
+            && $query===['api-version'=>'3.0','from'=>'zh-Hant','to'=>'ja','textType'=>'html']
+            && $request->hasHeader('Ocp-Apim-Subscription-Key','test-key')
+            && ($region ? $request->hasHeader('Ocp-Apim-Subscription-Region',$region) : !$request->hasHeader('Ocp-Apim-Subscription-Region'))
+            && $request->data()===[['Text'=>'50 GB']];
+    })->count()===1,'translation request preserves normalized URL, language codes, format, headers and batch');
+}
+config(['plan-translation.url'=>'https://translator.example.test', 'plan-translation.key'=>'', 'plan-translation.region'=>'test-region']);
 if (app()->environment('local')) {
     // Exercise the additive migration on a separate in-memory legacy schema, never the configured DB.
     config(['database.connections.plan_translation_migration_test'=>['driver'=>'sqlite','database'=>':memory:','prefix'=>'','foreign_key_constraints'=>true]]);

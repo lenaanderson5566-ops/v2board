@@ -10,6 +10,12 @@
 
 `frontend/src/shared/ui.tsx` 保留公共导出，实现在 `shared/ui/` 内按 `layout`、`data`、`Modal`、`Editor`、`controls` 和 `Table` 拆分。弹窗堆栈及关闭 Context 只在 Modal 模块初始化一次，避免拆分后多弹窗失去协调。管理员专用状态文案集中在现有 `admin-status.tsx`，不进入用户翻译扫描范围。
 
+用户页面实现按总览、连接配置、结算、知识库、邀请与账户设置分布在 `DashboardPage`、`SubscribePage`、`CheckoutPages`、`KnowledgePage`、`InvitePage`、`AccountPages`，`user.tsx` 仅保留兼容导出。`user-entry.tsx` 的显式页面映射同时决定分发和统计页名，订单详情单独映射为 `order_detail`，未知页面仍回总览；原懒加载边界、订单组件 key 和购买参数保持原职责。新增页面先扩展该映射，避免再维护一份平行路由名单或长条件链。
+
+管理员分析表格统一实现在 `admin/ReportTable.tsx`。分析页面直接引用表格模块，不为复用表格依赖整个 `OperationsAnalytics` 工作区；原模块保留兼容导出。表格继续复用共享表格容器和分页组件，权限、查询和业务字段归各分析页面维护。
+
+`PlanAutoTranslation` 的 Azure 语言代码与配置校验集中于同一服务，套餐说明和通用正文翻译共用。配置与语言校验仍先于空内容或同语言短路；请求构造、数字保护和安全内容校验保留原边界，不以“无需翻译”为由绕过非法配置检查。
+
 后续目录调整按业务边界逐块进行，先查完整调用链，再迁移类及引用；不按文件体积机械拆分。保留公开导入入口，避免同时改动展示、业务和持久化协议。测试继续归入现有领域测试及 `tests/suites.json`，不为每次整理新增平行审计脚本。
 
 ## 安装与升级

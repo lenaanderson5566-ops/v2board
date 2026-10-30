@@ -2,9 +2,6 @@ import { ticketOrderReference } from "./user-navigation";
 import { useAnalyticsPage } from "./product-analytics";
 import { lazy, Suspense } from "react";
 import { WorkspaceSkeleton } from "../shared/WorkspaceSkeleton";
-const loadCoupons = () => import("./CouponCenter");
-const ActivityCenter = lazy(() => loadCoupons().then(module => ({ default: module.ActivityCenter })));
-const MyCoupons = lazy(() => loadCoupons().then(module => ({ default: module.MyCoupons })));
 import { FastaiDownload } from "./FastaiDownload";
 import { BannerStrip } from "../shared/BannerStrip";
 import {
@@ -19,53 +16,37 @@ import {
     Notifications,
     Traffic,
 } from "./user";
+
+const loadCoupons = () => import("./CouponCenter");
+const ActivityCenter = lazy(() => loadCoupons().then(module => ({ default: module.ActivityCenter })));
+const MyCoupons = lazy(() => loadCoupons().then(module => ({ default: module.MyCoupons })));
 const AccountSecurity = lazy(() => import("./AccountSecurity").then(module => ({ default: module.AccountSecurity })));
+
+const pageViews = {
+    activities: () => <ActivityCenter />,
+    coupons: () => <MyCoupons />,
+    subscribe: () => <Subscribe />,
+    plan: (path: string) => (
+        <Plans planId={/^plan\/[1-9]\d*$/.test(path) ? Number(path.split("/")[1]) : undefined} />
+    ),
+    order: (path: string) => <Orders key={path} tradeNo={path.split("/")[1]} />,
+    knowledge: () => <Knowledge />,
+    ticket: (path: string) => <Tickets orderTradeNo={ticketOrderReference(path)} />,
+    invite: () => <Invite />,
+    security: () => <AccountSecurity />,
+    notifications: () => <Notifications />,
+    profile: () => <Profile />,
+    traffic: () => <Traffic />,
+};
+type UserPage = keyof typeof pageViews;
+
 function UserBody({ current, path }: { current: string; path: string }) {
-    const names = [
-        "activities",
-        "coupons",
-        "subscribe",
-        "plan",
-        "order",
-        "knowledge",
-        "ticket",
-        "invite",
-        "security",
-        "notifications",
-        "profile",
-        "traffic",
-    ] as const;
-    const page = names.find((name) => name === current) || "dashboard";
+    const page = Object.prototype.hasOwnProperty.call(pageViews, current)
+        ? (current as UserPage) : "dashboard";
     useAnalyticsPage(
         page === "order" && path.split("/")[1] ? "order_detail" : page,
     );
-    return current === "activities" ? (
-        <ActivityCenter />
-    ) : current === "coupons" ? (
-        <MyCoupons />
-    ) : current === "subscribe" ? (
-        <Subscribe />
-    ) : current === "plan" ? (
-        <Plans planId={/^plan\/[1-9]\d*$/.test(path) ? Number(path.split("/")[1]) : undefined} />
-    ) : current === "order" ? (
-        <Orders key={path} tradeNo={path.split("/")[1]} />
-    ) : current === "knowledge" ? (
-        <Knowledge />
-    ) : current === "ticket" ? (
-        <Tickets
-            orderTradeNo={ticketOrderReference(path)}
-        />
-    ) : current === "invite" ? (
-        <Invite />
-    ) : current === "security" ? (
-        <AccountSecurity />
-    ) : current === "notifications" ? (
-        <Notifications />
-    ) : current === "profile" ? (
-        <Profile />
-    ) : current === "traffic" ? (
-        <Traffic />
-    ) : (
+    return page !== "dashboard" ? pageViews[page](path) : (
         <>
             <BannerStrip placement="dashboard" />
             <UserDashboard />

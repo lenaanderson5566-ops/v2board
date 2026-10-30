@@ -53,6 +53,8 @@ npm run build
 
 ## 维护规则
 
+页面职责拆分继续复用 BillingFlow、HelpSupport、UsageBilling、Notifications、app、UXResilience 和构建隔离测试，保留付款参数、所有者边界及恢复断言；报表通用表格在原 OperationsAnalytics 测试中验证，并由 JourneyAnalytics 与 AnalyticsCollectionSettings 覆盖消费页面。翻译服务的公共映射/校验重构复用 plan-auto-translation 和 content-translations，检查错误优先级、短路时不发请求、原 HTTP 参数、数字及正文保留；仅在可销毁副本和随机测试库运行，不调用真实翻译服务。不新增平行运行器或为单纯搬迁重复建立镜像测试。
+
 复用现有领域模块与 `tests/support` 公共工具，不为每轮开发新增平行验证脚本。新增或合并后端入口时同步更新 `tests/suites.json` 并执行 `php tests/run.php --validate`；工作进程和手动夹具始终归入辅助项。
 
 合并测试须保留业务、安全、迁移、并发和失败恢复断言，并更新命令、CI 和文档引用。测试由框架自动发现时，不能仅因缺少文本引用判定文件无用。退役接口的拒绝访问和历史漏洞回归仍有用途。

@@ -18,11 +18,11 @@ vi.mock("../shared/api", async (original) => ({
     readRequest: api.request,
 }));
 import {
-    ReportTable,
     OperationsAnalytics,
     OperationsDetails,
     type OperationsReport,
 } from "./OperationsAnalytics";
+import { ReportTable } from "./ReportTable";
 import { AdminAnalytics } from "./AdminAnalytics";
 afterEach(() => {
     cleanup();

@@ -1,7 +1,7 @@
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
-import { ReportTable } from "./OperationsAnalytics";
+import { ReportTable } from "./ReportTable";
 import { analyticsLabels } from "./analytics-labels";
 
 type Ratio = number | null;

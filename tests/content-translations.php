@@ -23,6 +23,12 @@ foreach (['es-ES'=>'es', 'pt-BR'=>'pt', 'fr-FR'=>'fr', 'de-DE'=>'de', 'id-ID'=>'
     $assert(Http::recorded(fn($r) => strpos($r->url(),'to='.$providerCode)!==false)->count()===1, 'Additional translation locale rejected: '.$locale);
 }
 Http::swap(new Illuminate\Http\Client\Factory);
+Http::fake(['*'=>Http::response([],200)]);
+$unchanged=['source'=>'en-US','locale'=>'en-US','subject'=>'Notice <draft>','content'=>"First line\nSecond line https://example.test/details",'format'=>'plain'];
+$sameLanguage=(new ContentTranslationController)->generate(Illuminate\Http\Request::create('/','POST',$unchanged))->getOriginalContent()['data'];
+$assert($sameLanguage===['subject'=>$unchanged['subject'],'content'=>$unchanged['content']],'same-language content preserves plain subject, line breaks and action link');
+$assert(Http::recorded()->count()===0,'same-language title and body do not contact the provider');
+Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response([['translations'=>[['text'=>'Maintenance']]],['translations'=>[['text'=>'<p>10 min https://evil.test</p>']]]],200)]);
 try { (new ContentTranslationController)->generate($request); throw new RuntimeException('Altered link accepted'); } catch (Illuminate\Validation\ValidationException $e) { $checks++; }
 $rules=(new App\Http\Requests\Admin\NoticeSave)->rules();

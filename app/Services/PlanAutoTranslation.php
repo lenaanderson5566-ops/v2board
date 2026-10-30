@@ -6,12 +6,35 @@ use Illuminate\Validation\ValidationException;
 
 class PlanAutoTranslation
 {
-    public function generate($content, $source, $target)
+    private const LANGUAGE_CODES = [
+        'zh-CN' => 'zh-Hans',
+        'zh-TW' => 'zh-Hant',
+        'en-US' => 'en',
+        'ja-JP' => 'ja',
+        'ko-KR' => 'ko',
+        'vi-VN' => 'vi',
+        'ru-RU' => 'ru',
+        'fa-IR' => 'fa',
+        'es-ES' => 'es',
+        'pt-BR' => 'pt',
+        'fr-FR' => 'fr',
+        'de-DE' => 'de',
+        'id-ID' => 'id',
+        'th-TH' => 'th',
+    ];
+
+    /** Keep configuration and locale validation ahead of every no-op path. */
+    private function translatorConfiguration($source, $target): array
     {
         $url = rtrim((string) config('plan-translation.url'), '/');
         if (!$url || !config('plan-translation.key')) throw ValidationException::withMessages(['translation' => '请先配置 Azure Translator 密钥和区域']);
-        $languages = ['zh-CN'=>'zh-Hans', 'zh-TW'=>'zh-Hant', 'en-US'=>'en', 'ja-JP'=>'ja', 'ko-KR'=>'ko', 'vi-VN'=>'vi', 'ru-RU'=>'ru', 'fa-IR'=>'fa','es-ES'=>'es','pt-BR'=>'pt','fr-FR'=>'fr','de-DE'=>'de','id-ID'=>'id','th-TH'=>'th'];
-        if (!isset($languages[$source], $languages[$target])) throw ValidationException::withMessages(['locale'=>'语言不受支持']);
+        if (!isset(self::LANGUAGE_CODES[$source], self::LANGUAGE_CODES[$target])) throw ValidationException::withMessages(['locale' => '语言不受支持']);
+        return ['url' => $url, 'from' => self::LANGUAGE_CODES[$source], 'to' => self::LANGUAGE_CODES[$target]];
+    }
+
+    public function generate($content, $source, $target)
+    {
+        $this->translatorConfiguration($source, $target);
         $features = json_decode($content, true);
         if (trim($content) === '') return $content;
         $isFeatures = is_array($features) && array_keys($features) === range(0, count($features)-1);
@@ -31,14 +54,11 @@ class PlanAutoTranslation
     }
     public function translateTexts(array $texts, $source, $target, $format = 'plain')
     {
-        $url = rtrim((string) config('plan-translation.url'), '/');
-        if (!$url || !config('plan-translation.key')) throw ValidationException::withMessages(['translation'=>'请先配置 Azure Translator 密钥和区域']);
-        $languages = ['zh-CN'=>'zh-Hans', 'zh-TW'=>'zh-Hant', 'en-US'=>'en', 'ja-JP'=>'ja', 'ko-KR'=>'ko', 'vi-VN'=>'vi', 'ru-RU'=>'ru', 'fa-IR'=>'fa','es-ES'=>'es','pt-BR'=>'pt','fr-FR'=>'fr','de-DE'=>'de','id-ID'=>'id','th-TH'=>'th'];
-        if (!isset($languages[$source], $languages[$target])) throw ValidationException::withMessages(['locale'=>'语言不受支持']);
+        $translator = $this->translatorConfiguration($source, $target);
         if ($source === $target) return $texts;
         $headers = ['Ocp-Apim-Subscription-Key'=>config('plan-translation.key')];
         if (config('plan-translation.region')) $headers['Ocp-Apim-Subscription-Region'] = config('plan-translation.region');
-        $endpoint = $url.'/translate?'.http_build_query(['api-version'=>'3.0', 'from'=>$languages[$source], 'to'=>$languages[$target], 'textType'=>$format]);
+        $endpoint = $translator['url'].'/translate?'.http_build_query(['api-version'=>'3.0', 'from'=>$translator['from'], 'to'=>$translator['to'], 'textType'=>$format]);
         try {
             $response = Http::withHeaders($headers)->timeout(35)->withOptions(['connect_timeout'=>5])->post($endpoint, array_map(function ($text) { return ['Text'=>$text]; }, $texts));
         } catch (\Illuminate\Http\Client\ConnectionException $e) {

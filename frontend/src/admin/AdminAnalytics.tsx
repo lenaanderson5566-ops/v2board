@@ -9,7 +9,7 @@ import { adminInstant as formatInstant } from "./admin-log-time";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
 import { browserLabel } from "./browser-labels";
-import { ReportTable } from "./OperationsAnalytics";
+import { ReportTable } from "./ReportTable";
 
 type Report = {
     settings: V10AnalyticsConfiguration;

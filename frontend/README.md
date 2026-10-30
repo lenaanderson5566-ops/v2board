@@ -63,8 +63,8 @@ Theme discovery, selection and theme configuration routes have been removed.
 Custom footer HTML is available in System Settings → 页脚 HTML, persisted as
 `v2board.custom_footer_html`, and rendered only in the user shell. During upgrade,
 the old selected theme's `custom_html` is used until the independent footer setting
-has been saved. Administrator-provided footer scripts retain their original behavior.
-Article and plan HTML is separately sanitized with DOMPurify.
+has been saved. Footer HTML is sanitized with DOMPurify before insertion; its
+optional loading does not block sign-in. Article and plan HTML is also sanitized.
 
 ## Languages and mobile UI
 
@@ -81,8 +81,10 @@ messages. It contains the `translation` namespace and named feature namespaces.
 Do not add inline translation arrays or registration side effects to components.
 Keep contextual keys separate even when their text happens to match. Use named
 interpolation and `count` for quantities; all translations are plain text escaped
-by React. Small typed helpers retain the existing feature APIs. Chinese and English
-are bundled, and other languages load on demand. Backend errors and service messages
+by React. Small typed helpers retain the existing feature APIs. The public entry
+uses small catalogs derived from the same fourteen locale files. After the browser
+gate permits entry, the workspace loads the selected complete catalog on demand.
+Backend errors and service messages
 remain in `resources` because they are rendered independently by PHP.
 `npm test` verifies coverage, placeholders, plurals, selectors and source keys.
 The obsolete TSV generation command was removed to prevent it overwriting catalogs.

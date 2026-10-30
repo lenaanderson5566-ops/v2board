@@ -87,7 +87,7 @@ export function ContentComposer({
                         ...original,
                         source,
                         locale,
-                        format: kind === "mail" || /<\/?[a-z][\s>]/i.test(original.content) ? "html" : "plain",
+                        format: /<\/?[a-z][\s>]/i.test(original.content) ? "html" : "plain",
                     },
                     { signal: controller.signal },
                 );
@@ -318,7 +318,7 @@ export function ContentComposer({
                 <details>
                     <summary>预览当前语言</summary>
                     <h3>{draft.subject}</h3>
-                    <Html markdown value={draft.content} />
+                    <Html markdown preserveLineBreaks value={draft.content} />
                 </details>
             )}
             {error && <p role="alert">{error}</p>}

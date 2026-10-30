@@ -760,7 +760,10 @@
     "applied": "Este pedido foi aplicado a um pedido de plano posterior.",
     "paidReset": "Renovação paga",
     "paidResetHelp": "Zere o uso do plano sem usar uma renovação acumulada. O vencimento, a renovação programada e o saldo de créditos não mudam.",
-    "creditOrder": "{{amount}} créditos"
+    "creditOrder": "{{amount}} créditos",
+    "resetBusinessZone": "As regras de renovação de dados usam {{zone}}. O fuso horário de exibição não altera o horário da renovação.",
+    "resetPending": "Renovação de dados aguardando confirmação · {{date}}",
+    "resetFailed": "Renovação de dados aguardando nova tentativa · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Atualizando; exibindo os dados anteriores…",
@@ -878,7 +881,14 @@
     "authorizationRecheck": "Verificar status da solicitação",
     "authorizationUnavailable": "Esta solicitação de acesso não está mais disponível. Volte ao aplicativo para verificar o status de acesso ou iniciar uma nova solicitação.",
     "invalidJson": "Insira um JSON válido.",
-    "reorderHelp": "Arraste para reordenar ou foque em uma alça de ordenação e use ↑ / ↓."
+    "reorderHelp": "Arraste para reordenar ou foque em uma alça de ordenação e use ↑ / ↓.",
+    "timeZoneChangeTitle": "Revisar alteração do fuso horário do serviço",
+    "timeZoneChangeImpact": "Alterar o fuso horário do serviço muda as datas de renovação de dados, os limites diários dos relatórios e os horários das tarefas diárias. Os registros de data e hora salvos e as preferências pessoais de exibição são mantidos.",
+    "timeZoneChangeCurrent": "Atual: {{zone}}",
+    "timeZoneChangeNew": "Novo: {{zone}}",
+    "timeZoneChangeConfirm": "Revisei o impacto e confirmo a alteração do fuso horário do serviço de {{from}} para {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Revise e confirme a alteração do fuso horário antes de salvar.",
+    "timeZoneChangeReload": "Carregue as configurações novamente com sucesso antes de confirmar a alteração do fuso horário."
   },
   "ux": {
     "cancel": "Cancelar",
@@ -1124,7 +1134,8 @@
     "impactSubscribe": "O plano e o período selecionados são ativados após a confirmação e o processamento do pagamento.",
     "couponIntentEligible": "Os planos elegíveis são exibidos primeiro. O cupom selecionado será verificado novamente no pagamento.",
     "couponIntentDifferentPeriod": "Este cupom não se aplica a este período. Escolha outro período para usá-lo.",
-    "couponIntentUnavailable": "Este cupom não está disponível para os planos exibidos. Você pode continuar sem usá-lo."
+    "couponIntentUnavailable": "Este cupom não está disponível para os planos exibidos. Você pode continuar sem usá-lo.",
+    "ruleResetTimeZone": "Fuso horário da renovação de dados: {{zone}}"
   },
   "profile": {
     "intro": "Consulte seu e-mail de login e gerencie o idioma e os serviços vinculados.",

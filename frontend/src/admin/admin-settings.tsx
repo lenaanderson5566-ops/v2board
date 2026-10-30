@@ -1,7 +1,10 @@
 import { AdminBrowserPreview } from "./AdminBrowserPreview";
 import "./admin-management.css";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { admin, request, rows, type Row } from "../shared/api";
+import { tx } from "../shared/i18n";
+import { formatInstant, utcOffsetLabel, validZone } from "../shared/timezone";
+import "./admin-timezone-impact.css";
 import { supportedClients as recommendationClients } from "../shared/import-links";
 import { Editor, Panel, State, useData } from "../shared/ui";
 import type { Device as RecommendationDevice } from "../shared/user-experience";
@@ -121,6 +124,9 @@ export function Settings({ section }: { section?: string } = {}) {
         }
     }
     const [previewValues, setPreviewValues] = useState<Row | null>(null);
+    const [confirmedTimezone, setConfirmedTimezone] = useState("");
+    const timezoneInput = useRef<string | undefined>(undefined);
+    const timezoneReviewId = useId();
     const latestSource = d.data?.[group === "browser" ? "safe" : group];
     const editSource = useRef<{ group: string; value: Row } | undefined>(undefined);
     // A background refresh must not replace the baseline of an unsaved form.
@@ -221,6 +227,31 @@ export function Settings({ section }: { section?: string } = {}) {
                           : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
     ).map((field) => mailCredentialField(field, raw));
+    const savedTimezone = String(latestSource?.system_timezone || raw.system_timezone || "");
+    const hasTimezoneField = fields.some(field => field.key === "system_timezone");
+    const timezoneChangeKey = (value: unknown) => `${group}:${savedTimezone}:${String(value || "")}`;
+    function timezoneReview(values: Row) {
+        const nextTimezone = String(values.system_timezone || "");
+        if (!hasTimezoneField || !validZone(savedTimezone) || !validZone(nextTimezone) || savedTimezone === nextTimezone) return null;
+        const at = new Date();
+        const instantInZone = (zone: string) => `${formatInstant(at, { timeZoneName: undefined }, zone)} ${utcOffsetLabel(at, zone)}`;
+        return <section className="admin-timezone-impact" aria-labelledby={timezoneReviewId} role="note">
+            <h4 id={timezoneReviewId}>{tx("timeZoneChangeTitle", { ns: "experience", defaultValue: "Review business time zone change" })}</h4>
+            <p>{tx("timeZoneChangeImpact", { ns: "experience", defaultValue: "Changing the business time zone changes traffic-reset dates, reporting day boundaries and daily-task times. Saved timestamps and personal display preferences stay the same." })}</p>
+            <dl>
+                <div><dt>{tx("timeZoneChangeCurrent", { ns: "experience", zone: savedTimezone, defaultValue: "Current: {{zone}}" })}</dt><dd><time dateTime={at.toISOString()}>{instantInZone(savedTimezone)}</time></dd></div>
+                <div><dt>{tx("timeZoneChangeNew", { ns: "experience", zone: nextTimezone, defaultValue: "New: {{zone}}" })}</dt><dd><time dateTime={at.toISOString()}>{instantInZone(nextTimezone)}</time></dd></div>
+            </dl>
+            <label className="admin-timezone-confirm">
+                <input type="checkbox" required checked={confirmedTimezone === timezoneChangeKey(nextTimezone)} disabled={saving || d.loading || Boolean(d.error)}
+                    onChange={event => {
+                        timezoneInput.current = nextTimezone;
+                        setConfirmedTimezone(event.target.checked ? timezoneChangeKey(nextTimezone) : "");
+                    }} />
+                <span>{tx("timeZoneChangeConfirm", { ns: "experience", from: savedTimezone, to: nextTimezone, defaultValue: "I have reviewed the impact and confirm changing the business time zone from {{from}} to {{to}}." })}</span>
+            </label>
+        </section>;
+    }
     return (
         <Panel
             title={section ? ({site:"基础信息",browser:"浏览器引导",safe:"账户与注册"} as Record<string,string>)[section] || groupNames[section] : "系统配置"}
@@ -273,6 +304,8 @@ export function Settings({ section }: { section?: string } = {}) {
                                                 )
                                                     return;
                                                 setPreviewValues(null);
+                                                setConfirmedTimezone("");
+                                                timezoneInput.current = undefined;
                                                 setGroup(key);
                                                 setSaved("");
                                                 setDirty(false);
@@ -378,7 +411,13 @@ export function Settings({ section }: { section?: string } = {}) {
                                 key={group + JSON.stringify(raw)}
                                 fields={fields}
                                 initial={raw}
-                                onValuesChange={setPreviewValues}
+                                onValuesChange={values => {
+                                    const next = typeof values.system_timezone === "string" ? values.system_timezone : undefined;
+                                    if (timezoneInput.current !== next) setConfirmedTimezone("");
+                                    timezoneInput.current = next;
+                                    setPreviewValues(values);
+                                }}
+                                preview={timezoneReview}
                                 resolveFields={settingsFields}
                                 linkValues={linkSettings}
                                 onBusyChange={setSaving}
@@ -390,6 +429,10 @@ export function Settings({ section }: { section?: string } = {}) {
                                 validate={validateSettings}
                                 onSave={async (body) => {
                                     const changes = changedSettings(body, raw);
+                                    if (Object.prototype.hasOwnProperty.call(changes, "system_timezone") && String(changes.system_timezone) !== savedTimezone) {
+                                        if (d.loading || d.error) throw new Error(tx("timeZoneChangeReload", { ns: "experience", defaultValue: "Reload the settings successfully before confirming a time zone change." }));
+                                        if (confirmedTimezone !== timezoneChangeKey(changes.system_timezone)) throw new Error(tx("timeZoneChangeNeedsConfirm", { ns: "experience", defaultValue: "Review and confirm the time zone change before saving." }));
+                                    }
                                     if (Object.keys(changes).length)
                                         await request(
                                             admin("config/save"),

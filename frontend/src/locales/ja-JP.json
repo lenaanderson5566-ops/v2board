@@ -758,7 +758,10 @@
     "applied": "この注文は後続のプラン注文に充当されました。",
     "paidReset": "有料リセット",
     "paidResetHelp": "予備のリセット回数を消費せずにプランの使用量をリセットします。有効期限、次回リセット日、追加容量は変わりません。",
-    "creditOrder": "クレジット · {{amount}}"
+    "creditOrder": "クレジット · {{amount}}",
+    "resetBusinessZone": "リセット規則には {{zone}} が適用されます。表示タイムゾーンを変えてもリセット時刻は変わりません。",
+    "resetPending": "リセット確認待ち · {{date}}",
+    "resetFailed": "リセット再試行待ち · {{date}}"
   },
   "experience": {
     "adminRefreshing": "更新中です。前回のデータを表示しています…",
@@ -876,7 +879,14 @@
     "authorizationRecheck": "リクエストの状態を再確認",
     "authorizationUnavailable": "このログインリクエストは無効になったか、すでに処理されています。アプリに戻ってログイン状態を確認するか、新しいリクエストを開始してください。",
     "invalidJson": "有効なJSONを入力してください。",
-    "reorderHelp": "ドラッグして並べ替えるか、並べ替えハンドルにフォーカスして ↑ / ↓ キーを使用してください。"
+    "reorderHelp": "ドラッグして並べ替えるか、並べ替えハンドルにフォーカスして ↑ / ↓ キーを使用してください。",
+    "timeZoneChangeTitle": "業務タイムゾーンの変更を確認",
+    "timeZoneChangeImpact": "業務タイムゾーンを変更すると、通信量のリセット日、レポートの日付の区切り、日次タスクの実行時刻が変わります。保存済みのタイムスタンプと個人の表示設定は変わりません。",
+    "timeZoneChangeCurrent": "現在：{{zone}}",
+    "timeZoneChangeNew": "変更後：{{zone}}",
+    "timeZoneChangeConfirm": "影響を確認し、業務タイムゾーンを {{from}} から {{to}} に変更することに同意します。",
+    "timeZoneChangeNeedsConfirm": "保存する前にタイムゾーン変更の影響を確認し、同意してください。",
+    "timeZoneChangeReload": "設定の再読み込みが成功してから、タイムゾーン変更を確認してください。"
   },
   "ux": {
     "cancel": "キャンセル",
@@ -1122,7 +1132,8 @@
     "impactSubscribe": "支払いの確認と処理が完了すると、選択したプランと期間が有効になります。",
     "couponIntentEligible": "対象プランを優先して表示しています。選択したクーポンはお支払い時に再確認されます。",
     "couponIntentDifferentPeriod": "このクーポンは現在の期間には適用されません。別の期間を選択すると利用できます。",
-    "couponIntentUnavailable": "このクーポンは表示中のプランには利用できません。クーポンを使用せずに購入を続けられます。"
+    "couponIntentUnavailable": "このクーポンは表示中のプランには利用できません。クーポンを使用せずに購入を続けられます。",
+    "ruleResetTimeZone": "リセット予定のタイムゾーン：{{zone}}"
   },
   "profile": {
     "intro": "ログインメール、言語設定、連携サービスを管理します。",

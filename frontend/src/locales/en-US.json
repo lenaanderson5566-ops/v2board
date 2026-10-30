@@ -760,7 +760,10 @@
     "applied": "This order was applied toward a subsequent plan order.",
     "paidReset": "Paid reset",
     "paidResetHelp": "Reset your plan traffic without using a banked reset. Your expiry date, scheduled reset and credit balance stay the same.",
-    "creditOrder": "{{amount}} credits"
+    "creditOrder": "{{amount}} credits",
+    "resetBusinessZone": "Reset rules use {{zone}}. Your display time zone does not change the reset time.",
+    "resetPending": "Reset awaiting confirmation · {{date}}",
+    "resetFailed": "Reset awaiting retry · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Updating; showing previously loaded data…",
@@ -878,7 +881,14 @@
     "authorizationRecheck": "Check request status",
     "authorizationUnavailable": "This sign-in request is no longer available. Return to the app to check its sign-in status or start a new request.",
     "invalidJson": "Enter valid JSON.",
-    "reorderHelp": "Drag to reorder, or focus a sort handle and use ↑ / ↓."
+    "reorderHelp": "Drag to reorder, or focus a sort handle and use ↑ / ↓.",
+    "timeZoneChangeTitle": "Review business time zone change",
+    "timeZoneChangeImpact": "Changing the business time zone changes traffic-reset dates, reporting day boundaries and daily-task times. Saved timestamps and personal display preferences stay the same.",
+    "timeZoneChangeCurrent": "Current: {{zone}}",
+    "timeZoneChangeNew": "New: {{zone}}",
+    "timeZoneChangeConfirm": "I have reviewed the impact and confirm changing the business time zone from {{from}} to {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Review and confirm the time zone change before saving.",
+    "timeZoneChangeReload": "Reload the settings successfully before confirming a time zone change."
   },
   "ux": {
     "cancel": "Cancel",
@@ -1124,7 +1134,8 @@
     "impactSubscribe": "Activate the selected plan and term after payment is confirmed and processed.",
     "couponIntentEligible": "Eligible plans are shown first. Your selected coupon will be checked at checkout.",
     "couponIntentDifferentPeriod": "This coupon does not apply to this period. Choose a different period to use it.",
-    "couponIntentUnavailable": "This coupon is unavailable for the plans shown. You can continue without it."
+    "couponIntentUnavailable": "This coupon is unavailable for the plans shown. You can continue without it.",
+    "ruleResetTimeZone": "Reset schedule time zone: {{zone}}"
   },
   "profile": {
     "intro": "View your sign-in email and manage your language and connected services.",

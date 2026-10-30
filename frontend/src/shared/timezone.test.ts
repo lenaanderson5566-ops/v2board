@@ -8,6 +8,7 @@ import {
     formatInstant,
     parseDateTimeInput,
     setDisplayTimeZone,
+    utcOffsetLabel,
 } from "./timezone";
 import { usageDays } from "../user/usage-data";
 
@@ -46,6 +47,20 @@ describe("time zone conversion", () => {
         expect(displayTimeZone()).toBe(
             Intl.DateTimeFormat().resolvedOptions().timeZone,
         );
+    });
+    it("labels UTC offsets at the represented reset date, including DST and quarter hours", () => {
+        const summer = "2026-07-01T12:00:00Z";
+        const winter = "2026-01-01T12:00:00Z";
+        expect(utcOffsetLabel(summer, "UTC")).toBe("UTC+00:00");
+        expect(utcOffsetLabel(summer, "Asia/Shanghai")).toBe("UTC+08:00");
+        expect(utcOffsetLabel(summer, "Asia/Kathmandu")).toBe("UTC+05:45");
+        expect(utcOffsetLabel(summer, "America/New_York")).toBe("UTC-04:00");
+        expect(utcOffsetLabel(winter, "America/New_York")).toBe("UTC-05:00");
+        setDisplayTimeZone("Asia/Kathmandu");
+        expect(utcOffsetLabel(Date.parse(summer) / 1000)).toBe("UTC+05:45");
+        expect(utcOffsetLabel(new Date(winter), "America/New_York")).toBe("UTC-05:00");
+        expect(utcOffsetLabel("invalid", "UTC")).toBe("—");
+        expect(utcOffsetLabel(summer, "invalid")).toBe("—");
     });
     it("keeps admin time in the business zone", () => {
         configureTimeZone("Asia/Kathmandu", true);

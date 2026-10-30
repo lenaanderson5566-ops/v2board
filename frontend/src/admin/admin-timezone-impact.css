@@ -1,0 +1,17 @@
+body[data-console="admin"] .admin-timezone-impact {
+    margin-bottom: 20px;
+    padding: 16px;
+    border: 1px solid #e7cf91;
+    border-radius: var(--admin-radius, 8px);
+    background: #fffaf0;
+    min-width: 0;
+}
+body[data-console="admin"] .admin-timezone-impact h4 { margin: 0 0 8px; font-size: 14px; }
+body[data-console="admin"] .admin-timezone-impact p { margin: 0 0 12px; line-height: 1.7; }
+body[data-console="admin"] .admin-timezone-impact dl { margin: 0 0 14px; display: grid; gap: 10px; }
+body[data-console="admin"] .admin-timezone-impact dl > div { min-width: 0; }
+body[data-console="admin"] .admin-timezone-impact dt { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+body[data-console="admin"] .admin-timezone-impact dd { margin: 4px 0 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+body[data-console="admin"] .admin-timezone-impact .admin-timezone-confirm { display: flex; flex-direction: row; align-items: flex-start; gap: 8px; margin: 0; line-height: 1.6; }
+body[data-console="admin"] .admin-timezone-confirm input { flex: 0 0 auto; width: 16px; height: 16px; min-height: 0; margin: 4px 0 0; }
+@media (min-width: 700px) { body[data-console="admin"] .admin-timezone-impact dl { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } }

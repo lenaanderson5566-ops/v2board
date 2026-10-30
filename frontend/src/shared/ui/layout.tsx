@@ -7,16 +7,18 @@ import DOMPurify from "dompurify";
 export function Html({
     value,
     markdown = false,
+    preserveLineBreaks = false,
 }: {
     value: unknown;
     markdown?: boolean;
+    preserveLineBreaks?: boolean;
 }) {
     return (
         <div
             className="rich-text"
             dangerouslySetInnerHTML={{
                 __html: DOMPurify.sanitize(
-                    markdown ? renderMarkdown(value) : String(value || ""),
+                    markdown ? renderMarkdown(value, { breaks: preserveLineBreaks }) : String(value || ""),
                 ),
             }}
         />

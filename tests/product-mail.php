@@ -22,6 +22,15 @@ DB::beginTransaction();
 try {
     config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null,'v2board.email_public_url'=>'https://api.example.test','v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_password_encrypted'=>false]);
     $renderer = new ProductMail;
+    $multiline = "First & second\r\nNext line\r\n\r\nLast line";
+    $lineHtml = $renderer->safeHtml($multiline);
+    $assert($lineHtml === 'First &amp; second<br>Next line<br><br>Last line', 'Plain mail newlines and blank paragraphs were collapsed');
+    $assert($renderer->safeHtml($lineHtml) === $lineHtml, 'Campaign sanitizing and delivery sanitizing doubled mail line breaks');
+    $assert($renderer->safeHtml("<p>First</p>\n<p>Second</p>") === "<p>First</p>\n<p>Second</p>", 'HTML block indentation must not add visible blank lines');
+    $assert($renderer->safeHtml("<strong>First</strong>\n<em>Second</em>") === '<strong>First</strong><br><em>Second</em>', 'Inline HTML newlines were collapsed');
+    $assert($renderer->safeHtml("First<br>\nSecond") === 'First<br>Second', 'An existing HTML break was duplicated');
+    $lineData = $renderer->data(['template_name'=>'notify','language'=>'en-US','subject'=>'Multiline','template_value'=>['content'=>$multiline]]);
+    $assert($lineData['contentHtml'] === $lineHtml && $lineData['contentText'] === "First & second\nNext line\n\nLast line", 'HTML and plain email alternatives disagree on line breaks');
     $catalog = require resource_path('mail/copy.php');
     foreach (App\Services\LanguagePreferenceService::SUPPORTED as $language) {
         $assert(isset($catalog[$language]) && array_keys($catalog[$language])===array_keys($catalog['en-US']), 'Missing email language keys: '.$language);

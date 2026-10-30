@@ -39,7 +39,9 @@ vi.mock("../shared/api", () => ({
 }));
 vi.mock("../shared/i18n", () => ({
     tx: (s: string, values?: any) =>
-        s === "expiresSoon" ? `${s}:${values.days}` : s,
+        s === "expiresSoon" ? `${s}:${values.days}`
+            : s === "resetBusinessZone" ? `${s}:${values.zone}`
+            : ["resetAt", "resetPending", "resetFailed"].includes(s) ? `${s}:${values.date}` : s,
     locale: () => "zh-CN",
 }));
 vi.mock("../shared/credit-copy", () => ({
@@ -124,7 +126,10 @@ import { BillingPage } from "./BillingPage";
 import { UsagePage } from "./UsagePage";
 import { AdminUsageReset } from "../admin/AdminUsageReset";
 import { Invite } from "./user";
+import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 beforeEach(() => {
+    configureTimeZone("Asia/Shanghai");
+    setDisplayTimeZone("Asia/Shanghai");
     mocks.request.mockReset();
     mocks.reload.mockReset();
     mocks.navigate.mockReset();
@@ -155,6 +160,33 @@ beforeEach(() => {
     };
 });
 afterEach(cleanup);
+it("explains the business reset zone only when the displayed reset uses a different zone", () => {
+    mocks.subscription.reset_at = Date.parse("2026-11-01T00:00:00+08:00") / 1000;
+    mocks.subscription.reset_timezone = "Asia/Shanghai";
+    setDisplayTimeZone("UTC");
+    const view = render(<UsagePage />);
+    expect(screen.getByText(`resetAt:${mocks.subscription.reset_at}`)).toBeTruthy();
+    expect(screen.getByText("resetBusinessZone:Asia/Shanghai (UTC+08:00)")).toBeTruthy();
+    setDisplayTimeZone("Asia/Shanghai");
+    view.rerender(<UsagePage />);
+    expect(screen.queryByText(/resetBusinessZone/)).toBeNull();
+    setDisplayTimeZone("UTC");
+    mocks.subscription.reset_at = null;
+    view.rerender(<UsagePage />);
+    expect(screen.queryByText(/resetBusinessZone/)).toBeNull();
+});
+it.each([["pending", "resetPending"], ["failed", "resetFailed"]])(
+    "shows an unconfirmed reset as %s without claiming the next reset or cleared usage",
+    (state, label) => {
+        mocks.subscription.reset_at = 1793462400;
+        mocks.subscription.reset_timezone = "America/New_York";
+        mocks.subscription.reset_state = state;
+        render(<UsagePage />);
+        expect(screen.getByText(`${label}:1793462400`)).toBeTruthy();
+        expect(screen.queryByText(/^resetAt:/)).toBeNull();
+        expect(screen.getByText("30 B / 100 B", { exact: false })).toBeTruthy();
+    },
+);
 it("groups subscription, balance and transactions and opens redemption on demand", async () => {
     mocks.request.mockResolvedValue({ data: true });
     render(<BillingPage />);

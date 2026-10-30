@@ -396,8 +396,10 @@ class UserActions
         $user['subscribe_url'] = Helper::getSubscribeUrl($user['token']);
 
         $userService = new UserService();
-        $user['reset_at'] = $userService->getResetAt($user);
-        $user['reset_timezone'] = \App\Services\TimeZones::system();
+        $reset = $userService->getResetInfo($user);
+        $user['reset_at'] = $reset['at'];
+        $user['reset_state'] = $reset['state'];
+        $user['reset_timezone'] = $reset['timezone'];
         $displayUser=User::find($request->user['id']);
         $user['expires_at_display'] = \App\Services\TimeZones::format($user['expired_at']??null,$displayUser);
         $user['display_timezone'] = $displayUser->display_timezone;

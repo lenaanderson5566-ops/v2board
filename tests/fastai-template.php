@@ -8,9 +8,13 @@ $nodes = [['name'=>'Real node', 'type'=>'shadowsocks', 'cipher'=>'aes-128-gcm', 
 $paths = [resource_path('rules/custom.fastai.yaml'), resource_path('rules/custom.clash.yaml')];
 $original = array_map(fn ($path) => file_exists($path) ? file_get_contents($path) : null, $paths);
 try {
+    $metadataNodes = [['name'=>'剩余流量: 10GB','type'=>'direct'],['name'=>'独立流量: 20GB','type'=>'direct'],['name'=>'可用重置: 2 次','type'=>'direct'],['name'=>'下次重置: 11-01','type'=>'direct']];
+    foreach (require resource_path('client/copy.php') as $copy) {
+        foreach (['reset_pending', 'reset_failed', 'reset_business_timezone'] as $key) $metadataNodes[] = ['name'=>$copy[$key].': 11-01 UTC+00:00', 'type'=>'direct'];
+    }
     foreach ($paths as $index => $path) {
         file_put_contents($path, Symfony\Component\Yaml\Yaml::dump([
-            'proxies'=>[['name'=>'剩余流量: 10GB','type'=>'direct'],['name'=>'独立流量: 20GB','type'=>'direct'],['name'=>'可用重置: 2 次','type'=>'direct'],['name'=>'下次重置: 11-01','type'=>'direct']],
+            'proxies'=>$metadataNodes,
             'geo-auto-update'=>true,
             'geox-url'=>['geoip'=>'https://example.com/geoip.dat'],
             'geo-update-interval'=>1,

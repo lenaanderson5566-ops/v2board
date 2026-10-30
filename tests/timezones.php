@@ -24,6 +24,14 @@ foreach (['2026-03-08','2026-11-01'] as $day) {
 date_default_timezone_set('America/Sao_Paulo');
 $next=TrafficResetSchedule::next(0,strtotime('2019-02-01'),strtotime('2018-11-03 12:00:00'));
 $check(date('Y-m-d H:i:s',$next)==='2018-12-01 00:00:00','Midnight DST transition drifted reset time');
+date_default_timezone_set('UTC');
+$businessNow = (new DateTimeImmutable('2026-10-31 23:59:00', new DateTimeZone('Asia/Shanghai')))->getTimestamp();
+$businessExpiry = (new DateTimeImmutable('2027-12-01', new DateTimeZone('Asia/Shanghai')))->getTimestamp();
+$businessNext = TrafficResetSchedule::next(0, $businessExpiry, $businessNow, 'Asia/Shanghai');
+$check(gmdate('Y-m-d H:i:s', $businessNext)==='2026-10-31 16:00:00','Explicit business timezone was replaced by display/default UTC');
+$check(TrafficResetSchedule::due(0, $businessExpiry, $businessNext, 'Asia/Shanghai'), 'Business midnight not due in explicit timezone');
+$check(!TrafficResetSchedule::due(0, $businessExpiry, $businessNext, 'UTC'), 'UTC display must not shift the business reset date');
+$check(date_default_timezone_get()==='UTC', 'Explicit reset calculations changed global timezone');
 $db=new PDO('sqlite::memory:');
 $db->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
 $db->exec('CREATE TABLE ledger (task TEXT, business_date TEXT, timezone TEXT, PRIMARY KEY(task,business_date))');

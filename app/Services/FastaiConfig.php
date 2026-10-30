@@ -47,7 +47,7 @@ class FastaiConfig extends \App\Protocols\ClashMeta
     {
         $labels = [];
         foreach (require resource_path('client/copy.php') as $copy) {
-            foreach (['remaining', 'expiry', 'reset', 'independent', 'reset_count', 'next_reset'] as $key) $labels[] = $copy[$key];
+            foreach (['remaining', 'expiry', 'reset', 'independent', 'reset_count', 'next_reset', 'reset_pending', 'reset_failed', 'reset_business_timezone'] as $key) $labels[] = $copy[$key];
             $labels = array_merge($labels, $copy['metadata_aliases'] ?? []);
         }
         $removed = [];

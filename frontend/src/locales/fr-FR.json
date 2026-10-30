@@ -760,7 +760,10 @@
     "applied": "Cet ordre a été appliqué à un ordre de forfait ultérieur.",
     "paidReset": "Réinitialisation payante",
     "paidResetHelp": "Réinitialisez la consommation du forfait sans utiliser de réinitialisation en réserve. L’expiration, la prochaine réinitialisation prévue et les crédits de données restent inchangés.",
-    "creditOrder": "Crédits {{amount}}"
+    "creditOrder": "Crédits {{amount}}",
+    "resetBusinessZone": "Les règles de réinitialisation utilisent {{zone}}. Le fuseau horaire d’affichage ne change pas l’heure de réinitialisation.",
+    "resetPending": "Réinitialisation en attente de confirmation · {{date}}",
+    "resetFailed": "Réinitialisation en attente d’une nouvelle tentative · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Mise à jour ; affichant les données précédemment chargées…",
@@ -878,7 +881,14 @@
     "authorizationRecheck": "Vérifier le statut de la demande",
     "authorizationUnavailable": "Cette demande de connexion n’est plus disponible. Retournez dans l’application pour vérifier le statut de la connexion ou lancer une nouvelle demande.",
     "invalidJson": "Saisissez un JSON valide.",
-    "reorderHelp": "Faites glisser pour réordonner, ou placez le focus sur une poignée de tri et utilisez ↑ / ↓."
+    "reorderHelp": "Faites glisser pour réordonner, ou placez le focus sur une poignée de tri et utilisez ↑ / ↓.",
+    "timeZoneChangeTitle": "Vérifier le changement de fuseau horaire métier",
+    "timeZoneChangeImpact": "Changer le fuseau horaire métier modifie les dates de réinitialisation du trafic, les limites des journées des rapports et l’heure des tâches quotidiennes. Les horodatages enregistrés et les préférences personnelles d’affichage restent inchangés.",
+    "timeZoneChangeCurrent": "Actuel : {{zone}}",
+    "timeZoneChangeNew": "Nouveau : {{zone}}",
+    "timeZoneChangeConfirm": "J’ai vérifié les conséquences et je confirme le changement du fuseau horaire métier de {{from}} à {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Vérifiez et confirmez le changement de fuseau horaire avant d’enregistrer.",
+    "timeZoneChangeReload": "Rechargez les paramètres avec succès avant de confirmer le changement de fuseau horaire."
   },
   "ux": {
     "cancel": "Annuler",
@@ -1124,7 +1134,8 @@
     "impactSubscribe": "L’offre et la période choisies sont activées après confirmation et traitement du paiement.",
     "couponIntentEligible": "Les offres compatibles sont affichées en premier. Le coupon sélectionné sera à nouveau vérifié au moment du paiement.",
     "couponIntentDifferentPeriod": "Ce coupon ne s’applique pas à cette période. Choisissez une autre période pour l’utiliser.",
-    "couponIntentUnavailable": "Ce coupon n’est pas disponible pour les offres affichées. Vous pouvez continuer sans l’utiliser."
+    "couponIntentUnavailable": "Ce coupon n’est pas disponible pour les offres affichées. Vous pouvez continuer sans l’utiliser.",
+    "ruleResetTimeZone": "Fuseau horaire des réinitialisations : {{zone}}"
   },
   "profile": {
     "intro": "Consultez votre e-mail de connexion et gérez votre langue et vos services connectés.",

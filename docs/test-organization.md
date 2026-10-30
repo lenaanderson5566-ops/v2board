@@ -133,3 +133,7 @@ BillingFlow/PendingOrderNotice 覆盖安全套餐/周期保留、返回与登录
 优惠券跨页意图归入既有 CouponCenter、CouponPicker 和 BillingFlow：覆盖安全 ID 与登录/返回保留、本人券包重查、限制套餐/周期优先选择、手动选择优先、清除后不再补回、过期/非本人/不适用券拒绝、已有订单丢弃提示、钱包失败和冷却恢复；保留原最终金额与付款幂等断言。
 
 后台完整性优化继续使用 AdminApp、admin-shell、admin-workspaces、Payments、AnalyticsCollectionSettings、AdminClients、AdminClientMirrors、AdminMailCampaigns、UXResilience、editor-field-context 和 localization 等现有模块。覆盖具体子页搜索/标题/焦点、手机菜单边界、会话临时失败恢复、显式订单查询与筛选保留、过期支付目录、无元数据列表与空末页、错误字段及多选关联、键盘排序及并发锁、设置草稿、离页终止后续镜像任务、429 退避与群发记录恢复。只改前端交互和展示，不新增 API、数据库迁移或平行测试运行器；合成页面和截图继续保存在忽略目录。
+
+公告与邮件换行复用 markdown、ContentComposer、AnnouncementCenter 和 product-mail 既有模块。前端预览及详情使用实际安全渲染组件验证单次回车、空行分段、Markdown 格式、安全过滤及保存原文；邮件验证 CRLF、空行、已有 HTML、块级排版空白、重复过滤幂等及 HTML/纯文本一致。后端仍在独立项目副本和临时数据库中运行，发送器使用模拟实现，不发送真实邮件。
+
+重置时区与任务状态继续使用 timezones、timezone-scheduler、subscription-info、api-v10、api-v10-inventory 及既有业务/安全模块，实际脚本仅在隔离副本、临时 MySQL/Redis 与私有内存 SQLite 中运行。覆盖业务日跨 UTC 日期、显式时区不改进程默认区、夏令时及非整点偏移、当天缺失/运行/失败状态、本人完成覆盖全局失败、所有者隔离和 GET 无写入。fastai-template 与 node-display 验证全部语言新增状态/业务区信息标签不进入客户端连接节点。前端复用 timezone、UsageBilling、BillingFlow、AnalyticsCollectionSettings、localization 与 v10-api，验证展示偏好不改变重置时刻、状态及业务区文案、无重置规则不显示提示、业务时区确认随值失效及读取失败拦截。契约从模块源生成全部七份发布物，生成器检查和既有单元测试均须通过；不新增平行验证入口。

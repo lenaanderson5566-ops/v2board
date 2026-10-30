@@ -8,6 +8,7 @@ use App\Jobs\TrafficFetchJob;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class UserService
 {
@@ -102,10 +103,31 @@ class UserService
 
     public function getResetAt(User $user): ?int
     {
-        if (!$user->plan_id || $user->transfer_enable <= 0) return null;
+        return $this->getResetInfo($user)['at'];
+    }
+
+    /** Read-only reset status; a pending daily run must not look like next month's reset. */
+    public function getResetInfo(User $user, ?int $now = null): array
+    {
+        $zone = TimeZones::system();
+        $result = ['at'=>null, 'state'=>null, 'timezone'=>$zone];
+        $now = $now ?? time();
+        if (!$user->plan_id || $user->transfer_enable <= 0 || !$user->expired_at || $user->expired_at <= $now) return $result;
         $plan = Plan::find($user->plan_id);
-        if (!$plan) return null;
-        return TrafficResetSchedule::next((int)($plan->reset_traffic_method ?? config('v2board.reset_traffic_method', 0)), $user->expired_at);
+        if (!$plan) return $result;
+        $method = (int)($plan->reset_traffic_method ?? config('v2board.reset_traffic_method', 0));
+        $future = TrafficResetSchedule::next($method, (int)$user->expired_at, $now, $zone);
+        $result['at'] = $future;
+        $result['state'] = $future ? 'scheduled' : null;
+        if (!TrafficResetSchedule::due($method, (int)$user->expired_at, $now, $zone)) return $result;
+        $local = (new \DateTimeImmutable('@'.$now))->setTimezone(new \DateTimeZone($zone));
+        $date = $local->format('Y-m-d');
+        if (DB::table('v2_daily_user_reset')->where('user_id', $user->id)->where('business_date', $date)->exists()) return $result;
+        $run = DB::table('v2_daily_task_run')->where('task', 'reset:traffic')->where('business_date', $date)->first(['status']);
+        if ($run && in_array($run->status, ['completed', 'skipped_upgrade'], true)) return $result;
+        $result['at'] = $local->setTime(0, 0)->getTimestamp();
+        $result['state'] = $run && $run->status === 'failed' ? 'failed' : 'pending';
+        return $result;
     }
 
     public function getResetPeriod(User $user)

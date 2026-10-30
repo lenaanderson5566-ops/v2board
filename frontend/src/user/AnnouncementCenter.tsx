@@ -250,7 +250,7 @@ function AnnouncementDetail({ id, back }: { id: number; back: () => void }) {
                             </button>
                         </div>
                     )}
-                    <Html markdown value={detail.data.content} />
+                    <Html markdown preserveLineBreaks value={detail.data.content} />
                 </article>
             ) : null}
         </div>

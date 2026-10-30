@@ -21,10 +21,29 @@ vi.mock("./AdminMailPreview", () => ({
         "ja-JP": "日本語",
     },
 }));
-vi.mock("../shared/ui", () => ({
-    Html: ({ value }: { value: string }) => <div>{value}</div>,
+vi.mock("../shared/ui", async () => ({
+    Html: (await import("../shared/ui/layout")).Html,
 }));
 import { ContentComposer } from "./ContentComposer";
+it("previews direct notice newlines and saves the original multiline source", async () => {
+    const content = "First line\nSecond line\n\n**New paragraph**";
+    const save = vi.fn().mockResolvedValue(undefined);
+    const view = render(<ContentComposer kind="notice" initial={{title:"Multiline",content,translations:{"en-US":{subject:"Multiline",content}}}} onSave={save}/>);
+    fireEvent.click(screen.getByText("预览当前语言"));
+    expect(view.container.querySelector(".rich-text")?.innerHTML).toContain("First line<br>\nSecond line");
+    expect(view.container.querySelectorAll(".rich-text p")).toHaveLength(2);
+    fireEvent.click(screen.getByRole("button",{name:"保存公告"}));
+    await waitFor(()=>expect(save).toHaveBeenCalledWith(expect.objectContaining({content})));
+});
+it.each([["First line\nSecond line","plain"],["<p>First<br>Second</p>","html"]])("uses the matching translation format for multiline mail: %s",async(content,format)=>{
+    vi.spyOn(window,"confirm").mockReturnValue(true);
+    api.request.mockResolvedValueOnce({data:{subject:"Translated",content}});
+    const save=vi.fn();
+    render(<ContentComposer kind="mail" initial={{subject:"Original",content}} onSave={save}/>);
+    fireEvent.click(screen.getByRole("button",{name:"生成缺失译文 / 重试"}));
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("admin/ops/i18n/content/generate",expect.objectContaining({content,format}),expect.objectContaining({signal:expect.any(AbortSignal)})));
+    expect(save).not.toHaveBeenCalled();
+});
 afterEach(() => {
     cleanup();
     vi.restoreAllMocks();

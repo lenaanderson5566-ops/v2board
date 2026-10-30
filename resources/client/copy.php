@@ -1,6 +1,9 @@
 <?php
 return [
     'zh-CN'=>[
+        'reset_pending' => '重置待确认',
+        'reset_failed' => '重置待重试',
+        'reset_business_timezone' => '重置规则时区',
         'metadata_aliases'=>['剩余流量','套餐到期','计划重置'],
         'next_reset'=>'下次重置',
         'independent'=>'独立流量',
@@ -18,6 +21,9 @@ return [
         'unlimited'=>'长期有效',
     ],
     'zh-TW'=>[
+        'reset_pending' => '重置待確認',
+        'reset_failed' => '重置待重試',
+        'reset_business_timezone' => '重置規則時區',
         'metadata_aliases'=>['剩餘流量','方案到期','預定重置'],
         'next_reset'=>'下次重置',
         'independent'=>'獨立流量',
@@ -35,6 +41,9 @@ return [
         'unlimited'=>'長期有效',
     ],
     'en-US'=>[
+        'reset_pending' => 'Reset awaiting confirmation',
+        'reset_failed' => 'Reset awaiting retry',
+        'reset_business_timezone' => 'Reset schedule time zone',
         'metadata_aliases'=>['Remaining data','Plan expires','Scheduled reset'],
         'next_reset'=>'Next reset',
         'independent'=>'Extra data',
@@ -52,6 +61,9 @@ return [
         'unlimited'=>'No expiry',
     ],
     'ja-JP'=>[
+        'reset_pending' => 'リセット確認待ち',
+        'reset_failed' => 'リセット再試行待ち',
+        'reset_business_timezone' => 'リセット予定のタイムゾーン',
         'metadata_aliases'=>['残りの容量','プラン有効期限','次回リセット'],
         'next_reset'=>'次回リセット',
         'independent'=>'追加容量',
@@ -69,6 +81,9 @@ return [
         'unlimited'=>'有効期限なし',
     ],
     'ko-KR'=>[
+        'reset_pending' => '초기화 확인 대기',
+        'reset_failed' => '초기화 재시도 대기',
+        'reset_business_timezone' => '초기화 일정 시간대',
         'metadata_aliases'=>['남은 데이터','요금제 만료','예정된 초기화'],
         'next_reset'=>'다음 초기화',
         'independent'=>'추가 데이터',
@@ -86,6 +101,9 @@ return [
         'unlimited'=>'만료 없음',
     ],
     'vi-VN'=>[
+        'reset_pending' => 'Đặt lại đang chờ xác nhận',
+        'reset_failed' => 'Đặt lại đang chờ thử lại',
+        'reset_business_timezone' => 'Múi giờ lịch đặt lại',
         'metadata_aliases'=>['Dung lượng còn lại','Gói hết hạn','Đặt lại theo lịch'],
         'next_reset'=>'Đặt lại tiếp',
         'independent'=>'Dung lượng riêng',
@@ -103,6 +121,9 @@ return [
         'unlimited'=>'Không hết hạn',
     ],
     'ru-RU'=>[
+        'reset_pending' => 'Сброс ожидает подтверждения',
+        'reset_failed' => 'Сброс ожидает повторной попытки',
+        'reset_business_timezone' => 'Часовой пояс расписания сброса',
         'metadata_aliases'=>['Остаток трафика','Срок тарифа','Плановый сброс'],
         'next_reset'=>'След. сброс',
         'independent'=>'Доп. трафик',
@@ -120,6 +141,9 @@ return [
         'unlimited'=>'Бессрочно',
     ],
     'fa-IR'=>[
+        'reset_pending' => 'بازنشانی در انتظار تأیید',
+        'reset_failed' => 'بازنشانی در انتظار تلاش مجدد',
+        'reset_business_timezone' => 'منطقهٔ زمانی برنامهٔ بازنشانی',
         'metadata_aliases'=>['ترافیک باقی‌مانده','انقضای طرح','بازنشانی زمان‌بندی‌شده'],
         'next_reset'=>'بازنشانی بعدی',
         'independent'=>'ترافیک مستقل',
@@ -137,6 +161,9 @@ return [
         'unlimited'=>'بدون انقضا',
     ],
     'es-ES' => [
+        'reset_pending' => 'Reinicio pendiente de confirmación',
+        'reset_failed' => 'Reinicio pendiente de reintento',
+        'reset_business_timezone' => 'Zona horaria del calendario de reinicio',
         'metadata_aliases' => ['Datos restantes', 'Vencimiento del plan', 'Reinicio programado'],
         'next_reset' => 'Próximo reinicio',
         'independent' => 'Datos extra',
@@ -154,6 +181,9 @@ return [
         'unlimited' => 'Sin vencimiento',
     ],
     'pt-BR' => [
+        'reset_pending' => 'Renovação de dados aguardando confirmação',
+        'reset_failed' => 'Renovação de dados aguardando nova tentativa',
+        'reset_business_timezone' => 'Fuso horário da renovação de dados',
         'metadata_aliases' => ['Dados restantes', 'Vencimento do plano', 'Renovação programada'],
         'next_reset' => 'Próxima renovação',
         'independent' => 'Dados extras',
@@ -171,6 +201,9 @@ return [
         'unlimited' => 'Sem vencimento',
     ],
     'fr-FR' => [
+        'reset_pending' => 'Réinitialisation en attente de confirmation',
+        'reset_failed' => 'Réinitialisation en attente d’une nouvelle tentative',
+        'reset_business_timezone' => 'Fuseau horaire des réinitialisations',
         'metadata_aliases' => ['Données restantes', 'Expiration du forfait', 'Réinitialisation prévue'],
         'next_reset' => 'Prochaine réinitialisation',
         'independent' => 'Données supplémentaires',
@@ -188,6 +221,9 @@ return [
         'unlimited' => 'Sans expiration',
     ],
     'de-DE' => [
+        'reset_pending' => 'Zurücksetzung wartet auf Bestätigung',
+        'reset_failed' => 'Zurücksetzung wartet auf erneuten Versuch',
+        'reset_business_timezone' => 'Zeitzone des Zurücksetzungsplans',
         'metadata_aliases' => ['Verbleibende Daten', 'Tarifablauf', 'Geplante Zurücksetzung'],
         'next_reset' => 'Nächste Zurücksetzung',
         'independent' => 'Zusätzliche Daten',
@@ -205,6 +241,9 @@ return [
         'unlimited' => 'Kein Ablaufdatum',
     ],
     'id-ID' => [
+        'reset_pending' => 'Reset menunggu konfirmasi',
+        'reset_failed' => 'Reset menunggu percobaan ulang',
+        'reset_business_timezone' => 'Zona waktu jadwal reset',
         'metadata_aliases' => ['Data tersisa', 'Paket berakhir', 'Reset terjadwal'],
         'next_reset' => 'Reset berikutnya',
         'independent' => 'Data tambahan',
@@ -222,6 +261,9 @@ return [
         'unlimited' => 'Tanpa kedaluwarsa',
     ],
     'th-TH' => [
+        'reset_pending' => 'การรีเซ็ตรอการยืนยัน',
+        'reset_failed' => 'การรีเซ็ตรอลองใหม่',
+        'reset_business_timezone' => 'เขตเวลาของกำหนดการรีเซ็ต',
         'metadata_aliases' => ['ข้อมูลคงเหลือ', 'วันหมดอายุแพ็กเกจ', 'กำหนดรีเซ็ต'],
         'next_reset' => 'รีเซ็ตครั้งถัดไป',
         'independent' => 'ข้อมูลเพิ่มเติม',

@@ -76,7 +76,21 @@ class ProductMail
         $walk = function ($node) use (&$walk) {
             $result = '';
             foreach ($node->childNodes as $child) {
-                if ($child instanceof \DOMText) { $result .= e($child->nodeValue); continue; }
+                if ($child instanceof \DOMText) {
+                    $text = str_replace(["\r\n", "\r"], "\n", $child->nodeValue);
+                    // An HTML line break already supplies the newline following it.
+                    if ($child->previousSibling instanceof \DOMElement && strtolower($child->previousSibling->tagName) === 'br') {
+                        $text = preg_replace('/^\n/', '', $text);
+                    }
+                    $block = ['p','div','ul','ol','li','blockquote','h1','h2','h3','h4','h5','h6','table','tr','td'];
+                    $formatting = trim($text) === '' && (
+                        ($child->parentNode instanceof \DOMElement && in_array(strtolower($child->parentNode->tagName), ['ul','ol','table','tbody','tr'], true)) ||
+                        ($child->previousSibling instanceof \DOMElement && in_array(strtolower($child->previousSibling->tagName), $block, true)) ||
+                        ($child->nextSibling instanceof \DOMElement && in_array(strtolower($child->nextSibling->tagName), $block, true))
+                    );
+                    $result .= $formatting ? e($text) : str_replace("\n", '<br>', e($text));
+                    continue;
+                }
                 if (!($child instanceof \DOMElement)) continue;
                 $tag = strtolower($child->tagName);
                 if (in_array($tag, ['script','style','iframe','object','svg','math','form','input','img'], true)) continue;

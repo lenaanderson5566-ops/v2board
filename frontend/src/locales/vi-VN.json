@@ -758,7 +758,10 @@
     "applied": "Đơn này đã được khấu trừ vào đơn gói sau đó.",
     "paidReset": "Đặt lại có phí",
     "paidResetHelp": "Đặt lại lưu lượng gói mà không dùng lượt dự trữ. Ngày hết hạn, lịch đặt lại và dung lượng bổ sung không thay đổi.",
-    "creditOrder": "Hạn mức · {{amount}}"
+    "creditOrder": "Hạn mức · {{amount}}",
+    "resetBusinessZone": "Quy tắc đặt lại sử dụng {{zone}}. Múi giờ hiển thị không làm thay đổi thời điểm đặt lại.",
+    "resetPending": "Đặt lại đang chờ xác nhận · {{date}}",
+    "resetFailed": "Đặt lại đang chờ thử lại · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Đang cập nhật; hiển thị dữ liệu trước đó…",
@@ -876,7 +879,14 @@
     "authorizationRecheck": "Kiểm tra lại trạng thái yêu cầu",
     "authorizationUnavailable": "Yêu cầu đăng nhập này không còn khả dụng. Hãy quay lại ứng dụng để kiểm tra trạng thái đăng nhập hoặc tạo yêu cầu mới.",
     "invalidJson": "Nhập JSON hợp lệ.",
-    "reorderHelp": "Kéo để sắp xếp lại, hoặc đặt tiêu điểm vào tay nắm sắp xếp rồi dùng ↑ / ↓."
+    "reorderHelp": "Kéo để sắp xếp lại, hoặc đặt tiêu điểm vào tay nắm sắp xếp rồi dùng ↑ / ↓.",
+    "timeZoneChangeTitle": "Kiểm tra thay đổi múi giờ nghiệp vụ",
+    "timeZoneChangeImpact": "Thay đổi múi giờ nghiệp vụ sẽ thay đổi ngày đặt lại lưu lượng, ranh giới ngày trong báo cáo và giờ chạy tác vụ hằng ngày. Dấu thời gian đã lưu và tùy chọn hiển thị cá nhân được giữ nguyên.",
+    "timeZoneChangeCurrent": "Hiện tại: {{zone}}",
+    "timeZoneChangeNew": "Mới: {{zone}}",
+    "timeZoneChangeConfirm": "Tôi đã xem xét tác động và xác nhận đổi múi giờ nghiệp vụ từ {{from}} sang {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Hãy xem xét và xác nhận thay đổi múi giờ trước khi lưu.",
+    "timeZoneChangeReload": "Hãy tải lại cài đặt thành công trước khi xác nhận thay đổi múi giờ."
   },
   "ux": {
     "cancel": "Hủy",
@@ -1122,7 +1132,8 @@
     "impactSubscribe": "Kích hoạt gói và kỳ hạn đã chọn sau khi thanh toán được xác nhận và xử lý.",
     "couponIntentEligible": "Các gói đủ điều kiện được hiển thị trước. Phiếu giảm giá đã chọn sẽ được kiểm tra lại khi thanh toán.",
     "couponIntentDifferentPeriod": "Phiếu giảm giá này không áp dụng cho kỳ hiện tại. Hãy chọn kỳ khác để sử dụng.",
-    "couponIntentUnavailable": "Phiếu giảm giá này không áp dụng cho các gói đang hiển thị. Có thể tiếp tục mua mà không dùng phiếu giảm giá."
+    "couponIntentUnavailable": "Phiếu giảm giá này không áp dụng cho các gói đang hiển thị. Có thể tiếp tục mua mà không dùng phiếu giảm giá.",
+    "ruleResetTimeZone": "Múi giờ lịch đặt lại: {{zone}}"
   },
   "profile": {
     "intro": "Xem email đăng nhập, quản lý ngôn ngữ và dịch vụ đã kết nối.",

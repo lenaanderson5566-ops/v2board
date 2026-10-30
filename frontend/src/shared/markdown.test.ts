@@ -1,6 +1,16 @@
 import { describe, it, expect } from "vitest";
 import { renderMarkdown } from "./markdown";
 describe("legacy article compatibility", () => {
+    it("preserves normal announcement newlines without changing article soft breaks", () => {
+        const text = "第一行\r\n第二行\n\n**新段落**";
+        expect(renderMarkdown(text)).not.toContain("<br>");
+        const html = renderMarkdown(text, { breaks: true });
+        expect(html).toContain("第一行<br>\n第二行");
+        expect(html.match(/<p>/g)).toHaveLength(2);
+        expect(html).toContain("<strong>新段落</strong>");
+        expect(renderMarkdown("- One\n- Two", { breaks: true })).not.toContain("<br>");
+        expect(renderMarkdown("<p>Existing<br>HTML</p>", { breaks: true })).toContain("Existing<br>HTML");
+    });
     it("renders original Markdown headings, emphasis and lists", () => {
         const html = renderMarkdown(
             "# 使用说明\n\n**开始**\n\n- 第一步\n- 第二步",

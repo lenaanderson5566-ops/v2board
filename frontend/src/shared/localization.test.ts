@@ -337,7 +337,7 @@ it("formats scheduled reset timestamps in the selected display zone", async () =
         const output = minuteDate(at);
         expect(output).toContain("21:51");
         expect(output).not.toContain("21:51:37");
-        expect(output).toContain("GMT+8");
+        expect(output).toContain("UTC+08:00");
         setDisplayTimeZone("UTC");
         expect(minuteDate(at, "Asia/Shanghai")).toContain("13:51");
         expect(minuteDate(null)).toBe("—");

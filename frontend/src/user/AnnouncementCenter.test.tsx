@@ -25,7 +25,7 @@ vi.mock("../shared/i18n", () => ({ tx: (s: string) => s }));
 vi.mock("./announcement-copy", () => ({
     a: (s: string, v?: any) => (v ? `${s} ${v.count}` : s),
 }));
-vi.mock("../shared/ui", () => ({
+vi.mock("../shared/ui", async () => ({
     useData: (path: string) => ({
         data: path.includes("inbox") ? mocks.inbox : mocks.detail,
         reload: mocks.reload,
@@ -33,7 +33,7 @@ vi.mock("../shared/ui", () => ({
         error: mocks.error,
         retryAt: mocks.retryAt,
     }),
-    Html: ({ value }: any) => <div>{value}</div>,
+    Html: (await import("../shared/ui/layout")).Html,
     Modal: ({ title, children, close }: any) => (
         <div role="dialog" aria-label={title}>
             <button onClick={close}>close</button>
@@ -70,6 +70,15 @@ beforeEach(() => {
     mocks.retryAt = 0;
 });
 afterEach(cleanup);
+it("shows direct newlines and paragraphs in the actual sanitized notice renderer", async () => {
+    mocks.detail.content = "First line\nSecond line\n\n**New paragraph**<script>bad()</script>";
+    const view=render(<AnnouncementCenter/>);
+    fireEvent.click(screen.getByRole("button",{name:"unreadLabel 1"}));
+    fireEvent.click(screen.getByRole("button",{name:/Service update/}));
+    expect(view.container.querySelector(".rich-text")?.innerHTML).toContain("First line<br>\nSecond line");
+    expect(view.container.querySelector(".rich-text strong")?.textContent).toBe("New paragraph");
+    expect(view.container.querySelector(".rich-text script")).toBeNull();
+});
 it("keeps notices out of the page until opened and only records a read after opening the detail", async () => {
     render(<AnnouncementCenter />);
     expect(screen.queryByRole("dialog")).toBeNull();

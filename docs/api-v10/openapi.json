@@ -12176,11 +12176,23 @@
           "resetAt": {
             "type": "string",
             "format": "date-time",
-            "nullable": true
+            "nullable": true,
+            "description": "UTC instant of the next scheduled reset, or the due reset awaiting completion when resetState is pending or failed. Null when no reset applies; this read does not execute a reset."
+          },
+          "resetState": {
+            "type": "string",
+            "nullable": true,
+            "enum": [
+              "scheduled",
+              "pending",
+              "failed"
+            ],
+            "description": "Read-only reset state for the authenticated owner. Scheduled means a future reset; pending or failed refers to the due but unfinished resetAt, which may be in the past. Null when no reset applies. Older servers may omit this field."
           },
           "resetTimezone": {
             "type": "string",
-            "nullable": true
+            "nullable": true,
+            "description": "IANA time zone used by the reset business rule, independent of the account's displayTimeZone preference."
           },
           "active": {
             "type": "boolean"

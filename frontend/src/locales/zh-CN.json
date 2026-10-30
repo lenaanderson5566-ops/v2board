@@ -758,7 +758,10 @@
     "applied": "此订单已折抵至后续套餐订单。",
     "paidReset": "付费重置",
     "paidResetHelp": "重置当前套餐流量，不消耗储备次数。订阅到期时间、原定重置日期和额度余额不变。",
-    "creditOrder": "{{amount}} 额度"
+    "creditOrder": "{{amount}} 额度",
+    "resetBusinessZone": "重置规则按 {{zone}} 执行，显示时区不会改变重置时刻。",
+    "resetPending": "重置待确认 · {{date}}",
+    "resetFailed": "重置待重试 · {{date}}"
   },
   "experience": {
     "adminRefreshing": "正在更新，暂时显示上次加载的数据…",
@@ -876,7 +879,14 @@
     "authorizationRecheck": "重新查询请求状态",
     "authorizationUnavailable": "此登录请求已失效或已处理，请返回 App 确认登录状态，必要时重新发起登录。",
     "invalidJson": "请输入有效的 JSON。",
-    "reorderHelp": "可拖动排序，也可聚焦排序按钮后使用 ↑ / ↓ 调整。"
+    "reorderHelp": "可拖动排序，也可聚焦排序按钮后使用 ↑ / ↓ 调整。",
+    "timeZoneChangeTitle": "核对业务时区变更",
+    "timeZoneChangeImpact": "此修改会改变流量重置日期、报表日界线和每日任务时间；已保存时间戳及个人显示偏好保持不变。",
+    "timeZoneChangeCurrent": "当前：{{zone}}",
+    "timeZoneChangeNew": "拟改为：{{zone}}",
+    "timeZoneChangeConfirm": "我已核对影响，确认将业务时区从 {{from}} 改为 {{to}}。",
+    "timeZoneChangeNeedsConfirm": "请先核对并确认时区变更影响。",
+    "timeZoneChangeReload": "请先成功重新读取设置，再确认时区变更。"
   },
   "ux": {
     "cancel": "取消",
@@ -1122,7 +1132,8 @@
     "impactSubscribe": "付款确认并处理完成后，开通所选套餐及周期。",
     "couponIntentEligible": "已优先显示适用套餐，结算时将再次核验所选优惠券。",
     "couponIntentDifferentPeriod": "此优惠券不适用于当前周期，可切换周期后使用。",
-    "couponIntentUnavailable": "此优惠券当前无法用于所示套餐，可不使用优惠券继续购买。"
+    "couponIntentUnavailable": "此优惠券当前无法用于所示套餐，可不使用优惠券继续购买。",
+    "ruleResetTimeZone": "重置规则时区：{{zone}}"
   },
   "profile": {
     "intro": "查看登录邮箱，管理个人语言偏好与已连接的服务。",

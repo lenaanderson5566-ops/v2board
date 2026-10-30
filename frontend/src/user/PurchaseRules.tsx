@@ -2,6 +2,7 @@ import { bytes, type Row } from "../shared/api";
 import { billingPeriodMonths } from "./billing-flow";
 import { pricingCopy as pc } from "./pricing-copy";
 import { tx } from "../shared/i18n";
+import { businessTimeZone, displayTimeZone } from "../shared/timezone";
 
 const resetRules = [
     "ruleResetMonthStart",
@@ -11,13 +12,7 @@ const resetRules = [
     "ruleResetYearExpiry",
 ] as const;
 
-function resetDescription(plan: Row): string | undefined {
-    const rawQuota = plan.transfer_enable;
-    const quota =
-        typeof rawQuota === "number" || typeof rawQuota === "string"
-            ? Number(rawQuota)
-            : NaN;
-    if (!Number.isFinite(quota) || quota <= 0) return;
+function resetMethod(plan: Row): number | undefined {
     function knownMethod(value: unknown): number | undefined {
         const method =
             typeof value === "number"
@@ -32,9 +27,14 @@ function resetDescription(plan: Row): string | undefined {
             : undefined;
     }
     // New responses resolve inherited site settings; older servers retain the explicit fallback.
-    const method =
-        knownMethod(plan.effective_reset_traffic_method) ??
-        knownMethod(plan.reset_traffic_method);
+    return knownMethod(plan.effective_reset_traffic_method) ?? knownMethod(plan.reset_traffic_method);
+}
+
+function resetDescription(plan: Row): string | undefined {
+    const rawQuota = plan.transfer_enable;
+    const quota = typeof rawQuota === "number" || typeof rawQuota === "string" ? Number(rawQuota) : NaN;
+    if (!Number.isFinite(quota) || quota <= 0) return;
+    const method = resetMethod(plan);
     const key = method !== undefined ? resetRules[method] : "ruleInherited";
     return pc(key, { amount: bytes(quota * 1073741824) });
 }
@@ -48,6 +48,8 @@ export function PurchaseRules({ plan, period, orderType }: { plan: Row; period: 
     const months = period === "month_price" ? 1 : billingPeriodMonths[period];
     if (plan.resetOnly || !months) return null;
     const traffic = resetDescription(plan);
+    const ruleTimeZone = traffic && [0, 1, 3, 4].includes(resetMethod(plan) ?? -1) && businessTimeZone() !== displayTimeZone()
+        ? businessTimeZone() : undefined;
     const renewable = [1, true, "1"].includes(plan.renew);
     const unavailable = [0, false, "0"].includes(plan.renew);
     const action = orderType === 2 ? "renew" : orderType === 3 ? "switchPlan"
@@ -63,6 +65,8 @@ export function PurchaseRules({ plan, period, orderType }: { plan: Row; period: 
             <ul>
                 <li>{pc("ruleValidity", { months })}</li>
                 {traffic && <li>{traffic}</li>}
+                {ruleTimeZone && <li>{tx("ruleResetTimeZone", { ns: "pricing", zone: ruleTimeZone,
+                    defaultValue: "Reset schedule time zone: {{zone}}" })}</li>}
                 <li>{pc("ruleFulfillment")}</li>
                 {renewable ? (
                     <li>{pc("ruleRenewable")}</li>

@@ -11,6 +11,7 @@ import { e } from "../shared/experience-copy";
 import { b } from "../shared/billing-copy";
 import { Modal, State, useData } from "../shared/ui";
 import { UsageChart } from "./UsageChart";
+import { displayTimeZone, utcOffsetLabel, validZone } from "../shared/timezone";
 
 export function UsagePage() {
     const info = useData("user/info"),
@@ -37,6 +38,14 @@ export function UsagePage() {
     const percent = total
         ? Math.max(0, Math.min(100, ((total - used) / total) * 100))
         : 0;
+    const resetAt = Number(sub.data?.reset_at);
+    const resetZone = typeof sub.data?.reset_timezone === "string" && validZone(sub.data.reset_timezone)
+        ? sub.data.reset_timezone : undefined;
+    const resetCopy = sub.data?.reset_state === "pending" ? "resetPending"
+        : sub.data?.reset_state === "failed" ? "resetFailed" : "resetAt";
+    const resetRuleZone = Number.isFinite(resetAt) && resetAt > 0 && resetZone &&
+        sub.data?.has_subscription !== false && resetZone !== displayTimeZone()
+        ? `${resetZone} (${utcOffsetLabel(resetAt, resetZone)})` : undefined;
     const usable =
         info.data?.account_status?.state === "active" &&
         info.data.account_status.is_available !== false &&
@@ -166,7 +175,9 @@ export function UsagePage() {
                                     <div className="settings-row">
                                         <span className="muted">
                                             {sub.data?.reset_at
-                                                ? c("resetAt", {
+                                                ? tx(resetCopy, {
+                                                      ns: "credits",
+                                                      defaultValue: resetCopy === "resetPending" ? "Reset awaiting confirmation · {{date}}" : resetCopy === "resetFailed" ? "Reset awaiting retry · {{date}}" : "Next reset · {{date}}",
                                                       date: minuteDate(
                                                           sub.data.reset_at,
                                                           sub.data
@@ -188,6 +199,10 @@ export function UsagePage() {
                                             </span>
                                         )}
                                     </div>
+                                    {resetRuleZone && <p className="muted">{tx("resetBusinessZone", {
+                                        ns: "credits", zone: resetRuleZone,
+                                        defaultValue: "Reset rules use {{zone}}. Your display time zone does not change the reset time.",
+                                    })}</p>}
                                     {total > 0 && (
                                         <>
                                             <div

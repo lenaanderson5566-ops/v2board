@@ -468,6 +468,9 @@
         "reset_at",
         "time"
       ],
+      "resetState": [
+        "reset_state"
+      ],
       "resetTimezone": [
         "reset_timezone"
       ],

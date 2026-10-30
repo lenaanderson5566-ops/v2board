@@ -12,16 +12,18 @@ final class SubscriptionInfo
         $translations = require resource_path('client/copy.php');
         $copy = $translations[app()->getLocale()] ?? $translations['zh-CN'];
         $lines = [];
-        $resetAt = (new UserService())->getResetAt($user);
+        $reset = (new UserService())->getResetInfo($user);
+        $resetAt = $reset['at'];
         if ($resetAt) {
-            $date = \Carbon\Carbon::createFromTimestamp($resetAt, config('app.timezone', 'UTC'));
-            $offset = $date->utcOffset();
-            $zone = 'GMT';
-            if ($offset !== 0) {
-                $zone .= ($offset > 0 ? '+' : '-').intdiv(abs($offset), 60);
-                if (abs($offset) % 60) $zone .= ':'.sprintf('%02d', abs($offset) % 60);
+            // A subscription client cannot report its device zone; use the named business zone unless a preference is saved.
+            $zone = TimeZones::valid($user->display_timezone) ? $user->display_timezone : $reset['timezone'];
+            $date = \Carbon\Carbon::createFromTimestamp($resetAt, $zone);
+            $key = $reset['state'] === 'pending' ? 'reset_pending' : ($reset['state'] === 'failed' ? 'reset_failed' : 'next_reset');
+            $lines[] = $copy[$key].': '.$date->format('m-d H:i').' UTC'.$date->format('P').' · '.$zone;
+            if ($zone !== $reset['timezone']) {
+                $businessDate = \Carbon\Carbon::createFromTimestamp($resetAt, $reset['timezone']);
+                $lines[] = $copy['reset_business_timezone'].': '.$reset['timezone'].' (UTC'.$businessDate->format('P').')';
             }
-            $lines[] = $copy['next_reset'].': '.$date->format('m-d H:i').' '.$zone;
         }
         $credits = max(0, (int)$user->credit_balance);
         if ($credits > 0) $lines[] = $copy['independent'].': '.Helper::trafficConvert($credits);

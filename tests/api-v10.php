@@ -408,6 +408,57 @@ try {
     $before=$user->fresh()->getAttributes();
     [$r,$j]=$call('GET','/api/v10/me/subscription',[],$bearer);
     $assert($r->getStatusCode()===200 && $before===$user->fresh()->getAttributes(),'Subscription GET does not write business records');
+    // Keep reset fixtures in a savepoint: reads must report scheduler state without executing it.
+    $resetConfig=config('v2board.system_timezone');
+    DB::beginTransaction();
+    try {
+        config(['v2board.system_timezone'=>'Asia/Shanghai']);
+        App\Services\TimeZones::apply();
+        $resetNow=new DateTimeImmutable('now',new DateTimeZone('Asia/Shanghai'));
+        $resetDate=$resetNow->format('Y-m-d');
+        $resetDue=$resetNow->setTime(0,0)->getTimestamp();
+        $resetPlan=Plan::create(['name'=>'Read-only reset fixture','group_id'=>1,'transfer_enable'=>10,'month_price'=>1000,'reset_traffic_method'=>1]);
+        $resetOwner=User::create(['email'=>Str::uuid().'@example.com','password'=>'x','token'=>Str::random(32),'uuid'=>(string)Str::uuid(),'plan_id'=>$resetPlan->id,'transfer_enable'=>10737418240,'u'=>300,'d'=>500,'expired_at'=>$resetNow->modify('+4 years')->getTimestamp(),'display_timezone'=>'UTC']);
+        $cleanupUsers[]=$resetOwner;
+        $resetAuth=(new App\Services\AuthService($resetOwner))->generateAuthData(Illuminate\Http\Request::create('/'));
+        $resetBearer='Bearer '.$resetAuth['auth_data'];
+        $resetRun=fn()=>DB::table('v2_daily_task_run')->where('task','reset:traffic')->where('business_date',$resetDate);
+        $resetLedger=fn()=>DB::table('v2_daily_user_reset')->where('user_id',$resetOwner->id)->where('business_date',$resetDate);
+        $resetRun()->delete();
+        $readOnlyBefore=$resetOwner->fresh()->getAttributes();
+        [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
+        $assert($r->getStatusCode()===200 && ($j['data']['resetState']??null)==='pending' && $j['data']['resetAt']===gmdate('Y-m-d\TH:i:s\Z',$resetDue),'Due unfinished reset is exposed as a UTC pending instant');
+        $assert($j['data']['resetTimezone']==='Asia/Shanghai' && $j['data']['displayTimeZone']==='UTC' && str_contains($r->headers->get('Cache-Control'),'no-store'),'Reset business zone is distinct from the private display preference');
+        $assert($readOnlyBefore===$resetOwner->fresh()->getAttributes() && !$resetRun()->exists() && !$resetLedger()->exists(),'Pending subscription GET neither resets traffic nor writes task completion records');
+        $assert(!isset($j['data']['reset_state']) && !isset($j['data']['reset_at']),'Reset resource projects only the declared public field names');
+        [$r,$j]=$call('GET','/api/v10/me/subscription?'.http_build_query(['user'=>['id'=>$resetOwner->id],'userId'=>$resetOwner->id]),[],$foreignBearer);
+        $assert($r->getStatusCode()===200 && array_key_exists('resetState',$j['data']) && $j['data']['resetState']===null && $j['data']['resetAt']===null && !str_contains($r->getContent(),$resetOwner->token),'Reset state remains bound to the authenticated owner despite forged user identifiers');
+        [$r]=$call('GET','/api/v10/me/subscription');
+        $assert($r->getStatusCode()===401,'Reset state requires authenticated subscription ownership');
+        $resetRun()->insert(['task'=>'reset:traffic','business_date'=>$resetDate,'timezone'=>'Asia/Shanghai','status'=>'failed','updated_at'=>time()-60]);
+        $runBefore=(array)$resetRun()->first();
+        [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
+        $assert($r->getStatusCode()===200 && $j['data']['resetState']==='failed' && $j['data']['resetAt']===gmdate('Y-m-d\TH:i:s\Z',$resetDue),'Failed daily reset retains its due instant instead of advancing to next month');
+        $assert($readOnlyBefore===$resetOwner->fresh()->getAttributes() && $runBefore===(array)$resetRun()->first() && !$resetLedger()->exists(),'Failed subscription GET cannot clear usage, retry the task or insert a user reset ledger');
+        $resetLedger()->insert(['user_id'=>$resetOwner->id,'business_date'=>$resetDate]);
+        [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
+        $scheduledAt=$j['data']['resetAt'];
+        $assert($r->getStatusCode()===200 && $j['data']['resetState']==='scheduled' && strtotime($scheduledAt)>time() && str_ends_with($scheduledAt,'Z'),'Owner completion wins over a failed global task and exposes the next future UTC reset');
+        $assert($readOnlyBefore===$resetOwner->fresh()->getAttributes() && $runBefore===(array)$resetRun()->first() && $resetLedger()->count()===1,'Scheduled subscription GET preserves the completed owner ledger and business records');
+        $resetOwner->display_timezone='Asia/Kathmandu'; $resetOwner->save();
+        [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
+        $assert($r->getStatusCode()===200 && $j['data']['resetAt']===$scheduledAt && $j['data']['resetTimezone']==='Asia/Shanghai' && $j['data']['displayTimeZone']==='Asia/Kathmandu','Changing display time zone cannot shift the reset instant or business rule');
+        $resetLedger()->delete(); $resetRun()->update(['status'=>'completed']);
+        [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
+        $assert($r->getStatusCode()===200 && $j['data']['resetState']==='scheduled' && $j['data']['resetAt']===$scheduledAt,'Completed daily run reports the next reset without requiring a duplicate owner ledger');
+        $resetPlan->reset_traffic_method=2; $resetPlan->save();
+        [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
+        $assert($r->getStatusCode()===200 && array_key_exists('resetState',$j['data']) && $j['data']['resetState']===null && $j['data']['resetAt']===null,'Subscription with no applicable reset preserves explicit nullable reset fields');
+    } finally {
+        DB::rollBack();
+        config(['v2board.system_timezone'=>$resetConfig]);
+        App\Services\TimeZones::apply();
+    }
     $imageName=sha1((string)Str::uuid()).'.png';
     Illuminate\Support\Facades\Storage::disk('local')->put('banners/'.$imageName,base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5y0AAAAASUVORK5CYII='));
     [$r,$j]=$call('GET','/api/v10/public/banner-images/'.$imageName);

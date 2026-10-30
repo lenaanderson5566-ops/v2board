@@ -758,7 +758,10 @@
     "applied": "이 주문은 이후 요금제 주문에 상계되었습니다.",
     "paidReset": "유료 초기화",
     "paidResetHelp": "저장된 초기화 횟수를 사용하지 않고 요금제 사용량을 초기화합니다. 만료일, 예정된 초기화일 및 크레딧 잔액은 유지됩니다.",
-    "creditOrder": "크레딧 · {{amount}}"
+    "creditOrder": "크레딧 · {{amount}}",
+    "resetBusinessZone": "초기화 규칙은 {{zone}}을 기준으로 합니다. 표시 시간대를 바꿔도 초기화 시각은 바뀌지 않습니다.",
+    "resetPending": "초기화 확인 대기 · {{date}}",
+    "resetFailed": "초기화 재시도 대기 · {{date}}"
   },
   "experience": {
     "adminRefreshing": "업데이트 중입니다. 이전 데이터를 표시합니다…",
@@ -876,7 +879,14 @@
     "authorizationRecheck": "요청 상태 다시 확인",
     "authorizationUnavailable": "이 로그인 요청은 만료되었거나 이미 처리되었습니다. 앱으로 돌아가 로그인 상태를 확인하거나 새 요청을 시작해 주세요.",
     "invalidJson": "올바른 JSON을 입력하세요.",
-    "reorderHelp": "드래그하여 순서를 바꾸거나 정렬 핸들에 초점을 맞춘 후 ↑ / ↓ 키를 사용하세요."
+    "reorderHelp": "드래그하여 순서를 바꾸거나 정렬 핸들에 초점을 맞춘 후 ↑ / ↓ 키를 사용하세요.",
+    "timeZoneChangeTitle": "업무 시간대 변경 검토",
+    "timeZoneChangeImpact": "업무 시간대를 바꾸면 데이터 초기화 날짜, 보고서의 날짜 경계 및 일일 작업 실행 시간이 바뀝니다. 저장된 타임스탬프와 개인 표시 설정은 유지됩니다.",
+    "timeZoneChangeCurrent": "현재: {{zone}}",
+    "timeZoneChangeNew": "변경 후: {{zone}}",
+    "timeZoneChangeConfirm": "영향을 검토했으며 업무 시간대를 {{from}}에서 {{to}}로 변경하는 데 동의합니다.",
+    "timeZoneChangeNeedsConfirm": "저장하기 전에 시간대 변경의 영향을 검토하고 확인하세요.",
+    "timeZoneChangeReload": "설정을 정상적으로 다시 불러온 후 시간대 변경을 확인하세요."
   },
   "ux": {
     "cancel": "취소",
@@ -1122,7 +1132,8 @@
     "impactSubscribe": "결제가 확인되고 처리되면 선택한 요금제와 기간이 활성화됩니다.",
     "couponIntentEligible": "적용 가능한 요금제를 먼저 표시합니다. 선택한 쿠폰은 결제 시 다시 확인됩니다.",
     "couponIntentDifferentPeriod": "이 쿠폰은 현재 기간에 적용되지 않습니다. 사용하려면 다른 기간을 선택해 주세요.",
-    "couponIntentUnavailable": "이 쿠폰은 표시된 요금제에 사용할 수 없습니다. 쿠폰 없이 계속 구매할 수 있습니다."
+    "couponIntentUnavailable": "이 쿠폰은 표시된 요금제에 사용할 수 없습니다. 쿠폰 없이 계속 구매할 수 있습니다.",
+    "ruleResetTimeZone": "초기화 일정 시간대: {{zone}}"
   },
   "profile": {
     "intro": "로그인 이메일, 언어 및 연결된 서비스를 관리하세요.",

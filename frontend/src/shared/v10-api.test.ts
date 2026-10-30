@@ -110,6 +110,26 @@ it('preserves explicit null for the device time zone',()=>{
   expect(JSON.parse(v10Request('user/update',{display_timezone:'Asia/Kathmandu'}).body!)).toEqual({displayTimeZone:'Asia/Kathmandu'});
 });
 
+it('declares nullable reset states while preserving compatibility with older subscription payloads',()=>{
+  const schema=openapi.components.schemas.subscription;
+  expect(schema.properties.resetState).toMatchObject({type:'string',nullable:true,enum:['scheduled','pending','failed']});
+  expect(schema.properties.resetAt).toMatchObject({type:'string',format:'date-time',nullable:true});
+  expect((schema as {required?:string[]}).required || []).not.toContain('resetState');
+  const request=v10Request('user/getSubscribe?user[id]=999');
+  expect(request.url).toBe('/api/v10/me/subscription');
+  expect(request.method).toBe('GET');
+  expect(request.body).toBeUndefined();
+  const older=request.decode({data:{resetAt:'2026-10-31T16:00:00Z',resetTimezone:'Asia/Shanghai'}}).data;
+  expect(older).toEqual({reset_at:Date.parse('2026-10-31T16:00:00Z')/1000,reset_timezone:'Asia/Shanghai'});
+  expect(older).not.toHaveProperty('reset_state');
+  expect(request.decode({data:{resetAt:null,resetState:null,resetTimezone:'UTC'}}).data).toEqual({reset_at:null,reset_state:null,reset_timezone:'UTC'});
+});
+
+it.each(['scheduled','pending','failed'] as const)('decodes %s reset status without shifting the UTC instant to the display zone',resetState=>{
+  const decoded=v10Request('user/getSubscribe').decode({data:{resetAt:'2026-10-31T16:00:00Z',resetState,resetTimezone:'Asia/Shanghai',displayTimeZone:'UTC'}}).data;
+  expect(decoded).toEqual({reset_at:Date.parse('2026-10-31T16:00:00Z')/1000,reset_state:resetState,reset_timezone:'Asia/Shanghai',display_timezone:'UTC'});
+});
+
 it('decodes the original traffic business date and zone',()=>{
   const decoded=v10Request('user/stat/getTrafficLog').decode({data:[{businessDate:'2026-10-02',recordTimezone:'Asia/Shanghai',recordedAt:'2026-10-01T16:00:00Z'}]});
   expect(decoded.data[0]).toMatchObject({business_date:'2026-10-02',record_timezone:'Asia/Shanghai'});

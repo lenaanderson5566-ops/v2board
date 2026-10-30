@@ -760,7 +760,10 @@
     "applied": "Este pedido se aplicó a un pedido de plan posterior.",
     "paidReset": "Reinicio de pago",
     "paidResetHelp": "Restablece los datos de tu plan sin usar un reinicio guardado. El vencimiento, el reinicio programado y el saldo de créditos no cambian.",
-    "creditOrder": "{{amount}} créditos"
+    "creditOrder": "{{amount}} créditos",
+    "resetBusinessZone": "Las reglas de reinicio usan {{zone}}. La zona horaria de visualización no cambia la hora del reinicio.",
+    "resetPending": "Reinicio pendiente de confirmación · {{date}}",
+    "resetFailed": "Reinicio pendiente de reintento · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Actualizando; se muestran los datos anteriores…",
@@ -878,7 +881,14 @@
     "authorizationRecheck": "Consultar el estado de la solicitud",
     "authorizationUnavailable": "Esta solicitud de inicio de sesión ya no está disponible. Vuelva a la aplicación para comprobar el estado del inicio de sesión o iniciar una nueva solicitud.",
     "invalidJson": "Introduce JSON válido.",
-    "reorderHelp": "Arrastra para cambiar el orden, o enfoca un control de ordenación y usa ↑ / ↓."
+    "reorderHelp": "Arrastra para cambiar el orden, o enfoca un control de ordenación y usa ↑ / ↓.",
+    "timeZoneChangeTitle": "Revisar el cambio de zona horaria del servicio",
+    "timeZoneChangeImpact": "Cambiar la zona horaria del servicio modifica las fechas de reinicio de datos, los límites diarios de los informes y la hora de las tareas diarias. Las marcas de tiempo guardadas y las preferencias personales de visualización se mantienen.",
+    "timeZoneChangeCurrent": "Actual: {{zone}}",
+    "timeZoneChangeNew": "Nueva: {{zone}}",
+    "timeZoneChangeConfirm": "He revisado el impacto y confirmo el cambio de la zona horaria del servicio de {{from}} a {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Revisa y confirma el cambio de zona horaria antes de guardar.",
+    "timeZoneChangeReload": "Vuelve a cargar los ajustes correctamente antes de confirmar el cambio de zona horaria."
   },
   "ux": {
     "cancel": "Cancelar",
@@ -1124,7 +1134,8 @@
     "impactSubscribe": "El plan y el período seleccionados se activan tras confirmar y procesar el pago.",
     "couponIntentEligible": "Los planes compatibles se muestran primero. El cupón seleccionado se volverá a comprobar al pagar.",
     "couponIntentDifferentPeriod": "Este cupón no se aplica a este período. Elija otro período para utilizarlo.",
-    "couponIntentUnavailable": "Este cupón no está disponible para los planes mostrados. Puede continuar sin utilizarlo."
+    "couponIntentUnavailable": "Este cupón no está disponible para los planes mostrados. Puede continuar sin utilizarlo.",
+    "ruleResetTimeZone": "Zona horaria del calendario de reinicio: {{zone}}"
   },
   "profile": {
     "intro": "Consulta tu correo de acceso y gestiona el idioma y los servicios vinculados.",

@@ -28,6 +28,19 @@ export function displayTimeZone() {
               Intl.DateTimeFormat().resolvedOptions().timeZone ||
               "UTC";
 }
+/** Offset at the represented instant, including daylight-saving transitions. */
+export function utcOffsetLabel(
+    value: Date | string | number,
+    zone = displayTimeZone(),
+): string {
+    const date = value instanceof Date
+        ? value : new Date(typeof value === "number" ? value * 1000 : value);
+    if (!Number.isFinite(date.getTime()) || !validZone(zone)) return "—";
+    const name = new Intl.DateTimeFormat("en", {
+        timeZone: zone, timeZoneName: "longOffset",
+    }).formatToParts(date).find(part => part.type === "timeZoneName")?.value;
+    return name === "GMT" ? "UTC+00:00" : name?.replace(/^GMT/, "UTC") || "—";
+}
 export function formatInstant(
     value: Date | string | number,
     options: Intl.DateTimeFormatOptions = {},

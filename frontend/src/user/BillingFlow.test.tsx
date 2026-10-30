@@ -62,7 +62,8 @@ vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
     locale: () => mocks.language,
     tx: (key: string, args: any = {}) =>
-        key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
+        key === "ruleResetTimeZone" ? `${key}:${args.zone}`
+            : key.replace(/{{(\w+)}}/g, (_, name) => String(args[name])),
 }));
 vi.mock("./pricing-copy", () => ({
     pricingCopy: (key: string, args: any = {}) => key + JSON.stringify(args),
@@ -140,6 +141,7 @@ import { useCheckoutQuote } from "./useCheckoutQuote";
 import { PaymentCheckout } from "./PaymentCheckout";
 import { Orders } from "./user";
 import { PurchaseRules, PlanResetRule } from "./PurchaseRules";
+import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 const plan = {
     id: 1,
     name: "Basic",
@@ -162,6 +164,8 @@ const order = {
     discount_amount: 100,
 };
 beforeEach(() => {
+    configureTimeZone("Asia/Shanghai");
+    setDisplayTimeZone("Asia/Shanghai");
     history.replaceState(null, "", "#/plan");
     mocks.couponsAvailable = true;
     mocks.couponPeriods = [];
@@ -1845,6 +1849,18 @@ it("updates validity with the selected period and only declares known renewal su
     expect(screen.getByText("ruleNotRenewable{}")).toBeTruthy();
     view.rerender(<PurchaseRules plan={{ ...plan, renew: null }} period="half_year_price" />);
     expect(screen.queryByText("ruleNotRenewable{}")).toBeNull();
+});
+it("names the business reset zone for differing display preferences only on resetting plans", () => {
+    setDisplayTimeZone("UTC");
+    const view = render(<PurchaseRules plan={{ ...plan, effective_reset_traffic_method: 0 }} period="year_price" />);
+    expect(screen.getByText("ruleResetTimeZone:Asia/Shanghai")).toBeTruthy();
+    view.rerender(<PurchaseRules plan={{ ...plan, effective_reset_traffic_method: 2 }} period="year_price" />);
+    expect(screen.queryByText(/ruleResetTimeZone/)).toBeNull();
+    view.rerender(<PurchaseRules plan={{ ...plan, reset_traffic_method: null }} period="year_price" />);
+    expect(screen.queryByText(/ruleResetTimeZone/)).toBeNull();
+    setDisplayTimeZone("Asia/Shanghai");
+    view.rerender(<PurchaseRules plan={{ ...plan, reset_traffic_method: 0 }} period="year_price" />);
+    expect(screen.queryByText(/ruleResetTimeZone/)).toBeNull();
 });
 it("does not attach subscription rules to reset orders or invent a missing quota", () => {
     const view = render(<PurchaseRules plan={{ ...plan, resetOnly: true }} period="reset_price" />);

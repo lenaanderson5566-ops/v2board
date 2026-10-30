@@ -760,7 +760,10 @@
     "applied": "Dieser Auftrag wurde auf einen nachfolgenden Tarifauftrag angewendet.",
     "paidReset": "Kostenpflichtiges Zurücksetzen",
     "paidResetHelp": "Setzen Sie den Tarifverbrauch zurück, ohne eine gespeicherte Zurücksetzung zu nutzen. Ablaufdatum, geplanter Termin und Daten-Credits bleiben gleich.",
-    "creditOrder": "{{amount}} Credits"
+    "creditOrder": "{{amount}} Credits",
+    "resetBusinessZone": "Die Regeln für die Zurücksetzung verwenden {{zone}}. Die Anzeigezeitzone ändert den Zeitpunkt der Zurücksetzung nicht.",
+    "resetPending": "Zurücksetzung wartet auf Bestätigung · {{date}}",
+    "resetFailed": "Zurücksetzung wartet auf erneuten Versuch · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Aktualisieren; Zeigt zuvor geladene Daten an…",
@@ -878,7 +881,14 @@
     "authorizationRecheck": "Anfragestatus prüfen",
     "authorizationUnavailable": "Diese Anmeldeanfrage ist nicht mehr verfügbar. Prüfen Sie den Anmeldestatus in der App oder starten Sie eine neue Anfrage.",
     "invalidJson": "Gültiges JSON eingeben.",
-    "reorderHelp": "Zum Sortieren ziehen oder den Sortiergriff fokussieren und ↑ / ↓ verwenden."
+    "reorderHelp": "Zum Sortieren ziehen oder den Sortiergriff fokussieren und ↑ / ↓ verwenden.",
+    "timeZoneChangeTitle": "Änderung der Geschäftszeitzone prüfen",
+    "timeZoneChangeImpact": "Eine Änderung der Geschäftszeitzone ändert die Termine für die Zurücksetzung des Datenvolumens, die Tagesgrenzen in Berichten und die Zeiten täglicher Aufgaben. Gespeicherte Zeitstempel und persönliche Anzeigeeinstellungen bleiben unverändert.",
+    "timeZoneChangeCurrent": "Aktuell: {{zone}}",
+    "timeZoneChangeNew": "Neu: {{zone}}",
+    "timeZoneChangeConfirm": "Ich habe die Auswirkungen geprüft und bestätige die Änderung der Geschäftszeitzone von {{from}} zu {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Prüfen und bestätigen Sie die Zeitzonenänderung vor dem Speichern.",
+    "timeZoneChangeReload": "Laden Sie die Einstellungen erfolgreich neu, bevor Sie die Zeitzonenänderung bestätigen."
   },
   "ux": {
     "cancel": "Abbrechen",
@@ -1124,7 +1134,8 @@
     "impactSubscribe": "Nach Bestätigung und Verarbeitung der Zahlung werden der gewählte Tarif und Zeitraum aktiviert.",
     "couponIntentEligible": "Passende Tarife werden zuerst angezeigt. Der ausgewählte Gutschein wird beim Bezahlen erneut geprüft.",
     "couponIntentDifferentPeriod": "Dieser Gutschein gilt nicht für diesen Zeitraum. Wählen Sie einen anderen Zeitraum, um ihn zu nutzen.",
-    "couponIntentUnavailable": "Dieser Gutschein ist für die angezeigten Tarife nicht verfügbar. Sie können ohne Gutschein fortfahren."
+    "couponIntentUnavailable": "Dieser Gutschein ist für die angezeigten Tarife nicht verfügbar. Sie können ohne Gutschein fortfahren.",
+    "ruleResetTimeZone": "Zeitzone des Zurücksetzungsplans: {{zone}}"
   },
   "profile": {
     "intro": "Sehen Sie sich Ihre Anmelde-E-Mail an und verwalten Sie Ihre Sprache und verbundene Dienste.",

@@ -760,7 +760,10 @@
     "applied": "Perintah ini diterapkan pada perintah paket berikutnya.",
     "paidReset": "Reset berbayar",
     "paidResetHelp": "Reset pemakaian paket tanpa menggunakan jatah reset tersimpan. Masa berlaku, jadwal reset, dan saldo kredit data tidak berubah.",
-    "creditOrder": "kredit {{amount}}"
+    "creditOrder": "kredit {{amount}}",
+    "resetBusinessZone": "Aturan reset menggunakan {{zone}}. Zona waktu tampilan tidak mengubah waktu reset.",
+    "resetPending": "Reset menunggu konfirmasi · {{date}}",
+    "resetFailed": "Reset menunggu percobaan ulang · {{date}}"
   },
   "experience": {
     "adminRefreshing": "Memperbarui; menampilkan data yang dimuat sebelumnya…",
@@ -878,7 +881,14 @@
     "authorizationRecheck": "Periksa status permintaan",
     "authorizationUnavailable": "Permintaan masuk ini sudah tidak tersedia. Kembali ke aplikasi untuk memeriksa status masuk atau membuat permintaan baru.",
     "invalidJson": "Masukkan JSON yang valid.",
-    "reorderHelp": "Seret untuk mengubah urutan, atau fokuskan pegangan pengurutan lalu gunakan ↑ / ↓."
+    "reorderHelp": "Seret untuk mengubah urutan, atau fokuskan pegangan pengurutan lalu gunakan ↑ / ↓.",
+    "timeZoneChangeTitle": "Tinjau perubahan zona waktu layanan",
+    "timeZoneChangeImpact": "Mengubah zona waktu layanan akan mengubah tanggal reset kuota, batas hari pada laporan, dan waktu tugas harian. Stempel waktu tersimpan dan preferensi tampilan pribadi tetap sama.",
+    "timeZoneChangeCurrent": "Saat ini: {{zone}}",
+    "timeZoneChangeNew": "Baru: {{zone}}",
+    "timeZoneChangeConfirm": "Saya telah meninjau dampaknya dan mengonfirmasi perubahan zona waktu layanan dari {{from}} menjadi {{to}}.",
+    "timeZoneChangeNeedsConfirm": "Tinjau dan konfirmasi perubahan zona waktu sebelum menyimpan.",
+    "timeZoneChangeReload": "Muat ulang pengaturan hingga berhasil sebelum mengonfirmasi perubahan zona waktu."
   },
   "ux": {
     "cancel": "Batal",
@@ -1124,7 +1134,8 @@
     "impactSubscribe": "Paket dan periode yang dipilih diaktifkan setelah pembayaran dikonfirmasi dan pesanan diproses.",
     "couponIntentEligible": "Paket yang memenuhi syarat ditampilkan terlebih dahulu. Kupon yang dipilih akan diperiksa kembali saat pembayaran.",
     "couponIntentDifferentPeriod": "Kupon ini tidak berlaku untuk periode ini. Pilih periode lain untuk menggunakannya.",
-    "couponIntentUnavailable": "Kupon ini tidak dapat digunakan untuk paket yang ditampilkan. Anda dapat melanjutkan tanpa kupon."
+    "couponIntentUnavailable": "Kupon ini tidak dapat digunakan untuk paket yang ditampilkan. Anda dapat melanjutkan tanpa kupon.",
+    "ruleResetTimeZone": "Zona waktu jadwal reset: {{zone}}"
   },
   "profile": {
     "intro": "Lihat email masuk Anda dan kelola bahasa serta layanan terhubung Anda.",

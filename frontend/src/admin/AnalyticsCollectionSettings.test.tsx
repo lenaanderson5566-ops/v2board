@@ -2,6 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import {
     cleanup,
+    act,
     fireEvent,
     render,
     screen,
@@ -23,6 +24,74 @@ import * as sharedUI from "../shared/ui";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+});
+it("requires explicit review before changing the business time zone and saves only the existing changed setting", async () => {
+    api.request.mockImplementation(async (path: string) => ({data:path.endsWith("config/fetch") ? {site:{system_timezone:"Asia/Shanghai",app_name:"Timezone review"}} : path.endsWith("plan/fetch") ? [] : {}}));
+    render(<Settings section="site"/>);
+    const zone=await screen.findByRole("combobox",{name:"系统业务时区"});
+    expect(screen.queryByRole("note")).toBeNull();
+    fireEvent.change(zone,{target:{value:"UTC"}});
+    const note=screen.getByRole("note");
+    expect(note.textContent).toContain("Asia/Shanghai");
+    expect(note.textContent).toContain("UTC+08:00");
+    expect(note.textContent).toContain("UTC+00:00");
+    const confirm=screen.getByRole("checkbox",{name:/Asia\/Shanghai.*UTC/}) as HTMLInputElement;
+    expect(confirm.checked).toBe(false);
+    expect(confirm.required).toBe(true);
+    fireEvent.submit(zone.closest("form")!);
+    await screen.findByRole("alert");
+    expect(api.request.mock.calls.some(([path])=>path==="test-admin/config/save")).toBe(false);
+    fireEvent.click(confirm);
+    // Saving a changed system zone deliberately reloads the application; keep this
+    // component test on the page while verifying the unchanged request contract.
+    const timeout=vi.spyOn(window,"setTimeout").mockReturnValue(0 as unknown as ReturnType<typeof window.setTimeout>);
+    try {
+        fireEvent.submit(zone.closest("form")!);
+        fireEvent.submit(zone.closest("form")!);
+        expect(api.request).toHaveBeenCalledWith("test-admin/config/save",{system_timezone:"UTC"});
+        expect(api.request.mock.calls.filter(([path])=>path==="test-admin/config/save")).toHaveLength(1);
+        await act(async()=>{});
+    } finally {timeout.mockRestore();}
+});
+it("clears the time zone review on revert and requires a new review after changing the choice again", async () => {
+    api.request.mockImplementation(async (path: string) => ({data:path.endsWith("config/fetch") ? {site:{system_timezone:"Asia/Shanghai",app_name:"Timezone review"}} : path.endsWith("plan/fetch") ? [] : {}}));
+    render(<Settings section="site"/>);
+    const zone=await screen.findByRole("combobox",{name:"系统业务时区"});
+    fireEvent.change(zone,{target:{value:"UTC"}});
+    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.change(screen.getByRole("textbox",{name:"站点名称"}),{target:{value:"Another site name"}});
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(true);
+    fireEvent.change(zone,{target:{value:"Asia/Shanghai"}});
+    expect(screen.queryByRole("note")).toBeNull();
+    expect(screen.queryByRole("checkbox")).toBeNull();
+    fireEvent.change(zone,{target:{value:"UTC"}});
+    expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
+    expect(api.request.mock.calls.some(([path])=>path==="test-admin/config/save")).toBe(false);
+});
+it("keeps ordinary settings saves free of a time zone confirmation",async()=>{
+    api.request.mockImplementation(async(path:string)=>({data:path.endsWith("config/fetch") ? {site:{system_timezone:"Asia/Shanghai",app_name:"Existing"}} : path.endsWith("plan/fetch") ? [] : {}}));
+    render(<Settings section="site"/>);
+    const name=await screen.findByRole("textbox",{name:"站点名称"});
+    fireEvent.change(name,{target:{value:"Updated"}});
+    expect(screen.queryByRole("note")).toBeNull();
+    fireEvent.submit(name.closest("form")!);
+    await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/config/save",{app_name:"Updated"}));
+});
+it("does not save a reviewed time zone change while its configuration refresh has failed",async()=>{
+    let error="";
+    const useData=vi.spyOn(sharedUI,"useData").mockImplementation(((path:string)=>({data:path.endsWith("config/fetch") ? {site:{system_timezone:"Asia/Shanghai"}} : path.endsWith("plan/fetch") ? [] : {},loading:false,error,reload:vi.fn(),retryAt:0})) as any);
+    const view=render(<Settings section="site"/>);
+    try {
+        const zone=await screen.findByRole("combobox",{name:"系统业务时区"});
+        fireEvent.change(zone,{target:{value:"UTC"}});
+        fireEvent.click(screen.getByRole("checkbox"));
+        error="Configuration refresh unavailable";
+        view.rerender(<Settings section="site"/>);
+        expect((screen.getByRole("checkbox") as HTMLInputElement).disabled).toBe(true);
+        fireEvent.submit(zone.closest("form")!);
+        await act(async()=>{});
+        expect(api.request.mock.calls.some(([path])=>path==="test-admin/config/save")).toBe(false);
+    } finally {view.unmount();useData.mockRestore();}
 });
 it("keeps target collection off until the administrator enables its independent switch", async () => {
     api.request.mockImplementation(async (_path,body)=>({data:body ? {enabled:body.enabled} : {settings:{enabled:false},nodes:[],rows:[],total:0}}));

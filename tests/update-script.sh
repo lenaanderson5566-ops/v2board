@@ -112,6 +112,8 @@ grep -q 'migrate --path=database/migrations/2026_10_11_000008_create_server_traf
 grep -q 'migrate --path=database/migrations/2026_10_11_000009_create_server_traffic_imports.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_11_000010_create_lightsail_servers.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_27_000002_share_lightsail_credentials.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_10_30_000001_track_plan_translation_sources.php --force --no-interaction' calls.log
+grep -q 'Missing plan translation source column' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty
 echo changed >> composer.json
@@ -290,4 +292,14 @@ grep -q 'migrate --path=database/migrations/2026_10_23_000002_node_tls_transitio
 grep -q 'migrate --path=database/migrations/2026_10_23_000004_proxy_service_routes.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_24_000001_link_server_traffic_budget.php --force --no-interaction' calls.log
 
-echo 'Updater: 26 isolated scenarios passed'
+new_site missingplantranslationmigration
+git checkout -q codex/payment-icon-picker
+git rm -q database/migrations/2026_10_30_000001_track_plan_translation_sources.php
+git -c user.email=test@example.test -c user.name='Updater Test' commit -qm 'Incomplete translation upgrade fixture'
+git push -q origin HEAD:missing-plan-translation-migration
+ARGS+=(--branch missing-plan-translation-migration)
+reject --check
+grep -q 'Target lacks the plan translation source migration' "$TMP/output"
+[[ ! -e storage/framework/down ]]
+
+echo 'Updater: 27 isolated scenarios passed'

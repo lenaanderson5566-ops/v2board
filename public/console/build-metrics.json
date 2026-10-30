@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 254899,
+      "startupGzipBytes": 254900,
       "startupBytes": 865867,
       "startupFileCount": 16,
       "largestStartupAssets": [
@@ -34,19 +34,19 @@
         }
       ],
       "budget": 307200,
-      "totalBytes": 3256432,
+      "totalBytes": 3256449,
       "fileCount": 311
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 400013,
-      "startupBytes": 1383945,
+      "startupGzipBytes": 404710,
+      "startupBytes": 1402994,
       "startupFileCount": 21,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-DF-mSZ6g.js",
-          "bytes": 493371,
-          "gzipBytes": 139816
+          "file": "assets/AdminApp-BhdT8hf2.js",
+          "bytes": 510370,
+          "gzipBytes": 144194
         },
         {
           "file": "assets/experience-copy-BfqP4ddL.js",
@@ -64,13 +64,13 @@
           "gzipBytes": 61718
         },
         {
-          "file": "assets/AdminApp-Co8QYE0B.css",
-          "bytes": 95900,
-          "gzipBytes": 15550
+          "file": "assets/AdminApp-wphZdmTY.css",
+          "bytes": 97950,
+          "gzipBytes": 15869
         }
       ],
       "budget": 460800,
-      "totalBytes": 4527560,
+      "totalBytes": 4546609,
       "fileCount": 80
     }
   ],

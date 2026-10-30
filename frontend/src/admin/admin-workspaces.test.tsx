@@ -39,6 +39,7 @@ import { AdminSubscriptions } from "./AdminSubscriptions";
 import AdminContent from "./admin-entry";
 import { legacyAdminMenu } from "./admin-shell";
 import { resources } from "./admin";
+import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
@@ -378,6 +379,67 @@ it("loads translations from subscription management and supports old links", asy
     expect(
         await screen.findByRole("tab", { name: "套餐翻译", selected: true }),
     ).toBeTruthy();
+});
+
+const planTranslationSnapshot = () => ({
+    plan_id: 7, source_language: "zh-CN",
+    source_hashes: { name: "a".repeat(64), content: "b".repeat(64) },
+    default: { name: "Basic", content: "最新套餐说明" },
+    translations: { "en-US": {
+        name: "Basic English", content: "Old manual description", version: "c".repeat(64),
+        fields: { name: { status: "current", origin: "manual" }, content: { status: "outdated", origin: "manual" } },
+    } },
+});
+it("opens the translation check after saving source text without sending it externally", async () => {
+    const { ResourcePage } = await import("./admin");
+    const fixture = { id: 7, name: "Basic", content: "原说明", group_id: 1, transfer_enable: 50, device_limit: 4, month_price: 1000 };
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("ops/i18n/plan/fetch")) return { data: planTranslationSnapshot() };
+        if (path.includes("ops/i18n/plan/locales")) return { data: ["zh-CN", "en-US"] };
+        if (path.includes("plan/save")) return { data: true, meta: { plan_id: 7, translation_source_changed: true } };
+        if (path.includes("plan/fetch")) return { data: [fixture] };
+        if (path.includes("server/group/fetch")) return { data: [{id: 1, name: "Default group"}] };
+        return { data: [] };
+    });
+    render(<ResourcePage resource={resources.plans}/>);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    fireEvent.change(await screen.findByLabelText(/套餐名称/), { target: { value: "Basic Updated" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存并检查翻译" }));
+    await screen.findByText("套餐已保存。可在这里更新缺失或过期译文，人工译文须先核对。");
+    expect(screen.getByRole("dialog").textContent).toContain("套餐翻译 · Basic Updated");
+    expect(api.request.mock.calls.some(([path]) => path.includes("plan/generate"))).toBe(false);
+    expect(api.request.mock.calls.filter(([path]) => path.includes("plan/save"))).toHaveLength(1);
+});
+it("saves only manually changed fields with source and target guards", async () => {
+    const snapshot = planTranslationSnapshot();
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("/save")) return { data: true };
+        return { data: snapshot };
+    });
+    render(<AdminPlanTranslationWorkspace plan="7" locales={["zh-CN", "en-US"]}/>);
+    fireEvent.click(await screen.findByText("手动编辑与核对"));
+    fireEvent.change(screen.getByLabelText("翻译名称（留空沿用原名）"), {target: {value: "New local name"}});
+    expect((screen.getByRole("button", {name: "生成待同步译文"}) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await screen.findByText("翻译已保存");
+    const body = api.request.mock.calls.find(([path]) => path.includes("/save"))?.[1];
+    expect(body).toMatchObject({fields: ["name"], name: "New local name", origins: {name: "manual"}, source_hashes: snapshot.source_hashes, translation_version: "c".repeat(64)});
+    expect(body).not.toHaveProperty("content");
+});
+it("requires an explicit review to keep an outdated manual translation", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    try {
+        const snapshot = planTranslationSnapshot();
+        api.request.mockImplementation(async (path: string) => path.includes("/save") ? {data: true} : {data: snapshot});
+        render(<AdminPlanTranslationWorkspace plan="7" locales={["zh-CN", "en-US"]}/>);
+        fireEvent.click(await screen.findByText("手动编辑与核对"));
+        fireEvent.click(screen.getByRole("button", {name: "确认现有译文仍适用"}));
+        await screen.findByText("现有译文已确认适用");
+        expect(confirm).toHaveBeenCalledTimes(1);
+        const body = api.request.mock.calls.find(([path]) => path.includes("/save"))?.[1];
+        expect(body).toMatchObject({fields: ["content"], content: "Old manual description", origins: {content: "manual"}, translation_version: "c".repeat(64)});
+        expect(api.request.mock.calls.some(([path]) => path.includes("/generate"))).toBe(false);
+    } finally { confirm.mockRestore(); }
 });
 it("consolidates settings and monitoring navigation", () => {
     expect(legacyAdminMenu.some(([key]) => String(key) === "notification-blocklist")).toBe(false);

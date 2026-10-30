@@ -560,7 +560,8 @@
 }
 
 .plan-reset-rule {
-    margin: -4px 0 14px;
+    margin-block: 12px 0;
+    margin-inline: 0;
     font-size: 12px;
     line-height: 1.6;
     color: var(--text-secondary);

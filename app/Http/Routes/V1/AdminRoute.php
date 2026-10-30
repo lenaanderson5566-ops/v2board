@@ -71,7 +71,7 @@ class AdminRoute
             $router->get ('/ops/i18n/plan/locales', 'V1\Admin\PlanI18nController@locales');
             $router->get ('/ops/i18n/plan/fetch', 'V1\Admin\PlanI18nController@fetch');
             $router->post('/ops/i18n/plan/save', 'V1\Admin\PlanI18nController@save');
-            $router->post('/ops/i18n/plan/generate', 'V1\Admin\PlanI18nController@generate')->middleware('throttle:10,1');
+            $router->post('/ops/i18n/plan/generate', 'V1\Admin\PlanI18nController@generate')->middleware('throttle:30,1');
             // Server
             $router->post('/server/domains/bind', 'V1\\Admin\\NodeDomainController@bind')->middleware('throttle:30,1');
             $router->post('/server/domains/manual', 'V1\\Admin\\NodeDomainController@manual')->middleware('throttle:30,1');

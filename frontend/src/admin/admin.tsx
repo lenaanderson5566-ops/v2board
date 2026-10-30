@@ -4,7 +4,6 @@ import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { languageCodes } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { PlanDescription } from "../shared/PlanDescription";
 import {
     admin,
     bytes,
@@ -32,7 +31,7 @@ import {
 } from "../shared/ui";
 import { AdminObservability } from "./AdminObservability";
 import { AdminLogFilters } from "./AdminLogFilters";
-import { AdminPlanAutoTranslation } from "./AdminPlanAutoTranslation";
+import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
 import { AdminRiskReview } from "./AdminRiskReview";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { ClientUaStats } from "./ClientUaStats";
@@ -1033,6 +1032,9 @@ export function ResourcePage({
     const [routeUsage, setRouteUsage] = useState("");
     const [routeFilter, setRouteFilter] = useState("");
     const [editorState, setEditorState] = useState({ busy: false, dirty: false });
+    const [planTextChanged, setPlanTextChanged] = useState(false);
+    const [translationPlan, setTranslationPlan] = useState<Row | null>(null);
+    const [translationBusy, setTranslationBusy] = useState(false);
     useEffect(() => {
         saveListView(viewKey, {
             context: JSON.stringify(queryParams),
@@ -1537,6 +1539,7 @@ export function ResourcePage({
                     close={() => {
                         if (resource === resources.routes && (editorState.busy || editorState.dirty && !confirm("路由修改尚未保存，确认放弃？"))) return;
                         setEditing(null);
+                        setPlanTextChanged(false);
                     }}
                 >
                     {resource === resources.coupons && editing.id && (
@@ -1577,6 +1580,10 @@ export function ResourcePage({
                                     ) || "",
                                 )}
                                 initial={editing}
+                                submit={resource === resources.plans && (planTextChanged || !editing[key]) ? "保存并检查翻译" : undefined}
+                                onValuesChange={resource === resources.plans ? values => setPlanTextChanged(
+                                    ["name", "content"].some(field => String(values[field] || "") !== String(editing[field] || "")),
+                                ) : undefined}
                                 onBusyChange={busy => setEditorState(current => ({ ...current, busy }))}
                                 resolveFields={(fields, values) =>
                                     resourceFields(
@@ -1652,8 +1659,14 @@ export function ResourcePage({
                                                 ? "coupons.csv"
                                                 : "giftcards.csv",
                                         );
-                                    else await request(resource.save!, clean);
+                                    else {
+                                        const result = await request(resource.save!, clean);
+                                        if (resource === resources.plans && result.meta?.translation_source_changed && result.meta?.plan_id) {
+                                            setTranslationPlan({ id: result.meta.plan_id, name: clean.name });
+                                        }
+                                    }
                                     setEditing(null);
+                                    setPlanTextChanged(false);
                                     d.reload();
                                 }}
                             />
@@ -1661,28 +1674,30 @@ export function ResourcePage({
                     </State>
                 </Modal>
             )}
+            {translationPlan && <Modal title={`套餐翻译 · ${translationPlan.name}`} variant="drawer" wide guardChanges
+                dismissible={!translationBusy} close={() => setTranslationPlan(null)}>
+                <AdminPlanTranslationWorkspace key={translationPlan.id} plan={String(translationPlan.id)}
+                    autoStart onBusyChange={setTranslationBusy} />
+            </Modal>}
         </>
     );
 }
 export function Translations() {
-    const plans = useData<Row[]>(admin("plan/fetch")),
-        locales = useData<string[]>(admin("ops/i18n/plan/locales"));
-    const [plan, setPlan] = useState(""),
-        [locale, setLocale] = useState("zh-CN"),
-        [saved, setSaved] = useState("");
-    const d = useData(
-        plan
-            ? query(admin("ops/i18n/plan/fetch"), { plan_id: plan })
-            : admin("plan/fetch"),
-    );
+    const plans = useData<Row[]>(admin("plan/fetch"));
+    // Load languages only when this tab is visited, including before a plan is chosen.
+    const locales = useData<string[]>(admin("ops/i18n/plan/locales"));
+    const [plan, setPlan] = useState(""), [busy, setBusy] = useState(false);
+    const root = useRef<HTMLDivElement>(null);
     return (
         <Panel title="套餐翻译">
+            <div ref={root}>
             <div className="pad actions">
                 <select
                     value={plan}
+                    disabled={busy}
                     onChange={(e) => {
+                        if (root.current?.querySelector('[data-unsaved="true"]') && !window.confirm("有尚未保存的译文，确认切换套餐？")) return;
                         setPlan(e.target.value);
-                        setSaved("");
                     }}
                     aria-label="选择套餐"
                 >
@@ -1693,62 +1708,15 @@ export function Translations() {
                         </option>
                     ))}
                 </select>
-                <select
-                    value={locale}
-                    onChange={(e) => {
-                        setLocale(e.target.value);
-                        setSaved("");
-                    }}
-                    aria-label="选择语言"
-                >
-                    {locales.data?.map((l) => (
-                        <option key={l}>{l}</option>
-                    ))}
-                </select>
             </div>
+            <State {...plans}>{null}</State>
+            <State {...locales}>{null}</State>
             {plan ? (
-                <State {...d}>
-                    <AdminPlanAutoTranslation
-                        key={plan}
-                        plan={plan}
-                        locales={locales.data || []}
-                        onSaved={d.reload}
-                    />
-                    <div className="pad muted">
-                        默认名称：{d.data?.default?.name}
-                        <details>
-                            <summary>查看套餐原文</summary>
-                            <PlanDescription
-                                content={d.data?.default?.content}
-                            />
-                        </details>
-                    </div>
-                    <Editor
-                        key={plan + locale + JSON.stringify(d.data)}
-                        fields={[
-                            field("name", "翻译名称"),
-                            field(
-                                "content",
-                                "翻译说明（JSON / HTML）",
-                                "textarea",
-                            ),
-                        ]}
-                        initial={{
-                            plan_id: Number(plan),
-                            locale,
-                            ...d.data?.translations?.[locale],
-                        }}
-                        onSave={async (b) => {
-                            await request(admin("ops/i18n/plan/save"), b);
-                            setSaved("翻译已保存");
-                            d.reload();
-                        }}
-                    />
-                    {saved && <p className="success-message">{saved}</p>}
-                </State>
+                <AdminPlanTranslationWorkspace key={plan} plan={plan} locales={locales.data || undefined} onBusyChange={setBusy} />
             ) : (
                 <Empty text="选择套餐后开始翻译" />
             )}
+            </div>
         </Panel>
     );
 }

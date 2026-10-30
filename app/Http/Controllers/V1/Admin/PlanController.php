@@ -8,8 +8,10 @@ use App\Http\Requests\Admin\PlanSort;
 use App\Http\Requests\Admin\PlanUpdate;
 use App\Models\Order;
 use App\Models\Plan;
+use App\Models\PlanTranslation;
 use App\Models\User;
 use App\Services\PlanService;
+use App\Services\PlanTranslationState;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -38,6 +40,20 @@ class PlanController extends Controller
             DB::beginTransaction();
             // update user group id and transfer
             try {
+                $plan = Plan::where('id', $plan->id)->lockForUpdate()->firstOrFail();
+                $hashes = PlanTranslationState::hashes($plan);
+                $sourceChanged = false;
+                foreach (['name', 'content'] as $field) {
+                    if (!array_key_exists($field, $params) || (string) $params[$field] === (string) $plan->$field) continue;
+                    $sourceChanged = true;
+                    // Legacy translations remain unverified. Capture only the old source
+                    // when it changes, so an edit can invalidate them without guessing
+                    // whether they were correct when this feature was installed.
+                    PlanTranslation::where('plan_id', $plan->id)
+                        ->whereNull($field.'_source_hash')
+                        ->whereNotNull($field)->where($field, '<>', '')
+                        ->update([$field.'_source_hash' => $hashes[$field]]);
+                }
                 if ($request->input('force_update')) {
                     User::where('plan_id', $plan->id)->update([
                         'group_id' => $params['group_id'],
@@ -53,14 +69,17 @@ class PlanController extends Controller
             }
             DB::commit();
             return response([
-                'data' => true
+                'data' => true,
+                'meta' => ['plan_id' => $plan->id, 'translation_source_changed' => $sourceChanged]
             ]);
         }
-        if (!Plan::create($params)) {
+        $plan = Plan::create($params);
+        if (!$plan) {
             abort(500, '创建失败');
         }
         return response([
-            'data' => true
+            'data' => true,
+            'meta' => ['plan_id' => $plan->id, 'translation_source_changed' => true]
         ]);
     }
 

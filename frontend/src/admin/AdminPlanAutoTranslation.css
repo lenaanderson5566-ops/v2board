@@ -1,0 +1,39 @@
+.plan-translation-sync { display: grid; gap: 16px; }
+.plan-translation-fieldset { border: 0; padding: 0; margin: 0; min-inline-size: 0; }
+.plan-translation-heading { display: flex; align-items: start; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.plan-translation-heading h3 { margin-block: 0 6px; }
+.plan-translation-heading p, .plan-translation-sync > p { margin: 0; }
+.plan-translation-selection { align-items: center; }
+body[data-console="admin"] :is(.admin-content, .modal) .plan-translation-sync .plan-translation-check {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    margin: 0;
+}
+body[data-console="admin"] :is(.admin-content, .modal) .plan-translation-sync .plan-translation-check > input[type="checkbox"] {
+    width: 16px;
+    min-width: 16px;
+    max-width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    margin: 0;
+}
+.plan-translation-language-list { border: 1px solid var(--border); border-radius: var(--admin-radius); overflow: hidden; }
+.plan-translation-language { display: grid; grid-template-columns: minmax(100px, 1fr) repeat(2, minmax(150px, 1.3fr)); gap: 12px; align-items: center; padding: 12px 14px; }
+.plan-translation-language + .plan-translation-language { border-block-start: 1px solid var(--border); }
+.plan-translation-field { display: grid; gap: 3px; min-width: 0; }
+.plan-translation-field small { color: var(--muted); overflow-wrap: anywhere; }
+.plan-translation-candidate { border: 1px solid var(--border); border-radius: var(--admin-radius); padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.plan-translation-comparison { display: grid; gap: 12px; padding-block: 12px; min-width: 0; }
+.plan-translation-comparison label { display: grid; gap: 6px; }
+.plan-translation-comparison textarea, .plan-translation-comparison input { width: 100%; min-width: 0; box-sizing: border-box; }
+.plan-translation-failures { overflow-wrap: anywhere; }
+.plan-translation-other-locales > summary { color: var(--muted); cursor: pointer; }
+.plan-translation-other-locales[open] > summary { margin-block-end: 10px; }
+@media (max-width: 600px) {
+    .plan-translation-language { grid-template-columns: 1fr 1fr; }
+    .plan-translation-language > strong { grid-column: 1 / -1; }
+    .plan-translation-heading > .button { max-width: 100%; }
+}

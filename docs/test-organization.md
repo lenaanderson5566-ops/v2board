@@ -136,8 +136,16 @@ BillingFlow/PendingOrderNotice 覆盖安全套餐/周期保留、返回与登录
 
 后台完整性优化继续使用 AdminApp、admin-shell、admin-workspaces、Payments、AnalyticsCollectionSettings、AdminClients、AdminClientMirrors、AdminMailCampaigns、UXResilience、editor-field-context 和 localization 等现有模块。覆盖具体子页搜索/标题/焦点、手机菜单边界、会话临时失败恢复、显式订单查询与筛选保留、过期支付目录、无元数据列表与空末页、错误字段及多选关联、键盘排序及并发锁、设置草稿、离页终止后续镜像任务、429 退避与群发记录恢复。只改前端交互和展示，不新增 API、数据库迁移或平行测试运行器；合成页面和截图继续保存在忽略目录。
 
+协议颜色继续归入 Nodes、AdminDiagnostics 和 ServerTrafficBudgets，核对稳定标签、未知/缺失回退及表格、拓扑的实际接入。套餐名称归入 admin-user-label、admin-workspaces、AnalyticsCollectionSettings 和 AdminCouponIssue，覆盖关系名优先、目录复用、失败不挡原列表、未知单选/多选保留，以及按名称显示但仍提交 ID。邮件受众重查失败时旧结果必须失效，邮件发送中禁止关闭，邮件与高级筛选的未保存草稿关闭保护复用 admin-workspaces；测试中的邮件请求均使用替身，不实际发送。
+
 公告与邮件换行复用 markdown、ContentComposer、AnnouncementCenter 和 product-mail 既有模块。前端预览及详情使用实际安全渲染组件验证单次回车、空行分段、Markdown 格式、安全过滤及保存原文；邮件验证 CRLF、空行、已有 HTML、块级排版空白、重复过滤幂等及 HTML/纯文本一致。后端仍在独立项目副本和临时数据库中运行，发送器使用模拟实现，不发送真实邮件。
 
 重置时区与任务状态继续使用 timezones、timezone-scheduler、subscription-info、api-v10、api-v10-inventory 及既有业务/安全模块，实际脚本仅在隔离副本、临时 MySQL/Redis 与私有内存 SQLite 中运行。覆盖业务日跨 UTC 日期、显式时区不改进程默认区、夏令时及非整点偏移、当天缺失/运行/失败状态、本人完成覆盖全局失败、所有者隔离和 GET 无写入。fastai-template 与 node-display 验证全部语言新增状态/业务区信息标签不进入客户端连接节点。前端复用 timezone、UsageBilling、BillingFlow、AnalyticsCollectionSettings、localization 与 v10-api，验证展示偏好不改变重置时刻、状态及业务区文案、无重置规则不显示提示、业务时区确认随值失效及读取失败拦截。契约从模块源生成全部七份发布物，生成器检查和既有单元测试均须通过；不新增平行验证入口。
 
 内置浏览器优化复用 user-experience、EmbeddedBrowserNotice、AdminBrowserPreview、admin-fields、PaymentCheckout、QuickStart、ClientDownload、BillingFlow、HelpSupport、app、既有构建边界测试和 localization。覆盖识别优先级及普通浏览器不误拦、缺失设备字段、四个主要应用的缺省引导与显式策略优先、完整中性入口/compact业务帮助、策略身份与业务挂载边界、跨路由复制/迟到结果/焦点恢复、桌面/未知设备、预览无真实副作用、compact 表单不误提交、付款帮助不替换订单或发起付款、经过白名单的交接与重登录恢复。工作区拆分为按需模块，验证源码及生产初始静态依赖图不含该工作区，保留原会话、语言、路由恢复和焦点断言。纯导航校验提取到 shared/navigation-intent，原用户模块兼容导出；保留原有订单、权限和隐私断言。后端 frontend-runtime、browser-session、backend-security、api-v10 在隔离副本与临时数据库/缓存验证分类/SQL口径、策略导出及会话边界，不运行真实生产操作。输出与浏览器合成夹具仍保存在忽略目录。
+
+
+在线统计继续扩展 node-v10、risk-activity、admin-user-activity-columns 与 node-traffic-concurrency，复用 node-traffic-batch-worker 的在线模式，不新增平行运行器。覆盖全量空/遗漏清理、非法 JSON 不清理、IPv6/IPv4 映射地址去重、严格/宽松模式、动态有效期、陈旧聚合缓存、部分失败后的索引恢复及没有近期计费活动的在线用户。两个进程对同一用户执行各 12 次重叠节点上报，检查两个节点都保留、历史快照唯一、日志节流、逐节点清空及原计费断言；实际验证仅使用可销毁副本、随机数据库和测试 Redis 前缀。
+
+v2box 端沿用 api/v2board、node、core 的 Go 包内回归，覆盖完整用户快照、空/304 区分、响应限额、大用户流式读取、伪造 MessagePack 长度、异常计数、取消保留采样和共享监听移除失败保留归属。执行矩阵沿用节点 CI 的 with_quic,with_utls、race、独立 Reality Vision、vet 和既有脚本测试；不调用生产面板、ACME、DNS 服务商或真实服务管理器。
+配置更新记录复用 api-v10、api-v10-inventory、browser-session、既有订阅策略/访问保护/风险与日志保留测试。覆盖本人隔离、过期与无套餐、未登录/查询凭据/受限账户、稳定分页、最大整数页码无溢出、保留期读时过滤、原始凭据/UA/异常不外露及 GET 不写订阅日志/触发风险；实际脚本仍在可销毁副本和随机数据库/缓存前缀执行。前端独立 ConfigurationUpdates 测试与 AccountControls、QuickStart、app、EmbeddedBrowserNotice、v10-api、localization 共用已有运行器，验证入口不提前拉日志、懒加载、时区、分页失败/迟到响应、未知结果、脱敏与人工刷新。新增 API 只在源模块维护，统一生成并检查七份发布物，不恢复旧用户 API。

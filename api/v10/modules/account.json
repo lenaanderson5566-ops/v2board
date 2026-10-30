@@ -1498,10 +1498,88 @@
         },
         "parameters": []
       }
+    },
+    "/me/subscription/access-records": {
+      "get": {
+        "operationId": "getMeSubscriptionAccessRecords",
+        "tags": ["user"],
+        "summary": "Read the current user's retained configuration update requests",
+        "description": "Read-only owner-scoped history, also available to authenticated users with an expired subscription or no plan. Sorted by createdAt descending and id descending. The configured subscription-log retention cutoff applies even before scheduled cleanup runs. This read neither records a subscription access nor triggers risk evaluation.",
+        "parameters": [
+          { "$ref": "#/components/parameters/HeaderAcceptLanguage" },
+          { "$ref": "#/components/parameters/QueryPage" },
+          { "$ref": "#/components/parameters/QueryPageSize" }
+        ],
+        "responses": {
+          "200": {
+            "description": "Only the authenticated owner's currently retained records",
+            "headers": {
+              "X-Request-ID": { "$ref": "#/components/headers/XRequestID" },
+              "Content-Language": { "$ref": "#/components/headers/XRequestID" },
+              "Cache-Control": { "$ref": "#/components/headers/PrivateNoStore" }
+            },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/subscriptionAccessRecordPage" } } }
+          },
+          "401": { "$ref": "#/components/responses/ProblemDetails" },
+          "403": { "$ref": "#/components/responses/ProblemDetails" },
+          "422": { "$ref": "#/components/responses/ProblemDetails" },
+          "429": { "$ref": "#/components/responses/ProblemDetails" },
+          "500": { "$ref": "#/components/responses/ProblemDetails" },
+          "503": { "$ref": "#/components/responses/ProblemDetails" }
+        },
+        "security": [{ "bearerAuth": [] }, { "browserUserCookie": [] }],
+        "x-permission": "user",
+        "x-runtime": {
+          "input": { "page": "page", "pageSize": "pageSize" },
+          "output": "array:subscriptionAccessRecord",
+          "role": "user",
+          "status": 200,
+          "raw": false,
+          "bindings": {},
+          "key": "User/SubscriptionAccessController@index"
+        },
+        "x-browser-aliases": {
+          "routes": ["user/subscription/access-records"],
+          "methodRoutes": ["GET user/subscription/access-records"]
+        }
+      }
     }
   },
   "components": {
     "schemas": {
+      "subscriptionAccessRecord": {
+        "type": "object",
+        "description": "A retained configuration request, not proof of successful import, login or an online device. Unknown historical fields are null; raw user agents and request URLs are never exposed.",
+        "properties": {
+          "id": { "type": "integer", "format": "int64", "minimum": 1 },
+          "requestedAt": { "type": "string", "format": "date-time", "nullable": true },
+          "clientName": { "type": "string", "nullable": true, "maxLength": 80, "description": "Recognized product name from the server allowlist." },
+          "clientVersion": { "type": "string", "nullable": true, "maxLength": 32 },
+          "status": { "type": "string", "enum": ["success", "failed", "unknown"], "description": "Success means the configuration request succeeded; it does not confirm import or connection." },
+          "reason": { "type": "string", "nullable": true, "enum": ["banned", "no_plan", "expired", "user_unavailable", "client_disabled", "client_version_too_low", "client_ua_not_allowed", "client_format_not_allowed", null] },
+          "ip": { "type": "string", "nullable": true, "maxLength": 64, "description": "IP address masked using the same policy as account sessions." },
+          "location": { "type": "string", "nullable": true, "maxLength": 160, "description": "Sanitized historical region labels, not a new IP lookup or precise location." }
+        },
+        "required": ["id", "requestedAt", "clientName", "clientVersion", "status", "reason", "ip", "location"],
+        "additionalProperties": false
+      },
+      "subscriptionAccessRecordPage": {
+        "type": "object",
+        "properties": {
+          "data": { "type": "array", "items": { "$ref": "#/components/schemas/subscriptionAccessRecord" } },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "pagination": { "$ref": "#/components/schemas/Pagination" },
+              "retentionDays": { "type": "integer", "nullable": true, "minimum": 30, "maximum": 365, "description": "Current automatic retention window. Null means no automatic time cutoff is configured, not that history is complete or permanent. Empty results do not mean the subscription has never been used." }
+            },
+            "required": ["pagination", "retentionDays"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["data", "meta"],
+        "additionalProperties": false
+      },
       "accountStatus": {
         "type": "object",
         "properties": {

@@ -1,4 +1,5 @@
 import { NodeDeploymentProgress } from "./NodeDeploymentProgress";
+import { ProtocolBadge } from "./ProtocolBadge";
 import { nodeDeploymentStage } from "./node-guidance";
 import { NodeDomainBinding } from "./NodeDomains";
 import { type ReactNode, useEffect, useRef, useState } from "react";
@@ -203,7 +204,7 @@ export function NodeDeployment({
             <div className="admin-deployment">
                 {!navigation && <p className="admin-deployment-meta">
                     {node.type.toUpperCase()} · 节点 #{node.id} ·{" "}
-                    {node.protocol || ""}
+                    <ProtocolBadge protocol={node.protocol} />
                 </p>}
                 <DeploymentSections
                     integrated={!!navigation}

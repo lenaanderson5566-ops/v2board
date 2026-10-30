@@ -29,6 +29,7 @@
 \Illuminate\Support\Facades\Route::match(['PATCH'], 'me/password', [\App\Http\Controllers\V10\UserUserController::class, 'patchMePassword'])->name('v10.patchMePassword');
 \Illuminate\Support\Facades\Route::match(['PATCH'], 'me', [\App\Http\Controllers\V10\UserUserController::class, 'patchMe'])->name('v10.patchMe');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/subscription', [\App\Http\Controllers\V10\UserUserController::class, 'getMeSubscription'])->name('v10.getMeSubscription');
+\Illuminate\Support\Facades\Route::get('me/subscription/access-records', [\App\Http\Controllers\V10\SubscriptionAccessController::class, 'index'])->name('v10.getMeSubscriptionAccessRecords');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/summary', [\App\Http\Controllers\V10\UserUserController::class, 'getMeSummary'])->name('v10.getMeSummary');
 \Illuminate\Support\Facades\Route::match(['GET', 'HEAD'], 'me/session', [\App\Http\Controllers\V10\UserUserController::class, 'getMeSession'])->name('v10.getMeSession');
 \Illuminate\Support\Facades\Route::match(['POST'], 'me/commission-transfers', [\App\Http\Controllers\V10\UserUserController::class, 'postMeCommissionTransfers'])->name('v10.postMeCommissionTransfers');

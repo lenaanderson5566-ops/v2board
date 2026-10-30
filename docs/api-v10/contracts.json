@@ -1777,6 +1777,20 @@
       "path": "me/account-deletion",
       "method": "GET"
     },
+    "getMeSubscriptionAccessRecords": {
+      "input": {
+        "page": "page",
+        "pageSize": "pageSize"
+      },
+      "output": "array:subscriptionAccessRecord",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/SubscriptionAccessController@index",
+      "path": "me/subscription/access-records",
+      "method": "GET"
+    },
     "getSubscriptionsSubscriptionToken": {
       "input": {
         "format": "format",

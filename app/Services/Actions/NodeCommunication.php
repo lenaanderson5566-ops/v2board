@@ -2,10 +2,8 @@
 
 namespace App\Services\Actions;
 
-use App\Http\Controllers\Controller;
-use App\Models\UserConnectionLog;
-use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
+use App\Services\OnlineDeviceService;
 use App\Services\ServerService;
 use App\Services\UserService;
 use App\Utils\CacheKey;
@@ -83,155 +81,39 @@ class NodeCommunication
     // 后端获取在线数据
     public function alivelist(Request $request)
     {
-        $alive = Cache::remember('ALIVE_LIST', 60, function () {
-            $userService = new UserService();
-            $users = $userService->getDeviceLimitedUsers();
-
-            if ($users->isEmpty()) {
-                return [];
-            }
-
-            $keys = [];
-            $idMap = [];
-            foreach ($users as $user) {
-                $key = 'ALIVE_IP_USER_' . $user->id;
-                $keys[] = $key;
-                $idMap[$key] = $user->id;
-            }
-
-            $results = Cache::many($keys);
-            $alive = [];
-            foreach ($results as $key => $data) {
-                if (is_array($data) && isset($data['alive_ip'])) {
-                    $alive[$idMap[$key]] = $data['alive_ip'];
-                }
-            }
-            return $alive;
-        });
+        $ids = (new UserService())->getDeviceLimitedUsers()->pluck('id')->all();
+        $alive = [];
+        foreach (OnlineDeviceService::forUsers($ids) as $id => $state) {
+            if ($state['count'] > 0) $alive[$id] = $state['count'];
+        }
         return response()->json(['alive' => (object)$alive]);
     }
 
     // 后端提交在线数据
     public function alive(Request $request)
     {
-        $data = $request->json()->all();
-        if (empty($data)) {
-            $data = $request->request->all();
+        $json = $request->isJson();
+        $data = $json ? json_decode($request->getContent(), true) : $request->request->all();
+        $valid = (!$json || json_last_error() === JSON_ERROR_NONE) && is_array($data);
+        // Reject the entire report before an invalid row can clear other users.
+        if ($valid) foreach ($data as $uid => $ips) {
+            if (!ctype_digit((string) $uid) || filter_var($uid, FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]) === false || !is_array($ips)) {
+                $valid = false;
+                break;
+            }
+            foreach ($ips as $ip) {
+                if (!is_string($ip) || !filter_var(explode('_', $ip, 2)[0], FILTER_VALIDATE_IP)) {
+                    $valid = false;
+                    break 2;
+                }
+            }
         }
-        if (empty($data)) {
-            return response([
-                'data' => true
-            ]);
-        }
-        if (!is_array($data)) {
+        if (!$valid) {
             return response([
                 'error' => 'Invalid online data format'
             ], 400);
         }
-        $updateAt = time();
-        $connectionLogInterval = $this->getConnectionLogInterval();
-
-        $cacheKeys = [];
-        $keyMap = [];
-        foreach ($data as $uid => $_) {
-            if (!is_numeric($uid)) continue;
-            $key = 'ALIVE_IP_USER_' . $uid;
-            $cacheKeys[] = $key;
-            $keyMap[$uid] = $key;
-        }
-
-        if (empty($cacheKeys)) {
-            return response([
-                'data' => true
-            ]);
-        }
-
-        $cachedData = Cache::many($cacheKeys);
-        $updates = [];
-
-        foreach ($data as $uid => $ips) {
-            if (!is_numeric($uid) || !is_array($ips)) {
-                continue; // 跳过无效数据
-            }
-            $key = $keyMap[$uid];
-            $ips_array = $cachedData[$key] ?? [];
-
-            // 更新节点数据
-            $ips_array[$this->nodeType . $this->nodeId] = ['aliveips' => $ips, 'lastupdateAt' => $updateAt];
-
-            $seen = [];
-            foreach ($ips as $ipNodeId) {
-                $ip = explode('_', (string) $ipNodeId)[0] ?? '';
-                if (!$ip || isset($seen[$ip])) {
-                    continue;
-                }
-                $seen[$ip] = true;
-                UserOnlineSnapshot::query()->updateOrCreate(
-                    [
-                        'user_id' => (int) $uid,
-                        'source' => 'alive',
-                    ],
-                    [
-                        'ip' => $ip,
-                        'node' => $this->nodeType . $this->nodeId,
-                        'online_at' => $updateAt,
-                    ]
-                );
-
-                $connectionLogThrottleKey = sprintf(
-                    'USER_CONNECTION_LOG:%d:%s:%s',
-                    (int) $uid,
-                    md5($ip),
-                    $this->nodeType . $this->nodeId
-                );
-                if (!Cache::has($connectionLogThrottleKey)) {
-                    UserConnectionLog::query()->create([
-                        'user_id' => (int) $uid,
-                        'ip' => $ip,
-                        'node' => $this->nodeType . $this->nodeId,
-                        'source' => 'alive',
-                        'connected_at' => $updateAt,
-                    ]);
-                    Cache::put($connectionLogThrottleKey, 1, $connectionLogInterval);
-                }
-            }
-
-            // 清理过期数据
-            foreach ($ips_array as $nodetypeid => $oldips) {
-                if ($nodetypeid !== 'alive_ip' && is_array($oldips) && ($updateAt - ($oldips['lastupdateAt'] ?? 0) > 100)) {
-                    unset($ips_array[$nodetypeid]);
-                }
-            }
-
-            // 计算活跃IP数量
-            $count = 0;
-            if (config('v2board.device_limit_mode', 0) == 1) {
-                $ipmap = [];
-                foreach ($ips_array as $nodetypeid => $newdata) {
-                    if ($nodetypeid !== 'alive_ip' && is_array($newdata) && isset($newdata['aliveips'])) {
-                        foreach ($newdata['aliveips'] as $ip_NodeId) {
-                            $ip = explode("_", $ip_NodeId)[0];
-                            $ipmap[$ip] = 1;
-                        }
-                    }
-                }
-                $count = count($ipmap);
-            } else {
-                foreach ($ips_array as $nodetypeid => $newdata) {
-                    if ($nodetypeid !== 'alive_ip' && is_array($newdata) && isset($newdata['aliveips'])) {
-                        $count += count($newdata['aliveips']);
-                    }
-                }
-            }
-            $ips_array['alive_ip'] = $count;
-
-            $updates[$key] = $ips_array;
-        }
-
-        // 批量更新缓存
-        foreach ($updates as $key => $value) {
-            Cache::put($key, $value, 120);
-        }
+        (new OnlineDeviceService())->replace($this->nodeType, (int) $this->nodeId, $data, $this->getConnectionLogInterval());
 
         return response([
             'data' => true

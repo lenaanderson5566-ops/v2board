@@ -1,0 +1,29 @@
+.configuration-updates-back { display:inline-flex; align-items:center; gap:6px; margin-block-end:20px; }
+.configuration-updates-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block-end:16px; }
+.configuration-updates-toolbar p { margin:0; font-size:13px; line-height:1.65; }
+.configuration-updates-toolbar button { flex-shrink:0; }
+.configuration-updates-table { width:100%; border-collapse:collapse; table-layout:fixed; text-align:start; }
+.configuration-updates-table th { font-size:12px; color:var(--text-secondary); font-weight:500; }
+.configuration-updates-table th,.configuration-updates-table td { padding:14px 12px; border-block-end:1px solid var(--border); text-align:start; vertical-align:top; overflow-wrap:anywhere; }
+.configuration-updates-table th:first-child,.configuration-updates-table td:first-child { padding-inline-start:0; }
+.configuration-updates-table td { font-size:13px; line-height:1.6; }
+.configuration-updates-table small { display:block; margin-block-start:4px; color:var(--text-secondary); }
+.configuration-request-status { display:inline-block; justify-self:start; padding:2px 8px; border-radius:6px; background:var(--surface-soft); font-size:12px; }
+.configuration-request-status.success { color:var(--success); }
+.configuration-request-status.failed { color:var(--danger); }
+.configuration-request-details { margin-block-start:6px; }
+.configuration-request-details summary { cursor:pointer; color:var(--text-secondary); font-size:12px; }
+.configuration-request-details p { margin:8px 0 0; color:var(--text-secondary); }
+.configuration-updates-empty { padding:32px 0; text-align:center; color:var(--text-secondary); }
+.configuration-updates-location { margin:16px 0 0; font-size:12px; line-height:1.6; }
+.configuration-updates-recovery { margin-block-start:16px; }
+@media(max-width:800px) {
+    .configuration-updates-toolbar { align-items:flex-start; }
+    .configuration-updates-table,.configuration-updates-table tbody { display:block; }
+    .configuration-updates .configuration-updates-table thead { display:table-header-group; position:absolute; width:1px; height:1px; padding:0; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; }
+    .configuration-updates .configuration-updates-table tr,.configuration-updates .configuration-updates-table tr:last-child { display:block; padding:12px 0; border:0; border-block-start:1px solid var(--border); }
+    .configuration-updates .configuration-updates-table td { display:grid; grid-template-columns:minmax(78px,30%) minmax(0,1fr); align-items:start; gap:4px 12px; padding:7px 0; border:0; }
+    .configuration-updates .configuration-updates-table td[data-label]::before { content:attr(data-label); grid-column:1; grid-row:1 / span 3; color:var(--text-secondary); font-size:12px; }
+    .configuration-updates-table td > * { grid-column:2; min-width:0; }
+    .configuration-updates .pager { flex-wrap:wrap; gap:12px; }
+}

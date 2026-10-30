@@ -1,0 +1,67 @@
+body[data-console="admin"] .admin-protocol-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 1px 7px;
+    border: 1px solid var(--protocol-border, #cbd5e1);
+    border-radius: 4px;
+    background: var(--protocol-background, #f1f5f9);
+    color: var(--protocol-text, #475569);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.5;
+    vertical-align: middle;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="shadowsocks"] {
+    --protocol-background: #ecfeff;
+    --protocol-border: #a5f3fc;
+    --protocol-text: #0e7490;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="vmess"] {
+    --protocol-background: #eff6ff;
+    --protocol-border: #bfdbfe;
+    --protocol-text: #1d4ed8;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="vless"] {
+    --protocol-background: #eef2ff;
+    --protocol-border: #c7d2fe;
+    --protocol-text: #4338ca;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="trojan"] {
+    --protocol-background: #fff1f2;
+    --protocol-border: #fecdd3;
+    --protocol-text: #be123c;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="hysteria"] {
+    --protocol-background: #fffbeb;
+    --protocol-border: #fde68a;
+    --protocol-text: #92400e;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="hysteria2"] {
+    --protocol-background: #fff7ed;
+    --protocol-border: #fed7aa;
+    --protocol-text: #9a3412;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="tuic"] {
+    --protocol-background: #f5f3ff;
+    --protocol-border: #ddd6fe;
+    --protocol-text: #6d28d9;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="anytls"] {
+    --protocol-background: #f0fdfa;
+    --protocol-border: #99f6e4;
+    --protocol-text: #0f766e;
+}
+body[data-console="admin"] .admin-protocol-badge[data-protocol="naive"] {
+    --protocol-background: #fdf4ff;
+    --protocol-border: #f5d0fe;
+    --protocol-text: #a21caf;
+}
+@media (forced-colors: active) {
+    body[data-console="admin"] .admin-protocol-badge {
+        border-color: CanvasText;
+        background: Canvas;
+        color: CanvasText;
+    }
+}

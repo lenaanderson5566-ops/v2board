@@ -20,9 +20,9 @@ vi.mock("./UserStatusGate",()=>({UserStatusGate:({children}:any)=>children}));
 vi.mock("./AnnouncementCenter",()=>({AnnouncementCenter:()=>{if(mocks.brokenHeader)throw Error("Header chunk unavailable");return null;}}));
 vi.mock("./InviteCampaign",()=>({InviteCampaign:()=>null}));
 vi.mock("./AccountMenu",()=>({AccountMenu:()=>null}));
-vi.mock("./user-entry",()=>({default:({current}:any)=> {
+vi.mock("./user-entry",()=>({default:({current,path}:any)=> {
     if (mocks.brokenRoute === current) throw Error("Technical render failure");
-    return <><p>Protected workspace</p><input aria-label="Page action" /></>;
+    return <><p>Protected workspace</p><output data-testid="workspace-path">{path}</output><input aria-label="Page action" /></>;
 }}));
 import App from "./app";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
@@ -80,6 +80,8 @@ it("does not restore an expired session from an earlier account request",async()
 });
 it.each([
     ["#/subscribe?token=private", "subscribe"],
+    ["#/security/configuration-updates?token=private&userId=999", "security/configuration-updates"],
+    ["#/security/configuration-updates/other?token=private", ""],
     ["#/knowledge?verify=private", "knowledge"],
     ["#/ticket/order/resume_123?requestKey=private", "ticket/order/resume_123"],
     ["#/plan/1?period=year_price&couponId=7&replace=old_order&pay=true", "plan/1?period=year_price&couponId=7&replace=old_order"],
@@ -188,6 +190,14 @@ it("provides a skip action without changing the application route",async()=>{
     fireEvent.click(screen.getByRole("link",{name:"skip"}));
     expect(location.hash).toBe("#/dashboard");
     expect(document.activeElement).toBe(screen.getByRole("main"));
+});
+it("preserves the configuration-history security route for expired subscribers", async () => {
+    history.replaceState(null, "", "#/security/configuration-updates");
+    mocks.read.mockResolvedValue({ data: { id: 42, language: "en-US", account_status: { state: "expired" } } });
+    render(<App />);
+    await screen.findByText("Protected workspace");
+    expect(screen.getByTestId("workspace-path").textContent).toBe("security/configuration-updates");
+    expect(mocks.read.mock.calls.some(([path]) => path.includes("access-records"))).toBe(false);
 });
 it("moves focus and updates the title on page navigation without interrupting same-page payment queries",async()=>{
     signedIn();

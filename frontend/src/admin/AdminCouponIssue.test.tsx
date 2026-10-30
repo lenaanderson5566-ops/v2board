@@ -19,7 +19,7 @@ vi.mock("../shared/ui", () => ({
         reload: vi.fn(),
         data: path.startsWith("coupon/")
             ? [{ id: 7, name: "Ten percent", type: 2, value: 10, show: 1 }]
-            : [],
+            : [{ id: 7, name: "Basic" }],
     }),
     State: ({ children }: { children: React.ReactNode }) => children,
     Modal: ({ children }: { children: React.ReactNode }) => (
@@ -28,13 +28,13 @@ vi.mock("../shared/ui", () => ({
 }));
 vi.mock("./UserFilters", () => ({
     UserFilters: ({ onApply }: { onApply: (filters: unknown[]) => void }) => (
-        <button
+        <><button
             onClick={() =>
                 onApply([{ key: "banned", condition: "=", value: "0" }])
             }
         >
             应用测试筛选
-        </button>
+        </button><button onClick={() => onApply([{ key: "plan_id", condition: "=", value: "7" }])}>应用套餐筛选</button></>
     ),
 }));
 import { AdminCouponIssue } from "./AdminCouponIssue";
@@ -138,4 +138,16 @@ it("releases an abandoned preview before allowing changes to its frozen criteria
         id: 5,
     });
     expect(screen.queryByText("发放预览 · Ten percent")).toBeNull();
+});
+it("shows the plan name in coupon audience summaries while preserving the ID payload", async () => {
+    render(<AdminCouponIssue onQueued={vi.fn()} />);
+    fireEvent.change(screen.getByLabelText("优惠券"), { target: { value: "7" } });
+    fireEvent.click(screen.getByText("设置用户筛选"));
+    fireEvent.click(screen.getByText("应用套餐筛选"));
+    expect(screen.getByText(/套餐 = Basic/)).toBeTruthy();
+    fireEvent.click(screen.getByText("预览发放范围"));
+    await screen.findByText("发放预览 · Ten percent");
+    expect(api.request).toHaveBeenCalledWith("coupon-campaign/preview", {
+        coupon_id: 7, scope: "filtered", filter: [{ key: "plan_id", condition: "=", value: "7" }],
+    });
 });

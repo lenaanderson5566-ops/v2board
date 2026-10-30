@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import i18n from "../shared/i18n";
+import { Suspense } from "react";
 import { beforeEach, afterEach, expect, it, vi } from "vitest";
 import {
     render,
@@ -9,15 +10,26 @@ import {
     waitFor,
     act,
 } from "@testing-library/react";
+const startup = vi.hoisted(() => ({ paths: [] as string[] }));
 vi.mock("../shared/api", () => ({ boot: { title: "Test" } }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("../shared/ui", () => ({
     Modal: ({ children, close }: any) => <div role="dialog"><button onClick={close}>关闭</button>{children}</div>,
+    useData: (path: string) => {
+        startup.paths.push(path);
+        return { data: path === "user/info" ? { account_status: { state: "active", is_available: true } }
+            : path === "user/getSubscribe" ? { subscribe_url: "https://example.com/sub?token=test-only" } : [], loading: false, error: "", reload: vi.fn() };
+    },
+    Panel: ({ title, children }: any) => <section><h2>{title}</h2>{children}</section>,
+    State: ({ children }: any) => children,
 }));
+vi.mock("./NodeList", () => ({ NodeList: () => null }));
 import { boot } from "../shared/api";
 import { SubscriptionImport } from "./SubscriptionImport";
+import { Subscribe } from "./SubscribePage";
 const copy = vi.fn();
 beforeEach(async () => {
+    startup.paths = [];
     await i18n.changeLanguage("zh-CN");
     localStorage.clear();
     copy.mockReset();
@@ -28,6 +40,13 @@ beforeEach(async () => {
     });
 });
 afterEach(cleanup);
+it("offers a light configuration-history link below quick start without requesting records", async () => {
+    render(<Suspense fallback={null}><Subscribe /></Suspense>);
+    const history = await screen.findByRole("link", { name: "查看配置更新记录" });
+    expect(history.getAttribute("href")).toBe("#/security/configuration-updates");
+    expect(startup.paths.some(path => path.includes("access-records"))).toBe(false);
+    expect(screen.queryByRole("heading", { name: "配置更新记录" })).toBeNull();
+});
 it("lets users switch systems and copies the correct client format without opening an app", async () => {
     render(
         <SubscriptionImport

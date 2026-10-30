@@ -1,4 +1,5 @@
 import { AdminRowMenu } from "./AdminRowMenu";
+import { ProtocolBadge } from "./ProtocolBadge";
 import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
 import { serviceLineFields,nodeLineFields,linkNodeLocation } from "./node-line-fields";
 import { AdminChoiceGroup } from "./AdminChoices";
@@ -366,7 +367,7 @@ function NodesContent({
             (r) =>
                 `${1 + (connectionCounts.get(`${r.type}:${r.service_id || r.id}`) || 0)} 个节点`,
         ],
-        ["protocol", "协议"],
+        ["protocol", "协议", (r) => <ProtocolBadge protocol={r.protocol} />],
         [
             "runtime_status",
             "运行状态",
@@ -435,8 +436,8 @@ function NodesContent({
         ],
         [
             "online",
-            "服务在线用户",
-            (r) => <span title={r.online_stale ? "上报已过期，当前在线人数未知" : r.service_id ? "所属代理服务的总人数，各共享线路不能相加；按最近流量上报周期统计活跃用户" : "按最近流量上报周期统计活跃用户"}>
+            "服务活跃用户",
+            (r) => <span title={r.online_stale ? "流量上报已过期，当前活跃人数未知" : r.service_id ? "所属代理服务最近流量上报周期的活跃人数，各共享线路不能相加" : "最近流量上报周期的活跃人数"}>
                 {r.service_id ? `${r.online ?? "—"}（共享）` : (r.online ?? "—")}
             </span>,
         ],

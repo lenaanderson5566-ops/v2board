@@ -73,6 +73,14 @@ function fill(password = "new-password", confirmation = password) {
         target: { value: confirmation },
     });
 }
+it("offers configuration history before subscription reset without preloading records", () => {
+    render(<AccountSecurity />);
+    const history = screen.getByRole("link", { name: "查看配置更新记录" });
+    const reset = screen.getByRole("button", { name: "重置订阅链接" });
+    expect(history.getAttribute("href")).toBe("#/security/configuration-updates");
+    expect(history.compareDocumentPosition(reset) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(mocks.request).not.toHaveBeenCalled();
+});
 describe("header controls", () => {
     it("selects a language and closes the menu with focus returned", async () => {
         render(<LanguagePicker />);

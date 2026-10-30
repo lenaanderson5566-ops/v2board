@@ -13,7 +13,6 @@ use App\Services\AuthService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cache;
 
 class UserController extends Controller
 {
@@ -91,27 +90,13 @@ class UserController extends Controller
             $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
         }
         $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
-        $aliveKeys = $res->map(fn($user)=>'ALIVE_IP_USER_'.$user->id)->all();
-        $alive = $aliveKeys ? Cache::many($aliveKeys) : [];
+        $alive = \App\Services\OnlineDeviceService::forUsers($res->pluck('id')->all());
         for ($i = 0; $i < count($res); $i++) {
             if ($plans->has($res[$i]['plan_id'])) $res[$i]['plan_name'] = $plans->get($res[$i]['plan_id']);
             //统计在线设备
-            $countalive = 0;
-            $ips = [];
-            $ips_array = $alive['ALIVE_IP_USER_'.$res[$i]['id']] ?? null;
-            if (is_array($ips_array)) {
-                $countalive = max(0, (int)($ips_array['alive_ip'] ?? 0));
-                foreach($ips_array as $nodetypeid => $data) {
-                    if (is_array($data) && isset($data['aliveips']) && is_array($data['aliveips'])) {
-                        foreach($data['aliveips'] as $ip_NodeId) {
-                            if (!is_string($ip_NodeId)) continue;
-                            $ip = explode("_", $ip_NodeId)[0];
-                            $ips[] = $ip . '_' . $nodetypeid;
-                        }
-                    }
-                }
-            }
-            $res[$i]['alive_ip'] = $countalive;
+            $state = $alive[$res[$i]['id']];
+            $ips = array_map(fn($item) => $item['ip'].'_'.$item['node'], $state['connections']);
+            $res[$i]['alive_ip'] = $state['count'];
             $res[$i]['ips'] = implode(', ', $ips);
             $res[$i]['subscribe_url'] = Helper::getSubscribeUrl($res[$i]['token']);
             $res[$i]->makeHidden('token');

@@ -73,6 +73,7 @@ export function Subscribe() {
                             </a>
                         </div>
                     )}
+                    <p className="pad muted"><a href="#/security/configuration-updates">{tx("查看配置更新记录")}</a></p>
                 </div>
             </Panel>
             <Panel title={tx("可用节点")}>

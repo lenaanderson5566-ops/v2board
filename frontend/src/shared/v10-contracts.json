@@ -1777,6 +1777,20 @@
       "path": "me/account-deletion",
       "method": "GET"
     },
+    "getMeSubscriptionAccessRecords": {
+      "input": {
+        "page": "page",
+        "pageSize": "pageSize"
+      },
+      "output": "array:subscriptionAccessRecord",
+      "role": "user",
+      "status": 200,
+      "raw": false,
+      "bindings": {},
+      "key": "User/SubscriptionAccessController@index",
+      "path": "me/subscription/access-records",
+      "method": "GET"
+    },
     "getSubscriptionsSubscriptionToken": {
       "input": {
         "format": "format",
@@ -2662,6 +2676,7 @@
     "user/getStat": "getMeSummary",
     "user/comm/config": "getMePreferencesOptions",
     "user/stat/getTrafficLog": "getMeTrafficRecords",
+    "user/subscription/access-records": "getMeSubscriptionAccessRecords",
     "client/subscribe": "getSubscriptionsSubscriptionToken",
     "client/app/getConfig": "getSubscriptionsSubscriptionTokenApplicationConfig",
     "client/app/getVersion": "getSubscriptionsSubscriptionTokenApplicationVersion",
@@ -2742,6 +2757,7 @@
     "GET user/getStat": "getMeSummary",
     "GET user/comm/config": "getMePreferencesOptions",
     "GET user/stat/getTrafficLog": "getMeTrafficRecords",
+    "GET user/subscription/access-records": "getMeSubscriptionAccessRecords",
     "GET client/subscribe": "getSubscriptionsSubscriptionToken",
     "GET client/app/getConfig": "getSubscriptionsSubscriptionTokenApplicationConfig",
     "GET client/app/getVersion": "getSubscriptionsSubscriptionTokenApplicationVersion",

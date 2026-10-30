@@ -7,6 +7,7 @@ import { AdminOperationNotice } from "./admin-section";
 import { UserFilters } from "./UserFilters";
 import { userFilterFields, type UserFilter } from "./user-filters";
 import type { CouponCampaign } from "./coupon-campaign";
+import { adminPlanLabel } from "./admin-plan-reference";
 
 type CouponTemplate = {
     id: number;
@@ -167,7 +168,9 @@ export function AdminCouponIssue({ onQueued }: { onQueued: () => void }) {
                                                     "invite_by_email",
                                                 ].includes(filter.key)
                                                     ? "已设置"
-                                                    : String(filter.value)}
+                                                    : filter.key === "plan_id"
+                                                      ? adminPlanLabel({ plan_id: filter.value }, plans, { empty: "无套餐" })
+                                                      : String(filter.value)}
                                             </span>
                                         ))
                                     ) : (
@@ -311,6 +314,8 @@ export function AdminCouponIssue({ onQueued }: { onQueued: () => void }) {
                     <UserFilters
                         initial={filters}
                         plans={plans.data || []}
+                        plansLoading={plans.loading}
+                        plansError={plans.error}
                         onApply={(value) => {
                             setFilters(value);
                             setShowFilters(false);

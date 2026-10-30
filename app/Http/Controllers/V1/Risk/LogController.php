@@ -391,59 +391,44 @@ class LogController extends Controller
 
     public function getOnlineUsers(Request $request)
     {
-        $since = time() - 600;
+        $now = time();
+        $since = $now - \App\Services\OnlineDeviceService::freshWindow();
         $users = User::query()
-            ->where('t', '>=', $since)
-            ->select(['id', 'email', 't'])
-            ->orderBy('t', 'desc')
+            ->whereIn('id', UserOnlineSnapshot::query()->select('user_id')->where('source', 'alive')->where('online_at', '>', $since))
+            ->select(['id', 'email'])
             ->when($request->filled('email'), function ($q) use ($request) {
                 $q->where('email', 'like', '%' . $request->input('email') . '%');
-            })
-            ->cursor();
+            });
 
         $geoIpService = new GeoIpService();
         $rows = [];
-        foreach ($users as $user) {
-            $ipsArray = Cache::get('ALIVE_IP_USER_' . $user->id) ?? [];
-            $onlineIps = [];
-            foreach ($ipsArray as $nodeTypeId => $data) {
-                if (!is_int($data) && isset($data['aliveips']) && is_array($data['aliveips'])) {
-                    foreach ($data['aliveips'] as $ipNodeId) {
-                        $ip = explode('_', (string) $ipNodeId)[0] ?? '';
-                        if ($ip) {
-                            $onlineIps[] = [
-                                'ip' => $ip,
-                                'node' => (string) $nodeTypeId,
-                            ];
-                        }
-                    }
+        $users->chunkById(200, function ($users) use (&$rows, $now, $geoIpService) {
+            $states = \App\Services\OnlineDeviceService::forUsers($users->pluck('id')->all(), $now);
+            foreach ($users as $user) {
+                $state = $states[$user->id];
+                foreach ($state['connections'] as $item) {
+                    $geo = $geoIpService->lookup($item['ip']);
+                    $rows[$user->id . '|' . $item['ip'] . '|' . $item['node']] = [
+                        'user_id' => $user->id,
+                        'email' => $user->email,
+                        'online_ip' => $item['ip'],
+                        'ip' => $item['ip'],
+                        'node' => $item['node'],
+                        'alive_count' => $state['count'],
+                        'online_at' => $item['online_at'],
+                        'country' => $geo['country'] ?? null,
+                        'region' => $geo['region'] ?? null,
+                        'city' => $geo['city'] ?? null,
+                        'asn' => $geo['asn'] ?? null,
+                        'isp' => $geo['isp'] ?? null,
+                    ];
                 }
             }
-
-            if (empty($onlineIps)) {
-                continue;
-            }
-
-            foreach ($onlineIps as $item) {
-                $geo = $geoIpService->lookup($item['ip']);
-                $rows[$user->id . '|' . $item['ip'] . '|' . $item['node']] = [
-                    'user_id' => $user->id,
-                    'email' => $user->email,
-                    'online_ip' => $item['ip'],
-                    'ip' => $item['ip'],
-                    'node' => $item['node'],
-                    'alive_count' => (int) ($ipsArray['alive_ip'] ?? count($onlineIps)),
-                    'online_at' => (int) $user->t,
-                    'country' => $geo['country'] ?? null,
-                    'region' => $geo['region'] ?? null,
-                    'city' => $geo['city'] ?? null,
-                    'asn' => $geo['asn'] ?? null,
-                    'isp' => $geo['isp'] ?? null,
-                ];
-            }
-        }
+        });
 
         $rows = array_values($rows);
+        usort($rows, fn($a, $b) => $b['online_at'] <=> $a['online_at'] ?: $a['user_id'] <=> $b['user_id']
+            ?: strcmp($a['node'], $b['node']) ?: strcmp($a['ip'], $b['ip']));
         $total = count($rows);
         $page = max(1, (int) $request->input('current', 1));
         $size = min(200, max(1, (int) $request->input('page_size', 20)));

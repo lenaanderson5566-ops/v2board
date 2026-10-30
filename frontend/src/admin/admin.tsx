@@ -47,6 +47,7 @@ import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
 import { QueueDetails, SortButton } from "./admin-tools";
 import { adminUserLabel } from "./admin-user-label";
+import { adminPlanLabel, adminPlanOptions, type AdminPlanDirectory } from "./admin-plan-reference";
 import { readListView, saveListView } from "./list-view-state";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
 import { RouteRuleEditor } from "./RouteRuleEditor";
@@ -293,7 +294,9 @@ export const resources: Record<string, Resource> = {
             [
                 "device_limit",
                 "设备数",
-                (r) => `${r.alive_ip || 0} / ${r.device_limit || "不限"}`,
+                (r) => <span title="按有效节点上报的来源 IP 估算，受统计模式及流量阈值影响，不等于实际设备数。">
+                    {r.alive_ip || 0} / {r.device_limit || "不限"}
+                </span>,
             ],
             ["expired_at", "到期时间", (r) => date(r.expired_at)],
             ["currency", "账号币种", (r) => r.currency || "CNY"],
@@ -315,7 +318,7 @@ export const resources: Record<string, Resource> = {
         fields: [
             field("email", "邮箱", "text", true),
             field("password", "新密码（留空不修改）", "password"),
-            field("plan_id", "套餐 ID", "number"),
+            field("plan_id", "套餐", "number"),
             field("transfer_enable", "流量 (GB)", "number"),
             field("u", "已用上传（GB）", "number"),
             field("d", "已用下载（GB）", "number"),
@@ -375,7 +378,7 @@ export const resources: Record<string, Resource> = {
                         Number(r.type)
                     ] || r.type,
             ],
-            ["plan_name", "订阅计划"],
+            ["plan_name", "套餐"],
             ["payment_display", "支付方式"],
             [
                 "period",
@@ -394,7 +397,6 @@ export const resources: Record<string, Resource> = {
                         }) as Row
                     )[r.period] || r.period,
             ],
-            ["plan_id", "套餐 ID"],
             [
                 "credit_bytes",
                 "额度数量",
@@ -515,7 +517,7 @@ export const resources: Record<string, Resource> = {
             field("limit_use", "剩余可领取库存（留空不限）", "number"),
             field("started_at", "开始时间", "datetime-local", true),
             field("ended_at", "截止时间", "datetime-local", true),
-            field("limit_plan_ids", "限制套餐 ID 数组", "json"),
+            field("limit_plan_ids", "适用套餐", "json"),
             field("limit_period", "限制周期数组", "json"),
         ],
         defaults: { type: 2, public_claim: 0 },
@@ -573,7 +575,7 @@ export const resources: Record<string, Resource> = {
                     ["5", "开通套餐"],
                 ],
             },
-            field("plan_id", "套餐 ID", "number"),
+            field("plan_id", "套餐", "number"),
             field("started_at", "开始时间", "datetime-local", true),
             field("ended_at", "到期时间", "datetime-local", true),
             field("limit_use", "可用次数", "number"),
@@ -884,9 +886,11 @@ export function ResourcePage({
     tableSort,
     onTableSort,
     hiddenColumns = [],
+    planDirectory,
 }: {
     resource: Resource;
     hiddenColumns?: string[];
+    planDirectory?: AdminPlanDirectory;
     queryParams?: Row;
     toolbar?: ReactNode;
     extraActions?: (row: Row, context?: boolean, secondary?: ReactNode) => ReactNode;
@@ -945,13 +949,16 @@ export function ResourcePage({
             ? admin("server/group/fetch")
             : "",
     );
-    const plans = useData<Row[]>(
-        resource.fields.some((f) =>
-            ["plan_id", "limit_plan_ids"].includes(f.key),
-        )
-            ? admin("plan/fetch")
-            : "",
+    const [editing, setEditing] = useState<Row | null>(null);
+    const needsPlanDirectory = resource.fields.some(field =>
+        ["plan_id", "limit_plan_ids"].includes(field.key),
+    ) || resource.columns.some(([key]) =>
+        ["plan_id", "plan_name", "limit_plan_ids"].includes(key),
     );
+    const fetchedPlans = useData<Row[]>(
+        !planDirectory && needsPlanDirectory ? admin("plan/fetch") : "",
+    );
+    const plans = planDirectory || fetchedPlans;
     const categories = useData<string[]>(
         resource === resources.knowledge ? admin("knowledge/getCategory") : "",
     );
@@ -979,17 +986,18 @@ export function ResourcePage({
                         hint:
                             resource === resources.users
                                 ? "选择套餐会同步流量、设备和速率限制；到期时间与余额保持当前输入。"
-                                : !rows(plans.data).length
-                                  ? "请先到套餐管理创建套餐。"
-                                  : undefined,
+                                : plans.loading
+                                  ? "正在加载套餐目录…"
+                                  : plans.error
+                                    ? "套餐目录加载失败，已保留原套餐选择，可重试加载。"
+                                    : !rows(plans.data).length
+                                      ? "请先到套餐管理创建套餐。"
+                                      : undefined,
                         type: "select" as const,
                         nullable: true,
                         options: [
                             ["", "不指定套餐"] as [string, string],
-                            ...rows(plans.data).map(
-                                (r) =>
-                                    [String(r.id), r.name] as [string, string],
-                            ),
+                            ...adminPlanOptions(rows(plans.data), editing?.plan_id, plans),
                         ],
                     }
                   : field.key === "limit_plan_ids"
@@ -997,9 +1005,7 @@ export function ResourcePage({
                           ...field,
                           label: "适用套餐（不选择表示全部）",
                           type: "multiselect" as const,
-                          options: rows(plans.data).map(
-                              (r) => [String(r.id), r.name] as [string, string],
-                          ),
+                          options: adminPlanOptions(rows(plans.data), editing?.limit_plan_ids, plans),
                       }
                     : field.key === "limit_period"
                       ? {
@@ -1027,7 +1033,6 @@ export function ResourcePage({
         [search, setSearch] = useState(() =>
             typeof savedView.search === "string" ? savedView.search : "",
         ),
-        [editing, setEditing] = useState<Row | null>(null),
         [error, setError] = useState("");
     const [routeUsage, setRouteUsage] = useState("");
     const [routeFilter, setRouteFilter] = useState("");
@@ -1246,10 +1251,10 @@ export function ResourcePage({
                 )}
                 {resource === resources.online && (
                     <p className="pad muted">
-                        近 10 分钟活跃且有节点缓存记录；不是即时连接状态。用户{" "}
+                        基于节点有效上报窗口内的记录，受流量阈值影响。用户{" "}
                         {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} ·
-                        连接记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}
-                        。节点未上报时可能不显示。
+                        上报记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}
+                        。按用户、节点和 IP 展示，不代表实时连接数或实际设备数；节点未上报时可能不显示。
                     </p>
                 )}
                 {resource === resources["access-logs-risk"] && (
@@ -1267,6 +1272,12 @@ export function ResourcePage({
                             .map(([key, label, render]) => {
                                 if (resource === resources.users && key === "id" && onUserDetails)
                                     return [key, label, (r: Row) => <button className="link" onClick={() => onUserDetails(r)}>{adminUserLabel({user_id:r.id,email:r.email})}</button>] as [string,string,(r:Row)=>ReactNode];
+                                if (key === "plan_id" || key === "plan_name")
+                                    return [key, label, (r: Row) => adminPlanLabel(r, plans)] as [string, string, (r: Row) => ReactNode];
+                                if (key === "limit_plan_ids")
+                                    return [key, label, (r: Row) => (Array.isArray(r[key]) && r[key].length)
+                                        ? r[key].map((id: unknown) => adminPlanLabel({ plan_id: id }, plans)).join("、")
+                                        : "全部套餐"] as [string, string, (r: Row) => ReactNode];
                                 if (key === "group_id" && !render)
                                     return [
                                         key,
@@ -1548,13 +1559,16 @@ export function ResourcePage({
                         </p>
                     )}
                     <State
-                        loading={groups.loading || plans.loading}
-                        error={groups.error || plans.error}
+                        loading={groups.loading}
+                        error={groups.error}
                         retry={() => {
                             groups.reload();
-                            plans.reload();
+                            plans.reload?.();
                         }}
                     >
+                        {plans.error && resource.fields.some(field => ["plan_id", "limit_plan_ids"].includes(field.key)) && (
+                            <div className="alert" role="alert">套餐目录加载失败，已保留原套餐选择。<button type="button" onClick={() => plans.reload?.()}>重试加载套餐</button></div>
+                        )}
                         {resource === resources.notices ? (
                             <ContentComposer
                                 kind="notice"
@@ -1702,9 +1716,9 @@ export function Translations() {
                     aria-label="选择套餐"
                 >
                     <option value="">选择套餐</option>
-                    {plans.data?.map((p) => (
-                        <option key={p.id} value={p.id}>
-                            {p.name}
+                    {adminPlanOptions(rows(plans.data), plan, plans).map(([id, name]) => (
+                        <option key={id} value={id}>
+                            {name}
                         </option>
                     ))}
                 </select>

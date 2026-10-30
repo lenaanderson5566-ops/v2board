@@ -42,6 +42,7 @@ import { NodeDnsObservation } from "./NodeDnsObservation";
 import { NodeDeployment } from "./NodeDeployment";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeTopology } from "./NodeTopology";
+import { ProtocolBadge } from "./ProtocolBadge";
 import { EditorFieldContext } from "../shared/ui";
 import { adminEditorField } from "./admin-editor-fields";
 import { buildRouteConfig, defaultRouteForm, readRouteForm } from "./route-form";
@@ -57,6 +58,18 @@ afterEach(() => {
     history.replaceState(null,"",location.pathname);
 });
 
+it("keeps protocol labels readable with stable badges and neutral unknown fallbacks", () => {
+    const view = render(<ProtocolBadge protocol="VLESS" />);
+    expect(screen.getByText("VLESS").className).toBe("admin-protocol-badge");
+    expect(screen.getByText("VLESS").getAttribute("data-protocol")).toBe("vless");
+    view.rerender(<ProtocolBadge protocol="future-protocol" />);
+    expect(screen.getByText("future-protocol").getAttribute("data-protocol")).toBe("unknown");
+    view.rerender(<ProtocolBadge protocol={null} />);
+    expect(screen.getByText("—").getAttribute("data-protocol")).toBe("unknown");
+    view.rerender(<ProtocolBadge protocol="" fallback="协议待配置" />);
+    expect(screen.getByText("协议待配置").getAttribute("data-protocol")).toBe("unknown");
+});
+
 it("previews a shared TLS identity independently of the relay hostname", () => {
     const service={ name: "Japan", protocol:"anytls", server_port:9443, tls:1, tls_settings:{server_name:"identity.example.test"} };
     const view=render(<NodeTopology service={service} entry={{domain:"entry.example.test"}} origin={{domain:"origin.example.test"}} port={443} shared={3} />);
@@ -65,6 +78,7 @@ it("previews a shared TLS identity independently of the relay hostname", () => {
     expect(screen.getByText("origin.example.test:9443")).toBeTruthy();
     expect(screen.getByText(/identity.example.test/)).toBeTruthy();
     expect(screen.getByText(/关联 3 条线路/)).toBeTruthy();
+    expect(screen.getByText("anytls").className).toBe("admin-protocol-badge");
     view.rerender(<NodeTopology service={service} origin={{domain:"origin.example.test"}} port={9443} />);
     expect(screen.queryByText("入口转发")).toBeNull();
     expect(screen.getByText("直连地址")).toBeTruthy();
@@ -1050,6 +1064,8 @@ function responsibilityFixture(){
 }
 it("uses one node list with line, shared service and deployment sections",async()=>{
     responsibilityFixture();render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
+    expect(screen.getByText("anytls").className).toBe("admin-protocol-badge");
+    expect(screen.getByText("vless").getAttribute("data-protocol")).toBe("vless");
     expect(screen.getAllByRole("switch")).toHaveLength(3);
     expect(screen.getAllByRole("button",{name:"编辑"})).toHaveLength(3);
     expect(screen.getByRole("columnheader",{name:"运行状态"})).toBeTruthy();
@@ -1078,7 +1094,7 @@ it("preserves node column choices in the unified list",async()=>{
     render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
     expect(screen.queryByRole("columnheader",{name:"权限组"})).toBeNull();
     expect(localStorage.getItem("admin.nodes.columns.v1")).toBe(JSON.stringify(["name","show"]));
-    expect(screen.getByRole("columnheader",{name:"服务在线用户"})).toBeTruthy();
+    expect(screen.getByRole("columnheader",{name:"服务活跃用户"})).toBeTruthy();
     expect(screen.getByRole("columnheader",{name:"最近流量上报"})).toBeTruthy();
     expect(JSON.parse(localStorage.getItem("admin.nodes.columns.v2")!)).toEqual(["name","show","online","last_push_at"]);
 });
@@ -1404,7 +1420,7 @@ it("removes completed deployment steps and keeps configuration failures actionab
 it("shows operational columns by default with shared service counts",async()=>{
     responsibilityFixture();render(<Nodes/>);
     const shared=await screen.findByRole("button",{name:"Shared route"});
-    expect(screen.getByRole("columnheader",{name:"服务在线用户"})).toBeTruthy();
+    expect(screen.getByRole("columnheader",{name:"服务活跃用户"})).toBeTruthy();
     expect(screen.getByRole("columnheader",{name:"最近流量上报"})).toBeTruthy();
     expect(within(shared.closest("tr")!).getByText("5（共享）")).toBeTruthy();
     expect(within(shared.closest("tr")!).getByText(/2025/)).toBeTruthy();
@@ -1412,7 +1428,7 @@ it("shows operational columns by default with shared service counts",async()=>{
 it("respects subsequent choices to hide the restored operational columns",async()=>{
     responsibilityFixture();localStorage.setItem("admin.nodes.columns.v2",JSON.stringify(["name","show"]));
     render(<Nodes/>);await screen.findByRole("button",{name:"Shared route"});
-    expect(screen.queryByRole("columnheader",{name:"服务在线用户"})).toBeNull();
+    expect(screen.queryByRole("columnheader",{name:"服务活跃用户"})).toBeNull();
     expect(screen.queryByRole("columnheader",{name:"最近流量上报"})).toBeNull();
 });
 

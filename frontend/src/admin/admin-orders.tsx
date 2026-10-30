@@ -3,6 +3,7 @@ import { readListView, saveListView } from "./list-view-state";
 import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
 import { adminStatusCell } from "../shared/admin-status";
 import { adminUserLabel } from "./admin-user-label";
+import { adminPlanLabel, type AdminPlanDirectory } from "./admin-plan-reference";
 import { useEffect, useState } from "react";
 import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
@@ -140,6 +141,7 @@ export function OrdersPage({
                 resource={
                     commissionMode ? commissionResource : resources.orders
                 }
+                planDirectory={plans}
                 hiddenColumns={
                     commissionMode
                         ? []
@@ -519,6 +521,7 @@ export function OrdersPage({
                     <OrderDetail
                         row={selected}
                         commissionMode={commissionMode}
+                        plans={plans}
                     />
                 </Modal>
             )}
@@ -543,6 +546,7 @@ export function OrdersPage({
                 <Modal title="佣金审核" guardChanges close={() => setCommission(null)}>
                     <CommissionReview
                         row={commission}
+                        plans={plans}
                         saved={() => {
                             setCommission(null);
                             setRevision((v) => v + 1);
@@ -556,9 +560,11 @@ export function OrdersPage({
 function OrderDetail({
     row,
     commissionMode,
+    plans,
 }: {
     row: Row;
     commissionMode: boolean;
+    plans: AdminPlanDirectory;
 }) {
     const d = useData<Row>(admin("order/detail"), { id: row.id });
     const r = d.data;
@@ -572,7 +578,7 @@ function OrderDetail({
                             {[
                                 ["trade_no", "订单号"],
                                 ["user_id", "用户（ID / 邮箱）"],
-                                ["plan_id", "套餐 ID"],
+                                ["plan_id", "套餐"],
                                 ["period", "周期"],
                                 ["callback_no", "回调单号"],
                                 ["payment_display", "支付方式"],
@@ -619,6 +625,8 @@ function OrderDetail({
                                                   ? money(r[key], r.currency)
                                                   : key === "user_id"
                                                     ? adminUserLabel(r)
+                                                    : key === "plan_id"
+                                                      ? adminPlanLabel(r, plans)
                                                     : adminStatusCell(
                                                           key,
                                                           label,
@@ -684,7 +692,7 @@ function OrderDetail({
     );
 }
 
-function CommissionReview({ row, saved }: { row: Row; saved: () => void }) {
+function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; plans: AdminPlanDirectory }) {
     const detail = useData<Row>(admin("order/detail"), { id: row.id });
     const order = detail.data;
     const review = order?.invitation_review;
@@ -732,7 +740,7 @@ function CommissionReview({ row, saved }: { row: Row; saved: () => void }) {
                             </div>
                             <div>
                                 <dt>套餐（当前名称）</dt>
-                                <dd>{order.plan_name || "套餐不可用"}</dd>
+                                <dd>{adminPlanLabel(order, plans)}</dd>
                             </div>
                             <div>
                                 <dt>订单状态</dt>

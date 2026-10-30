@@ -153,3 +153,16 @@ it("rejects retired coupon code calls instead of silently placing undiscounted o
     }
     expect(JSON.parse(v10Request("user/order/save", {plan_id:1, period:"month_price", wallet_coupon_id:7}).body!)).toMatchObject({walletCouponId:7});
 });
+it('reads private configuration request history through V10 without converting ISO times or forwarding owner selectors', () => {
+    const wire = v10Request('user/subscription/access-records?page=2&pageSize=20&userId=999&token=do-not-forward');
+    expect(wire.url).toBe('/api/v10/me/subscription/access-records?page=2&pageSize=20');
+    expect(wire.method).toBe('GET');
+    expect(wire.body).toBeUndefined();
+    const record = {
+        id: 12, requestedAt: '2026-10-30T12:00:00Z', clientName: 'sing-box', clientVersion: '1.14.3',
+        status: 'success', reason: null, ip: '192.0.2.***', location: null,
+    };
+    const meta = {pagination: {page: 2, pageSize: 20, total: 21, totalPages: 2}, retentionDays: 30};
+    expect(wire.decode({data: [record], meta})).toEqual({data: [record], total: 21, meta});
+    expect(openapi.paths['/me/subscription/access-records'].get.security).toEqual([{bearerAuth: []}, {browserUserCookie: []}]);
+});

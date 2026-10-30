@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { dateTimeInput } from "../shared/timezone";
 import type { Row } from "../shared/api";
+import { adminPlanOptions } from "./admin-plan-reference";
 import {
     userFilterFields,
     normalizeUserFilters,
@@ -10,10 +11,14 @@ import {
 export function UserFilters({
     initial,
     plans,
+    plansLoading = false,
+    plansError = "",
     onApply,
 }: {
     initial: UserFilter[];
     plans: Row[];
+    plansLoading?: boolean;
+    plansError?: string;
     onApply: (filters: UserFilter[]) => void;
 }) {
     const [draft, setDraft] = useState(
@@ -27,6 +32,7 @@ export function UserFilters({
             ),
         ),
         [error, setError] = useState("");
+    const [initialDraft] = useState(() => JSON.stringify(draft));
     function change(index: number, value: Partial<UserFilter>) {
         setDraft(draft.map((f, i) => (i === index ? { ...f, ...value } : f)));
         setError("");
@@ -34,6 +40,7 @@ export function UserFilters({
     return (
         <form
             className="pad user-filters"
+            data-unsaved={JSON.stringify(draft) !== initialDraft ? "true" : undefined}
             onSubmit={(e) => {
                 e.preventDefault();
                 try {
@@ -52,7 +59,8 @@ export function UserFilters({
                     f.key === "plan_id"
                         ? [
                               ["null", "无套餐"],
-                              ...plans.map((p) => [String(p.id), p.name]),
+                              ...adminPlanOptions(plans, f.value,
+                                  { data: plansLoading || plansError ? null : plans, loading: plansLoading, error: plansError }),
                           ]
                         : f.key === "banned"
                           ? [

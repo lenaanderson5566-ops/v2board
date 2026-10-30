@@ -386,12 +386,7 @@ class UserActions
         }
 
         //统计在线设备
-        $countalive = 0;
-        $ips_array = Cache::get('ALIVE_IP_USER_' . $request->user['id']);
-        if ($ips_array) {
-            $countalive = $ips_array['alive_ip'];
-        }
-        $user['alive_ip'] = $countalive;
+        $user['alive_ip'] = \App\Services\OnlineDeviceService::forUser((int) $request->user['id'])['count'];
 
         $user['subscribe_url'] = Helper::getSubscribeUrl($user['token']);
 

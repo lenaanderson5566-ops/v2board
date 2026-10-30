@@ -170,7 +170,7 @@ export const adminLabels: Record<string, string> = {
     queueWithMaxThroughput: "最高吞吐队列",
     wait: "等待时间",
     periods: "统计时间范围",
-    online_user: "在线用户",
+    online_user: "近 10 分钟活跃用户",
     month_income: "本月收入",
     last_month_income: "上月收入",
     day_income: "今日收入",

@@ -2,6 +2,7 @@ import { AdminUserDetails } from "./AdminUserDetails";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { UserFilters } from "./UserFilters";
 import { adminUserLabel } from "./admin-user-label";
+import { adminPlanLabel } from "./admin-plan-reference";
 import { AdminMailComposer } from "./AdminMailComposer";
 import { useEffect, useState, useRef } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
@@ -171,6 +172,7 @@ export function UsersPage() {
             <ResourcePage
                 key={JSON.stringify({ params, pageSize, revision })}
                 resource={resources.users}
+                planDirectory={plans}
                 hiddenColumns={resources.users.columns
                     .map(([key]) => key)
                     .filter((key) => !optionalColumns.includes(key))}
@@ -297,7 +299,9 @@ export function UsersPage() {
                                 {f.condition}{" "}
                                 {["uuid", "token"].includes(f.key)
                                     ? "已填写"
-                                    : String(f.value)}{" "}
+                                    : f.key === "plan_id"
+                                      ? adminPlanLabel({ plan_id: f.value }, plans, { empty: "无套餐" })
+                                      : String(f.value)}{" "}
                                 <button
                                     aria-label={`移除筛选条件 ${i + 1}`}
                                     onClick={() =>
@@ -334,10 +338,12 @@ export function UsersPage() {
                 )}
             />
             {showFilters && (
-                <Modal title="用户高级筛选" close={() => setShowFilters(false)}>
+                <Modal title="用户高级筛选" guardChanges close={() => setShowFilters(false)}>
                     <UserFilters
                         initial={filters}
                         plans={plans.data || []}
+                        plansLoading={plans.loading}
+                        plansError={plans.error}
                         onApply={(next) => {
                             setFilters(next);
                             setNotice("");
@@ -354,6 +360,7 @@ export function UsersPage() {
             )}
             {bulk && (
                 <Modal
+                    guardChanges
                     title={
                         bulk.kind === "mail"
                             ? "发送用户邮件"
@@ -463,6 +470,7 @@ function BulkUsers({
                         onClick={async () => {
                             setPreviewBusy(true);
                             setPreviewError("");
+                            setAudience(null);
                             setConfirmed(false);
                             try {
                                 const r = await request(
@@ -501,13 +509,14 @@ function BulkUsers({
                 <input
                     type="checkbox"
                     checked={confirmed}
+                    disabled={operation.kind === "mail" && (previewBusy || !audience)}
                     onChange={(e) => setConfirmed(e.target.checked)}
                 />{" "}
                 我已确认操作范围和人数
             </label>
             {operation.kind === "mail" ? (
                 <AdminMailComposer
-                    confirmed={confirmed && Boolean(audience)}
+                    confirmed={confirmed && Boolean(audience) && !previewBusy}
                     onSave={async (body) => {
                         await request(endpoint, {
                             ...body,

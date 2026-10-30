@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AdminTabs } from "./AdminChoices";
 import { UserActivityContent } from "./UserActivityContent";
 import { adminUserLabel } from "./admin-user-label";
+import { adminPlanLabel } from "./admin-plan-reference";
 import { admin, query, bytes, money, type Row } from "../shared/api";
 import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
 import { Modal, State, Table, Pager, useData } from "../shared/ui";
@@ -33,6 +34,7 @@ function UserInvitations({row}: {row:Row}) {
     </State></div>;
 }
 function UserOrders({ row }: { row: Row }) {
+    const plans = useData<Row[]>(admin("plan/fetch"));
     const [pageSize, setPageSize] = useState(10);
     const [page, setPage] = useState(1),
         [selected, setSelected] = useState<Row | null>(null);
@@ -54,7 +56,7 @@ function UserOrders({ row }: { row: Row }) {
                     data={d.data || []}
                     columns={[
                         ["trade_no", "订单号"],
-                        ["plan_name", "套餐"],
+                        ["plan_name", "套餐", r => adminPlanLabel(r, plans)],
                         [
                             "total_amount",
                             "金额",
@@ -99,6 +101,7 @@ function UserOrders({ row }: { row: Row }) {
                             data={detail.data ? [detail.data] : []}
                             columns={[
                                 ["trade_no", "订单号"],
+                                ["plan_id", "套餐", r => adminPlanLabel(r, plans)],
                                 ["period", "周期"],
                                 [
                                     "total_amount",

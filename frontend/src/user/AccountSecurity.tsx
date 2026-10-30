@@ -194,6 +194,7 @@ export function AccountSecurity() {
                                     <a href="#/subscribe">{tx("配置中心")}</a>
                                 </p>
                             )}
+                            <p><a href="#/security/configuration-updates">{tx("查看配置更新记录")}</a></p>
                             <button
                                 className="danger security-reset-button"
                                 onClick={() => {

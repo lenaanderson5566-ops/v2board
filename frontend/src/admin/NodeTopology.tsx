@@ -1,4 +1,5 @@
 import type { Row } from "../shared/api";
+import { ProtocolBadge } from "./ProtocolBadge";
 
 export function NodeTopology({ service, entry, origin, server, entryServer, host, port, preview = true, shared = 0, serviceConnections = 0 }: {
     service?: Row; entry?: Row; origin?: Row; server?: Row; entryServer?: Row;
@@ -8,7 +9,7 @@ export function NodeTopology({ service, entry, origin, server, entryServer, host
         { title: "用户", detail: "客户端连接" },
         { title: entry ? "入口转发" : "直连地址", detail: `${host || entry?.domain || origin?.domain || "待配置域名"}:${port || "—"}`, sub: entry ? `${entryServer?.name || "入口服务器"}${shared ? ` · 关联 ${shared} 条线路` : ""}` : undefined },
         ...(entry ? [{ title: "回源地址", detail: `${origin?.domain || "待配置回源域名"}:${service?.server_port || "—"}` }] : []),
-        { title: "代理服务", detail: service?.name || "待选择代理服务", sub: `${server?.name || "服务器待关联"} · ${service?.protocol || "协议待配置"} :${service?.server_port || "—"}` },
+        { title: "代理服务", detail: service?.name || "待选择代理服务", sub: <>{server?.name || "服务器待关联"} · <ProtocolBadge protocol={service?.protocol} fallback="协议待配置" /> :{service?.server_port || "—"}</> },
     ];
     const tlsName = service?.["tls_settings.server_name"] || service?.tls_settings?.server_name;
     return <section className="node-topology" aria-label="线路拓扑">

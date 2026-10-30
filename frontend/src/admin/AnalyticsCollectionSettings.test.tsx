@@ -68,6 +68,19 @@ it("clears the time zone review on revert and requires a new review after changi
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
     expect(api.request.mock.calls.some(([path])=>path==="test-admin/config/save")).toBe(false);
 });
+it("retains an unavailable trial plan while saving unrelated site settings", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("config/fetch")
+        ? { site: { app_name: "Existing", try_out_plan_id: 99 } }
+        : path.endsWith("plan/fetch") ? [{ id: 7, name: "Basic" }] : {} }));
+    render(<Settings section="site" />);
+    const plan = await screen.findByRole("combobox", { name: "注册试用" }) as HTMLSelectElement;
+    expect(plan.value).toBe("99");
+    expect(plan.selectedOptions[0].textContent).toBe("套餐已删除或不可用 (#99)");
+    fireEvent.change(screen.getByRole("textbox", { name: "站点名称" }), { target: { value: "Updated" } });
+    fireEvent.submit(plan.closest("form")!);
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", { app_name: "Updated" }));
+});
+
 it("keeps ordinary settings saves free of a time zone confirmation",async()=>{
     api.request.mockImplementation(async(path:string)=>({data:path.endsWith("config/fetch") ? {site:{system_timezone:"Asia/Shanghai",app_name:"Existing"}} : path.endsWith("plan/fetch") ? [] : {}}));
     render(<Settings section="site"/>);

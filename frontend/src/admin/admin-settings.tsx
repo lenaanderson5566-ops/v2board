@@ -13,6 +13,7 @@ import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminMailPreview } from "./AdminMailPreview";
 import { AdminTelegramCommunity } from "./AdminTelegramCommunity";
 import { configField } from "./admin-fields";
+import { adminPlanOptions } from "./admin-plan-reference";
 import {
     changedSettings,
     linkSettings,
@@ -198,13 +199,7 @@ export function Settings({ section }: { section?: string } = {}) {
                               type: "select" as const,
                               options: [
                                   ["0", "不指定套餐"] as [string, string],
-                                  ...rows(plans.data).map(
-                                      (r) =>
-                                          [String(r.id), r.name] as [
-                                              string,
-                                              string,
-                                          ],
-                                  ),
+                                  ...adminPlanOptions(rows(plans.data), v, plans),
                               ],
                           }
                         : /^client_(primary|secondary)_/.test(k)

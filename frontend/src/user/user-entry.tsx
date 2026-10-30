@@ -21,6 +21,7 @@ const loadCoupons = () => import("./CouponCenter");
 const ActivityCenter = lazy(() => loadCoupons().then(module => ({ default: module.ActivityCenter })));
 const MyCoupons = lazy(() => loadCoupons().then(module => ({ default: module.MyCoupons })));
 const AccountSecurity = lazy(() => import("./AccountSecurity").then(module => ({ default: module.AccountSecurity })));
+const ConfigurationUpdates = lazy(() => import("./ConfigurationUpdates").then(module => ({ default: module.ConfigurationUpdates })));
 
 const pageViews = {
     activities: () => <ActivityCenter />,
@@ -33,7 +34,7 @@ const pageViews = {
     knowledge: () => <Knowledge />,
     ticket: (path: string) => <Tickets orderTradeNo={ticketOrderReference(path)} />,
     invite: () => <Invite />,
-    security: () => <AccountSecurity />,
+    security: (path: string) => path.split("?")[0] === "security/configuration-updates" ? <ConfigurationUpdates /> : <AccountSecurity />,
     notifications: () => <Notifications />,
     profile: () => <Profile />,
     traffic: () => <Traffic />,

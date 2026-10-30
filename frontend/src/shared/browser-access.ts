@@ -29,7 +29,7 @@ export function browserHandoffUrl(href: string): string {
     const planMatch = /^\/plan\/([1-9]\d*)$/.exec(path);
     const planDetail = Boolean(planMatch && purchasePlanId(planMatch[1]));
     const ticketOrder = ticketOrderReference(path.slice(1));
-    const allowed = /^\/(?:login|register|forget|dashboard|overview|plan|activities|coupons|subscribe|knowledge|profile|security|invite|traffic|notifications|ticket|order(?:\/[a-zA-Z0-9_-]{1,64})?)?$/.test(path) || planDetail || Boolean(ticketOrder);
+    const allowed = /^\/(?:login|register|forget|dashboard|overview|plan|activities|coupons|subscribe|knowledge|profile|security(?:\/configuration-updates)?|invite|traffic|notifications|ticket|order(?:\/[a-zA-Z0-9_-]{1,64})?)?$/.test(path) || planDetail || Boolean(ticketOrder);
     const source = new URLSearchParams(query);
     const single = (key: string) => source.getAll(key).length === 1 ? source.get(key) : null;
     const params = new URLSearchParams();

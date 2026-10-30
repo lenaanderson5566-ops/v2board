@@ -51,7 +51,7 @@ it("prioritizes order status and immutable order-currency amounts ahead of diagn
     expect(screen.getByText("USD 12.34")).toBeTruthy();
     const headers=screen.getAllByRole("columnheader").map(header=>header.textContent);
     expect(headers.slice(0,4)).toEqual(["订单号","状态","金额","用户（ID / 邮箱）"]);
-    expect(headers.indexOf("金额")).toBeLessThan(headers.indexOf("套餐 ID"));
+    expect(headers.indexOf("金额")).toBeLessThan(headers.indexOf("套餐"));
 });
 const order = {
     id: 1,
@@ -277,6 +277,140 @@ it("clears the user email draft together with its applied filter chip", async ()
     fireEvent.submit(screen.getByRole("form", { name: "用户搜索与筛选" }));
     fireEvent.click(screen.getByRole("button", { name: "移除筛选条件 1" }));
     expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("");
+});
+it("requires a fresh successful mail audience check after a repeated check fails", async () => {
+    let rejectPreview!: (error: Error) => void;
+    let previews = 0;
+    const audience = { eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 };
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("user/fetch")) return { data: [{ id: 7, email: "guest@example.com" }], total: 1 };
+        if (path.includes("previewMailAudience")) {
+            previews += 1;
+            if (previews === 2) return new Promise((_, reject) => { rejectPreview = reject; });
+            return { data: audience };
+        }
+        return { data: [] };
+    });
+    render(<UsersPage />);
+    await screen.findByRole("button", { name: "分配订单" });
+    fireEvent.click(screen.getByText("操作", { selector: "summary" }));
+    const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
+    await waitFor(() => expect(sendMail.disabled).toBe(false));
+    fireEvent.click(sendMail);
+    const dialog = await screen.findByRole("dialog", { name: "发送用户邮件" });
+    const confirmation = within(dialog).getByRole("checkbox", { name: "我已确认操作范围和人数" }) as HTMLInputElement;
+    const preview = within(dialog).getByRole("button", { name: "检查收件范围" });
+    expect(confirmation.disabled).toBe(true);
+    fireEvent.click(preview);
+    await within(dialog).findByText(/预计发送 1 人/);
+    fireEvent.click(confirmation);
+    expect(confirmation.checked).toBe(true);
+    fireEvent.click(preview);
+    await waitFor(() => expect(rejectPreview).toBeTypeOf("function"));
+    expect(within(dialog).queryByText(/预计发送 1 人/)).toBeNull();
+    expect(confirmation.disabled).toBe(true);
+    expect(confirmation.checked).toBe(false);
+    const composer = dialog.querySelector("form.mail-composer")!;
+    fireEvent.submit(composer);
+    expect(await within(dialog).findByText("请先确认操作范围和人数")).toBeTruthy();
+    rejectPreview(new Error("Audience temporarily unavailable"));
+    await within(dialog).findByText("Audience temporarily unavailable");
+    expect(confirmation.disabled).toBe(true);
+    expect(within(dialog).queryByText(/预计发送 1 人/)).toBeNull();
+    fireEvent.submit(composer);
+    expect(api.request.mock.calls.some(([path]) => String(path).includes("user/sendMail"))).toBe(false);
+    fireEvent.click(preview);
+    await within(dialog).findByText(/预计发送 1 人/);
+    expect(confirmation.disabled).toBe(false);
+    expect(confirmation.checked).toBe(false);
+    expect(previews).toBe(3);
+});
+it("keeps a mail draft when closing is cancelled and prevents dismissing a pending send", async () => {
+    let finishSend!: (response: unknown) => void;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("user/fetch")) return { data: [{ id: 7, email: "guest@example.com" }], total: 1 };
+        if (path.includes("previewMailAudience")) return { data: { eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 } };
+        if (path.includes("user/sendMail")) return new Promise(resolve => { finishSend = resolve; });
+        return { data: [] };
+    });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+        render(<UsersPage />);
+        await screen.findByRole("button", { name: "分配订单" });
+        fireEvent.click(screen.getByText("操作", { selector: "summary" }));
+        const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
+        await waitFor(() => expect(sendMail.disabled).toBe(false));
+        fireEvent.click(sendMail);
+        const dialog = await screen.findByRole("dialog", { name: "发送用户邮件" });
+        fireEvent.change(within(dialog).getByLabelText("邮件主题"), { target: { value: "Service update" } });
+        fireEvent.change(within(dialog).getByLabelText("邮件正文 HTML"), { target: { value: "Service details" } });
+        fireEvent.click(within(dialog).getByRole("button", { name: "关闭" }));
+        expect(confirm).toHaveBeenCalledWith("有尚未保存的修改，确认放弃？");
+        expect(within(dialog).getByDisplayValue("Service update")).toBeTruthy();
+        fireEvent.click(within(dialog).getByRole("checkbox", { name: "English" }));
+        fireEvent.click(within(dialog).getByRole("button", { name: "检查收件范围" }));
+        await within(dialog).findByText(/预计发送 1 人/);
+        fireEvent.click(within(dialog).getByRole("checkbox", { name: "我已确认操作范围和人数" }));
+        fireEvent.submit(dialog.querySelector("form.mail-composer")!);
+        await waitFor(() => expect(finishSend).toBeTypeOf("function"));
+        confirm.mockClear();
+        confirm.mockReturnValue(true);
+        fireEvent.click(within(dialog).getByRole("button", { name: "关闭" }));
+        fireEvent.keyDown(document, { key: "Escape" });
+        expect(screen.getByRole("dialog", { name: "发送用户邮件" })).toBe(dialog);
+        expect(confirm).not.toHaveBeenCalled();
+        expect(api.request.mock.calls.filter(([path]) => String(path).includes("user/sendMail"))).toHaveLength(1);
+        expect(api.request).toHaveBeenCalledWith("test-admin/user/sendMail", expect.objectContaining({
+            subject: "Service update", content: "Service details", purpose: "service", filter: [], expected_count: 1,
+        }));
+        finishSend({ data: {} });
+        await waitFor(() => expect(screen.queryByRole("dialog", { name: "发送用户邮件" })).toBeNull());
+    } finally { confirm.mockRestore(); }
+});
+it("guards only changed advanced user filters and preserves applied conditions when a draft is discarded", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+        render(<UsersPage />);
+        fireEvent.click(screen.getByRole("button", { name: "高级筛选" }));
+        fireEvent.click(within(screen.getByRole("dialog", { name: "用户高级筛选" })).getByRole("button", { name: "关闭" }));
+        expect(screen.queryByRole("dialog", { name: "用户高级筛选" })).toBeNull();
+        expect(confirm).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole("button", { name: "高级筛选" }));
+        let dialog = screen.getByRole("dialog", { name: "用户高级筛选" });
+        fireEvent.click(within(dialog).getByRole("button", { name: "添加条件" }));
+        fireEvent.change(within(dialog).getByLabelText("筛选值 1"), { target: { value: "guest@example.com" } });
+        fireEvent.keyDown(document, { key: "Escape" });
+        expect(confirm).toHaveBeenCalledWith("有尚未保存的修改，确认放弃？");
+        expect(within(dialog).getByDisplayValue("guest@example.com")).toBeTruthy();
+        fireEvent.submit(dialog.querySelector("form.user-filters")!);
+        expect(screen.queryByRole("dialog", { name: "用户高级筛选" })).toBeNull();
+        expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("guest@example.com");
+        fireEvent.click(screen.getByRole("button", { name: "高级筛选（1）" }));
+        dialog = screen.getByRole("dialog", { name: "用户高级筛选" });
+        fireEvent.change(within(dialog).getByLabelText("筛选值 1"), { target: { value: "discard@example.com" } });
+        confirm.mockReturnValue(true);
+        fireEvent.click(within(dialog).getByRole("button", { name: "关闭" }));
+        expect(screen.queryByRole("dialog", { name: "用户高级筛选" })).toBeNull();
+        expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("guest@example.com");
+        fireEvent.click(screen.getByRole("button", { name: "高级筛选（1）" }));
+        expect(within(screen.getByRole("dialog", { name: "用户高级筛选" })).getByDisplayValue("guest@example.com")).toBeTruthy();
+    } finally { confirm.mockRestore(); }
+});
+it("preserves an unavailable plan filter selection without replacing its submitted ID", async () => {
+    const { UserFilters } = await import("./UserFilters");
+    const onApply = vi.fn();
+    const view = render(<UserFilters initial={[{ key: "plan_id", condition: "=", value: 99 }]}
+        plans={[{ id: 42, name: "Current plan" }]} onApply={onApply} />);
+    const selection = screen.getByLabelText("筛选值 1") as HTMLSelectElement;
+    expect(selection.value).toBe("99");
+    expect(within(selection).getByRole("option", { name: "套餐已删除或不可用 (#99)" })).toBeTruthy();
+    expect(within(selection).getByRole("option", { name: "Current plan" })).toBeTruthy();
+    expect(within(selection).getAllByRole("option").filter(option => (option as HTMLOptionElement).value === "null")).toHaveLength(1);
+    fireEvent.submit(view.container.querySelector("form")!);
+    expect(onApply).toHaveBeenCalledWith([{ key: "plan_id", condition: "=", value: 99 }]);
+    fireEvent.change(selection, { target: { value: "null" } });
+    fireEvent.submit(view.container.querySelector("form")!);
+    expect(onApply).toHaveBeenLastCalledWith([{ key: "plan_id", condition: "=", value: "null" }]);
 });
 it("ignores a late clipboard failure after a different user action has opened details", async () => {
     let reject!: (error: Error) => void;
@@ -574,6 +708,69 @@ it("opens coupon template editing with issued-rights notice and without batch ge
     expect(within(dialog).getByText(/已领取的券保留原优惠和有效期/)).toBeTruthy();
     expect(within(dialog).queryByLabelText(/生成数量/)).toBeNull();
     expect(within(dialog).getByDisplayValue("Issued coupon")).toBeTruthy();
+});
+
+it("shares one plan directory across order rows and details without blocking the list", async () => {
+    let finishPlans!: (value: any) => void;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("plan/fetch")) return new Promise(resolve => { finishPlans = resolve; });
+        if (path.includes("order/detail")) return { data: { ...order, plan_id: 7, commission_log: [] } };
+        if (path.includes("order/fetch")) return { data: [{ ...order, plan_id: 7 }], total: 1 };
+        return { data: [] };
+    });
+    render(<OrdersPage />);
+    await screen.findByText("order-1");
+    expect(screen.getAllByRole("columnheader", { name: "套餐" })).toHaveLength(1);
+    expect(screen.queryByRole("columnheader", { name: "订阅计划" })).toBeNull();
+    expect(screen.getAllByText("套餐加载中 (#7)").length).toBeGreaterThan(0);
+    expect(api.request.mock.calls.filter(([path]) => path.includes("plan/fetch"))).toHaveLength(1);
+    fireEvent.click(screen.getByRole("button", { name: "订单详情" }));
+    const dialog = await screen.findByRole("dialog", { name: "订单详情" });
+    await within(dialog).findByText("套餐加载中 (#7)");
+    finishPlans({ data: [{ id: 7, name: "Basic" }] });
+    expect(await within(dialog).findByText("Basic")).toBeTruthy();
+    expect(screen.queryByText("Basic (#7)")).toBeNull();
+    expect(api.request.mock.calls.filter(([path]) => path.includes("plan/fetch"))).toHaveLength(1);
+});
+
+it("keeps a deleted gift-card plan selected and submits its original ID after directory failure", async () => {
+    const fixture = { id: 12, name: "Existing gift", type: 5, plan_id: 99, value: 30, started_at: 1700000000, ended_at: 2000000000 };
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("plan/fetch")) throw new Error("Directory unavailable");
+        if (path.includes("giftcard/fetch")) return { data: [fixture], total: 1 };
+        return { data: true };
+    });
+    const { ResourcePage } = await import("./admin");
+    render(<ResourcePage resource={resources.giftcards} />);
+    await screen.findByText("Existing gift");
+    await screen.findByText("套餐信息加载失败 (#99)");
+    fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+    const dialog = await screen.findByRole("dialog");
+    const plan = within(dialog).getByRole("combobox", { name: "套餐" }) as HTMLSelectElement;
+    expect(plan.value).toBe("99");
+    expect((within(plan).getByRole("option", { name: "套餐信息加载失败 (#99)" }) as HTMLOptionElement).selected).toBe(true);
+    fireEvent.submit(plan.closest("form")!);
+    await waitFor(() => expect(api.request.mock.calls.some(([path, body]) =>
+        path.endsWith("giftcard/generate") && body.plan_id === 99,
+    )).toBe(true));
+});
+
+it("preserves unavailable coupon plan restrictions alongside named selections", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: path.includes("plan/fetch")
+        ? [{ id: 7, name: "Basic" }]
+        : path.includes("coupon/fetch")
+          ? [{ id: 41, name: "Restricted coupon", type: 2, value: 10, started_at: 1700000000, ended_at: 2000000000, limit_plan_ids: [7, 99] }]
+          : true, total: 1 }));
+    const { ResourcePage } = await import("./admin");
+    render(<ResourcePage resource={resources.coupons} />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    const dialog = await screen.findByRole("dialog");
+    expect((await within(dialog).findByRole("checkbox", { name: "Basic" })).getAttribute("aria-checked")).toBe("true");
+    expect(within(dialog).getByRole("checkbox", { name: "套餐已删除或不可用 (#99)" }).getAttribute("aria-checked")).toBe("true");
+    fireEvent.submit(within(dialog).getByDisplayValue("Restricted coupon").closest("form")!);
+    await waitFor(() => expect(api.request.mock.calls.some(([path, body]) =>
+        path.endsWith("coupon/generate") && JSON.stringify(body.limit_plan_ids) === "[7,99]",
+    )).toBe(true));
 });
 
 it("exposes wallet coupon templates without legacy code controls", async () => {

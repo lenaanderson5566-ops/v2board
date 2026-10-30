@@ -477,7 +477,7 @@
     },
     "server_device_online_min_traffic": {
       "label": "节点用户设备数统计最低阈值",
-      "hint": "每次推送动作仅上报流量高于阈值的在线设备IP地址会被节点统计",
+      "hint": "每个上报周期，用户总流量达到阈值后，计入本周期观察到的来源 IP；0 表示不设流量阈值。IP 数不等于实际设备数。",
       "placeholder": "请输入",
       "child": false,
       "line": 6294

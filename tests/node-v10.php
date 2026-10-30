@@ -150,6 +150,86 @@ try {
     $assert($call('POST',$root.'/online-users',['records'=>[]])->getStatusCode()===200,'Empty online update');
     $assert($call('POST',$root.'/online-users',['records'=>[['userId'=>42,'ips'=>['bad']]]])->getStatusCode()===422,'Invalid address rejected');
     $assert($call('GET',$root.'/online-counts')->getStatusCode()===200,'Online counts');
+    // Online snapshots are independent of traffic activity and are full per-node replacements.
+    config(['v2board.server_push_interval'=>60,'v2board.device_limit_mode'=>0]);
+    $presence=new App\Services\OnlineDeviceService();
+    $onlineUsers=[];
+    foreach (['a','b'] as $suffix) $onlineUsers[]=App\Models\User::create([
+        'email'=>'online-'.$suffix.'-'.bin2hex(random_bytes(5)).'@example.test','password'=>'fixture',
+        'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'device_limit'=>4,
+        'transfer_enable'=>1000000,'expired_at'=>time()+86400,'group_id'=>999997,'t'=>0,
+    ]);
+    [$onlineA,$onlineB]=$onlineUsers;
+    $onlineKey='ALIVE_IP_USER_'.$onlineA->id;
+    $otherNode=$nodeId+1000000;
+    Cache::put('ALIVE_LIST',[$onlineA->id=>999],60);
+    $report=['records'=>[
+        ['userId'=>$onlineA->id,'ips'=>['192.0.2.1','192.0.2.1','::ffff:192.0.2.1','::ffff:c000:0201','2001:0db8:0:0:0:0:0:1','2001:db8::1']],
+        ['userId'=>$onlineB->id,'ips'=>['192.0.2.2']],
+    ]];
+    $assert($call('POST',$root.'/online-users',$report)->getStatusCode()===200,'Full online snapshot accepted');
+    $assert($presence::forUser($onlineA->id)['count']===2,'Duplicate, equivalent IPv6 and mapped IPv4 addresses count once per node');
+    $counts=collect(json_decode($call('GET',$root.'/online-counts')->getContent(),true)['data'])->keyBy('userId');
+    $assert($counts[$onlineA->id]['count']===2 && $counts[$onlineB->id]['count']===1,'Counts ignore stale aggregate cache');
+    $assert(App\Models\UserOnlineSnapshot::where('user_id',$onlineA->id)->where('source','alive')->count()===1,'Historical snapshot remains one row per user, not a connection total');
+    $assert(App\Models\UserConnectionLog::where('user_id',$onlineA->id)->where('source','alive')->count()===2,'Repeated IPs do not duplicate connection history');
+    $onlineAction=new App\Services\Actions\NodeCommunication($node,'v2box');
+    foreach (['{','null','true','42','"invalid"',
+        '{"oops":[]}', '{"0":[]}', '{"123":"192.0.2.1"}', '{"123":["bad"]}', '{"123":[42]}',
+        json_encode((object)[$onlineA->id=>['192.0.2.1'], 'oops'=>[]]),
+        json_encode((object)[$onlineA->id=>['192.0.2.1'], $onlineB->id=>['bad']]),
+    ] as $rawOnline) {
+        $invalidOnline=Request::create('/','POST',[],[],[],['CONTENT_TYPE'=>'application/json'],$rawOnline);
+        $assert($onlineAction->alive($invalidOnline)->getStatusCode()===400,'Malformed JSON or any invalid record cannot become a partial or empty full snapshot');
+        $assert($presence::forUser($onlineA->id)['count']===2 && $presence::forUser($onlineB->id)['count']===1,'Rejected JSON leaves existing node presence intact');
+    }
+    $assert($onlineAction->alive(Request::create('/','POST',[],[],[],['CONTENT_TYPE'=>'application/json'],'{}'))->getStatusCode()===200,'A valid empty JSON object is an authoritative empty snapshot');
+    $assert($presence::forUser($onlineA->id)['count']===0 && $presence::forUser($onlineB->id)['count']===0,'Only a valid empty snapshot clears its previous users');
+    $assert($call('POST',$root.'/online-users',$report)->getStatusCode()===200,'Valid node presence resumes after an empty snapshot');
+    $presence->replace('v2box',$otherNode,[$onlineA->id=>['192.0.2.1']],3600);
+    $assert($presence::forUser($onlineA->id)['count']===3,'Strict mode counts an IP on each node');
+    config(['v2board.device_limit_mode'=>1]);
+    $assert($presence::forUser($onlineA->id)['count']===2,'Relaxed mode deduplicates the same IP across nodes');
+    $counts=collect(json_decode($call('GET',$root.'/online-counts')->getContent(),true)['data'])->keyBy('userId');
+    $assert($counts[$onlineA->id]['count']===2,'A mode change immediately affects node reads without a cached aggregate');
+    config(['v2board.device_limit_mode'=>0]);
+    $assert($call('POST',$root.'/online-users',['records'=>[['userId'=>$onlineA->id,'ips'=>[]]]])->getStatusCode()===200,'Explicit empty IP list clears that node');
+    $assert($presence::forUser($onlineA->id)['count']===1 && $presence::forUser($onlineB->id)['count']===0,'Omitted users clear immediately while another node survives');
+    $assert($call('POST',$root.'/online-users',$report)->getStatusCode()===200,'Node can resume a nonempty snapshot');
+    $assert($call('POST',$root.'/online-users',['records'=>[]])->getStatusCode()===200,'An empty full snapshot is authoritative');
+    $assert($presence::forUser($onlineA->id)['count']===1 && $presence::forUser($onlineB->id)['count']===0,'Empty snapshot removes only its own node');
+    $presence->replace('v2box',$otherNode,[],3600);
+    $assert($presence::forUser($onlineA->id)['count']===0,'All empty nodes leave zero active devices');
+    $assert((int)Cache::get(App\Utils\CacheKey::get('SERVER_V2BOX_ONLINE_USER',$nodeId))===1,'Online reports do not relabel the existing traffic-active counter');
+    $at=time();
+    Cache::put($onlineKey,['alive_ip'=>999,'fresh'=>['aliveips'=>['192.0.2.5_1','192.0.2.5_1'],'lastupdateAt'=>$at],
+        'stale'=>['aliveips'=>['192.0.2.6'],'lastupdateAt'=>$at-100],'unstamped'=>['aliveips'=>['192.0.2.7']]],120);
+    $assert($presence::forUser($onlineA->id)['count']===1,'A renewed user cache cannot revive expired or unstamped node entries');
+    config(['v2board.server_push_interval'=>300]);
+    $assert($presence::freshWindow()===360,'Long report intervals receive a bounded jitter and network allowance');
+    Cache::put($onlineKey,['fresh'=>['aliveips'=>['192.0.2.8'],'lastupdateAt'=>$at-150],
+        'stale'=>['aliveips'=>['192.0.2.9'],'lastupdateAt'=>$at-361]],380);
+    $assert($presence::forUser($onlineA->id)['count']===1,'A 300-second interval retains a 150-second snapshot and excludes an expired one');
+    config(['v2board.server_push_interval'=>60]);
+    $assert($presence::forUser($onlineA->id)['count']===0,'Every reader applies the same current freshness policy');
+    $presence->replace('v2box',$nodeId,[$onlineA->id=>['192.0.2.1']],3600);
+    $injectOnlineFailure=true;
+    DB::listen(function($query) use (&$injectOnlineFailure) {
+        if ($injectOnlineFailure && str_contains($query->sql,'v2_user_online_snapshot') && str_starts_with(strtolower($query->sql),'insert')) throw new RuntimeException('Injected online history failure');
+    });
+    try { $presence->replace('v2box',$nodeId,[$onlineB->id=>['192.0.2.2']],3600); throw new RuntimeException('Failure injection missing'); }
+    catch (RuntimeException $error) { $assert($error->getMessage()==='Injected online history failure','Partial report failure remains visible to the node'); }
+    finally { $injectOnlineFailure=false; }
+    $pending=Cache::get('ALIVE_NODE_USERS:v2box'.$nodeId);
+    $assert(in_array($onlineA->id,$pending,true) && in_array($onlineB->id,$pending,true),'A partial failure retains both previous and newly touched users for cleanup');
+    $presence->replace('v2box',$nodeId,[],3600);
+    $assert($presence::forUser($onlineA->id)['count']===0 && $presence::forUser($onlineB->id)['count']===0,'The next empty snapshot cleans a partially applied report');
+    Cache::forget('ALIVE_LIST');
+    foreach ($onlineUsers as $onlineUser) {
+        App\Models\UserOnlineSnapshot::where('user_id',$onlineUser->id)->delete();
+        App\Models\UserConnectionLog::where('user_id',$onlineUser->id)->delete();
+        $onlineUser->delete();
+    }
     foreach ([['inbounds'=>[]],['dns'=>['servers'=>[['type'=>'fakeip']]]],['outbounds'=>[['type'=>'direct','tag'=>'direct']]],['route'=>['rule_set'=>[['type'=>'local','path'=>'/etc/passwd']]]]] as $bad) {
         try {$admin->save(Request::create('/','POST',$base+['id'=>$node->id,'sing_box'=>$bad]));throw new RuntimeException('Bad native config accepted');}
         catch(Illuminate\Validation\ValidationException $e){$checks++;}

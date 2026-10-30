@@ -149,6 +149,99 @@ try {
     $other=User::create(['email'=>Str::uuid().'@example.com','password'=>'x','token'=>Str::random(32),'uuid'=>(string)Str::uuid()]);
     $cleanupUsers[]=$other;
     $otherAuth=(new App\Services\AuthService($other))->generateAuthData(Illuminate\Http\Request::create('/'));
+    // Configuration request history is an owner-only read, independent of plan availability.
+    $accessOwner=User::create(['email'=>Str::uuid().'@example.test','password'=>'fixture','token'=>Str::random(32),
+        'uuid'=>(string)Str::uuid(),'plan_id'=>null,'expired_at'=>time()-86400]);
+    $cleanupUsers[]=$accessOwner;
+    $accessAuth=(new App\Services\AuthService($accessOwner))->generateAuthData(Illuminate\Http\Request::create('/'));
+    $accessBearer='Bearer '.$accessAuth['auth_data'];
+    $accessPath='/api/v10/me/subscription/access-records';
+    App\Models\RiskSetting::updateOrCreate(['key'=>'subscribe_log_retention_days'],['value'=>'0']);
+    [$denied,$problem]=$call('GET',$accessPath);
+    $assert($denied->getStatusCode()===401 && $problem['code']==='UNAUTHENTICATED','Configuration history requires a session');
+    [$denied]=$call('GET',$accessPath.'?auth_data='.urlencode($accessAuth['auth_data']));
+    $assert($denied->getStatusCode()===401,'History does not accept a query credential');
+    [$read,$history]=$call('GET',$accessPath,[],$accessBearer);
+    $assert($read->getStatusCode()===200 && $history===['data'=>[],'meta'=>['pagination'=>['page'=>1,'pageSize'=>20,'total'=>0,'totalPages'=>0],'retentionDays'=>null]],'An authenticated owner without a plan can read an empty retained-history collection');
+    $assert(str_contains($read->headers->get('Cache-Control'),'no-store') && $read->headers->get('Content-Language')==='en-US','History keeps private language-negotiated response headers');
+    $accessAt=time()-120;
+    $accessBase=['user_id'=>$accessOwner->id,'email'=>$accessOwner->email,'client_type'=>'fastai','user_agent'=>'FastAI/1.2.3',
+        'ip'=>'192.0.2.45','country'=>'China','region'=>'Shanghai','city'=>'Shanghai','subscribe_domain'=>'secret.example.test',
+        'status'=>'success','reason'=>'SECRET upstream https://private.example.test/?token=raw-secret','created_at'=>$accessAt,'updated_at'=>$accessAt];
+    $accessSuccess=App\Models\SubscribeLog::create($accessBase);
+    $accessFailed=App\Models\SubscribeLog::create(array_replace($accessBase,['client_type'=>'sing-box','user_agent'=>'sing-box/1.14.3',
+        'status'=>'unavailable','reason'=>'expired','ip'=>'2001:db8:abcd:1234::1']));
+    $accessUnknown=App\Models\SubscribeLog::create(array_replace($accessBase,['client_type'=>'raw-secret-product','user_agent'=>"FastAI/1.2.3\nBearer raw-secret",
+        'status'=>'unknown-secret-status','reason'=>'raw-secret','ip'=>'invalid-secret','country'=>'https://secret.example.test',
+        'region'=>'Bearer raw-secret','city'=>str_repeat('x',100),'created_at'=>$accessAt+1]));
+    $accessOld=App\Models\SubscribeLog::create(array_replace($accessBase,['created_at'=>time()-31*86400]));
+    $accessUndated=App\Models\SubscribeLog::create(array_replace($accessBase,['created_at'=>null,'client_type'=>null,'user_agent'=>null]));
+    DB::table('v2_subscribe_log')->where('id',$accessUndated->id)->update(['created_at'=>null]);
+    $foreignAccess=App\Models\SubscribeLog::create(array_replace($accessBase,['user_id'=>$other->id,'email'=>$other->email,'created_at'=>$accessAt+10]));
+    $accessBefore=App\Models\SubscribeLog::whereIn('user_id',[$accessOwner->id,$other->id])->orderBy('id')->get()->map(fn($row)=>$row->getAttributes())->all();
+    $riskHitsBefore=App\Models\RiskRuleHit::count();
+    [$read,$history]=$call('GET',$accessPath.'?user_id='.$other->id.'&user[id]='.$other->id.'&id='.$foreignAccess->id,[],$accessBearer);
+    $assert($read->getStatusCode()===200 && array_column($history['data'],'id')===[$accessUnknown->id,$accessFailed->id,$accessSuccess->id,$accessOld->id,$accessUndated->id],'History ignores forged owner/record IDs and uses stable descending timestamp/id order');
+    $records=collect($history['data'])->keyBy('id');
+    $assert($records[$accessSuccess->id]===['id'=>$accessSuccess->id,'requestedAt'=>gmdate('Y-m-d\TH:i:s\Z',$accessAt),
+        'clientName'=>'FastAI','clientVersion'=>'1.2.3','status'=>'success','reason'=>null,'ip'=>'192.0.2.***','location'=>'China · Shanghai'],'History exposes only the precise sanitized request resource');
+    $assert($records[$accessFailed->id]['status']==='failed' && $records[$accessFailed->id]['reason']==='expired'
+        && $records[$accessFailed->id]['clientName']==='sing-box' && $records[$accessFailed->id]['clientVersion']==='1.14.3'
+        && $records[$accessFailed->id]['ip']==='2001:db8:abcd:****:****:****:****:****','Known unavailable requests remain failed and IPv6 follows session masking');
+    $assert($records[$accessUnknown->id]===['id'=>$accessUnknown->id,'requestedAt'=>gmdate('Y-m-d\TH:i:s\Z',$accessAt+1),
+        'clientName'=>null,'clientVersion'=>null,'status'=>'unknown','reason'=>null,'ip'=>null,'location'=>null],'Malformed historical fields become safe unknown values');
+    $assert($records[$accessUndated->id]['requestedAt']===null && $records[$accessUndated->id]['clientName']===null,'Missing historical timestamps and products are not invented');
+    foreach (['raw-secret','secret.example.test',$accessOwner->email,$other->email,$accessOwner->token,$accessOwner->uuid,'FastAI/1.2.3','192.0.2.45','2001:db8:abcd:1234::1'] as $secret)
+        $assert(!str_contains($read->getContent(),$secret),'History omits raw credentials, URLs, user agents, identities and full IPs');
+    DB::table('v2_subscribe_log')->where('id',$accessFailed->id)->update(['status'=>'failed']);
+    [$read,$history]=$call('GET',$accessPath,[],$accessBearer);
+    $assert(collect($history['data'])->firstWhere('id',$accessFailed->id)['status']==='failed','Explicit failed requests retain the same public failure status');
+    DB::table('v2_subscribe_log')->where('id',$accessFailed->id)->update(['status'=>'unavailable']);
+    foreach ([1=>[$accessUnknown->id,$accessFailed->id],2=>[$accessSuccess->id,$accessOld->id],3=>[$accessUndated->id],4=>[]] as $page=>$expectedIds) {
+        [$read,$history]=$call('GET',$accessPath.'?page='.$page.'&pageSize=2',[],$accessBearer);
+        $assert($read->getStatusCode()===200 && array_column($history['data'],'id')===$expectedIds
+            && $history['meta']['pagination']===['page'=>$page,'pageSize'=>2,'total'=>5,'totalPages'=>3],'History pagination remains deterministic on page '.$page);
+    }
+    foreach (['page=0','page=-1','page=invalid','pageSize=0','pageSize=101','pageSize=invalid'] as $invalidPage) {
+        [$invalid,$problem]=$call('GET',$accessPath.'?'.$invalidPage,[],$accessBearer);
+        $assert($invalid->getStatusCode()===422 && str_contains($invalid->headers->get('Content-Type'),'application/problem+json'),'Invalid history pagination is rejected before reading logs');
+    }
+    $accessOwner->plan_id=$plan->id;$accessOwner->save();
+    [$read,$history]=$call('GET',$accessPath,[],$accessBearer);
+    $assert($read->getStatusCode()===200 && count($history['data'])===5,'An expired plan does not hide configuration history');
+    $accessOwner->banned=1;$accessOwner->save();
+    [$denied]=$call('GET',$accessPath,[],$accessBearer);
+    $assert($denied->getStatusCode()===403,'History preserves existing disabled-account authorization');
+    $accessOwner->banned=0;$accessOwner->save();
+    App\Models\RiskSetting::updateOrCreate(['key'=>'subscribe_log_retention_days'],['value'=>'30']);
+    [$read,$history]=$call('GET',$accessPath,[],$accessBearer);
+    $assert($read->getStatusCode()===200 && array_column($history['data'],'id')===[$accessUnknown->id,$accessFailed->id,$accessSuccess->id]
+        && $history['meta']['retentionDays']===30 && $history['meta']['pagination']['total']===3,'Read-time retention excludes old/undated rows even before physical cleanup');
+    App\Models\RiskSetting::updateOrCreate(['key'=>'subscribe_log_retention_days'],['value'=>'invalid-setting']);
+    $accessAttributes=$accessOwner->fresh()->getAttributes();
+    DB::enableQueryLog();DB::flushQueryLog();
+    try {
+        [$read,$history]=$call('GET',$accessPath.'?pageSize=100',[],$accessBearer);
+        $accessQueries=DB::getQueryLog();
+    } finally { DB::disableQueryLog(); }
+    $logReads=array_values(array_filter($accessQueries,fn($query)=>str_contains($query['query'],'v2_subscribe_log')));
+    $assert($read->getStatusCode()===200 && count($history['data'])===5 && $history['meta']['retentionDays']===null,'Unknown retention settings use the existing no-automatic-cleanup default');
+    $assert(count($logReads)===2 && str_contains(strtolower($logReads[1]['query']),'limit 100')
+        && str_contains(strtolower($logReads[1]['query']),'substr(user_agent, 1, 512)'), 'Maximum history pages require only a count and bounded, UA-limited row read');
+    $assert(!array_filter($accessQueries,fn($query)=>str_contains($query['query'],'v2_plan') || str_contains($query['query'],'v2_risk_rule_')),'History does not fetch plans or evaluate risk per log row');
+    DB::enableQueryLog();DB::flushQueryLog();
+    try {
+        [$read,$history]=$call('GET',$accessPath.'?page='.PHP_INT_MAX.'&pageSize=100',[],$accessBearer);
+        $overflowQueries=DB::getQueryLog();
+    } finally { DB::disableQueryLog(); }
+    $overflowReads=array_values(array_filter($overflowQueries,fn($query)=>str_contains($query['query'],'v2_subscribe_log')));
+    $assert($read->getStatusCode()===200 && $history['data']===[]
+        && $history['meta']['pagination']===['page'=>PHP_INT_MAX,'pageSize'=>100,'total'=>5,'totalPages'=>1], 'A valid maximum integer page remains an empty collection with the requested metadata');
+    $assert(count($overflowReads)===1 && str_contains(strtolower($overflowReads[0]['query']),'count(*)'), 'Pages beyond the retained result count never calculate or execute an overflowing SQL offset');
+    $accessAfter=App\Models\SubscribeLog::whereIn('user_id',[$accessOwner->id,$other->id])->orderBy('id')->get()->map(fn($row)=>$row->getAttributes())->all();
+    $assert($accessBefore===$accessAfter && $riskHitsBefore===App\Models\RiskRuleHit::count()
+        && $accessAttributes===$accessOwner->fresh()->getAttributes(),'History GETs never append or rewrite subscription logs, risk hits or account state');
+    App\Models\RiskSetting::updateOrCreate(['key'=>'subscribe_log_retention_days'],['value'=>'0']);
     foreach (app('router')->getRoutes() as $machineRoute) {
         if (!str_starts_with($machineRoute->uri(),'api/v10/server/')) continue;
         foreach (array_diff($machineRoute->methods(),['HEAD','OPTIONS']) as $machineMethod) {

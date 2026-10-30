@@ -7,6 +7,7 @@ import { admin, bytes, date, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { dateTimeInput, parseDateTimeInput } from "../shared/timezone";
 import { AdminSwitch } from "./admin-switch";
+import { ProtocolBadge } from "./ProtocolBadge";
 
 export const nodeRuntimeLabels: Record<string, string> = {
     online: "在线",
@@ -85,7 +86,7 @@ export function NodeDiagnostics({
                         <div>
                             <dt>节点</dt>
                             <dd>
-                                {node.type} #{node.id} · {node.protocol || "—"}
+                                {node.type} #{node.id} · <ProtocolBadge protocol={node.protocol} />
                             </dd>
                         </div>
                         <div>

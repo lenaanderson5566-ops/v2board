@@ -18,6 +18,7 @@ import {
 } from "../shared/api";
 import { ResourcePage } from "./admin";
 import { Modal } from "../shared/ui";
+import { adminPlanLabel } from "./admin-plan-reference";
 
 const labels: Record<string, string> = {
     pending: "待人工复核",
@@ -235,9 +236,10 @@ function Person({ row, inviter }: { row: Row; inviter: boolean }) {
     const registered = row[`${prefix}_registered_at`];
     const banned = row[`${prefix}_banned`];
     const expiry = row[`${prefix}_expired_at`];
-    const plan =
-        row[`${prefix}_plan_name`] ||
-        (row[`${prefix}_plan_id`] ? "套餐信息不可用" : "未设置套餐");
+    const plan = adminPlanLabel({
+        plan_id: row[`${prefix}_plan_id`],
+        plan_name: row[`${prefix}_plan_name`],
+    }, undefined, { empty: "未设置套餐" });
     return (
         <section className="invitation-person">
             <h3>

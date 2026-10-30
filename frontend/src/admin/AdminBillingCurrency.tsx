@@ -6,6 +6,7 @@ import { adminInstant as formatInstant } from "./admin-log-time";
 import { AdminSectionHead, AdminOperationNotice, AdminDetails } from "./admin-section";
 import { useAdminOperation } from "./admin-operation";
 import { parseUsdPrice } from "./billing-price-input";
+import { adminPlanOptions } from "./admin-plan-reference";
 
 const periods = {
     month_price: "月付",
@@ -209,9 +210,9 @@ export function AdminBillingCurrency() {
                                     }
                                 >
                                     <option value="">请选择套餐</option>
-                                    {data.data?.plans.map((plan) => (
-                                        <option key={plan.id} value={plan.id}>
-                                            {plan.name}
+                                    {adminPlanOptions(data.data?.plans || [], selectedId, { data: data.data?.plans, loading: data.loading, error: data.error }).map(([id, name]) => (
+                                        <option key={id} value={id}>
+                                            {name}
                                         </option>
                                     ))}
                                 </select>

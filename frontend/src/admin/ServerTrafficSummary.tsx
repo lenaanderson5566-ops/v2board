@@ -1,6 +1,7 @@
 import { admin, bytes, type Row } from "../shared/api";
 import { State, Table, useData } from "../shared/ui";
 import { adminInstant, logTime } from "./admin-log-time";
+import { ProtocolBadge } from "./ProtocolBadge";
 export function quotaState(budget?: Row) {
     if(!budget)return "未设置";
     if(budget.blocked)return "已达额度";
@@ -16,7 +17,7 @@ export function ServerTrafficSummary({server,onNavigate}:{server:Row;onNavigate?
             <h3>流量与计费周期</h3>
             {b ? <p>{quotaState(b)} · {bytes(b.usedBytes || 0)} / {Number(b.limitBytes)>0 ? bytes(b.limitBytes) : "不限量"}</p> : <p>尚未配置流量额度，可在上方流量额度中设置。</p>}
             {b && <><p>当前周期：{adminInstant(b.periodStart)} 至 {adminInstant(b.periodEnd)}（结束时间不包含在本周期内）</p><p>计费方向：{{both:"上传 + 下载",upload:"仅上传",download:"仅下载"}[b.countingMode as string]}</p><p>本月双向流量：{bytes(Number(b.thisMonth?.uploadBytes || 0)+Number(b.thisMonth?.downloadBytes || 0))} · 近 30 天：{bytes(Number(b.last30Days?.uploadBytes || 0)+Number(b.last30Days?.downloadBytes || 0))}</p></>}
-            <h3>关联代理服务</h3><Table data={d.data?.nodes || []} columns={[["name","代理服务"],["protocol","协议"],["listenPort","监听端口"],["type","后端"],["id","服务 ID"]]} actions={n=><a onClick={e=>{if(onNavigate && !onNavigate())e.preventDefault();}} href={`#/nodes?service=${encodeURIComponent(`${n.type}:${n.id}`)}`}>管理节点</a>}/>
+            <h3>关联代理服务</h3><Table data={d.data?.nodes || []} columns={[["name","代理服务"],["protocol","协议",n=><ProtocolBadge protocol={n.protocol}/>],["listenPort","监听端口"],["type","后端"],["id","服务 ID"]]} actions={n=><a onClick={e=>{if(onNavigate && !onNavigate())e.preventDefault();}} href={`#/nodes?service=${encodeURIComponent(`${n.type}:${n.id}`)}`}>管理节点</a>}/>
             <h3>每日用量（最近 90 天）</h3><Table data={d.data?.history || []} columns={[["dayAt","日期",r=>logTime(r.dayAt)],["uploadBytes","上传",r=>bytes(r.uploadBytes)],["downloadBytes","下载",r=>bytes(r.downloadBytes)]]}/>
             <p className="muted">首次关联自动纳入近期节点统计；后续修改额度保留历史记录。每日用量不应用节点倍率，入口转发流量未接入节点统计时不会重复计入。</p>
         </State></section>;

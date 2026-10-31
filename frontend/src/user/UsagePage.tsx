@@ -2,7 +2,7 @@ import { PlanSelection } from "./PlanSelection";
 import { activePlan } from "../shared/user-experience";
 import { unfinishedOrder } from "./billing-flow";
 import { TrafficCredits } from "./TrafficCredits";
-import { c, minuteDate } from "../shared/credit-copy";
+import { c } from "../shared/credit-copy";
 import { useRef, useState } from "react";
 import { ArrowUpRight, RotateCcw } from "lucide-react";
 import { bytes, date, money, request, type Row } from "../shared/api";
@@ -11,7 +11,8 @@ import { e } from "../shared/experience-copy";
 import { b } from "../shared/billing-copy";
 import { Modal, State, useData } from "../shared/ui";
 import { UsageChart } from "./UsageChart";
-import { displayTimeZone, validZone } from "../shared/timezone";
+import { displayTimeZone, formatInstant } from "../shared/timezone";
+import "./usage-reset-summary.css";
 
 export function UsagePage() {
     const info = useData("user/info"),
@@ -39,12 +40,9 @@ export function UsagePage() {
         ? Math.max(0, Math.min(100, ((total - used) / total) * 100))
         : 0;
     const resetAt = Number(sub.data?.reset_at);
-    const resetZone = typeof sub.data?.reset_timezone === "string" && validZone(sub.data.reset_timezone)
-        ? sub.data.reset_timezone : undefined;
     const resetCopy = sub.data?.reset_state === "pending" ? "resetPending"
         : sub.data?.reset_state === "failed" ? "resetFailed" : "resetAt";
-    const validResetAt = Number.isFinite(resetAt) && resetAt > 0 && sub.data?.has_subscription !== false;
-    const showBusinessResetTime = validResetAt && resetZone && resetZone !== displayTimeZone();
+    const validResetAt = Number.isFinite(new Date(resetAt * 1000).getTime()) && resetAt > 0 && sub.data?.has_subscription !== false;
     const usable =
         info.data?.account_status?.state === "active" &&
         info.data.account_status.is_available !== false &&
@@ -171,14 +169,14 @@ export function UsagePage() {
                                             : sub.data?.plan?.name ||
                                               tx("尚未订阅套餐")}
                                     </strong>
-                                    <div className="settings-row">
+                                    <div className="settings-row usage-reset-summary">
                                         <span className="muted">
                                             {validResetAt
-                                                ? tx(resetCopy, {
+                                                ? <time dateTime={new Date(resetAt * 1000).toISOString()} title={displayTimeZone()}>{tx(resetCopy, {
                                                       ns: "credits",
-                                                      defaultValue: resetCopy === "resetPending" ? "Reset awaiting confirmation (your time zone): {{date}}" : resetCopy === "resetFailed" ? "Reset awaiting retry (your time zone): {{date}}" : "Scheduled reset (your time zone): {{date}}",
-                                                      date: minuteDate(resetAt),
-                                                  })
+                                                      defaultValue: resetCopy === "resetPending" ? "Reset awaiting confirmation: {{date}}" : resetCopy === "resetFailed" ? "Reset awaiting retry: {{date}}" : "Next reset: {{date}}",
+                                                      date: formatInstant(resetAt, { second: undefined, timeZoneName: undefined }),
+                                                  })}</time>
                                                 : c(
                                                       sub.data
                                                           ?.has_subscription ===
@@ -188,16 +186,12 @@ export function UsagePage() {
                                                   )}
                                         </span>
                                         {total > 0 && (
-                                            <span>
+                                            <span className="usage-quota-remaining">
                                                 {e("remaining")}{" "}
                                                 {Math.round(percent)}%
                                             </span>
                                         )}
                                     </div>
-                                    {showBusinessResetTime && <p className="muted">{tx("resetBusinessTime", {
-                                        ns: "credits", date: minuteDate(resetAt, resetZone), zone: resetZone,
-                                        defaultValue: "Corresponding system time: {{date}} · {{zone}}",
-                                    })}</p>}
                                     {total > 0 && (
                                         <>
                                             <div

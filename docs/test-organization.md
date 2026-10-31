@@ -149,3 +149,5 @@ BillingFlow/PendingOrderNotice 覆盖安全套餐/周期保留、返回与登录
 
 v2box 端沿用 api/v2board、node、core 的 Go 包内回归，覆盖完整用户快照、空/304 区分、响应限额、大用户流式读取、伪造 MessagePack 长度、异常计数、取消保留采样和共享监听移除失败保留归属。执行矩阵沿用节点 CI 的 with_quic,with_utls、race、独立 Reality Vision、vet 和既有脚本测试；不调用生产面板、ACME、DNS 服务商或真实服务管理器。
 配置更新记录复用 api-v10、api-v10-inventory、browser-session、既有订阅策略/访问保护/风险与日志保留测试。覆盖本人隔离、过期与无套餐、未登录/查询凭据/受限账户、稳定分页、最大整数页码无溢出、保留期读时过滤、原始凭据/UA/异常不外露及 GET 不写订阅日志/触发风险；实际脚本仍在可销毁副本和随机数据库/缓存前缀执行。前端独立 ConfigurationUpdates 测试与 AccountControls、QuickStart、app、EmbeddedBrowserNotice、v10-api、localization 共用已有运行器，验证入口不提前拉日志、懒加载、时区、分页失败/迟到响应、未知结果、脱敏与人工刷新。新增 API 只在源模块维护，统一生成并检查七份发布物，不恢复旧用户 API。
+
+重置时间、iOS 下载账户及配置更新记录的界面精简复用 UsageBilling、AppleAccounts、ClientDownload、ConfigurationUpdates 和 localization 现有测试模块：覆盖个人时区与夏令时、异常时间戳、待确认状态、按需加载和关闭清除凭据、密码隐藏与复制、权限和限流、历史失败原因与未知字段过滤。未新增独立运行器；本轮 133 项相关回归与生产构建通过。

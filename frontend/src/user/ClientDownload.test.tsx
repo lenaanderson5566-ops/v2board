@@ -45,6 +45,13 @@ it("shows iOS guidance and loads accounts only on request without a nested modal
  expect(screen.getByText("Account list loaded")).toBeTruthy();
  expect(screen.getByText(/请勿退出或登录 iCloud/)).toBeTruthy();
  expect(screen.getAllByRole("dialog")).toHaveLength(1);
+ const trigger = screen.getByRole("button", {name:/使用下载账户/});
+ expect(trigger.getAttribute("aria-expanded")).toBe("true");
+ expect(document.getElementById(trigger.getAttribute("aria-controls")!)).toBeTruthy();
+ expect(screen.getByText(/如提示付款或额外验证/).closest("details")).toBeNull();
+ fireEvent.click(trigger);
+ expect(screen.queryByText("Account list loaded")).toBeNull();
+ expect(trigger.getAttribute("aria-expanded")).toBe("false");
 });
 it("keeps official download available when account sharing is disabled", () => {
  boot.appleAccountEnabled = false;

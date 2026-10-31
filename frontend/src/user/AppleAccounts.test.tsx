@@ -15,7 +15,7 @@ it("loads only on demand, hides password, and clears credentials on close", asyn
     fireEvent.click(screen.getByText("0"));
     await screen.findByText("test-account");
     expect(screen.queryByText("secret-value")).toBeNull();
-    fireEvent.click(screen.getByText("8"));
+    fireEvent.click(screen.getByRole("button", { name: "8" }));
     expect(screen.getByText("secret-value")).toBeTruthy();
     fireEvent.click(screen.getByText("close"));
     expect(screen.queryByText("secret-value")).toBeNull();
@@ -36,7 +36,7 @@ it("shows an unavailable account without password actions", async () => {
     fireEvent.click(screen.getByText("0"));
     await screen.findByText("unavailable-account");
     expect(screen.queryByText("7")).toBeNull();
-    expect(screen.queryByText("8")).toBeNull();
+    expect(screen.queryByRole("button", { name: "8" })).toBeNull();
 });
 it("respects download-account rate limits and waits for an explicit retry",async()=>{
  vi.useFakeTimers();
@@ -80,4 +80,27 @@ it("retains only the rate-limit deadline when an account panel is reopened",asyn
   await act(async()=>{await Promise.resolve();});
   expect(mocks.request).toHaveBeenCalledTimes(2);
  }finally {vi.useRealTimers();}
+});
+
+it("copies a hidden password without revealing it and announces the result", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+    mocks.request.mockResolvedValue({ data: [{ username: "copy-account", password: "copy-secret", available: true }] });
+    render(<AppleAccounts />);
+    fireEvent.click(screen.getByText("0"));
+    await screen.findByText("copy-account");
+    fireEvent.click(screen.getByRole("button", { name: "7" }));
+    await screen.findByText("10");
+    expect(writeText).toHaveBeenCalledWith("copy-secret");
+    expect(screen.queryByText("copy-secret")).toBeNull();
+    expect(screen.getByRole("button", { name: "8" }).getAttribute("aria-pressed")).toBe("false");
+});
+it("does not offer password controls or a healthy status when the response lacks credentials", async () => {
+    mocks.request.mockResolvedValue({ data: [{ username: "incomplete-account", available: true }] });
+    render(<AppleAccounts />);
+    fireEvent.click(screen.getByText("0"));
+    await screen.findByText("incomplete-account");
+    expect(screen.getByText("暂不可用")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "7" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "8" })).toBeNull();
 });

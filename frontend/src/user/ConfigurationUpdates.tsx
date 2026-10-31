@@ -25,17 +25,10 @@ const failureExplanations = new Map([
 function RequestResult({ record }: { record: V10SubscriptionAccessRecord }) {
     const status = record.status === "success" ? "success" : record.status === "failed" ? "failed" : "unknown";
     const label = status === "success" ? "请求成功" : status === "failed" ? "请求未成功" : "结果未知";
-    const explanation = status === "success"
-        ? "配置请求已成功响应，导入与连接状态请在客户端中确认。"
-        : status === "failed"
-          ? failureExplanations.get(text(record.reason)) || "配置请求未完成，请检查客户端设置后重试。"
-          : "无法确认此次请求结果，请在客户端中检查配置。";
+    const explanation = status === "failed" ? failureExplanations.get(text(record.reason)) : undefined;
     return <>
         <span className={`configuration-request-status ${status}`}>{tx(label)}</span>
-        <details className="configuration-request-details">
-            <summary>{tx("请求详情")}</summary>
-            <p>{tx(explanation)}</p>
-        </details>
+        {explanation && <small className="configuration-request-reason">{tx(explanation)}</small>}
     </>;
 }
 
@@ -75,11 +68,13 @@ export function ConfigurationUpdates() {
                         const validTime = requestedAt && Number.isFinite(Date.parse(requestedAt));
                         const clientName = text(record.clientName) || tx("客户端未识别");
                         const version = text(record.clientVersion);
+                        const ip = text(record.ip);
+                        const location = text(record.location);
                         return <tr key={record.id ?? index}>
                             <td data-label={tx("请求时间")}><time dateTime={validTime ? requestedAt : undefined}>{validTime ? formatInstant(requestedAt) : "—"}</time></td>
                             <td data-label={tx("客户端")}><strong>{clientName}</strong>{version && <small><bdi>{version}</bdi></small>}</td>
                             <td data-label={tx("请求结果")}><RequestResult record={record} /></td>
-                            <td data-label={tx("来源 IP 与地区")}><bdi dir="ltr">{text(record.ip) || tx("来源未知")}</bdi><small>{text(record.location) || tx("地区未知")}</small></td>
+                            <td data-label={tx("来源 IP 与地区")}><bdi dir="ltr">{ip || tx("来源未知")}</bdi>{location && <small>{location}</small>}</td>
                         </tr>;
                     })}</tbody>
                 </table> : <p className="configuration-updates-empty">{tx("保留范围内暂无配置更新记录。")}</p>}

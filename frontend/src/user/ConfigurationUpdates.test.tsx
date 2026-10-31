@@ -34,8 +34,9 @@ it("shows only safe request fields in the personal time zone and explains succes
     expect(screen.getByText(/12\/31\/2025, 16:30:00/)).toBeTruthy();
     expect(screen.getByText("仅显示最近 30 天内保留的记录。")).toBeTruthy();
     expect(screen.getByRole("link", { name: "返回账户安全" }).getAttribute("href")).toBe("#/security");
-    fireEvent.click(screen.getByText("请求详情"));
-    expect(screen.getByText("配置请求已成功响应，导入与连接状态请在客户端中确认。")).toBeTruthy();
+    expect(screen.queryByText("请求详情")).toBeNull();
+    expect(document.querySelector("details")).toBeNull();
+    expect(screen.getByText("记录客户端获取或更新配置的请求，不代表导入或连接成功。")).toBeTruthy();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.read).toHaveBeenCalledWith("user/subscription/access-records?page=1&pageSize=20", undefined, false);
 });
@@ -46,7 +47,7 @@ it("treats unknown fields and status conservatively without exposing raw diagnos
     expect(await screen.findByText("结果未知")).toBeTruthy();
     expect(screen.getByText("客户端未识别")).toBeTruthy();
     expect(screen.getByText("来源未知")).toBeTruthy();
-    expect(screen.getByText("地区未知")).toBeTruthy();
+    expect(screen.queryByText("地区未知")).toBeNull();
     expect(screen.getByText("—")).toBeTruthy();
     expect(screen.queryByText("请求成功")).toBeNull();
     expect(screen.queryByText(/private-reason|private-agent|private-token/)).toBeNull();
@@ -68,7 +69,8 @@ it("explains historical subscription failures without displaying unknown reason 
     ]));
     render(<ConfigurationUpdates />);
     expect(await screen.findByText("此次请求时订阅已到期，请检查有效期或续费后更新配置。")).toBeTruthy();
-    expect(screen.getByText("配置请求未完成，请检查客户端设置后重试。")).toBeTruthy();
+    expect(screen.queryByText("配置请求未完成，请检查客户端设置后重试。")).toBeNull();
+    expect(document.querySelector("details")).toBeNull();
     expect(screen.queryByText("private-diagnostic-reason")).toBeNull();
 });
 

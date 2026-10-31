@@ -22,10 +22,6 @@
     "结果未知": "Result unknown",
     "客户端未识别": "Unrecognized client",
     "来源未知": "Unknown source",
-    "请求详情": "Request details",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "The configuration request received a successful response. Check import and connection status in your client.",
-    "配置请求未完成，请检查客户端设置后重试。": "The configuration request did not complete. Check your client settings and try again.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "The result of this request could not be confirmed. Check the configuration in your client.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "IP addresses are masked. Location is estimated from the request IP and may show a proxy exit location.",
     "时间按您的显示时区展示。": "Times are shown in your display time zone.",
     "有尚未保存的修改，确认放弃？": "You have unsaved changes. Discard them?",
@@ -772,7 +768,7 @@
     "empty": "No credits available to purchase",
     "access": "Existing accounts keep their node group, speed and device limits. First-time access uses the selected credit package.",
     "checkout": "Continue to checkout",
-    "resetAt": "Expected reset (your time zone): {{date}}",
+    "resetAt": "Next reset: {{date}}",
     "noReset": "No automatic reset before expiry",
     "noPlanTitle": "No active plan",
     "noPlan": "No active plan. Credits can be used independently.",
@@ -789,10 +785,9 @@
     "paidReset": "Paid reset",
     "paidResetHelp": "Reset your plan traffic without using a banked reset. Your expiry date, scheduled reset and credit balance stay the same.",
     "creditOrder": "{{amount}} credits",
-    "resetBusinessTime": "Equivalent system time: {{date}} · {{zone}}",
     "resetBusinessZone": "Reset rules use {{zone}}. Your display time zone does not change the reset time.",
-    "resetPending": "Reset awaiting confirmation (your time zone): {{date}}",
-    "resetFailed": "Reset awaiting retry (your time zone): {{date}}"
+    "resetPending": "Reset awaiting confirmation: {{date}}",
+    "resetFailed": "Reset awaiting retry: {{date}}"
   },
   "experience": {
     "adminRefreshing": "Updating; showing previously loaded data…",
@@ -1193,7 +1188,8 @@
     "step1": "Open the App Store, tap your profile photo, scroll down and sign out of the store account.",
     "step2": "Sign in to the App Store with an available account below, then open the selected client’s download page.",
     "step3": "After downloading, sign out of the download account in the App Store, restore your own account, then return here to import.",
-    "paid": "An account may not own every client. If payment or additional verification is requested, stop and choose another available account or use your own."
+    "paid": "An account may not own every client. If payment or additional verification is requested, stop and choose another available account or use your own.",
+    "instructions": "How to use a download account"
   },
   "appleAccount": {
     "0": "Get download account",
@@ -1209,7 +1205,8 @@
     "10": "Copied",
     "11": "Copy failed. Please copy manually.",
     "12": "Last checked",
-    "unavailable": "Download accounts are temporarily unavailable. Please try again later."
+    "unavailable": "Download accounts are temporarily unavailable. Please try again later.",
+    "username": "Account"
   },
   "banners": {
     "previous": "Previous banner",

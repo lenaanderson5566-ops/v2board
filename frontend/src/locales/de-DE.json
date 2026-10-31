@@ -22,10 +22,6 @@
     "结果未知": "Ergebnis unbekannt",
     "客户端未识别": "Client nicht erkannt",
     "来源未知": "Quelle unbekannt",
-    "请求详情": "Anfragedetails",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "Die Konfigurationsanfrage wurde erfolgreich beantwortet. Prüfen Sie den Import- und Verbindungsstatus im Client.",
-    "配置请求未完成，请检查客户端设置后重试。": "Die Konfigurationsanfrage wurde nicht abgeschlossen. Prüfen Sie die Client-Einstellungen und versuchen Sie es erneut.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "Das Ergebnis dieser Anfrage konnte nicht bestätigt werden. Prüfen Sie die Konfiguration im Client.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "IP-Adressen werden maskiert. Der Standort wird anhand der Anfrage-IP geschätzt und kann den Standort eines Proxy-Ausgangs anzeigen.",
     "时间按您的显示时区展示。": "Zeiten werden in Ihrer Anzeigezeitzone dargestellt.",
     "有尚未保存的修改，确认放弃？": "Es gibt ungespeicherte Änderungen. Möchten Sie diese verwerfen?",
@@ -772,7 +768,7 @@
     "empty": "Keine Daten-Credits zum Kauf verfügbar",
     "access": "Bestehende Konten behalten ihre Knotengruppen-, Geschwindigkeits- und Gerätelimits. Beim Erstzugang wird das gewählte Guthabenpaket genutzt.",
     "checkout": "Weiter zur Kasse",
-    "resetAt": "Voraussichtliche Zurücksetzung (Ihre Zeitzone): {{date}}",
+    "resetAt": "Nächste Zurücksetzung: {{date}}",
     "noReset": "Kein automatischer Reset vor Ablauf",
     "noPlanTitle": "Kein aktiver Tarif",
     "noPlan": "Kein aktiver Tarif. Daten-Credits können unabhängig genutzt werden.",
@@ -789,10 +785,9 @@
     "paidReset": "Kostenpflichtiges Zurücksetzen",
     "paidResetHelp": "Setzen Sie den Tarifverbrauch zurück, ohne eine gespeicherte Zurücksetzung zu nutzen. Ablaufdatum, geplanter Termin und Daten-Credits bleiben gleich.",
     "creditOrder": "{{amount}} Credits",
-    "resetBusinessTime": "Entsprechende Systemzeit: {{date}} · {{zone}}",
     "resetBusinessZone": "Die Regeln für die Zurücksetzung verwenden {{zone}}. Die Anzeigezeitzone ändert den Zeitpunkt der Zurücksetzung nicht.",
-    "resetPending": "Zurücksetzung wartet auf Bestätigung (Ihre Zeitzone): {{date}}",
-    "resetFailed": "Zurücksetzung wartet auf erneuten Versuch (Ihre Zeitzone): {{date}}"
+    "resetPending": "Zurücksetzung wartet auf Bestätigung: {{date}}",
+    "resetFailed": "Zurücksetzung wartet auf Wiederholung: {{date}}"
   },
   "experience": {
     "adminRefreshing": "Aktualisieren; Zeigt zuvor geladene Daten an…",
@@ -1193,7 +1188,8 @@
     "step1": "Öffnen Sie App Store, tippen Sie auf Ihr Profilfoto, scrollen Sie nach unten und melden Sie sich vom Store-Konto ab.",
     "step2": "Melden Sie sich unten mit einem verfügbaren Konto beim App Store an und öffnen Sie dann die Download-Seite des ausgewählten Clients.",
     "step3": "Melden Sie sich nach dem Herunterladen vom Download-Konto im App Store ab, stellen Sie Ihr eigenes Konto wieder her und kehren Sie dann hierher zurück, um zu importieren.",
-    "paid": "Ein Konto darf nicht jedem Clients gehören. Wenn eine Zahlung oder eine zusätzliche Verifizierung angefordert wird, stoppen Sie und wählen Sie ein anderes verfügbares Konto oder verwenden Sie Ihr eigenes."
+    "paid": "Ein Konto darf nicht jedem Clients gehören. Wenn eine Zahlung oder eine zusätzliche Verifizierung angefordert wird, stoppen Sie und wählen Sie ein anderes verfügbares Konto oder verwenden Sie Ihr eigenes.",
+    "instructions": "So verwenden Sie ein Download-Konto"
   },
   "appleAccount": {
     "0": "Download-Konto anfordern",
@@ -1209,7 +1205,8 @@
     "10": "Kopiert",
     "11": "Kopieren fehlgeschlagen. Bitte manuell kopieren.",
     "12": "Zuletzt überprüft",
-    "unavailable": "Download-Konten sind vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut."
+    "unavailable": "Download-Konten sind vorübergehend nicht verfügbar. Bitte versuchen Sie es später erneut.",
+    "username": "Konto"
   },
   "banners": {
     "previous": "Vorheriges Banner",

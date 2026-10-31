@@ -22,10 +22,6 @@
     "结果未知": "Chưa rõ kết quả",
     "客户端未识别": "Không nhận diện được ứng dụng",
     "来源未知": "Không rõ nguồn",
-    "请求详情": "Chi tiết yêu cầu",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "Yêu cầu cấu hình đã nhận được phản hồi thành công. Hãy kiểm tra trạng thái nhập cấu hình và kết nối trong ứng dụng.",
-    "配置请求未完成，请检查客户端设置后重试。": "Yêu cầu cấu hình chưa hoàn tất. Hãy kiểm tra cài đặt ứng dụng rồi thử lại.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "Không thể xác nhận kết quả của yêu cầu này. Hãy kiểm tra cấu hình trong ứng dụng.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "Địa chỉ IP đã được che một phần. Vị trí được ước tính từ IP gửi yêu cầu và có thể là vị trí đầu ra của proxy.",
     "时间按您的显示时区展示。": "Thời gian được hiển thị theo múi giờ đã chọn.",
     "有尚未保存的修改，确认放弃？": "Có thay đổi chưa được lưu. Bạn có muốn bỏ các thay đổi này không?",
@@ -770,7 +766,7 @@
     "empty": "Chưa có hạn mức để mua",
     "access": "Tài khoản hiện có giữ nhóm máy chủ, giới hạn tốc độ và thiết bị. Lần đầu áp dụng gói hạn mức đã chọn.",
     "checkout": "Tiếp tục thanh toán",
-    "resetAt": "Dự kiến đặt lại (múi giờ của bạn): {{date}}",
+    "resetAt": "Đặt lại tiếp theo: {{date}}",
     "noReset": "Không tự đặt lại trước khi hết hạn",
     "noPlanTitle": "Không có gói còn hạn",
     "noPlan": "Không có gói còn hạn. Có thể dùng hạn mức độc lập.",
@@ -787,10 +783,9 @@
     "paidReset": "Đặt lại có phí",
     "paidResetHelp": "Đặt lại lưu lượng gói mà không dùng lượt dự trữ. Ngày hết hạn, lịch đặt lại và dung lượng bổ sung không thay đổi.",
     "creditOrder": "Hạn mức · {{amount}}",
-    "resetBusinessTime": "Thời gian hệ thống tương ứng: {{date}} · {{zone}}",
     "resetBusinessZone": "Quy tắc đặt lại sử dụng {{zone}}. Múi giờ hiển thị không làm thay đổi thời điểm đặt lại.",
-    "resetPending": "Đặt lại đang chờ xác nhận (múi giờ của bạn): {{date}}",
-    "resetFailed": "Đặt lại đang chờ thử lại (múi giờ của bạn): {{date}}"
+    "resetPending": "Đang chờ xác nhận đặt lại: {{date}}",
+    "resetFailed": "Đang chờ thử đặt lại: {{date}}"
   },
   "experience": {
     "adminRefreshing": "Đang cập nhật; hiển thị dữ liệu trước đó…",
@@ -1197,7 +1192,8 @@
     "10": "Đã sao chép",
     "11": "Không thể sao chép. Hãy sao chép thủ công.",
     "12": "Kiểm tra gần nhất",
-    "unavailable": "Tài khoản tải xuống tạm thời không khả dụng. Vui lòng thử lại sau."
+    "unavailable": "Tài khoản tải xuống tạm thời không khả dụng. Vui lòng thử lại sau.",
+    "username": "Tài khoản"
   },
   "banners": {
     "previous": "Trước",
@@ -1215,6 +1211,7 @@
     "step1": "Mở App Store, nhấn ảnh đại diện, cuộn xuống và đăng xuất tài khoản cửa hàng.",
     "step2": "Đăng nhập App Store bằng tài khoản khả dụng bên dưới, rồi mở trang tải của ứng dụng đã chọn.",
     "step3": "Sau khi tải, đăng xuất tài khoản tải xuống trong App Store, khôi phục tài khoản của bạn rồi quay lại đây để nhập cấu hình.",
-    "paid": "Không phải tài khoản nào cũng đã mua mọi ứng dụng. Nếu được yêu cầu thanh toán hoặc xác minh thêm, hãy dừng lại và chọn tài khoản khả dụng khác hoặc dùng tài khoản của bạn."
+    "paid": "Không phải tài khoản nào cũng đã mua mọi ứng dụng. Nếu được yêu cầu thanh toán hoặc xác minh thêm, hãy dừng lại và chọn tài khoản khả dụng khác hoặc dùng tài khoản của bạn.",
+    "instructions": "Cách sử dụng tài khoản tải xuống"
   }
 }

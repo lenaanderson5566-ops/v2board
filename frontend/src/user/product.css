@@ -1258,25 +1258,6 @@
         ) !important;
     }
 }
-.apple-account-card {
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    padding: 16px;
-    margin: 12px 0;
-    overflow-wrap: anywhere;
-}
-.apple-account-heading {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-}
-.apple-account-card p {
-    margin: 10px 0;
-}
-.apple-account-password {
-    font-family: monospace;
-}
 @media (max-width: 760px) {
     .user .compact-mobile-table tbody tr {
         display: grid;
@@ -1302,15 +1283,10 @@
     .user .compact-mobile-table table td:first-child::before {
         display: none;
     }
-    .apple-account-card .quick-actions {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-    }
 }
 
 .client-download-modal .modal {
-    width: min(440px, calc(100vw - 24px));
+    width: min(480px, calc(100vw - 24px));
 }
 .download-options {
     display: grid;
@@ -1361,20 +1337,6 @@
     background: rgba(128, 128, 128, 0.08);
 }
 
-.ios-account-guide ol {
-    padding-inline-start: 22px;
-    margin: 12px 0;
-}
-.ios-account-guide li {
-    margin-bottom: 12px;
-    line-height: 1.6;
-}
-.ios-account-guide > .pad {
-    padding: 0;
-}
-.ios-account-guide {
-    min-width: 0;
-}
 
 .import-more {
     margin-block: 4px 12px;

@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { trackAction } from "./product-analytics";
 import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { AccountList } from "./AppleAccounts";
 import { useTranslation } from "react-i18next";
-import { ArrowRight, ArrowUpRight, Download, Globe } from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronDown, Download, Globe, KeyRound, ShieldAlert } from "lucide-react";
 import { boot } from "../shared/api";
 import { Modal } from "../shared/ui";
 import { clients, type ClientId } from "../shared/import-links";
@@ -64,6 +64,7 @@ export function ClientDownload({
         : mirrorDownload(client, device);
     const { t: ios } = useTranslation("iosDownload");
     const [showAccounts, setShowAccounts] = useState(false);
+    const accountPanelId = useId();
     return (
         <Modal
             title={t("title")}
@@ -164,32 +165,29 @@ export function ClientDownload({
                                 <button
                                     className="download-source"
                                     aria-expanded={showAccounts}
+                                    aria-controls={accountPanelId}
                                     onClick={() =>
                                         setShowAccounts((value) => !value)
                                     }
                                 >
-                                    <Download size={22} />
+                                    <KeyRound size={22} aria-hidden="true" />
                                     <span>
                                         <strong>{ios("account")}</strong>
                                         <small>{ios("eligibility")}</small>
                                     </span>
+                                    <ChevronDown size={18} className="ios-account-chevron" aria-hidden="true" />
                                 </button>
                                 {showAccounts && (
-                                    <div className="ios-account-guide">
-                                        <p className="import-help">
-                                            {ios("warning")}
-                                        </p>
-                                        <ol>
-                                            {["step1", "step2", "step3"].map(
-                                                (key) => (
-                                                    <li key={key}>
-                                                        {ios(key)}
-                                                    </li>
-                                                ),
-                                            )}
-                                        </ol>
-                                        <p className="muted">{ios("paid")}</p>
-                                        <AccountList />
+                                    <div className="ios-account-guide" id={accountPanelId}>
+                                        <p className="apple-account-notice"><ShieldAlert size={18} aria-hidden="true" /><span>{ios("warning")}</span></p>
+                                        <AccountList showNotice={false} />
+                                        <p className="ios-account-purchase-note muted">{ios("paid")}</p>
+                                        <details className="ios-account-instructions">
+                                            <summary>{ios("instructions", { defaultValue: "How to use a download account" })}</summary>
+                                            <ol>
+                                                {["step1", "step2", "step3"].map((key) => <li key={key}>{ios(key)}</li>)}
+                                            </ol>
+                                        </details>
                                     </div>
                                 )}
                             </>

@@ -22,10 +22,6 @@
     "结果未知": "Résultat inconnu",
     "客户端未识别": "Client non reconnu",
     "来源未知": "Source inconnue",
-    "请求详情": "Détails de la demande",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "La demande de configuration a reçu une réponse positive. Vérifiez l’état de l’importation et de la connexion dans le client.",
-    "配置请求未完成，请检查客户端设置后重试。": "La demande de configuration n’a pas abouti. Vérifiez les paramètres du client et réessayez.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "Le résultat de cette demande n’a pas pu être confirmé. Vérifiez la configuration dans le client.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "Les adresses IP sont masquées. La localisation est estimée à partir de l’IP de la demande et peut correspondre à la sortie d’un proxy.",
     "时间按您的显示时区展示。": "Les heures sont affichées dans votre fuseau horaire d’affichage.",
     "有尚未保存的修改，确认放弃？": "Des modifications ne sont pas enregistrées. Voulez-vous les abandonner ?",
@@ -772,7 +768,7 @@
     "empty": "Aucun crédit de données disponible à l’achat",
     "access": "Les comptes existants conservent leurs limites de groupe de nœuds, de vitesse et de périphérique. Le premier accès utilise le package de crédits sélectionné.",
     "checkout": "Continuer à payer",
-    "resetAt": "Réinitialisation prévue (votre fuseau horaire) : {{date}}",
+    "resetAt": "Prochaine réinitialisation : {{date}}",
     "noReset": "Pas de réinitialisation automatique avant expiration",
     "noPlanTitle": "Pas de forfait actif",
     "noPlan": "Aucun forfait actif. Les crédits de données peuvent être utilisés seuls.",
@@ -789,10 +785,9 @@
     "paidReset": "Réinitialisation payante",
     "paidResetHelp": "Réinitialisez la consommation du forfait sans utiliser de réinitialisation en réserve. L’expiration, la prochaine réinitialisation prévue et les crédits de données restent inchangés.",
     "creditOrder": "Crédits {{amount}}",
-    "resetBusinessTime": "Heure système correspondante : {{date}} · {{zone}}",
     "resetBusinessZone": "Les règles de réinitialisation utilisent {{zone}}. Le fuseau horaire d’affichage ne change pas l’heure de réinitialisation.",
-    "resetPending": "Réinitialisation en attente de confirmation (votre fuseau horaire) : {{date}}",
-    "resetFailed": "Réinitialisation en attente d’une nouvelle tentative (votre fuseau horaire) : {{date}}"
+    "resetPending": "Réinitialisation en attente de confirmation : {{date}}",
+    "resetFailed": "Réinitialisation en attente de nouvelle tentative : {{date}}"
   },
   "experience": {
     "adminRefreshing": "Mise à jour ; affichant les données précédemment chargées…",
@@ -1193,7 +1188,8 @@
     "step1": "Ouvrez le App Store, appuyez sur votre photo de profil, faites défiler vers le bas et déconnectez-vous du compte du magasin.",
     "step2": "Connectez-vous au App Store avec un compte disponible ci-dessous, puis ouvrez la page de téléchargement du client sélectionné.",
     "step3": "Après le téléchargement, déconnectez-vous du compte de téléchargement dans le App Store, restaurez votre propre compte, puis revenez ici pour importer.",
-    "paid": "Un compte ne peut pas posséder tous les clients. Si un paiement ou une vérification supplémentaire est demandé, arrêtez-vous et choisissez un autre compte disponible ou utilisez le vôtre."
+    "paid": "Un compte ne peut pas posséder tous les clients. Si un paiement ou une vérification supplémentaire est demandé, arrêtez-vous et choisissez un autre compte disponible ou utilisez le vôtre.",
+    "instructions": "Utiliser un compte de téléchargement"
   },
   "appleAccount": {
     "0": "Obtenir un compte de téléchargement",
@@ -1209,7 +1205,8 @@
     "10": "Copié",
     "11": "La copie a échoué. Veuillez copier manuellement.",
     "12": "Dernière vérification",
-    "unavailable": "Les comptes de téléchargement sont temporairement indisponibles. Veuillez réessayer plus tard."
+    "unavailable": "Les comptes de téléchargement sont temporairement indisponibles. Veuillez réessayer plus tard.",
+    "username": "Compte"
   },
   "banners": {
     "previous": "Bannière précédente",

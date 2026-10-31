@@ -22,10 +22,6 @@
     "结果未知": "Resultado desconocido",
     "客户端未识别": "Cliente no reconocido",
     "来源未知": "Origen desconocido",
-    "请求详情": "Detalles de la solicitud",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "La solicitud de configuración recibió una respuesta correcta. Compruebe el estado de importación y conexión en el cliente.",
-    "配置请求未完成，请检查客户端设置后重试。": "La solicitud de configuración no se completó. Revise los ajustes del cliente e inténtelo de nuevo.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "No se pudo confirmar el resultado de esta solicitud. Compruebe la configuración en el cliente.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "Las direcciones IP están enmascaradas. La ubicación se estima a partir de la IP de la solicitud y puede corresponder a la salida de un proxy.",
     "时间按您的显示时区展示。": "Las horas se muestran en su zona horaria de visualización.",
     "有尚未保存的修改，确认放弃？": "Hay cambios sin guardar. ¿Desea descartarlos?",
@@ -772,7 +768,7 @@
     "empty": "No hay créditos disponibles para comprar",
     "access": "Las cuentas existentes conservan su grupo de nodos, velocidad y límite de dispositivos. El primer acceso usa el paquete de créditos seleccionado.",
     "checkout": "Continuar al pago",
-    "resetAt": "Reinicio previsto (tu zona horaria): {{date}}",
+    "resetAt": "Próximo restablecimiento: {{date}}",
     "noReset": "Sin reinicio automático antes del vencimiento",
     "noPlanTitle": "Sin plan activo",
     "noPlan": "Sin plan activo. Los créditos pueden usarse de forma independiente.",
@@ -789,10 +785,9 @@
     "paidReset": "Reinicio de pago",
     "paidResetHelp": "Restablece los datos de tu plan sin usar un reinicio guardado. El vencimiento, el reinicio programado y el saldo de créditos no cambian.",
     "creditOrder": "{{amount}} créditos",
-    "resetBusinessTime": "Hora del sistema correspondiente: {{date}} · {{zone}}",
     "resetBusinessZone": "Las reglas de reinicio usan {{zone}}. La zona horaria de visualización no cambia la hora del reinicio.",
-    "resetPending": "Reinicio pendiente de confirmación (tu zona horaria): {{date}}",
-    "resetFailed": "Reinicio pendiente de reintento (tu zona horaria): {{date}}"
+    "resetPending": "Restablecimiento pendiente de confirmación: {{date}}",
+    "resetFailed": "Restablecimiento pendiente de reintento: {{date}}"
   },
   "experience": {
     "adminRefreshing": "Actualizando; se muestran los datos anteriores…",
@@ -1193,7 +1188,8 @@
     "step1": "Abre el App Store, toca tu foto de perfil, desplázate abajo y cierra la sesión de la tienda.",
     "step2": "Inicia sesión en el App Store con una cuenta disponible abajo y abre la descarga del cliente elegido.",
     "step3": "Tras descargar, cierra la sesión de la cuenta de descarga en el App Store, restaura tu cuenta y vuelve aquí para importar.",
-    "paid": "Una cuenta puede no tener todos los clientes. Si se solicita pago o verificación adicional, detente y elige otra cuenta o usa la tuya."
+    "paid": "Una cuenta puede no tener todos los clientes. Si se solicita pago o verificación adicional, detente y elige otra cuenta o usa la tuya.",
+    "instructions": "Cómo usar una cuenta de descarga"
   },
   "appleAccount": {
     "0": "Obtener cuenta de descarga",
@@ -1209,7 +1205,8 @@
     "10": "Copiado",
     "11": "No se pudo copiar. Copia manualmente.",
     "12": "Última comprobación",
-    "unavailable": "Las cuentas de descarga no están disponibles temporalmente. Inténtelo de nuevo más tarde."
+    "unavailable": "Las cuentas de descarga no están disponibles temporalmente. Inténtelo de nuevo más tarde.",
+    "username": "Cuenta"
   },
   "banners": {
     "previous": "Anterior",

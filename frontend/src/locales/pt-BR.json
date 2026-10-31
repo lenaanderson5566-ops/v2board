@@ -22,10 +22,6 @@
     "结果未知": "Resultado desconhecido",
     "客户端未识别": "Cliente não reconhecido",
     "来源未知": "Origem desconhecida",
-    "请求详情": "Detalhes da solicitação",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "A solicitação de configuração recebeu uma resposta bem-sucedida. Confirme o estado da importação e da conexão no cliente.",
-    "配置请求未完成，请检查客户端设置后重试。": "A solicitação de configuração não foi concluída. Verifique as configurações do cliente e tente novamente.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "Não foi possível confirmar o resultado desta solicitação. Verifique a configuração no cliente.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "Os endereços IP são mascarados. A localização é estimada pelo IP da solicitação e pode mostrar a saída de um proxy.",
     "时间按您的显示时区展示。": "Os horários são exibidos no seu fuso horário de exibição.",
     "有尚未保存的修改，确认放弃？": "Há alterações não salvas. Deseja descartá-las?",
@@ -772,7 +768,7 @@
     "empty": "Nenhum crédito disponível para compra",
     "access": "Contas existentes mantêm o grupo de nós, a velocidade e o limite de dispositivos. O primeiro acesso usa o pacote de créditos selecionado.",
     "checkout": "Continuar para o pagamento",
-    "resetAt": "Renovação de dados prevista (seu fuso horário): {{date}}",
+    "resetAt": "Próxima redefinição: {{date}}",
     "noReset": "Sem renovação automática antes do vencimento",
     "noPlanTitle": "Sem plano ativo",
     "noPlan": "Sem plano ativo. Os créditos podem ser usados de forma independente.",
@@ -789,10 +785,9 @@
     "paidReset": "Renovação paga",
     "paidResetHelp": "Zere o uso do plano sem usar uma renovação acumulada. O vencimento, a renovação programada e o saldo de créditos não mudam.",
     "creditOrder": "{{amount}} créditos",
-    "resetBusinessTime": "Horário correspondente do sistema: {{date}} · {{zone}}",
     "resetBusinessZone": "As regras de renovação de dados usam {{zone}}. O fuso horário de exibição não altera o horário da renovação.",
-    "resetPending": "Renovação de dados aguardando confirmação (seu fuso horário): {{date}}",
-    "resetFailed": "Renovação de dados aguardando nova tentativa (seu fuso horário): {{date}}"
+    "resetPending": "Redefinição aguardando confirmação: {{date}}",
+    "resetFailed": "Redefinição aguardando nova tentativa: {{date}}"
   },
   "experience": {
     "adminRefreshing": "Atualizando; exibindo os dados anteriores…",
@@ -1193,7 +1188,8 @@
     "step1": "Abra a App Store, toque na foto do perfil, role para baixo e saia da conta da loja.",
     "step2": "Entre na App Store com uma conta disponível abaixo e abra a página de download do cliente escolhido.",
     "step3": "Após baixar, saia da conta de download na App Store, restaure sua conta e volte aqui para importar.",
-    "paid": "Uma conta pode não ter todos os clientes. Se for solicitado pagamento ou verificação adicional, pare e escolha outra conta ou use a sua."
+    "paid": "Uma conta pode não ter todos os clientes. Se for solicitado pagamento ou verificação adicional, pare e escolha outra conta ou use a sua.",
+    "instructions": "Como usar uma conta de download"
   },
   "appleAccount": {
     "0": "Obter conta de download",
@@ -1209,7 +1205,8 @@
     "10": "Copiado",
     "11": "Não foi possível copiar. Copie manualmente.",
     "12": "Última verificação",
-    "unavailable": "As contas para download estão temporariamente indisponíveis. Tente novamente mais tarde."
+    "unavailable": "As contas para download estão temporariamente indisponíveis. Tente novamente mais tarde.",
+    "username": "Conta"
   },
   "banners": {
     "previous": "Anterior",

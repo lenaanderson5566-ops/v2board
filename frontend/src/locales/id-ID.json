@@ -22,10 +22,6 @@
     "结果未知": "Hasil tidak diketahui",
     "客户端未识别": "Klien tidak dikenali",
     "来源未知": "Sumber tidak diketahui",
-    "请求详情": "Detail permintaan",
-    "配置请求已成功响应，导入与连接状态请在客户端中确认。": "Permintaan konfigurasi mendapat respons yang berhasil. Periksa status impor dan koneksi di klien.",
-    "配置请求未完成，请检查客户端设置后重试。": "Permintaan konfigurasi belum selesai. Periksa pengaturan klien, lalu coba lagi.",
-    "无法确认此次请求结果，请在客户端中检查配置。": "Hasil permintaan ini tidak dapat dipastikan. Periksa konfigurasi di klien.",
     "位置根据请求 IP 估算，可能显示代理出口所在地。": "Alamat IP disamarkan. Lokasi diperkirakan dari IP permintaan dan mungkin menunjukkan lokasi keluar proxy.",
     "时间按您的显示时区展示。": "Waktu ditampilkan dalam zona waktu tampilan Anda.",
     "有尚未保存的修改，确认放弃？": "Ada perubahan yang belum disimpan. Buang perubahan?",
@@ -772,7 +768,7 @@
     "empty": "Tidak ada kredit data yang dapat dibeli",
     "access": "Akun yang ada mempertahankan batasan grup node, kecepatan, dan perangkatnya. Akses pertama kali menggunakan paket pulsa yang dipilih.",
     "checkout": "Lanjutkan ke pembayaran",
-    "resetAt": "Perkiraan reset (zona waktu Anda): {{date}}",
+    "resetAt": "Reset berikutnya: {{date}}",
     "noReset": "Tidak ada reset otomatis sebelum habis masa berlakunya",
     "noPlanTitle": "Tidak ada paket aktif",
     "noPlan": "Tidak ada paket aktif. Kredit data dapat digunakan secara mandiri.",
@@ -789,10 +785,9 @@
     "paidReset": "Reset berbayar",
     "paidResetHelp": "Reset pemakaian paket tanpa menggunakan jatah reset tersimpan. Masa berlaku, jadwal reset, dan saldo kredit data tidak berubah.",
     "creditOrder": "kredit {{amount}}",
-    "resetBusinessTime": "Waktu sistem yang setara: {{date}} · {{zone}}",
     "resetBusinessZone": "Aturan reset menggunakan {{zone}}. Zona waktu tampilan tidak mengubah waktu reset.",
-    "resetPending": "Reset menunggu konfirmasi (zona waktu Anda): {{date}}",
-    "resetFailed": "Reset menunggu percobaan ulang (zona waktu Anda): {{date}}"
+    "resetPending": "Reset menunggu konfirmasi: {{date}}",
+    "resetFailed": "Reset menunggu percobaan ulang: {{date}}"
   },
   "experience": {
     "adminRefreshing": "Memperbarui; menampilkan data yang dimuat sebelumnya…",
@@ -1193,7 +1188,8 @@
     "step1": "Buka App Store, ketuk foto profil Anda, gulir ke bawah dan keluar dari akun toko.",
     "step2": "Masuk ke App Store dengan akun yang tersedia di bawah, lalu buka halaman download klien yang dipilih.",
     "step3": "Setelah mengunduh, keluar dari akun unduhan di App Store, pulihkan akun Anda sendiri, lalu kembali ke sini untuk mengimpor.",
-    "paid": "Sebuah akun mungkin tidak dimiliki setiap klien. Jika pembayaran atau verifikasi tambahan diminta, berhenti dan pilih akun lain yang tersedia atau gunakan akun Anda sendiri."
+    "paid": "Sebuah akun mungkin tidak dimiliki setiap klien. Jika pembayaran atau verifikasi tambahan diminta, berhenti dan pilih akun lain yang tersedia atau gunakan akun Anda sendiri.",
+    "instructions": "Cara menggunakan akun unduhan"
   },
   "appleAccount": {
     "0": "Dapatkan akun unduhan",
@@ -1209,7 +1205,8 @@
     "10": "Disalin",
     "11": "Penyalinan gagal. Silakan salin secara manual.",
     "12": "Terakhir diperiksa",
-    "unavailable": "Akun unduhan untuk sementara tidak tersedia. Silakan coba lagi nanti."
+    "unavailable": "Akun unduhan untuk sementara tidak tersedia. Silakan coba lagi nanti.",
+    "username": "Akun"
   },
   "banners": {
     "previous": "Spanduk sebelumnya",

@@ -11,9 +11,6 @@
 .configuration-request-status { display:inline-block; justify-self:start; padding:2px 8px; border-radius:6px; background:var(--surface-soft); font-size:12px; }
 .configuration-request-status.success { color:var(--success); }
 .configuration-request-status.failed { color:var(--danger); }
-.configuration-request-details { margin-block-start:6px; }
-.configuration-request-details summary { cursor:pointer; color:var(--text-secondary); font-size:12px; }
-.configuration-request-details p { margin:8px 0 0; color:var(--text-secondary); }
 .configuration-updates-empty { padding:32px 0; text-align:center; color:var(--text-secondary); }
 .configuration-updates-location { margin:16px 0 0; font-size:12px; line-height:1.6; }
 .configuration-updates-recovery { margin-block-start:16px; }

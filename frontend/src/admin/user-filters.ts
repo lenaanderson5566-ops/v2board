@@ -1,4 +1,4 @@
-import { parseDateTimeInput } from "../shared/timezone";
+import { instantDate, parseDateTimeInput } from "../shared/timezone";
 export interface UserFilter {
     key: string;
     condition: string;
@@ -29,9 +29,8 @@ export function normalizeUserFilters(filters: UserFilter[]): UserFilter[] {
         if (String(filter.value).trim() === "")
             throw new Error("请填写每个筛选条件的值");
         if (["expired_at", "created_at"].includes(filter.key)) {
-            const value = /^\d+$/.test(String(filter.value))
-                ? Number(filter.value)
-                : parseDateTimeInput(String(filter.value));
+            const instant = instantDate(filter.value);
+            const value = instant ? instant.getTime() / 1000 : parseDateTimeInput(String(filter.value));
             if (!Number.isFinite(value)) throw new Error("到期时间格式无效");
             return { ...filter, value };
         }

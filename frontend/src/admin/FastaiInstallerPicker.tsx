@@ -1,3 +1,4 @@
+import { adminInstant } from "./admin-log-time";
 import { useEffect, useRef, useState } from "react";
 import { admin, bytes, request } from "../shared/api";
 import { Modal } from "../shared/ui";
@@ -199,7 +200,7 @@ export function FastaiInstallerPicker({
                         {item.latestVersion}（构建 {item.latestBuild}）
                     </strong>{" "}
                     · {item.name} · {bytes(item.size)}
-                    <p className="muted">{item.createdAt}</p>
+                    <p className="muted">{adminInstant(item.createdAt)}</p>
                     <button
                         type="button"
                         disabled={busy}

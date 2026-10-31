@@ -52,7 +52,7 @@ export function Invite() {
                             [
                                 "created_at",
                                 tx("时间"),
-                                (r) => date(r.created_at),
+                                (r) => date(r.created_at, { second: undefined }),
                             ],
                         ]}
                     />

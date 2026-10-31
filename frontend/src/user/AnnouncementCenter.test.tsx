@@ -10,6 +10,7 @@ import {
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
+    date: vi.fn((value: unknown) => String(value)),
     reload: vi.fn(),
     inbox: {} as any,
     detail: {} as any,
@@ -19,7 +20,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("../shared/api", () => ({
     request: mocks.request,
-    date: (n: number) => String(n),
+    date: mocks.date,
 }));
 vi.mock("../shared/i18n", () => ({ tx: (s: string) => s }));
 vi.mock("./announcement-copy", () => ({
@@ -44,6 +45,7 @@ vi.mock("../shared/ui", async () => ({
 import { AnnouncementCenter, announcementSummary } from "./AnnouncementCenter";
 beforeEach(() => {
     mocks.request.mockReset().mockResolvedValue({ data: true });
+    mocks.date.mockClear();
     mocks.reload.mockReset();
     mocks.inbox = {
         items: [
@@ -186,4 +188,16 @@ it("does not automatically resubmit a rate-limited read receipt",async()=>{
   fireEvent.click(screen.getByRole("button",{name:"重试"}));await act(async()=>{await Promise.resolve();});
   expect(mocks.request).toHaveBeenCalledTimes(2);
  }finally {vi.useRealTimers();}
+});
+
+it("uses minute precision consistently for notice cards, details and ticket reply notices", () => {
+    mocks.inbox.ticketReplies = [{ ticket_id: 42, message_id: 7, created_at: 300 }];
+    mocks.inbox.ticketUnread = 1;
+    mocks.detail.created_at = 200;
+    render(<AnnouncementCenter />);
+    fireEvent.click(screen.getByRole("button", { name: "unreadLabel 2" }));
+    expect(mocks.date).toHaveBeenCalledWith(100, { second: undefined });
+    expect(mocks.date).toHaveBeenCalledWith(300, { second: undefined });
+    fireEvent.click(screen.getByRole("button", { name: /Service update/ }));
+    expect(mocks.date).toHaveBeenCalledWith(200, { second: undefined });
 });

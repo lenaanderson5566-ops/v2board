@@ -82,7 +82,7 @@ export function AnnouncementCenter() {
                                     </span>
                                 )}
                             </div>
-                            {Boolean(inbox.data?.ticketReplies?.length) && <section className="pad"><h3>{a("ticketReplies")}</h3>{inbox.data?.ticketReplies?.map(item=><a className="announcement-item" key={item.ticket_id} href={`#/ticket?ticketId=${item.ticket_id}`} onClick={close}><strong>{a("ticketReply")} #{item.ticket_id}</strong><time>{date(item.created_at)}</time></a>)}{(inbox.data?.ticketUnread || 0)>20 && <a href="#/ticket" onClick={close}>{a("allTickets")}</a>}</section>}
+                            {Boolean(inbox.data?.ticketReplies?.length) && <section className="pad"><h3>{a("ticketReplies")}</h3>{inbox.data?.ticketReplies?.map(item=><a className="announcement-item" key={item.ticket_id} href={`#/ticket?ticketId=${item.ticket_id}`} onClick={close}><strong>{a("ticketReply")} #{item.ticket_id}</strong><time>{date(item.created_at, { second: undefined })}</time></a>)}{(inbox.data?.ticketUnread || 0)>20 && <a href="#/ticket" onClick={close}>{a("allTickets")}</a>}</section>}
                             <div
                                 className="announcement-list"
                                 aria-busy={inbox.loading}
@@ -135,7 +135,7 @@ export function AnnouncementCenter() {
                                                 )}
                                             </span>
                                             <time>
-                                                {date(notice.created_at)}
+                                                {date(notice.created_at, { second: undefined })}
                                             </time>
                                         </button>
                                     ))
@@ -234,7 +234,7 @@ function AnnouncementDetail({ id, back }: { id: number; back: () => void }) {
             ) : detail.data ? (
                 <article>
                     <h3>{detail.data.title}</h3>
-                    <time>{date(detail.data.created_at)}</time>
+                    <time>{date(detail.data.created_at, { second: undefined })}</time>
                     {readError && (
                         <div className="announcement-read-error" role="alert">
                             <p>{readError}</p>

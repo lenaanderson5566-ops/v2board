@@ -6,6 +6,7 @@ import {
     dateTimeInput,
     displayTimeZone,
     formatInstant,
+    instantDate,
     parseDateTimeInput,
     setDisplayTimeZone,
     subscribeTimeZone,
@@ -136,4 +137,38 @@ it.each([
     expect(formatted).not.toMatch(/GMT|EST|EDT/);
     expect(formatInstant(instant, { timeZoneName: undefined })).not.toContain("UTC");
     expect(formatInstant(instant, { timeZoneName: "longOffset" })).toBe(formatted);
+});
+
+it("parses only unambiguous event instants without inventing epoch dates", () => {
+    const seconds = Date.parse("2026-11-30T00:00:37Z") / 1000;
+    for (const value of [seconds, String(seconds), "2026-11-30T08:00:37+08:00", "2026-11-30T00:00:37Z"]) {
+        expect(instantDate(value)?.getTime()).toBe(seconds * 1000);
+        expect(formatInstant(value, {}, "UTC")).toContain("00:00:37");
+    }
+    expect(instantDate(0)?.getTime()).toBe(0);
+    expect(formatInstant("2024-02-29T00:00:00Z", {}, "UTC")).not.toBe("—");
+    for (const value of [null, undefined, false, true, {}, "", " ", NaN, Infinity, new Date(NaN),
+        "2026-11-30", "2026-11-30T00:00:00", "2026-11-30 00:00:00", "2026-02-30T00:00:00Z",
+        "2026-11-30T24:00:00Z", "2026-11-30T00:00:00+24:00", "2026-11-30T00:00:00+00:99"]) {
+        expect(instantDate(value)).toBeNull();
+        expect(formatInstant(value)).toBe("—");
+        expect(utcOffsetLabel(value)).toBe("—");
+    }
+});
+it.each(["UTC", "Asia/Shanghai", "America/New_York", "Asia/Kathmandu"])("preserves seconds through administrative input in %s", (zone) => {
+    const at = Date.parse("2026-10-13T14:31:37Z") / 1000;
+    expect(parseDateTimeInput(dateTimeInput(at, zone, "second"), zone)).toBe(at);
+    expect(parseDateTimeInput(dateTimeInput(at, zone), zone)).toBe(at - 37);
+});
+it("validates second-precision input, DST folds and invalid date ranges", () => {
+    expect(() => parseDateTimeInput("2026-11-01T01:30:37", "America/New_York")).toThrow("此时间因夏令时重复，请选择无歧义的时间。");
+    expect(() => parseDateTimeInput("2026-03-08T02:30:37", "America/New_York")).toThrow("此时间在所选时区不存在，请重新选择。");
+    expect(() => parseDateTimeInput("2026-02-30T01:30:37", "UTC")).toThrow("日期时间无效");
+    expect(() => parseDateTimeInput("2026-01-01T01:30:60", "UTC")).toThrow("日期时间无效");
+    expect(() => parseDateTimeInput("2026-01-01T01:30:00", "Invalid/Zone")).toThrow("日期时间格式无效");
+    expect(parseDateTimeInput("2026-01-01T01:30:37.000", "UTC")).toBe(Date.parse("2026-01-01T01:30:37Z") / 1000);
+    expect(() => parseDateTimeInput("2026-01-01T01:30:37.123", "UTC")).toThrow("日期时间格式无效");
+    expect(dateTimeInput(Number.MAX_VALUE)).toBe("");
+    expect(dateTimeInput(0, "Invalid/Zone")).toBe("");
+    expect(calendarDay(new Date(NaN))).toBe("");
 });

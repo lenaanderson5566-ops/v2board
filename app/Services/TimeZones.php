@@ -24,6 +24,11 @@ class TimeZones {
         config(['app.timezone'=>self::system()]);
         date_default_timezone_set(self::system());
     }
+    /** Export instants with an explicit offset, independent of PHP's default zone. */
+    public static function iso8601(?int $timestamp): ?string {
+        if ($timestamp === null) return null;
+        return (new \DateTimeImmutable('@'.$timestamp))->setTimezone(new \DateTimeZone(self::system()))->format('Y-m-d\TH:i:sP');
+    }
     public static function forUser($user): string { return self::valid($user->display_timezone??null)?$user->display_timezone:self::system(); }
     public static function format(?int $timestamp,$user=null): ?string {
         if ($timestamp===null) return null;

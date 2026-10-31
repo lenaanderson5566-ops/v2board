@@ -163,3 +163,9 @@ GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有
 简洁时间格式沿用 timezone、api、localization、UsageBilling、AccountEntry、AccountControls、ConfigurationUpdates 及后台时区模块，核对中文完整到期示例、时区后置、秒的显隐、UTC/正负偏移/四分之一小时和夏令时，不改变真实到期时刻。
 
 重置卡片补齐简短时区标记沿用 UsageBilling：验证计划、待确认/待重试、UTC 与上海跨日、夏令时以及四分之一小时偏移；保留 ISO 时间和不重复显示系统时间的断言。该模块 45 项通过。
+
+前后台时间补查继续扩展 timezone、api、app、Editor、AdminLogFilters、user-filters、Nodes、AdminEntrypoints、AdminFastaiDownloads、admin-workspaces 及既有优惠券、公告和工单测试。覆盖非法日期不规范化、空值不变为 epoch、明确时区 ISO/Unix 秒、四分之一小时与 DST、日期输入秒级往返、未改动重复小时原时刻保持、安装包选择同步发布时间及午夜标题刷新无附加读取。未新建平行测试运行器。
+
+后端复用 timezones 与 coupon-campaigns：核对 CSV 明确偏移、同一本地重复小时对应两次不同瞬间、保留秒、无期限空单元格和既有列顺序；合成导出不输出优惠码或卡号明文。两个脚本共 106 项断言通过，五个 PHP 文件语法检查通过。脚本在可销毁项目副本和随机数据库执行，测试库与临时目录已清除；使用 array 缓存或纯计算，无业务 Redis 写入。
+
+最终全量回归 115 文件、1681 项通过；最后补充的安装包选择与发布时间同步由 AdminFastaiDownloads 11 项复验通过。先前执行期间的新增测试和可见性计时断言问题已修正后重新运行，不删除或放宽业务断言。生产构建与清单完整性检查通过；最终浏览器只读合成验收记录见 frontend-validation。

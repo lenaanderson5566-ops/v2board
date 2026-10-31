@@ -1311,3 +1311,24 @@ it("keeps monetary trend precision while traffic totals omit redundant decimals"
     expect(screen.getByText("— GiB")).toBeTruthy();
     expect(second.container.innerHTML).not.toMatch(/NaN|Infinity/);
 });
+
+it("uses localized h23 hours and the system zone on risk chart axes", async () => {
+    const { RiskOverview } = await import("./AdminRisk");
+    const { configureTimeZone, setDisplayTimeZone } = await import("../shared/timezone");
+    const { default: i18n } = await import("../shared/i18n");
+    const priorLanguage = i18n.language;
+    const instant = "2026-11-30T00:00:00Z";
+    configureTimeZone("UTC", true);
+    setDisplayTimeZone("America/New_York");
+    await i18n.changeLanguage("fa-IR");
+    api.request.mockResolvedValue({ data: { trend: [{ at: Date.parse(instant) / 1000, hits: 2 }] } });
+    try {
+        const view = render(<RiskOverview />);
+        const hour = new Intl.DateTimeFormat("fa-IR", {hour: "2-digit", hourCycle: "h23", timeZone: "UTC"}).format(new Date(instant));
+        await waitFor(() => expect(view.container.querySelector(".risk-trend small")?.textContent).toBe(hour));
+        expect(view.container.querySelector(".risk-trend small")?.textContent).not.toMatch(/24|UTC|GMT/);
+        fireEvent.click(screen.getByRole("button", {name: "近 7 天"}));
+        const day = new Intl.DateTimeFormat("fa-IR", {month: "numeric", day: "numeric", timeZone: "UTC"}).format(new Date(instant));
+        await waitFor(() => expect(view.container.querySelector(".risk-trend small")?.textContent).toBe(day));
+    } finally { setDisplayTimeZone(null); configureTimeZone("Asia/Shanghai", true); await i18n.changeLanguage(priorLanguage); }
+});

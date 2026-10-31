@@ -206,3 +206,25 @@ it("retains unsaved maintenance on failure and explains inherited parent mainten
         "准备升级",
     );
 });
+
+it("preserves the existing maintenance instant during a DST repeated hour", async () => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    configureTimeZone("America/New_York", true);
+    const endsAt = Date.parse("2026-11-01T06:30:37Z") / 1000;
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-31T12:00:00Z"));
+    api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("/maintenance") ? true : {
+        configurationState: "provided", applicationState: "applied", receiptSupported: true,
+        ownMaintenance: { reason: "Existing", endsAt, hideSubscription: false },
+    } }));
+    try {
+        render(<NodeDiagnostics node={{ id: 2, type: "v2box", name: "A" }} close={() => {}} />);
+        await screen.findByText("当前配置已生效");
+        const input = screen.getByLabelText("预计结束时间") as HTMLInputElement;
+        expect(input.step).toBe("1");
+        fireEvent.change(input, { target: { value: "2026-11-01T01:30:37.000" } });
+        fireEvent.change(screen.getByLabelText("维护原因"), { target: { value: "Updated" } });
+        fireEvent.click(screen.getByRole("button", { name: "保存维护设置" }));
+        await screen.findByText("维护设置已保存");
+        expect(api.request).toHaveBeenCalledWith("test-admin/server/manage/maintenance", expect.objectContaining({ reason: "Updated", endsAt }));
+    } finally { vi.restoreAllMocks(); configureTimeZone("Asia/Shanghai", true); }
+});

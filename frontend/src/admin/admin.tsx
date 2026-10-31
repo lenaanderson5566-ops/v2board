@@ -17,7 +17,6 @@ import {
     rows,
     type Row,
 } from "../shared/api";
-import { dateTimeInput } from "../shared/timezone";
 import {
     Editor,
     Empty,
@@ -1451,26 +1450,6 @@ export function ResourcePage({
                                                                   );
                                                                   return;
                                                               }
-                                                          }
-                                                          for (const field of resource.fields) {
-                                                              if (
-                                                                  field.type ===
-                                                                      "datetime-local" &&
-                                                                  item[
-                                                                      field.key
-                                                                  ]
-                                                              )
-                                                                  item[
-                                                                      field.key
-                                                                  ] =
-                                                                      dateTimeInput(
-                                                                          Number(
-                                                                              item[
-                                                                                  field
-                                                                                      .key
-                                                                              ],
-                                                                          ),
-                                                                      );
                                                           }
                                                           if (
                                                               resource.title ===

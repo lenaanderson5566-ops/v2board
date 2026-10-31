@@ -18,7 +18,7 @@ import {
     waitFor,
 } from "@testing-library/react";
 import type { ReactNode } from "react";
-const mocks = vi.hoisted(() => ({ knowledge:{} as any, detail:null as any, detailError: "", detailReload: vi.fn(), policy: "allowed", tickets: [] as any[], request: vi.fn(), saveError: vi.fn() }));
+const mocks = vi.hoisted(() => ({ knowledge:{} as any, detail:null as any, detailError: "", detailReload: vi.fn(), policy: "allowed", tickets: [] as any[], request: vi.fn(), date: vi.fn(() => "date"), saveError: vi.fn() }));
 vi.mock("../shared/i18n", () => ({
     default: { addResourceBundle: () => undefined },
     tx: (key: string) => key,
@@ -33,7 +33,7 @@ vi.mock("../shared/api", () => ({
     rows: (data: any) => (Array.isArray(data) ? data : []),
     query: (path: string, params: any) =>
         path + "?" + new URLSearchParams(params),
-    date: () => "date",
+    date: mocks.date,
 }));
 vi.mock("../shared/ui", async (importOriginal) => ({
     ...(await importOriginal<typeof import("../shared/ui")>()),
@@ -86,6 +86,7 @@ beforeEach(() => {
     mocks.knowledge = {};
     mocks.detailError = "";
     mocks.detailReload.mockReset();
+    mocks.date.mockClear();
     location.hash = "";
     mocks.tickets = [];
     mocks.request.mockReset();
@@ -238,4 +239,13 @@ it("retries a failed knowledge article inside the same dialog", async () => {
     view.rerender(<Knowledge />);
     expect(screen.getByRole("dialog")).toBe(dialog);
     expect(screen.getByText("Recovered article")).toBeTruthy();
+});
+
+it("uses minute precision for user ticket messages without altering their source time", async () => {
+    location.hash = "#/ticket?ticketId=42";
+    mocks.detail = { id: 42, subject: "Timestamp ticket", status: 1, message: [{ id: 8, is_me: true, created_at: 1793404800, message: "Reply" }] };
+    const { Tickets: SharedTickets } = await import("../shared/Tickets");
+    render(<SharedTickets />);
+    expect(screen.getByText("Reply")).toBeTruthy();
+    expect(mocks.date).toHaveBeenCalledWith(1793404800, { second: undefined });
 });

@@ -1,3 +1,4 @@
+import { instantDate } from "../shared/timezone";
 import { formatMultiplier } from "../shared/number-format";
 import { AdminRowMenu } from "./AdminRowMenu";
 import { ProtocolBadge } from "./ProtocolBadge";
@@ -55,6 +56,12 @@ import {
     nodeSettingsInitial,
     nodeSettingsPayload,
 } from "./node-settings";
+// Report endpoints use zero when the node has never communicated.
+function nodeReportTime(...values: unknown[]): string {
+    const reports = values.map(value => instantDate(value)?.getTime() ?? 0).filter(value => value > 0);
+    return reports.length ? date(new Date(Math.max(...reports))) : "—";
+}
+
 // Refresh counters only: completion-based scheduling prevents overlapping requests.
 function useNodeActivity(nodes: Row[] | null, enabled: boolean) {
     const [snapshot,setSnapshot]=useState<{source:Row[]; data:Row[]} | null>(null);
@@ -378,7 +385,7 @@ function NodesContent({
                     className="node-runtime-indicator"
                     data-state={r.runtime_status || "unknown"}
                     aria-label={`${r.name}：${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown}，查看运行详情`}
-                    title={`${r.service_id ? "共用代理服务状态，不代表中转链路已验证 · " : ""}${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown} · 最近通信：${date(Math.max(Number(r.last_check_at || 0), Number(r.last_push_at || 0)))}`}
+                    title={`${r.service_id ? "共用代理服务状态，不代表中转链路已验证 · " : ""}${nodeRuntimeLabels[r.runtime_status] || nodeRuntimeLabels.unknown} · 最近通信：${nodeReportTime(r.last_check_at, r.last_push_at)}`}
                     onClick={() => setDiagnosticNode(r)}
                 >
                     <span aria-hidden="true" />
@@ -442,7 +449,7 @@ function NodesContent({
                 {r.service_id ? `${r.online ?? "—"}（共享）` : (r.online ?? "—")}
             </span>,
         ],
-        ["last_push_at", "最近流量上报", (r) => date(r.last_push_at)],
+        ["last_push_at", "最近流量上报", (r) => nodeReportTime(r.last_push_at)],
     ];
     const viewColumnKeys = [
         "id",
@@ -1459,6 +1466,7 @@ function NodesContent({
         </>
     );
 }
+
 const nodeLabels: Record<string, string> = {
     listen_ip: "监听地址",
     disable_sni: "禁用 SNI",

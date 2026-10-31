@@ -107,7 +107,7 @@ export function ActivityCenter() {
                                 <p>{couponRestrictions(offer)}</p>
                                 <small>
                                     {tx("有效期至")}{" "}
-                                    {formatInstant(offer.expiresAt)}
+                                    {formatInstant(offer.expiresAt, { second: undefined })}
                                 </small>
                                 <small>{pc("claimLimit")}</small>
                             </div>
@@ -220,7 +220,7 @@ export function MyCoupons() {
                             <p>{couponRestrictions(coupon)}</p>
                             <small>
                                 {tx("有效期至")}{" "}
-                                {formatInstant(coupon.expiresAt)}
+                                {formatInstant(coupon.expiresAt, { second: undefined })}
                             </small>
                             <span className="coupon-state">
                                 {couponStatus(coupon)}

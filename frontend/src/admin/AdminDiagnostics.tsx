@@ -5,7 +5,7 @@ import {
 } from "./admin-log-time";
 import { admin, bytes, date, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
-import { dateTimeInput, parseDateTimeInput } from "../shared/timezone";
+import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { AdminSwitch } from "./admin-switch";
 import { ProtocolBadge } from "./ProtocolBadge";
 
@@ -276,7 +276,7 @@ function NodeMaintenanceForm({
     const [enabled, setEnabled] = useState(!!initial);
     const [reason, setReason] = useState(initial?.reason || "");
     const [endsAt, setEndsAt] = useState(
-        dateTimeInput(initial?.endsAt || Math.floor(Date.now() / 1000) + 3600),
+        dateTimeFieldValue(initial?.endsAt || Math.floor(Date.now() / 1000) + 3600),
     );
     const [hide, setHide] = useState(!!initial?.hideSubscription);
     const [busy, setBusy] = useState(false);
@@ -290,7 +290,7 @@ function NodeMaintenanceForm({
                 if (pending.current) return;
                 let end = 0;
                 try {
-                    if (enabled) end = parseDateTimeInput(endsAt);
+                    if (enabled) end = dateTimeFieldInstant(endsAt, initial?.endsAt) || 0;
                 } catch (e) {
                     setError((e as Error).message);
                     return;
@@ -359,6 +359,7 @@ function NodeMaintenanceForm({
                             <input
                                 required
                                 type="datetime-local"
+                                step={1}
                                 value={endsAt}
                                 onChange={(e) => {
                                     setEndsAt(e.target.value);

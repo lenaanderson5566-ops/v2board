@@ -267,7 +267,7 @@ export function BillingPage() {
                                                 : order.plan?.name ||
                                                   tx("账户充值")}
                                         </strong>
-                                        <small>{date(order.created_at)}</small>
+                                        <small>{date(order.created_at, { second: undefined })}</small>
                                     </span>
                                     <StatusBadge
                                         tone={orderStatusTone(order.status)}

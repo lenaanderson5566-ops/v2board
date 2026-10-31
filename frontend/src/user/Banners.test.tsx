@@ -23,6 +23,7 @@ vi.mock("react-i18next", async () => {
 });
 vi.mock("../shared/i18n", () => ({
     locale: () => "zh-CN",
+    tx: (text: string) => text,
     languages: [
         { code: "zh-CN", name: "简体中文" },
         { code: "en-US", name: "English" },
@@ -148,8 +149,9 @@ it("keeps unsaved text during upload and saves positions, languages and minute t
     expect(body.image_url).toBe("/uploaded.png");
     expect(body.placements).toEqual(["dashboard", "landing"]);
     expect(body.languages).toEqual(["en-US"]);
+    const { parseDateTimeInput } = await import("../shared/timezone");
     expect(body.starts_at).toBe(
-        Math.floor(new Date("2026-10-05T12:34").getTime() / 1000),
+        parseDateTimeInput("2026-10-05T12:34"),
     );
 });
 it("allows saving a draft after upload fails", async () => {
@@ -227,4 +229,25 @@ it("locks the banner draft during save and retains it after failure", async () =
     await screen.findByText("Save failed");
     expect(title.value).toBe("Changed"); expect(title.disabled).toBe(false);
     expect(close).not.toHaveBeenCalled();
+});
+
+it("preserves exact banner instants during a DST repeated hour while editing its title", async () => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    configureTimeZone("America/New_York", true);
+    mocks.request.mockResolvedValue({ data: true });
+    const starts_at = Date.parse("2026-11-01T05:30:37Z") / 1000;
+    const ends_at = Date.parse("2026-11-01T06:30:37Z") / 1000;
+    try {
+        render(<BannerEditor initial={{ title: "Original", image_url: "/before.png", placements: ["dashboard"], languages: [], sort: 0, show: true, starts_at, ends_at }} close={vi.fn()} complete={vi.fn()} />);
+        expect((screen.getByLabelText("上线时间") as HTMLInputElement).step).toBe("1");
+        expect(screen.getByText(/系统业务时区 America\/New_York/)).toBeTruthy();
+        fireEvent.change(screen.getByLabelText("标题 / 图片替代文本"), { target: { value: "Changed" } });
+        fireEvent.change(screen.getByLabelText("下线时间"), { target: { value: "2026-11-01T01:30:37.000" } });
+        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("admin/banner/save", expect.objectContaining({ title: "Changed", starts_at, ends_at })));
+        fireEvent.change(screen.getByLabelText("下线时间"), { target: { value: "2026-11-01T01:31:37" } });
+        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        expect((await screen.findByRole("alert")).textContent).toContain("夏令时重复");
+        expect(mocks.request).toHaveBeenCalledTimes(1);
+    } finally { configureTimeZone("Asia/Shanghai", true); }
 });

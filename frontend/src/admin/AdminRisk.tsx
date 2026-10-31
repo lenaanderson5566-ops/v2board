@@ -1,7 +1,7 @@
 import { formatNumber } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminChoiceGroup } from "./AdminChoices";
-import { displayTimeZone } from "../shared/timezone";
+import { adminInstant } from "./admin-log-time";
 import { AdminSubscriptionProtection } from "./AdminSubscriptionProtection";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
@@ -92,22 +92,9 @@ export function RiskOverview() {
                                         }}
                                     />
                                     <small>
-                                        {new Date(r.at * 1000).toLocaleString(
-                                            "zh-CN",
-                                            window === "today"
-                                                ? {
-                                                      hour: "2-digit",
-                                                      hour12: false,
-                                                      timeZone:
-                                                          displayTimeZone(),
-                                                  }
-                                                : {
-                                                      month: "numeric",
-                                                      timeZone:
-                                                          displayTimeZone(),
-                                                      day: "numeric",
-                                                  },
-                                        )}
+                                        {adminInstant(r.at, window === "today"
+                                            ? {year: undefined, month: undefined, day: undefined, hour: "2-digit", minute: undefined, second: undefined}
+                                            : {year: undefined, month: "numeric", day: "numeric", hour: undefined, minute: undefined, second: undefined})}
                                     </small>
                                 </div>
                             ))}

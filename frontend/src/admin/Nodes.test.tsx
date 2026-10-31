@@ -1630,3 +1630,21 @@ it("keeps server forwarding status independent of obsolete manual verification f
  expect(status(0)).toBe("连接地址已生效，请自行测试转发");
  expect(status(123)).toBe(status(0));
 });
+
+it("does not show 1970 for node report sentinels and keeps the latest valid report", async () => {
+    responsibilityFixture();
+    const base = api.request.getMockImplementation()!;
+    api.request.mockImplementation(async (path: string, ...args: any[]) => {
+        const result = await base(path, ...args);
+        if (path.endsWith("manage/getNodes")) result.data = result.data.map((node: any) => ({...node, last_push_at: 0, last_check_at: node.id === 1 ? "2026-10-31T00:00:00Z" : 0}));
+        return result;
+    });
+    render(<Nodes />);
+    await screen.findByRole("button", {name: "Box service"});
+    const row = screen.getByRole("button", {name: "Box service"}).closest("tr")!;
+    expect(row.textContent).not.toContain("1970");
+    expect(within(row).getByTitle(/最近通信：.*2026/)).toBeTruthy();
+    const never = screen.getByRole("button", {name: "Shared route"}).closest("tr")!;
+    expect(within(never).getByTitle(/最近通信：—/)).toBeTruthy();
+    expect(never.textContent).not.toContain("1970");
+});

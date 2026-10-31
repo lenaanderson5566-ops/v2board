@@ -184,7 +184,7 @@ export function TelegramIntegration() {
                                     {info.eligibility === "grace" && (
                                         <p>
                                             {tx("宽限截止")} ·{" "}
-                                            {formatInstant(info.graceEndsAt)}
+                                            {formatInstant(info.graceEndsAt, { second: undefined })}
                                         </p>
                                     )}
                                     {!info.linked ? (

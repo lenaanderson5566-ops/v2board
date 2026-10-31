@@ -1,4 +1,5 @@
-import { displayTimeZone, dateTimeInput, parseDateTimeInput } from "../shared/timezone";
+import { displayTimeZone } from "../shared/timezone";
+import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { adminInstant as formatInstant } from "./admin-log-time";
 import { useRef, useState } from "react";
 import { admin, request, Row } from "../shared/api";
@@ -17,7 +18,7 @@ const positions: Record<string, string> = {
     landing: "落地页",
 };
 function localDate(value: number) {
-    return value ? dateTimeInput(value) : "";
+    return dateTimeFieldValue(value || null);
 }
 function dateLabel(value: number) {
     return value ? formatInstant(value) : "不限";
@@ -234,12 +235,8 @@ export function BannerEditor({
                 sort: Number(draft.sort),
                 mobile_image_url: draft.mobile_image_url || null,
                 target_url: draft.target_url || null,
-                starts_at: draft.starts_at
-                    ? parseDateTimeInput(draft.starts_at)
-                    : null,
-                ends_at: draft.ends_at
-                    ? parseDateTimeInput(draft.ends_at)
-                    : null,
+                starts_at: dateTimeFieldInstant(draft.starts_at, initial.starts_at),
+                ends_at: dateTimeFieldInstant(draft.ends_at, initial.ends_at),
             });
             complete();
         } catch (e) {
@@ -376,6 +373,7 @@ export function BannerEditor({
                         上线时间
                         <input disabled={busy || uploading}
                             type="datetime-local"
+                            step={1}
                             title={`时区：${displayTimeZone()}`}
                             value={draft.starts_at}
                             onChange={(e) =>
@@ -387,13 +385,14 @@ export function BannerEditor({
                         下线时间
                         <input disabled={busy || uploading}
                             type="datetime-local"
+                            step={1}
                             title={`时区：${displayTimeZone()}`}
                             value={draft.ends_at}
                             onChange={(e) => change("ends_at", e.target.value)}
                         />
                     </label>
                 </div>
-                <small>时间按当前设备时区填写；留空表示不限制。</small>
+                <small>时间按系统业务时区 {displayTimeZone()} 填写；留空表示不限制。</small>
                 <label style={{ display: "flex", alignItems: "center" }}>
                     <input disabled={busy || uploading}
                         type="checkbox"

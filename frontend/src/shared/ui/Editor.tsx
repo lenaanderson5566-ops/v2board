@@ -9,7 +9,8 @@ import {
     type ReactNode,
 } from "react";
 import { Eye, EyeOff, Check } from "lucide-react";
-import { parseDateTimeInput, displayTimeZone } from "../timezone";
+import { displayTimeZone } from "../timezone";
+import { dateTimeFieldValue, dateTimeFieldInstant } from "../date-time-field";
 import { browserSessionKey } from "../browser-session";
 import { e } from "../experience-copy";
 import { tx } from "../i18n";
@@ -113,6 +114,12 @@ export function Editor({
     const initialFields = resolveFields
         ? resolveFields(fields, initial)
         : fields;
+    const editableInitial = Object.fromEntries(
+        Object.entries(initial).map(([key, value]) => {
+            const field = initialFields.find((field) => field.key === key);
+            return [key, field?.type === "datetime-local" ? dateTimeFieldValue(value || null) : inputValue(field, value)];
+        }),
+    );
     const [value, setValue] = useState<Row>(() => ({
             ...Object.fromEntries(
                 fields
@@ -130,15 +137,7 @@ export function Editor({
                               : (f.options?.[0]?.[0] ?? ""),
                     ]),
             ),
-            ...Object.fromEntries(
-                Object.entries(initial).map(([key, value]) => [
-                    key,
-                    inputValue(
-                        initialFields.find((field) => field.key === key),
-                        value,
-                    ),
-                ]),
-            ),
+            ...editableInitial,
             ...(draftKey ? readDraft() : {}),
         })),
         [error, setError] = useState(""),
@@ -284,9 +283,7 @@ export function Editor({
                     }
                 }
                 if (f.type === "datetime-local")
-                    body[f.key] = body[f.key]
-                        ? parseDateTimeInput(String(body[f.key]))
-                        : null;
+                    body[f.key] = dateTimeFieldInstant(body[f.key], initial[f.key]);
             }
             validatingField = undefined;
             await onSave(body);
@@ -296,9 +293,9 @@ export function Editor({
                 } catch {
                     /* Optional persistence. */
                 }
-                setValue(initial);
+                setValue(editableInitial);
             }
-            setCleanValue(JSON.stringify(draftKey ? initial : value));
+            setCleanValue(JSON.stringify(draftKey ? editableInitial : value));
             setSaved(true);
         } catch (e) {
             setInvalidField(validatingField?.key || null);
@@ -601,9 +598,7 @@ export function Editor({
                                             }
                                             step={
                                                 f.step ??
-                                                (f.type === "number"
-                                                    ? "any"
-                                                    : undefined)
+                                                (f.type === "number" ? "any" : f.type === "datetime-local" ? 1 : undefined)
                                             }
                                             min={f.min}
                                             max={f.max}

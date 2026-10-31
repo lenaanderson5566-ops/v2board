@@ -29,6 +29,7 @@ vi.mock("../shared/ui", () => ({
     }),
 }));
 import { ActivityCenter, MyCoupons } from "./CouponCenter";
+import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 const coupon = {
     id: 1,
     name: "Welcome",
@@ -42,6 +43,7 @@ const coupon = {
 };
 afterEach(() => {
     cleanup();
+    setDisplayTimeZone(null);
     vi.clearAllMocks();
     mocks.wallet = [];
     mocks.offers = [];
@@ -145,4 +147,16 @@ it("does not send an expired coupon into checkout even if the wallet status is s
     mocks.wallet = [{ ...coupon, expiresAt: "2020-01-01T00:00:00Z" }];
     render(<MyCoupons />);
     expect(screen.queryByRole("link", { name: "选择套餐使用" })).toBeNull();
+});
+
+it("shows coupon expiry at minute precision in the personal zone across midnight", () => {
+    configureTimeZone("UTC"); setDisplayTimeZone("America/New_York");
+    mocks.offers = [{ ...coupon, expiresAt: "2027-08-30T00:08:37Z" }];
+    const view = render(<ActivityCenter />);
+    expect(screen.getByText(/08\/29\/2027, 20:08 \(UTC-4\)/)).toBeTruthy();
+    expect(view.container.textContent).not.toContain("20:08:37");
+    view.unmount();
+    mocks.wallet = [{ ...coupon, expiresAt: "2027-08-30T00:08:37Z" }];
+    render(<MyCoupons />);
+    expect(screen.getByText(/08\/29\/2027, 20:08 \(UTC-4\)/)).toBeTruthy();
 });

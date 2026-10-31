@@ -1,8 +1,5 @@
 import { AdminFilterBar } from "./AdminFilterBar";
-import {
-    dateTimeInput,
-    parseDateTimeInput,
-} from "../shared/timezone";
+import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { useState } from "react";
 import type { Row } from "../shared/api";
 
@@ -18,11 +15,8 @@ export function AdminLogFilters({
     const [draft, setDraft] = useState<Row>(() =>
         Object.fromEntries(
             Object.entries(initialFilters).map(([key, value]) => {
-                if (
-                    ["from", "to"].includes(key) &&
-                    Number.isFinite(Number(value))
-                ) {
-                    return [key, dateTimeInput(Number(value))];
+                if (["from", "to"].includes(key)) {
+                    return [key, dateTimeFieldValue(value)];
                 }
                 return [key, value];
             }),
@@ -43,18 +37,16 @@ export function AdminLogFilters({
             className="admin-log-filters"
             onSubmit={(event) => {
                 event.preventDefault();
-                if (draft.from && draft.to && draft.from > draft.to) {
-                    setError("结束时间不能早于开始时间");
-                    return;
-                }
                 try {
                     const filters: Row = {};
                     for (const [key, value] of Object.entries(draft)) {
-                        if (String(value).trim())
+                        if (value != null && String(value).trim())
                             filters[key] = ["from", "to"].includes(key)
-                                ? parseDateTimeInput(String(value))
+                                ? dateTimeFieldInstant(value, initialFilters[key])
                                 : String(value).trim();
                     }
+                    if (typeof filters.from === "number" && typeof filters.to === "number" && filters.from > filters.to)
+                        throw new Error("结束时间不能早于开始时间");
                     setError("");
                     onApply(filters);
                 } catch (e) {
@@ -68,6 +60,7 @@ export function AdminLogFilters({
                     <input
                         aria-label={`日志${label}`}
                         type={type}
+                        step={type === "datetime-local" ? 1 : undefined}
                         value={draft[key] || ""}
                         maxLength={key === "keyword" ? 200 : undefined}
                         placeholder={

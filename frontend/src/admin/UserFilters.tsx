@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { dateTimeInput } from "../shared/timezone";
+import { businessTimeZone } from "../shared/timezone";
+import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import type { Row } from "../shared/api";
 import { adminPlanOptions } from "./admin-plan-reference";
 import {
@@ -21,20 +22,15 @@ export function UserFilters({
     plansError?: string;
     onApply: (filters: UserFilter[]) => void;
 }) {
-    const [draft, setDraft] = useState(
-            initial.map((f) =>
-                ["expired_at", "created_at"].includes(f.key)
-                    ? {
-                          ...f,
-                          value: dateTimeInput(Number(f.value)),
-                      }
-                    : { ...f },
-            ),
+    const [draft, setDraft] = useState<Array<UserFilter & { original?: unknown }>>(
+            initial.map((filter) => {
+                return { ...filter, original: filter.value, value: ["expired_at", "created_at"].includes(filter.key) ? dateTimeFieldValue(filter.value) : filter.value };
+            }),
         ),
         [error, setError] = useState("");
     const [initialDraft] = useState(() => JSON.stringify(draft));
     function change(index: number, value: Partial<UserFilter>) {
-        setDraft(draft.map((f, i) => (i === index ? { ...f, ...value } : f)));
+        setDraft(draft.map((f, i) => (i === index ? { ...f, ...value, ...(value.key && value.key !== f.key ? { original: undefined } : {}) } : f)));
         setError("");
     }
     return (
@@ -44,14 +40,17 @@ export function UserFilters({
             onSubmit={(e) => {
                 e.preventDefault();
                 try {
-                    onApply(normalizeUserFilters(draft));
+                    onApply(normalizeUserFilters(draft.map(({ original, ...filter }) => {
+                        if (!["expired_at", "created_at"].includes(filter.key)) return filter;
+                        return { ...filter, value: dateTimeFieldInstant(filter.value, original) ?? "" };
+                    })));
                 } catch (err) {
                     setError((err as Error).message);
                 }
             }}
         >
             <p className="muted">
-                多个条件同时满足。流量单位为 GiB，到期时间按本地时间输入。
+                多个条件同时满足。流量单位为 GiB，日期按系统业务时区 {businessTimeZone()} 输入。
             </p>
             {draft.map((f, i) => {
                 const spec = userFilterFields.find(([key]) => key === f.key)!;
@@ -143,7 +142,7 @@ export function UserFilters({
                                             : "text"
                                 }
                                 min="0"
-                                step="any"
+                                step={["expired_at", "created_at"].includes(f.key) ? 1 : "any"}
                                 required
                                 value={f.value}
                                 onChange={(e) =>

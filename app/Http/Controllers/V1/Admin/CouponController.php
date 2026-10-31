@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\CouponGenerate;
 use App\Models\Coupon;
 use App\Utils\Csv;
+use App\Services\TimeZones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -102,10 +103,10 @@ class CouponController extends Controller
         foreach($coupons as $coupon) {
             $type = ['', '金额 (CNY)', '比例'][$coupon['type']];
             $value = ['', ($coupon['value'] / 100),$coupon['value']][$coupon['type']];
-            $startTime = date('Y-m-d H:i:s', $coupon['started_at']);
-            $endTime = date('Y-m-d H:i:s', $coupon['ended_at']);
+            $startTime = TimeZones::iso8601($coupon['started_at'] ?: null);
+            $endTime = TimeZones::iso8601($coupon['ended_at'] ?: null);
             $limitUse = $coupon['limit_use'] ?? '不限制';
-            $createTime = date('Y-m-d H:i:s', $coupon['created_at']);
+            $createTime = TimeZones::iso8601($coupon['created_at'] ?: null);
             $limitPlanIds = isset($coupon['limit_plan_ids']) ? implode("/", $coupon['limit_plan_ids']) : '不限制';
             $rows[] = [$coupon['name'], $type, $value, $startTime, $endTime, $limitUse, $limitPlanIds, $createTime];
         }

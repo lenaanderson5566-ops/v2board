@@ -42,4 +42,25 @@ $insert->execute(['reset:traffic','2026-11-01','Asia/Shanghai']);
 $check($insert->rowCount()===0,'Zone change must not duplicate the same business date');
 $insert->execute(['reset:traffic','2026-11-02','Asia/Shanghai']);
 $check($insert->rowCount()===1,'Next date blocked');
+$originalContainer = Illuminate\Container\Container::getInstance();
+$container = new Illuminate\Container\Container;
+$configuration = new Illuminate\Config\Repository(['v2board'=>['system_timezone'=>'America/New_York']]);
+$container->instance('config', $configuration);
+Illuminate\Container\Container::setInstance($container);
+try {
+    foreach (['UTC', 'Asia/Shanghai', 'Asia/Kathmandu'] as $phpZone) {
+        date_default_timezone_set($phpZone);
+        $check(App\Services\TimeZones::iso8601(strtotime('2026-11-01T05:30:37Z')) === '2026-11-01T01:30:37-04:00', 'Export lost the first DST instant');
+        $check(App\Services\TimeZones::iso8601(strtotime('2026-11-01T06:30:37Z')) === '2026-11-01T01:30:37-05:00', 'Export lost the second DST instant');
+    }
+    $configuration->set('v2board.system_timezone', 'Asia/Kathmandu');
+    $check(App\Services\TimeZones::iso8601(strtotime('2026-10-19T00:00:37Z')) === '2026-10-19T05:45:37+05:45', 'Export lost a fractional-hour offset');
+    $configuration->set('v2board.system_timezone', 'UTC');
+    $check(App\Services\TimeZones::iso8601(0) === '1970-01-01T00:00:00+00:00', 'Epoch is a valid explicit instant');
+    $check(App\Services\TimeZones::iso8601(null) === null, 'Missing export time must stay empty');
+} finally {
+    Illuminate\Container\Container::setInstance($originalContainer);
+    date_default_timezone_set('UTC');
+}
+
 echo "Time zones: $checks checks passed\n";

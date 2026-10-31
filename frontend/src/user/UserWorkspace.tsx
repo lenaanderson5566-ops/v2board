@@ -6,7 +6,7 @@ import {
     AnalyticsPrivacyFooter,
     PrivacyFooterLinks,
 } from "./AnalyticsPrivacy";
-import { displayTimeZone, subscribeTimeZone } from "../shared/timezone";
+import { calendarDay, displayTimeZone, subscribeTimeZone } from "../shared/timezone";
 import {
     initializeBrowserSession,
     hasBrowserSession,
@@ -116,6 +116,25 @@ export default function UserWorkspace() {
             warmAuthenticatedWorkspace();
         }
     }, [user?.id, path === "client-authorize"]);
+    const [today, setToday] = useState(() => new Date());
+    useEffect(() => {
+        if (!user) return;
+        const refreshToday = () => {
+            if (document.visibilityState !== "hidden") {
+                const now = new Date();
+                setToday(previous => calendarDay(previous, timeZone) === calendarDay(now, timeZone) ? previous : now);
+            }
+        };
+        refreshToday();
+        const timer = window.setInterval(refreshToday, 60000);
+        window.addEventListener("focus", refreshToday);
+        document.addEventListener("visibilitychange", refreshToday);
+        return () => {
+            window.clearInterval(timer);
+            window.removeEventListener("focus", refreshToday);
+            document.removeEventListener("visibilitychange", refreshToday);
+        };
+    }, [Boolean(user), timeZone]);
     const [sessionAttempt, setSessionAttempt] = useState(0);
     const [sessionRevision, setSessionRevision] = useState(0);
     const [sessionError, setSessionError] = useState(false);
@@ -597,7 +616,7 @@ export default function UserWorkspace() {
                                     <h1>{tx(item?.label || "总览")}</h1>
                                 </div>
                                 <span className="today">
-                                    {new Date().toLocaleDateString(locale(), {
+                                    {today.toLocaleDateString(locale(), {
                                         timeZone,
                                         month: "long",
                                         day: "numeric",

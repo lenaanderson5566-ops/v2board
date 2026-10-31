@@ -291,3 +291,25 @@ it("redraws the workspace calendar immediately when the personal zone changes wi
         expect(today.textContent).toContain("November 1");
     } finally { vi.useRealTimers(); }
 });
+
+it("advances the visible personal calendar across midnight without fetching account data", async () => {
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    vi.useFakeTimers({ toFake: ["Date", "setInterval", "clearInterval"] });
+    vi.setSystemTime(new Date("2026-11-01T23:59:30Z"));
+    try {
+        setDisplayTimeZone("UTC");
+        signedIn();
+        render(<App />);
+        await screen.findByText("Protected workspace");
+        const today = document.querySelector(".today")!;
+        expect(today.textContent).toContain("November 1");
+        const reads = mocks.read.mock.calls.length;
+        await act(async () => { await vi.advanceTimersByTimeAsync(60000); });
+        expect(today.textContent).toContain("November 2");
+        expect(mocks.read).toHaveBeenCalledTimes(reads);
+        vi.setSystemTime(new Date("2026-11-03T01:00:00Z"));
+        act(() => { window.dispatchEvent(new Event("focus")); });
+        expect(today.textContent).toContain("November 3");
+        expect(mocks.read).toHaveBeenCalledTimes(reads);
+    } finally { cleanup(); vi.useRealTimers(); }
+});

@@ -165,7 +165,7 @@ export function Tickets({
                                 [
                                     "updated_at",
                                     tx("更新时间"),
-                                    (r) => date(r.updated_at),
+                                    (r) => date(r.updated_at, isAdmin ? {} : { second: undefined }),
                                 ],
                             ]
                         }
@@ -291,7 +291,7 @@ export function Tickets({
                                 >
                                     <small>
                                         {m.is_me ? tx("我") : tx("对方")} ·{" "}
-                                        {date(m.created_at)}
+                                        {date(m.created_at, isAdmin ? {} : { second: undefined })}
                                     </small>
                                     <p>{m.message}</p>
                                 </div>

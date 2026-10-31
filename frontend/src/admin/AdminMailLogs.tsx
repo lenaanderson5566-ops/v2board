@@ -319,6 +319,7 @@ export function AdminMailLogs() {
                                 开始时间
                                 <input
                                     type="datetime-local"
+                                    step={1}
                                     value={draft.from}
                                     onChange={(e) =>
                                         setDraft({
@@ -332,6 +333,7 @@ export function AdminMailLogs() {
                                 结束时间
                                 <input
                                     type="datetime-local"
+                                    step={1}
                                     value={draft.to}
                                     onChange={(e) =>
                                         setDraft({

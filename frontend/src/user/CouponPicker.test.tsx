@@ -42,6 +42,7 @@ vi.mock("../shared/ui", () => ({
     }),
 }));
 import { CouponPicker } from "./CouponPicker";
+import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 const coupon = {
     id: 1,
     name: "Welcome",
@@ -53,6 +54,7 @@ const coupon = {
 };
 afterEach(() => {
     cleanup();
+    setDisplayTimeZone(null);
     vi.clearAllMocks();
     mocks.wallet = [];
     mocks.offers = [];
@@ -358,4 +360,13 @@ it("does not replace a coupon that the user already selected", () => {
     const change = vi.fn();
     render(<CouponPicker planId={1} period="month_price" value={2} couponIntentId={1} onChange={change} />);
     expect(change).not.toHaveBeenCalled();
+});
+
+it("shows wallet expiry in the personal zone without verbose seconds", () => {
+    configureTimeZone("UTC"); setDisplayTimeZone("Asia/Kathmandu");
+    mocks.wallet = [{ ...coupon, expiresAt: "2027-08-30T00:08:37Z" }];
+    const view = render(<CouponPicker planId={1} period="month_price" value={null} onChange={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("我的优惠券", { selector: "summary" }));
+    expect(view.container.textContent).toContain("2027/08/30 05:53 (UTC+5:45)");
+    expect(view.container.textContent).not.toContain("05:53:37");
 });

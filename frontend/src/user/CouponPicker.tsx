@@ -125,7 +125,7 @@ export function CouponPicker({
                 <span>
                     <strong>{coupon.name}</strong>
                     <small>
-                        {tx("有效期至")} {formatInstant(coupon.expiresAt)}
+                        {tx("有效期至")} {formatInstant(coupon.expiresAt, { second: undefined })}
                     </small>
                     {!enabled && <small>{unavailableReason(coupon)}</small>}
                 </span>

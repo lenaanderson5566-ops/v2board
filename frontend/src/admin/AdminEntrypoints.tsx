@@ -1,3 +1,4 @@
+import { adminInstant } from "./admin-log-time";
 import { formatDuration } from "../shared/number-format";
 import { request, admin } from "../shared/api";
 import { useState, type FormEvent } from "react";
@@ -30,7 +31,7 @@ export function AdminEntrypoints({
             }>(admin("config/testFastaiEntrypoint"), { origin });
             setChecks((values) => ({
                 ...values,
-                [origin]: `检查通过 · ${formatDuration(data.durationMs)} · ${data.checkedAt}`,
+                [origin]: `检查通过 · ${formatDuration(data.durationMs)} · ${adminInstant(data.checkedAt)}`,
             }));
         } catch (error) {
             setChecks((values) => ({

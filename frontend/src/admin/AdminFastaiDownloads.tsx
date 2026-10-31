@@ -1,5 +1,6 @@
 import { useRef, useState, type FormEvent } from "react";
 import type { V10FastaiRelease } from "../shared/v10-types";
+import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { FastaiInstallerPicker } from "./FastaiInstallerPicker";
 
 const platforms = {
@@ -14,6 +15,7 @@ const architectures = {
     arm: "ARM",
     x86: "x86",
 };
+type ReleaseDraft = V10FastaiRelease & { publishedAtInput: string };
 
 export function AdminFastaiDownloads({
     initial,
@@ -22,16 +24,21 @@ export function AdminFastaiDownloads({
     initial: V10FastaiRelease[];
     save: (releases: V10FastaiRelease[]) => Promise<void>;
 }) {
-    const [releases, setReleases] = useState(initial);
+    const [releases, setReleases] = useState<ReleaseDraft[]>(() => initial.map(release => ({
+        ...release, publishedAtInput: dateTimeFieldValue(release.publishedAt),
+    })));
     const currentDraft = useRef(releases);
     currentDraft.current = releases;
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState("");
     const [picker, setPicker] = useState<number | null>(null);
-    function update(index: number, values: Partial<V10FastaiRelease>) {
+    function update(index: number, values: Partial<ReleaseDraft>) {
+        const changes = values.publishedAt === undefined ? values : {
+            ...values, publishedAtInput: dateTimeFieldValue(values.publishedAt),
+        };
         setReleases((items) =>
             items.map((item, i) =>
-                i === index ? { ...item, ...values } : item,
+                i === index ? { ...item, ...changes } : item,
             ),
         );
         setMessage("");
@@ -42,7 +49,11 @@ export function AdminFastaiDownloads({
         setBusy(true);
         setMessage("");
         try {
-            await save(releases);
+            await save(releases.map(({ publishedAtInput, ...release }) => {
+                const at = dateTimeFieldInstant(publishedAtInput, release.publishedAt);
+                if (at == null) throw new Error("请填写发布时间");
+                return { ...release, publishedAt: new Date(at * 1000).toISOString().replace(/\.000Z$/, "Z") };
+            }));
             setMessage(
                 currentDraft.current === releases
                     ? "FastAI 下载与版本设置已发布"
@@ -170,14 +181,15 @@ export function AdminFastaiDownloads({
                                     />
                                 </label>
                                 <label>
-                                    发布时间（UTC）
+                                    发布时间
                                     <input
                                         required
-                                        placeholder="2026-10-06T00:00:00Z"
-                                        value={release.publishedAt}
+                                        type="datetime-local"
+                                        step={1}
+                                        value={release.publishedAtInput}
                                         onChange={(e) =>
                                             update(index, {
-                                                publishedAt: e.target.value,
+                                                publishedAtInput: e.target.value,
                                             })
                                         }
                                     />
@@ -249,6 +261,7 @@ export function AdminFastaiDownloads({
                         disabled={releases.length >= 32}
                         onClick={() => {
                             setMessage("");
+                            const publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
                             setReleases((items) => [
                                 ...items,
                                 {
@@ -260,9 +273,8 @@ export function AdminFastaiDownloads({
                                     minimumVersion: "",
                                     downloadUrl: "",
                                     sha256: "",
-                                    publishedAt: new Date()
-                                        .toISOString()
-                                        .replace(/\.\d{3}Z$/, "Z"),
+                                    publishedAt,
+                                    publishedAtInput: dateTimeFieldValue(publishedAt),
                                     releaseNotes: "",
                                 },
                             ]);

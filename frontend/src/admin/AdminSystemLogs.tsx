@@ -41,7 +41,7 @@ function recent(): Filters {
     ).get("request_id");
     if (requestId && /^[0-9a-f-]{36}$/i.test(requestId))
         return { ...empty, request_id: requestId };
-    const from = dateTimeInput((Date.now() - 86400000) / 1000);
+    const from = dateTimeInput(Math.floor((Date.now() - 86400000) / 1000), undefined, "second");
     try {
         parseDateTimeInput(from);
         return { ...empty, from };
@@ -81,13 +81,11 @@ export function AdminSystemLogs() {
                     className="admin-log-filters"
                     onSubmit={(e) => {
                         e.preventDefault();
-                        if (draft.from && draft.to && draft.from > draft.to) {
-                            setError("结束时间不能早于开始时间");
-                            return;
-                        }
                         try {
-                            if (draft.from) parseDateTimeInput(draft.from);
-                            if (draft.to) parseDateTimeInput(draft.to);
+                            const from = draft.from ? parseDateTimeInput(draft.from) : null;
+                            const to = draft.to ? parseDateTimeInput(draft.to) : null;
+                            if (from != null && to != null && from > to)
+                                throw new Error("结束时间不能早于开始时间");
                         } catch (e) {
                             setError((e as Error).message);
                             return;
@@ -105,6 +103,7 @@ export function AdminSystemLogs() {
                         <input
                             aria-label="日志开始时间"
                             type="datetime-local"
+                            step={1}
                             value={draft.from}
                             onChange={(e) =>
                                 setDraft({ ...draft, from: e.target.value })
@@ -116,6 +115,7 @@ export function AdminSystemLogs() {
                         <input
                             aria-label="日志结束时间"
                             type="datetime-local"
+                            step={1}
                             value={draft.to}
                             onChange={(e) =>
                                 setDraft({ ...draft, to: e.target.value })

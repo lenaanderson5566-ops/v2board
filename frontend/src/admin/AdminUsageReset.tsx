@@ -164,6 +164,7 @@ function ResetForm({
                             <input
                                 title={displayTimeZone()}
                                 type="datetime-local"
+                                step={1}
                                 value={expiry}
                                 onChange={(event) =>
                                     setExpiry(event.target.value)

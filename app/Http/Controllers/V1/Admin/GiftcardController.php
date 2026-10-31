@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\GiftcardGenerate;
 use App\Models\Giftcard;
 use App\Utils\Helper;
 use App\Utils\Csv;
+use App\Services\TimeZones;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -88,10 +89,10 @@ class GiftcardController extends Controller
         foreach ($giftcards as $giftcard) {
             $type = ['', '金额 (CNY)', '时长', '流量', '重置', '套餐'][$giftcard['type']];
             $value = ['', round($giftcardvalue/100, 2), $giftcardvalue . '天', $giftcardvalue . 'GB', '-', $giftcardvalue . '天'][$giftcard['type']];
-            $startTime = date('Y-m-d H:i:s', $giftcard['started_at']);
-            $endTime = date('Y-m-d H:i:s', $giftcard['ended_at']);
+            $startTime = TimeZones::iso8601($giftcard['started_at'] ?: null);
+            $endTime = TimeZones::iso8601($giftcard['ended_at'] ?: null);
             $limitUse = $giftcard['limit_use'] ?? '不限制';
-            $createTime = date('Y-m-d H:i:s', $giftcard['created_at']);
+            $createTime = TimeZones::iso8601($giftcard['created_at'] ?: null);
             $rows[] = [$giftcard['name'], $type, $value, $startTime, $endTime, $limitUse, $giftcard['code'], $createTime];
         }
 

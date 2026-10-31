@@ -16,3 +16,16 @@ it("publishes domain origins and priorities without a private signing key", asyn
     await waitFor(() => expect(save).toHaveBeenCalledWith([{origin: "https://fastdog.ws", enabled: true, priority: 2}]));
     expect((await screen.findByRole("status")).textContent).toContain("服务入口已发布");
 });
+
+it("converts entrypoint check instants to the system display zone instead of showing raw ISO", async () => {
+    const { request } = await import("../shared/api");
+    const { configureTimeZone, setDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    setDisplayTimeZone("America/New_York");
+    vi.mocked(request).mockResolvedValueOnce({ data: { checkedAt: "2026-11-30T00:00:00Z", durationMs: 12 } });
+    render(<AdminEntrypoints initial={[{origin: "https://entry.example.test", enabled: true, priority: 1}]} version={1} publicKey="public-key" save={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", {name: "检查服务"}));
+    expect(await screen.findByText(/检查通过.*08:00:00/)).toBeTruthy();
+    expect(screen.queryByText(/2026-11-30T00:00:00Z/)).toBeNull();
+    setDisplayTimeZone(null);
+});

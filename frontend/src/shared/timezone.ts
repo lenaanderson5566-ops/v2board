@@ -52,7 +52,10 @@ export function utcOffsetLabel(
     const name = new Intl.DateTimeFormat("en", {
         timeZone: zone, timeZoneName: "longOffset",
     }).formatToParts(date).find(part => part.type === "timeZoneName")?.value;
-    return name === "GMT" ? "UTC+00:00" : name?.replace(/^GMT/, "UTC") || "—";
+    if (name === "GMT") return "UTC";
+    const offset = name?.match(/^GMT([+-])(\d{1,2})(?::(\d{2}))?$/);
+    if (offset && Number(offset[2]) === 0 && (!offset[3] || offset[3] === "00")) return "UTC";
+    return offset ? `UTC${offset[1]}${Number(offset[2])}${offset[3] && offset[3] !== "00" ? `:${offset[3]}` : ""}` : "—";
 }
 export function formatInstant(
     value: Date | string | number,
@@ -64,7 +67,8 @@ export function formatInstant(
             ? value
             : new Date(typeof value === "number" ? value * 1000 : value);
     if (!Number.isFinite(date.getTime()) || !validZone(zone)) return "—";
-    return new Intl.DateTimeFormat(locale(), {
+    const showZone = !Object.hasOwn(options, "timeZoneName") || options.timeZoneName !== undefined;
+    const text = new Intl.DateTimeFormat(locale(), {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
@@ -72,11 +76,11 @@ export function formatInstant(
         minute: "2-digit",
         second: "2-digit",
         hourCycle: "h23",
-        timeZoneName: "short",
         ...options,
+        timeZoneName: undefined,
         timeZone: zone,
-    }).formatToParts(date).map(part => part.type === "timeZoneName"
-        ? utcOffsetLabel(date, zone) : part.value).join("");
+    }).format(date);
+    return showZone ? `${text} (${utcOffsetLabel(date, zone)})` : text;
 }
 export function calendarDay(value: Date, zone = businessTimeZone()): string {
     const parts = new Intl.DateTimeFormat("en", {

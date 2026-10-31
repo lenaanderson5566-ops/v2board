@@ -588,3 +588,12 @@ describe("quantity display boundaries", () => {
         expect(money(123450, "USD")).toBe("USD 1,234.50");
     });
 });
+
+it("lets subscription expiry omit seconds while event records retain them", () => {
+    configureTimeZone("UTC");
+    setDisplayTimeZone("Asia/Shanghai");
+    const at = Date.parse("2027-08-30T10:08:37Z") / 1000;
+    expect(date(at, { second: undefined })).toMatch(/18:08 \(UTC\+8\)$/);
+    expect(date(at)).toMatch(/18:08:37 \(UTC\+8\)$/);
+    setDisplayTimeZone(null);
+});

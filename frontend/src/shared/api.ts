@@ -340,7 +340,7 @@ export const money = (value: unknown, currency = "CNY") => {
     return `${currency} ${formatNumber(amount / 100, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 export const bytes = formatBytes;
-export const date = (value: unknown): string => {
+export const date = (value: unknown, options: Intl.DateTimeFormatOptions = {}): string => {
     const text = typeof value === "string" ? value.trim() : "";
     const numeric = text && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text);
     // Legacy numeric values are Unix seconds; strings must carry an explicit
@@ -348,7 +348,7 @@ export const date = (value: unknown): string => {
     const instant = value instanceof Date || typeof value === "number" ? value
         : numeric ? Number(text)
         : /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:\d\d)$/i.test(text) ? text : null;
-    return instant === null ? "—" : formatInstant(instant, boot.mode === "admin" ? { timeZoneName: undefined } : {});
+    return instant === null ? "—" : formatInstant(instant, { ...options, ...(boot.mode === "admin" ? { timeZoneName: undefined } : {}) });
 };
 export const navigate = (path: string) => {
     location.hash = "/" + path;

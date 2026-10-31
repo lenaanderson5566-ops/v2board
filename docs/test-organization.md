@@ -159,3 +159,5 @@ GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有
 数量精度复用 api、localization、UsageBilling、UsageChart、NodeList、BillingFlow、CouponCenter/Picker、admin-workspaces、JourneyAnalytics、OperationsAnalytics 等既有模块。共享格式测试覆盖二进制单位边界进位、空值/非法值、负零、小百分比/近满额、极小倍率、毫秒/秒维度及十四语言数字格式；组件断言保留原始进度值和计费输入不变。未新增独立运行器或后台计费逻辑。
 
 本轮数量显示完整回归共 1645 项；其中 1642 项首轮通过，两项 GB/GiB 关键词兼容问题在生产搜索逻辑修正后按既有 HelpGuides 模块复验通过，一项语言加载重试并行时限失败在 app 模块独立复验通过。HelpGuides 保留旧 GB 搜索断言并追加 GiB，避免仅随文案机械修改测试。最终构建与资源清单完整。
+
+简洁时间格式沿用 timezone、api、localization、UsageBilling、AccountEntry、AccountControls、ConfigurationUpdates 及后台时区模块，核对中文完整到期示例、时区后置、秒的显隐、UTC/正负偏移/四分之一小时和夏令时，不改变真实到期时刻。

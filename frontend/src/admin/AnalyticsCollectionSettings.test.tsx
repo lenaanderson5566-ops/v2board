@@ -33,8 +33,8 @@ it("requires explicit review before changing the business time zone and saves on
     fireEvent.change(zone,{target:{value:"UTC"}});
     const note=screen.getByRole("note");
     expect(note.textContent).toContain("Asia/Shanghai");
-    expect(note.textContent).toContain("UTC+08:00");
-    expect(note.textContent).toContain("UTC+00:00");
+    expect(note.textContent).toContain("UTC+8");
+    expect(note.textContent).toContain("UTC");
     const confirm=screen.getByRole("checkbox",{name:/Asia\/Shanghai.*UTC/}) as HTMLInputElement;
     expect(confirm.checked).toBe(false);
     expect(confirm.required).toBe(true);

@@ -420,12 +420,12 @@ it("formats scheduled reset timestamps in the selected display zone", async () =
         const output = minuteDate(at);
         expect(output).toContain("21:51");
         expect(output).not.toContain("21:51:37");
-        expect(output).toContain("UTC+08:00");
+        expect(output).toContain("UTC+8");
         setDisplayTimeZone("UTC");
         expect(minuteDate(at)).toContain("13:51");
-        expect(minuteDate(at)).toContain("UTC+00:00");
+        expect(minuteDate(at)).toContain("UTC");
         expect(minuteDate(at, "Asia/Shanghai")).toContain("21:51");
-        expect(minuteDate(at, "Asia/Shanghai")).toContain("UTC+08:00");
+        expect(minuteDate(at, "Asia/Shanghai")).toContain("UTC+8");
         expect(minuteDate(at, "Unknown/Zone")).toBe("—");
         expect(minuteDate(null)).toBe("—");
     } finally {
@@ -442,10 +442,10 @@ it("uses consistent UTC offset labels in every interface language", async () => 
             await i18n.changeLanguage(code);
             const at = "2026-11-30T00:00:00Z";
             setDisplayTimeZone("Asia/Kathmandu");
-            expect(formatInstant(at), code).toContain("UTC+05:45");
+            expect(formatInstant(at), code).toContain("UTC+5:45");
             expect(formatInstant(at), code).not.toContain("GMT");
             setDisplayTimeZone("UTC");
-            expect(formatInstant(at), code).toContain("UTC+00:00");
+            expect(formatInstant(at), code).toContain("UTC");
             expect(formatInstant(at, { timeZoneName: undefined }), code).not.toContain("UTC");
         }
     } finally {
@@ -471,4 +471,21 @@ it("uses the interface locale for quantity digits and consistent binary unit nam
             expect(resources[code].help.aCredits, code).toContain("GiB");
         }
     } finally { await i18n.changeLanguage(previousLanguage); }
+});
+
+it("keeps ordinary expiry dates compact and puts the UTC offset after the time", async () => {
+    const { configureTimeZone, formatInstant, setDisplayTimeZone } = await import("./timezone");
+    const previousLanguage = i18n.language;
+    configureTimeZone("UTC");
+    try {
+        await i18n.changeLanguage("zh-CN");
+        setDisplayTimeZone("Asia/Shanghai");
+        const at = "2027-08-30T10:08:00Z";
+        expect(formatInstant(at, { second: undefined })).toBe("2027/08/30 18:08 (UTC+8)");
+        expect(formatInstant(at)).toBe("2027/08/30 18:08:00 (UTC+8)");
+        setDisplayTimeZone("Asia/Kathmandu");
+        expect(formatInstant(at, { second: undefined })).toBe("2027/08/30 15:53 (UTC+5:45)");
+        setDisplayTimeZone("UTC");
+        expect(formatInstant(at, { second: undefined })).toBe("2027/08/30 10:08 (UTC)");
+    } finally { setDisplayTimeZone(null); await i18n.changeLanguage(previousLanguage); }
 });

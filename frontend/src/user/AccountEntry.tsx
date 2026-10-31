@@ -51,7 +51,7 @@ export function AccountEntry({
                 <div className="entry-previous">
                     <strong>{subscription.plan.name}</strong>
                     <span>
-                        {tx("订阅到期")} · {date(subscription.expired_at)}
+                        {tx("订阅到期")} · {date(subscription.expired_at, { second: undefined })}
                     </span>
                 </div>
             )}

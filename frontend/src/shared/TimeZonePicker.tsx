@@ -20,7 +20,7 @@ function name(zone: string, now: Date) {
     const city = cities[zone]
         ? tx(cities[zone])
         : zone.split("/").pop()!.replaceAll("_", " ");
-    return `${city} (${offset})`;
+    return city === offset ? city : `${city} (${offset})`;
 }
 export function TimeZonePicker({
     id,

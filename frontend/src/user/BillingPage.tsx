@@ -85,7 +85,7 @@ export function BillingPage() {
                             <p className="muted">
                                 {sub.data?.plan &&
                                 sub.data?.has_subscription !== false
-                                    ? `${tx("订阅到期")} · ${sub.data.expired_at ? date(sub.data.expired_at) : tx("长期有效")}`
+                                    ? `${tx("订阅到期")} · ${sub.data.expired_at ? date(sub.data.expired_at, { second: undefined }) : tx("长期有效")}`
                                     : b("choosePlan")}
                             </p>
                         </div>

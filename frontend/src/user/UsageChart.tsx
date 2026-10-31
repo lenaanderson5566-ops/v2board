@@ -1,3 +1,4 @@
+import { formatMultiplier } from "../shared/number-format";
 import { businessTimeZone, validZone } from "../shared/timezone";
 import { useEffect, useRef, useState } from "react";
 import { e } from "../shared/experience-copy";
@@ -179,7 +180,7 @@ export function UsageChart({
                             ],
                             ["u", tx("上传"), (row) => bytes(row.u)],
                             ["d", tx("下载"), (row) => bytes(row.d)],
-                            ["server_rate", tx("倍率")],
+                            ["server_rate", tx("倍率"), (row) => formatMultiplier(row.server_rate)],
                         ]}
                     />
                 </details>

@@ -150,7 +150,7 @@ export function resourceFields(
                             {
                                 1: "金额（CNY）",
                                 2: "延长时间（天）",
-                                3: "增加流量（GB）",
+                                3: "增加流量（GiB）",
                                 5: "套餐有效期（天）",
                             } as Record<number, string>
                         )[Number(values.type)] || f.label,

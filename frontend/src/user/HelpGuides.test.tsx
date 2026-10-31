@@ -31,6 +31,8 @@ describe("self-service FAQ", () => {
         });
         expect(container.querySelectorAll("details")).toHaveLength(1);
         expect(screen.getByText("套餐流量与独立额度的区别")).toBeTruthy();
+        fireEvent.change(screen.getByRole("searchbox"), { target: { value: "GiB" } });
+        expect(container.querySelectorAll("details")).toHaveLength(1);
     });
     it("clears query and category when no results match", () => {
         const { container } = render(<HelpGuides />);

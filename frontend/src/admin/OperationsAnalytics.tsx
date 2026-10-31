@@ -1,3 +1,4 @@
+import { formatDuration, formatNumber, formatPercent } from "../shared/number-format";
 import { browserLabel } from "./browser-labels";
 import { useState } from "react";
 import { admin, query } from "../shared/api";
@@ -129,11 +130,11 @@ export type OperationsReport = {
     };
 };
 const percentage = (value: number | null) =>
-    value === null ? "—" : `${(value * 100).toFixed(1)}%`;
+    formatPercent(value, { fraction: true, bounded: true });
 const instant = (value: string | null) =>
     value ? formatInstant(value) : "暂无记录";
 const seconds = (value: number | null) =>
-    value === null ? "—" : `${value.toLocaleString()} 秒`;
+    value === null ? "—" : formatDuration(value, "s").replace(/ s$/, " 秒");
 const reasons: Record<string, string> = {
     user_not_found: "账户不存在",
     password_error: "密码错误",
@@ -190,7 +191,7 @@ function AccessReport({
                     <div className="analytics-metrics">
                         <div>
                             <span>日志事件</span>
-                            <strong>{data.total.toLocaleString()}</strong>
+                            <strong>{formatNumber(data.total, { maximumFractionDigits: 0 })}</strong>
                             <small>
                                 成功 {data.success} · 失败 {data.failed} · 未知{" "}
                                 {data.unknown}
@@ -543,7 +544,7 @@ export function OperationsAnalytics({
                                             r.negative,
                                             r.averageTransportMs === null
                                                 ? "—"
-                                                : `${r.averageTransportMs} ms`,
+                                                : formatDuration(r.averageTransportMs),
                                             instant(r.latestAt),
                                         ])}
                                     />

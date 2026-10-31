@@ -1,3 +1,4 @@
+import { formatNumber } from "../shared/number-format";
 import {
     useEffect,
     useLayoutEffect,
@@ -297,7 +298,7 @@ export function PlanSelection({
                                                 <>
                                                     {" "}
                                                     · {e("deviceLimit")}{" "}
-                                                    {plan.device_limit}
+                                                    {formatNumber(plan.device_limit, { maximumFractionDigits: 0 })}
                                                 </>
                                             )}
                                         </p>
@@ -358,17 +359,11 @@ export function PlanSelection({
                                             <small
                                                 className="period-saving"
                                                 title={pc("save", {
-                                                    percent: periodSavings(
-                                                        plan,
-                                                        key,
-                                                    ),
+                                                    percent: formatNumber(periodSavings(plan, key), { maximumFractionDigits: 0 }),
                                                 })}
                                             >
                                                 {pc("cycleBadge", {
-                                                    percent: periodSavings(
-                                                        plan,
-                                                        key,
-                                                    ),
+                                                    percent: formatNumber(periodSavings(plan, key), { maximumFractionDigits: 0 }),
                                                 })}
                                             </small>
                                         )}
@@ -572,8 +567,7 @@ export function PlanSelection({
                                         <small>
                                             {!unified &&
                                                 pc("couponBase", {
-                                                    percent:
-                                                        coupon!.discountPercent,
+                                                    percent: formatNumber(coupon!.discountPercent, { maximumFractionDigits: 0 }),
                                                     amount: money(
                                                         quote.amount,
                                                         plan.currency,

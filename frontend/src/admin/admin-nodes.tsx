@@ -1,3 +1,4 @@
+import { formatMultiplier } from "../shared/number-format";
 import { AdminRowMenu } from "./AdminRowMenu";
 import { ProtocolBadge } from "./ProtocolBadge";
 import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
@@ -403,7 +404,7 @@ function NodesContent({
                     : "未设置",
         ],
         ["port", "端口"],
-        ["rate", "倍率"],
+        ["rate", "倍率", (row: Row) => formatMultiplier(row.rate)],
         [
             "show",
             "显隐",

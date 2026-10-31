@@ -646,3 +646,18 @@ it.each(["USD", "CNY"])(
         ).toBeTruthy();
     },
 );
+
+it.each([
+    [99.99, "<0.1%"],
+    [0.01, ">99.9%"],
+    [100, "0%"],
+    [0, "100%"],
+] as const)("keeps quota endpoints distinct when used bytes are %s", (used, expected) => {
+    mocks.info.u = used;
+    mocks.info.d = 0;
+    mocks.info.transfer_enable = 100;
+    render(<UsagePage />);
+    expect(document.querySelector(".usage-quota-remaining")?.textContent).toBe(`remaining ${expected}`);
+    const progress = screen.getByRole("progressbar", { name: "remaining" });
+    expect(Number(progress.getAttribute("aria-valuenow"))).toBeCloseTo(100 - used, 8);
+});

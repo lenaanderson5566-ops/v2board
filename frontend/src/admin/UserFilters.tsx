@@ -51,7 +51,7 @@ export function UserFilters({
             }}
         >
             <p className="muted">
-                多个条件同时满足。流量单位为 GB，到期时间按本地时间输入。
+                多个条件同时满足。流量单位为 GiB，到期时间按本地时间输入。
             </p>
             {draft.map((f, i) => {
                 const spec = userFilterFields.find(([key]) => key === f.key)!;

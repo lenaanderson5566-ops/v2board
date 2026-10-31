@@ -1,3 +1,4 @@
+import { formatMultiplier } from "../shared/number-format";
 import { useTranslation } from "react-i18next";
 import { StatusBadge } from "../shared/StatusBadge";
 import { Globe } from "lucide-react";
@@ -87,7 +88,7 @@ export function NodeList({ nodes }: { nodes: Row[] }) {
                     "rate",
                     tx("倍率"),
                     (node) => (
-                        <span>{node.rate == null ? "—" : `${node.rate}×`}</span>
+                        <span>{formatMultiplier(node.rate)}</span>
                     ),
                 ],
                 [

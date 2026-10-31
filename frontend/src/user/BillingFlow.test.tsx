@@ -858,7 +858,7 @@ it.each([
         render(<SubscriptionPurchase />);
         fireEvent.click(screen.getByRole("button", { name: String(label) }));
         expect(screen.getByText('equivalent{"price":"¥95.00"}')).toBeTruthy();
-        expect(screen.getByText('savingBadge{"percent":5}')).toBeTruthy();
+        expect(screen.getByText('savingBadge{"percent":"5"}')).toBeTruthy();
     },
 );
 it("shows monthly equivalent without inventing savings when no monthly price exists", () => {
@@ -880,7 +880,7 @@ it("compares configured quota and limits without implying unlimited or monthly d
     mocks.plans = [{ ...plan, device_limit: 3, speed_limit: 100 }];
     const view = render(<SubscriptionPurchase />);
     expect(screen.getByText("53687091200 B")).toBeTruthy();
-    expect(screen.getByText('speedValue{"value":100}')).toBeTruthy();
+    expect(screen.getByText('speedValue{"value":"100"}')).toBeTruthy();
     expect(screen.getByText("deviceLimit")).toBeTruthy();
     expect(screen.getByText("total{}")).toBeTruthy();
     mocks.plans = [

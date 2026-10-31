@@ -161,7 +161,7 @@ it("renders horizontal bars with full identities available", () => {
         screen.getByRole("group", { name: "流量排行横向柱状图" }),
     ).toBeTruthy();
     expect(screen.getByTitle(/guest@example.com/)).toBeTruthy();
-    expect(screen.getByText("12.00 GiB")).toBeTruthy();
+    expect(screen.getByText("12 GiB")).toBeTruthy();
 });
 it("defaults to activity times and toggles optional user columns", async () => {
     render(<UsersPage />);
@@ -1024,9 +1024,9 @@ it("leaves gaps on the calendar axis instead of inventing zero traffic", () => {
     const circles=container.querySelectorAll("circle");
     expect(circles).toHaveLength(3);
     expect(Number(circles[1].getAttribute("cx"))-Number(circles[0].getAttribute("cx"))).toBe(222.5);
-    expect(screen.getByRole("button",{name:"2026-10-01 · 实际流量（GiB）：0.00"})).toBeTruthy();
+    expect(screen.getByRole("button",{name:"2026-10-01 · 实际流量（GiB）：0"})).toBeTruthy();
     fireEvent.focus(circles[0]);
-    expect(container.querySelector("figcaption")?.textContent).toContain("2026-10-01 · 0.00");
+    expect(container.querySelector("figcaption")?.textContent).toContain("2026-10-01 · 0");
     expect(container.innerHTML).not.toContain("NaN");
 });
 
@@ -1300,4 +1300,14 @@ it("does not clamp a page based on unknown loading totals or a failed read", asy
     await screen.findByText("Last group");
     expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 2 页");
     expect(pageOneReads()).toBe(1);
+});
+
+it("keeps monetary trend precision while traffic totals omit redundant decimals", () => {
+    const first = render(<HistoryChart label="订单金额（CNY）" fixed data={[{ date: "2026-10-01", value: 12 }]} />);
+    expect(screen.getByRole("button", { name: "2026-10-01 · 订单金额（CNY）：12.00" })).toBeTruthy();
+    first.unmount();
+    const second = render(<RankChart data={[{ server_name: "invalid", total: Infinity }, { server_name: "known", total: 12.5 }]} nameKey="server_name" />);
+    expect(screen.getByText("12.5 GiB")).toBeTruthy();
+    expect(screen.getByText("— GiB")).toBeTruthy();
+    expect(second.container.innerHTML).not.toMatch(/NaN|Infinity/);
 });

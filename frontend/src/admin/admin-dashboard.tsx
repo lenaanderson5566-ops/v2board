@@ -1,3 +1,4 @@
+import { formatNumber, formatPercent } from "../shared/number-format";
 import "./admin-dashboard.css";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { adminUserLabel } from "./admin-user-label";
@@ -7,19 +8,9 @@ import { lazy, Suspense, useEffect, useState } from "react";
 const AdminAnalytics = lazy(() =>
     import("./AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })),
 );
-import { admin, type Row } from "../shared/api";
+import { admin, bytes as usageBytes, money, type Row } from "../shared/api";
 import { Panel, State, Table, Reload, Metric, useData } from "../shared/ui";
 
-function usageBytes(value: unknown) {
-    let bytes = Math.max(0, Number(value) || 0);
-    const units = ["B", "KiB", "MiB", "GiB", "TiB", "PiB"];
-    let i = 0;
-    while (bytes >= 1024 && i < units.length - 1) {
-        bytes /= 1024;
-        i++;
-    }
-    return `${bytes.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${units[i]}`;
-}
 export function Overview({
     initialTab = "income",
 }: {
@@ -80,7 +71,7 @@ function IncomeOverview() {
     const amount = (value: unknown) =>
         value == null
             ? "—"
-            : `${currency} ${(Number(value) / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            : money(value, currency);
 
     return (
         <>
@@ -163,13 +154,13 @@ function IncomeOverview() {
                                 "上月已支付订单金额",
                                 amount(finance?.previous_amount),
                             ],
-                            ["本月已支付订单", finance?.month_count ?? "—"],
+                            ["本月已支付订单", formatNumber(finance?.month_count, { maximumFractionDigits: 0 })],
                             ["平均支付金额", amount(finance?.average_amount)],
                             [
                                 "较上月同期",
                                 finance?.change_percent == null
                                     ? "—"
-                                    : `${finance.change_percent > 0 ? "+" : ""}${finance.change_percent}%`,
+                                    : `${Number.isFinite(Number(finance.change_percent)) && Number(finance.change_percent) > 0 ? "+" : ""}${formatPercent(finance.change_percent)}`,
                             ],
                         ].map(([label, value]) => (
                             <Metric
@@ -258,6 +249,7 @@ function IncomeOverview() {
                                         : "支付订单笔数"
                                 }
                                 integer={trend === "count"}
+                                fixed={trend === "amount"}
                             />
                         </>
                     )}
@@ -294,9 +286,7 @@ function IncomeOverview() {
                                             </span>
                                             <div>
                                                 <strong>
-                                                    {Number(
-                                                        period.users,
-                                                    ).toLocaleString()}
+                                                    {formatNumber(period.users, { maximumFractionDigits: 0 })}
                                                 </strong>
                                                 <span>活跃用户</span>
                                             </div>
@@ -384,7 +374,7 @@ function IncomeOverview() {
                                                     ? "计费流量（GiB）"
                                                     : "实际流量（GiB）",
                                                 (r) =>
-                                                    Number(r.total).toFixed(2),
+                                                    formatNumber(r.total),
                                             ],
                                         ]}
                                         actions={
@@ -411,7 +401,7 @@ function IncomeOverview() {
 }
 
 export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
-    const maximum = Math.max(1, ...data.map((r) => Number(r.total) || 0));
+    const maximum = Math.max(1, ...data.map((r) => Number.isFinite(Number(r.total)) ? Math.max(0, Number(r.total)) : 0));
     return (
         <div
             className="dashboard-rank"
@@ -424,7 +414,7 @@ export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
                     nameKey === "email"
                         ? adminUserLabel(r)
                         : String(r[nameKey] || "未知节点");
-                const value = Math.max(0, Number(r.total) || 0);
+                const value = Number.isFinite(Number(r.total)) ? Math.max(0, Number(r.total)) : 0;
                 return (
                     <div
                         className="dashboard-rank-row"
@@ -434,7 +424,7 @@ export function RankChart({ data, nameKey }: { data: Row[]; nameKey: string }) {
                             <span title={name}>
                                 {i + 1}. {name}
                             </span>
-                            <strong>{value.toFixed(2)} GiB</strong>
+                            <strong>{formatNumber(r.total)} GiB</strong>
                         </div>
                         <div className="dashboard-rank-track">
                             <div
@@ -452,10 +442,12 @@ export function HistoryChart({
     data,
     label,
     integer = false,
+    fixed = false,
 }: {
     data: Row[];
     label: string;
     integer?: boolean;
+    fixed?: boolean;
 }) {
     const [selected, setSelected] = useState("");
     const dayMs = 86400000;
@@ -486,8 +478,8 @@ export function HistoryChart({
         first === last ? 515 : 75 + ((time - first) / (last - first)) * 890;
     const y = (value: number) => 230 - (value / maximum) * 190;
     const format = (value: number) =>
-        value.toLocaleString(undefined, {
-            minimumFractionDigits: integer ? 0 : 2,
+        formatNumber(value, {
+            minimumFractionDigits: fixed ? 2 : 0,
             maximumFractionDigits: integer ? 0 : 2,
         });
     const active = valid.find((row) => row.date === selected) || valid.at(-1);
@@ -530,9 +522,7 @@ export function HistoryChart({
                                         y={234 - i * 47.5}
                                         textAnchor="end"
                                     >
-                                        {((maximum * i) / 4).toLocaleString(
-                                            undefined,
-                                            {
+                                        {formatNumber((maximum * i) / 4, {
                                                 notation: "compact",
                                                 maximumFractionDigits: integer
                                                     ? 0

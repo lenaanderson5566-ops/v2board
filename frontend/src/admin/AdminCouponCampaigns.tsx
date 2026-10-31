@@ -1,3 +1,4 @@
+import { formatPercent } from "../shared/number-format";
 import { TableViewport } from "../shared/ui";
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
@@ -55,7 +56,7 @@ export function AdminCouponCampaigns() {
                                     </td>
                                     <td>
                                         {batch.couponName} · 减{" "}
-                                        {batch.discountPercent}%
+                                        {formatPercent(batch.discountPercent, { bounded: true })}
                                     </td>
                                     <td>
                                         {batch.scope === "all"

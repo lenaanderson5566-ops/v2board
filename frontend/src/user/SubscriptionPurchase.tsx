@@ -1,3 +1,4 @@
+import { formatNumber } from "../shared/number-format";
 import { useEffect, useRef, useState } from "react";
 import { bytes, money, navigate, type Row } from "../shared/api";
 import { e } from "../shared/experience-copy";
@@ -332,7 +333,7 @@ export function SubscriptionPurchase() {
                                             Number(plan.device_limit) > 0 && (
                                                 <div>
                                                     <dt>{e("deviceLimit")}</dt>
-                                                    <dd>{plan.device_limit}</dd>
+                                                    <dd>{formatNumber(plan.device_limit, { maximumFractionDigits: 0 })}</dd>
                                                 </div>
                                             )}
                                         {Number.isFinite(
@@ -344,7 +345,7 @@ export function SubscriptionPurchase() {
                                                     <dd>
                                                         <bdi dir="ltr">
                                                             {pc("speedValue", {
-                                                                value: plan.speed_limit,
+                                                                value: formatNumber(plan.speed_limit),
                                                             })}
                                                         </bdi>
                                                     </dd>
@@ -397,14 +398,14 @@ export function SubscriptionPurchase() {
                                                 <span
                                                     className="pricing-saving"
                                                     title={pc("save", {
-                                                        percent: savings,
+                                                        percent: formatNumber(savings, { maximumFractionDigits: 0 }),
                                                     })}
                                                     aria-label={pc("save", {
-                                                        percent: savings,
+                                                        percent: formatNumber(savings, { maximumFractionDigits: 0 }),
                                                     })}
                                                 >
                                                     {pc("savingBadge", {
-                                                        percent: savings,
+                                                        percent: formatNumber(savings, { maximumFractionDigits: 0 }),
                                                     })}
                                                 </span>
                                             )}

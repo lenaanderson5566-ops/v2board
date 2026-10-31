@@ -1,3 +1,4 @@
+import { formatDuration } from "../shared/number-format";
 import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { useState } from "react";
@@ -137,7 +138,7 @@ export function AdminClientDiagnostics() {
                                     <td>
                                         {c.elapsedMs == null
                                             ? "—"
-                                            : `${c.elapsedMs} ms`}
+                                            : formatDuration(c.elapsedMs)}
                                     </td>
                                 </tr>
                             ))}

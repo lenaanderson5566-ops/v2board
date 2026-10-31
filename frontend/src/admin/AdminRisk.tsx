@@ -1,3 +1,4 @@
+import { formatNumber } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { displayTimeZone } from "../shared/timezone";
@@ -258,7 +259,7 @@ export function RiskRules() {
                                                 {thresholdLabels[key] || key}
                                             </dt>
                                             <dd>
-                                                {Number(value).toLocaleString()}{" "}
+                                                {formatNumber(value, { maximumFractionDigits: 0 })}{" "}
                                                 {key === "window_seconds"
                                                     ? "秒"
                                                     : key ===

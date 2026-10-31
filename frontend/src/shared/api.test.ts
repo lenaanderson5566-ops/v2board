@@ -179,7 +179,7 @@ describe("API client", () => {
             { id: 1 },
             { id: 2 },
         ]);
-        expect(bytes(1073741824)).toBe("1.00 GB");
+        expect(bytes(1073741824)).toBe("1 GiB");
         expect(rows(null)).toEqual([]);
     });
 });
@@ -546,5 +546,45 @@ describe("account display time zone", () => {
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(accountReply("Asia/Shanghai")));
         await request("user/info");
         expect(displayTimeZone()).toBe("UTC");
+    });
+});
+
+describe("quantity display boundaries", () => {
+    it("uses binary units, trims display zeros, and carries rounded unit boundaries", () => {
+        expect(bytes(0)).toBe("0 B");
+        expect(bytes(1024)).toBe("1 KiB");
+        expect(bytes(1536)).toBe("1.5 KiB");
+        expect(bytes(50 * 1024 ** 3)).toBe("50 GiB");
+        expect(bytes(1024 ** 3 - 1)).toBe("1 GiB");
+        for (const value of [null, undefined, "", false, NaN, Infinity, -1]) expect(bytes(value)).toBe("—");
+    });
+    it("preserves small nonzero percentages and multipliers instead of reporting zero or full quota", async () => {
+        const { formatNumber, formatPercent, formatMultiplier, formatDuration } = await import("./number-format");
+        expect(formatPercent(0)).toBe("0%");
+        expect(formatPercent(0.01)).toBe("<0.1%");
+        expect(formatPercent(99.99, { bounded: true })).toBe(">99.9%");
+        expect(formatPercent(100, { bounded: true })).toBe("100%");
+        expect(formatPercent(0.1 - 1e-14)).toBe("0.1%");
+        expect(formatPercent(99.9 + 1e-14, { bounded: true })).toBe("99.9%");
+        expect(formatNumber(-0.001)).toBe("0");
+        expect(money(-0.1)).toBe("CNY 0.00");
+        expect(formatDuration(0)).toBe("0 ms");
+        expect(formatDuration(0.04)).toBe("<0.1 ms");
+        expect(formatDuration(0.04, "s")).toBe("<0.1 s");
+        expect(formatDuration(12.34, "s")).toBe("12.3 s");
+        expect(formatDuration(-1)).toBe("—");
+        expect(formatPercent(0.125, { fraction: true })).toBe("12.5%");
+        expect(formatPercent(10, { maximumFractionDigits: 0 })).toBe("10%");
+        expect(formatMultiplier(0.00001)).toBe("0.00001×");
+        expect(formatMultiplier(1e-12)).toBe("<0.000000001×");
+        expect(formatMultiplier(0)).toBe("0×");
+        expect(formatMultiplier(-1)).toBe("—");
+        for (const value of [null, "", false, NaN, Infinity]) {
+            expect(formatNumber(value)).toBe("—");
+            expect(formatPercent(value)).toBe("—");
+            expect(money(value)).toBe("—");
+        }
+        expect(formatNumber(1234.5001)).toBe("1,234.5");
+        expect(money(123450, "USD")).toBe("USD 1,234.50");
     });
 });

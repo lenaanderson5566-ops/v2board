@@ -1,3 +1,4 @@
+import { formatNumber, formatPercent } from "../shared/number-format";
 import { TableViewport } from "../shared/ui";
 import { AdminTabs } from "./AdminChoices";
 import { JourneyAnalytics } from "./JourneyAnalytics";
@@ -64,7 +65,7 @@ type Report = {
 };
 
 const percent = (part: number, total: number) =>
-    total ? `${((part / total) * 100).toFixed(1)}%` : "—";
+    total ? formatPercent(part / total, { fraction: true, bounded: true }) : "—";
 function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
     return (
         <ol className="analytics-funnel">
@@ -74,7 +75,7 @@ function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
                         <span>
                             {index + 1}. {step.label}
                         </span>
-                        <strong>{step.count.toLocaleString()}</strong>
+                        <strong>{formatNumber(step.count, { maximumFractionDigits: 0 })}</strong>
                     </div>
                     <progress
                         max={Math.max(steps[0].count, 1)}
@@ -84,7 +85,7 @@ function Funnel({ steps }: { steps: { label: string; count: number }[] }) {
                     <small>
                         {index === 0
                             ? "起始样本"
-                            : `上一步转化 ${percent(step.count, steps[index - 1].count)} · 流失 ${Math.max(0, steps[index - 1].count - step.count).toLocaleString()}`}
+                            : `上一步转化 ${percent(step.count, steps[index - 1].count)} · 流失 ${formatNumber(Math.max(0, steps[index - 1].count - step.count), { maximumFractionDigits: 0 })}`}
                     </small>
                 </li>
             ))}
@@ -185,7 +186,7 @@ export function AdminAnalytics() {
                                 <div>
                                     <span>访问会话</span>
                                     <strong>
-                                        {data.sessions.toLocaleString()}
+                                        {formatNumber(data.sessions, { maximumFractionDigits: 0 })}
                                     </strong>
                                     <small>
                                         30 分钟无操作后重新计数，非独立人数
@@ -194,7 +195,7 @@ export function AdminAnalytics() {
                                 <div>
                                     <span>页面浏览</span>
                                     <strong>
-                                        {data.views.toLocaleString()}
+                                        {formatNumber(data.views, { maximumFractionDigits: 0 })}
                                     </strong>
                                     <small>包含确认订单与付款视图</small>
                                 </div>
@@ -278,7 +279,7 @@ export function AdminAnalytics() {
                                     )}
                                     <p>
                                         {data.previous
-                                            ? `与上一周期同等已过时间相比：${data.previous.sessions ? (((data.sessions - data.previous.sessions) / data.previous.sessions) * 100).toFixed(1) + "%" : "上一周期无会话，暂不计算变化率"}`
+                                            ? `与上一周期同等已过时间相比：${data.previous.sessions ? formatPercent((data.sessions - data.previous.sessions) / data.previous.sessions, { fraction: true }) : "上一周期无会话，暂不计算变化率"}`
                                             : "没有完整上一周期的保留数据，暂不展示变化率。"}
                                     </p>
                                     <div
@@ -435,7 +436,7 @@ export function AdminAnalytics() {
                                                                               "直接访问／来源未知"}
                                                                     </td>
                                                                     <td>
-                                                                        {row.sessions.toLocaleString()}
+                                                                        {formatNumber(row.sessions, { maximumFractionDigits: 0 })}
                                                                     </td>
                                                                     <td>
                                                                         {percent(
@@ -444,13 +445,13 @@ export function AdminAnalytics() {
                                                                         )}
                                                                     </td>
                                                                     <td>
-                                                                        {row.plans.toLocaleString()}
+                                                                        {formatNumber(row.plans, { maximumFractionDigits: 0 })}
                                                                     </td>
                                                                     <td>
-                                                                        {row.confirmations.toLocaleString()}
+                                                                        {formatNumber(row.confirmations, { maximumFractionDigits: 0 })}
                                                                     </td>
                                                                     <td>
-                                                                        {row.payments.toLocaleString()}
+                                                                        {formatNumber(row.payments, { maximumFractionDigits: 0 })}
                                                                     </td>
                                                                 </tr>
                                                             ),

@@ -1,3 +1,4 @@
+import { formatPercent } from "../shared/number-format";
 import { PlanSelection } from "./PlanSelection";
 import { activePlan } from "../shared/user-experience";
 import { unfinishedOrder } from "./billing-flow";
@@ -188,7 +189,7 @@ export function UsagePage() {
                                         {total > 0 && (
                                             <span className="usage-quota-remaining">
                                                 {e("remaining")}{" "}
-                                                {Math.round(percent)}%
+                                                {formatPercent(percent, { bounded: true })}
                                             </span>
                                         )}
                                     </div>

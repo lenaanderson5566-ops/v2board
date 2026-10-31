@@ -1,3 +1,4 @@
+import { formatDuration, formatNumber, formatPercent } from "../shared/number-format";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
@@ -59,11 +60,11 @@ export type JourneyReport = {
         }[];
     };
 };
-const ratio = (v: Ratio) => (v === null ? "—" : `${(v * 100).toFixed(1)}%`);
+const ratio = (v: Ratio) => formatPercent(v, { fraction: true, bounded: true });
 const count = (v: number | null) =>
-    v === null ? "不可用" : v.toLocaleString();
+    v === null ? "不可用" : formatNumber(v, { maximumFractionDigits: 0 });
 const duration = (v: number | null) =>
-    v === null ? "—" : `${v.toLocaleString()} 秒`;
+    v === null ? "—" : formatDuration(v, "s").replace(/ s$/, " 秒");
 const eventNames: Record<string, string> = {
     guide_manual: "展开手动复制",
     guide_continue: "继续当前浏览器",
@@ -326,8 +327,8 @@ export function JourneyAnalytics({
                                         v === null
                                             ? "—"
                                             : r.event === "cls"
-                                              ? (v / 1000).toFixed(3)
-                                              : `${v.toLocaleString()} ms`;
+                                              ? formatNumber(v / 1000, { maximumFractionDigits: 3 })
+                                              : formatDuration(v);
                                     return [
                                         analyticsLabels[r.page] || r.page,
                                         eventNames[r.event],

@@ -453,3 +453,22 @@ it("uses consistent UTC offset labels in every interface language", async () => 
         await i18n.changeLanguage(previousLanguage);
     }
 });
+
+it("uses the interface locale for quantity digits and consistent binary unit names", async () => {
+    const { bytes, money } = await import("./api");
+    const { formatNumber, formatPercent, formatMultiplier } = await import("./number-format");
+    const previousLanguage = i18n.language;
+    try {
+        for (const { code } of languages) {
+            await i18n.changeLanguage(code);
+            const number = new Intl.NumberFormat(code, { maximumFractionDigits: 2 }).format(1.5);
+            expect(bytes(1536), code).toBe(`${number} KiB`);
+            expect(formatNumber(1.5), code).toBe(number);
+            expect(money(150, "USD"), code).toBe(`USD ${new Intl.NumberFormat(code, {minimumFractionDigits:2,maximumFractionDigits:2}).format(1.5)}`);
+            expect(formatPercent(12.5), code).toBe(new Intl.NumberFormat(code, {style:"percent",maximumFractionDigits:1}).format(0.125));
+            expect(formatMultiplier(1.5), code).toBe(`${number}×`);
+            expect(resources[code].translation["GB 流量"], code).toContain("GiB");
+            expect(resources[code].help.aCredits, code).toContain("GiB");
+        }
+    } finally { await i18n.changeLanguage(previousLanguage); }
+});

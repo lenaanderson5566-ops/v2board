@@ -1,3 +1,4 @@
+import { formatMultiplier } from "../shared/number-format";
 import { useState } from "react";
 import { AdminTabs } from "./AdminChoices";
 import { UserActivityContent } from "./UserActivityContent";
@@ -172,7 +173,7 @@ function UserTraffic({ row }: { row: Row }) {
                         ["record_at", "日期", (r) => date(r.record_at)],
                         ["u", "上传", (r) => bytes(r.u)],
                         ["d", "下载", (r) => bytes(r.d)],
-                        ["server_rate", "倍率"],
+                        ["server_rate", "倍率", (record) => formatMultiplier(record.server_rate)],
                     ]}
                 />
                 <Pager

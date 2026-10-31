@@ -52,6 +52,7 @@ it("renders localized activity copy as plain text", () => {
     expect(screen.getByRole("heading", { name: "Welcome offer" })).toBeTruthy();
     expect(screen.getByText(coupon.activityDescription)).toBeTruthy();
     expect(container.querySelector("script")).toBeNull();
+    expect(screen.getByText("10%", { exact: true })).toBeTruthy();
 });
 it("claims once during rapid clicks and refreshes offers", async () => {
     mocks.offers = [coupon];

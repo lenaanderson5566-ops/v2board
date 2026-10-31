@@ -1,3 +1,4 @@
+import { formatPercent } from "../shared/number-format";
 import { useEffect, useId, useRef } from "react";
 import { formatInstant } from "../shared/timezone";
 import { TicketPercent, ChevronDown } from "lucide-react";
@@ -140,7 +141,7 @@ export function CouponPicker({
                                       currency,
                                   ),
                               })
-                            : `${tx("减免")} ${coupon.discountPercent}%`}
+                            : `${tx("减免")} ${formatPercent(coupon.discountPercent, { maximumFractionDigits: 0 })}`}
                     </span>
                 )}
             </label>

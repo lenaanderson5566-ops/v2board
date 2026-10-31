@@ -97,7 +97,7 @@ it("shows mature cohorts, observed retention, honest renewal and percentile desc
     await screen.findByRole("heading", { name: "注册到首次使用 · 7 日观察窗" });
     expect(screen.getByText("下载点击")).toBeTruthy();
     expect(screen.getByText("P95 桶上界")).toBeTruthy();
-    expect(screen.getByText("0.250")).toBeTruthy();
+    expect(screen.getByText("0.25")).toBeTruthy();
     expect(screen.getByText(/不计算历史流失率/)).toBeTruthy();
     expect(screen.getByText(/不能证明订阅后的精确连接顺序/)).toBeTruthy();
     expect(screen.getByText(/登录留存按登录记录统计/)).toBeTruthy();

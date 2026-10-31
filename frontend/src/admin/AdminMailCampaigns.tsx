@@ -1,3 +1,4 @@
+import { formatPercent } from "../shared/number-format";
 import { logTime as date } from "./admin-log-time";
 import { Pager } from "../shared/ui";
 import { useState } from "react";
@@ -117,7 +118,7 @@ export function AdminMailCampaigns() {
                                 确认送达比例：
                                 {stats.feedback_count &&
                                 stats.delivery_rate !== null
-                                    ? `${stats.delivery_rate}%`
+                                    ? formatPercent(stats.delivery_rate, { bounded: true })
                                     : "暂无可靠反馈"}
                                 （可能仍有回调未到达，不代表打开率）
                             </p>

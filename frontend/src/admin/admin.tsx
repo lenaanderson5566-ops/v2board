@@ -1,3 +1,4 @@
+import { formatNumber, formatPercent } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
@@ -87,7 +88,7 @@ const price = (key: string, label: string): Field => ({
     step: 0.01,
     hint:
         key === "onetime_price"
-            ? "额度包价格；流量 (GB) 为额度数量。仅在用户的额度入口展示，可独立使用，套餐重置不会补回额度。"
+            ? "额度包价格；流量 (GiB) 为额度数量。仅在用户的额度入口展示，可独立使用，套餐重置不会补回额度。"
             : "留空表示不提供该支付周期",
 });
 export const resources: Record<string, Resource> = {
@@ -103,7 +104,7 @@ export const resources: Record<string, Resource> = {
             ["show", "展示"],
             ["renew", "允许续费"],
             ["count", "统计"],
-            ["transfer_enable", "流量 (GB)"],
+            ["transfer_enable", "流量 (GiB)", (record) => formatNumber(record.transfer_enable)],
             ["device_limit", "设备数限制"],
             ...[
                 "month_price",
@@ -136,7 +137,7 @@ export const resources: Record<string, Resource> = {
         fields: [
             field("name", "套餐名称", "text", true),
             field("group_id", "权限组 ID", "number", true),
-            field("transfer_enable", "流量 (GB)", "number", true),
+            field("transfer_enable", "流量 (GiB)", "number", true),
             field("device_limit", "设备数限制", "number"),
             field("speed_limit", "速率 (Mbps)", "number"),
             field("capacity_limit", "用户容量", "number"),
@@ -283,13 +284,13 @@ export const resources: Record<string, Resource> = {
             ["group_id", "权限组"],
             [
                 "total_used",
-                "已用(G)",
-                (r) => (Number(r.total_used || 0) / 1073741824).toFixed(2),
+                "已用（GiB）",
+                (r) => r.total_used == null ? "—" : formatNumber(Number(r.total_used) / 1073741824),
             ],
             [
                 "transfer_enable",
-                "流量(G)",
-                (r) => (Number(r.transfer_enable || 0) / 1073741824).toFixed(2),
+                "流量（GiB）",
+                (r) => r.transfer_enable == null ? "—" : formatNumber(Number(r.transfer_enable) / 1073741824),
             ],
             [
                 "device_limit",
@@ -319,9 +320,9 @@ export const resources: Record<string, Resource> = {
             field("email", "邮箱", "text", true),
             field("password", "新密码（留空不修改）", "password"),
             field("plan_id", "套餐", "number"),
-            field("transfer_enable", "流量 (GB)", "number"),
-            field("u", "已用上传（GB）", "number"),
-            field("d", "已用下载（GB）", "number"),
+            field("transfer_enable", "流量 (GiB)", "number"),
+            field("u", "已用上传（GiB）", "number"),
+            field("d", "已用下载（GiB）", "number"),
             {
                 ...field("balance", "余额（账号币种）", "number"),
                 scale: 100,
@@ -478,7 +479,7 @@ export const resources: Record<string, Resource> = {
                 (r) =>
                     Number(r.type) === 1
                         ? `金额优惠 ${money(r.value)}`
-                        : `比例优惠 ${r.value}%`,
+                        : `比例优惠 ${formatPercent(r.value, { bounded: true })}`,
             ],
             [
                 "limit_use",
@@ -570,7 +571,7 @@ export const resources: Record<string, Resource> = {
                 options: [
                     ["1", "余额（CNY）"],
                     ["2", "延长订阅（天）"],
-                    ["3", "增加流量（GB）"],
+                    ["3", "增加流量（GiB）"],
                     ["4", "重置流量"],
                     ["5", "开通套餐"],
                 ],

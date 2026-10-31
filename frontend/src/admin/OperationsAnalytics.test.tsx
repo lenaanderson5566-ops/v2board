@@ -161,14 +161,14 @@ it("shows review denominators, separate currencies, callback counts and honest l
     setup();
     render(<OperationsAnalytics days={30} />);
     await screen.findByRole("heading", { name: "登录质量" });
-    expect(screen.getAllByText("75.0%")).toHaveLength(2);
+    expect(screen.getAllByText("75%")).toHaveLength(2);
     expect(screen.getByText("密码错误")).toBeTruthy();
     expect(screen.getByText("账户已到期")).toBeTruthy();
     const risk = screen
         .getByRole("heading", { name: "风控规则效果" })
         .closest("section")!;
-    expect(within(risk).getByText("25.0%")).toBeTruthy();
-    expect(within(risk).getByText("40.0%")).toBeTruthy();
+    expect(within(risk).getByText("25%")).toBeTruthy();
+    expect(within(risk).getByText("40%")).toBeTruthy();
     expect(screen.getByText("CNY")).toBeTruthy();
     expect(screen.getByText("USD")).toBeTruthy();
     expect(screen.getByText("平均下单至付款")).toBeTruthy();

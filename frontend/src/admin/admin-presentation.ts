@@ -115,7 +115,7 @@ export function formPresentation(fields: Field[], kind: string): Field[] {
                     label: labels[field.key] || field.label,
                     unit:
                         field.key === "transfer_enable"
-                            ? "GB"
+                            ? "GiB"
                             : field.key === "speed_limit"
                               ? "Mbps"
                               : undefined,
@@ -232,9 +232,9 @@ export const adminLabels: Record<string, string> = {
     secure_path: "后台入口路径",
     invite_force: "注册必须通过邮件邀请",
     invite_commission: "邀请佣金比例",
-    invite_registration_gb: "受邀注册奖励（GB，0 为关闭）",
+    invite_registration_gb: "受邀注册奖励（GiB，0 为关闭）",
     invite_credit_months: "邀请赠送额度有效期（月，默认 1）",
-    invite_first_use_gb: "受邀首次使用奖励（GB，0 为关闭）",
+    invite_first_use_gb: "受邀首次使用奖励（GiB，0 为关闭）",
     invite_gen_limit: "待接受邮件邀请数量限制",
     commission_withdraw_limit: "最低提现金额",
     commission_withdraw_method: "提现方式",

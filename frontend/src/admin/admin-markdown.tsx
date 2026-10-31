@@ -27,7 +27,7 @@ export function AdminMarkdown({
                         ) {
                             reject(
                                 new Error(
-                                    "请选择不超过 5 MB 的 PNG、JPEG、GIF 或 WebP 图片",
+                                    "请选择不超过 5 MiB 的 PNG、JPEG、GIF 或 WebP 图片",
                                 ),
                             );
                             return;

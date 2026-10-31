@@ -52,3 +52,9 @@ it("labels aggregate record dates consistently and filters future or invalid day
     expect(screen.getByText(/按统计日汇总/)).toBeTruthy();
     expect(document.querySelectorAll("tbody tr")).toHaveLength(2);
 });
+
+it("uses the same multiplier notation in historical usage records", () => {
+    mocks.rows = [{ record_at: Date.now() / 1000, u: 12, d: 34, server_rate: "1.20" }];
+    render(<UsageChart showRecords />);
+    expect(screen.getByText("1.2×")).toBeTruthy();
+});

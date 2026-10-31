@@ -1,3 +1,4 @@
+import { formatNumber } from "../shared/number-format";
 import { adminInstant } from "./admin-log-time";
 import { useState } from "react";
 import { admin, bytes, query, request, type Row } from "../shared/api";
@@ -258,7 +259,7 @@ export function AdminTargetStatistics() {
                     按 UTC 自然日聚合，不含用户维度，今日尚未结束。
                     {data?.dailyReady === false
                         ? "请先更新数据库迁移。"
-                        : `日汇总 ${Number(data?.dailyUsedRows || 0).toLocaleString()} / ${Number(data?.dailyMaxRows || 0).toLocaleString()} 行；当前节点最早记录 ${data?.availableFrom || "暂无"}。`}
+                        : `日汇总 ${formatNumber(data?.dailyUsedRows ?? 0, { maximumFractionDigits: 0 })} / ${formatNumber(data?.dailyMaxRows ?? 0, { maximumFractionDigits: 0 })} 行；当前节点最早记录 ${data?.availableFrom || "暂无"}。`}
                     {data?.latestBucketAt &&
                         ` 最近归档 ${adminInstant(data.latestBucketAt)}。`}
                     {data?.settings?.dailyRetentionDays === 0 &&

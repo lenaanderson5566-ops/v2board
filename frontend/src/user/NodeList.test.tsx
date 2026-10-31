@@ -64,3 +64,15 @@ it("bundles valid SVG flags and keeps TW identical to CN", () => {
         assets["./assets/flags/cn.svg"],
     );
 });
+
+it("preserves small billing multipliers and formats them with the interface locale", async () => {
+    await i18n.changeLanguage("de-DE");
+    render(<NodeList nodes={[
+        { name: "Small", rate: "0.00001" },
+        { name: "Precise", rate: "1.2300" },
+        { name: "Free", rate: 0 },
+    ]} />);
+    expect(screen.getByText("0,00001×")).toBeTruthy();
+    expect(screen.getByText("1,23×")).toBeTruthy();
+    expect(screen.getByText("0×")).toBeTruthy();
+});

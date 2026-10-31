@@ -80,6 +80,9 @@ const topics: {
     },
 ];
 
+// Keep familiar unit keywords searchable after correcting display labels to IEC units.
+const searchText = (value: string) => value.toLocaleLowerCase().replace(/\b([kmgtpe])i?b\b/g, "$1b");
+
 export function HelpGuides({ search: controlledSearch, onSearchChange, showSearch = true }: {
     search?: string;
     onSearchChange?: (value: string) => void;
@@ -90,17 +93,15 @@ export function HelpGuides({ search: controlledSearch, onSearchChange, showSearc
     const [localSearch, setLocalSearch] = useState("");
     const search = controlledSearch ?? localSearch;
     const setSearch = onSearchChange ?? setLocalSearch;
-    const terms = search
+    const terms = searchText(search)
         .trim()
-        .toLocaleLowerCase()
         .split(/\s+/)
         .filter(Boolean);
     const visible = topics.filter(
         (topic) =>
             (category === "all" || category === topic.category) &&
             terms.every((term) =>
-                `${h(topic.question)} ${h(topic.answer)}`
-                    .toLocaleLowerCase()
+                searchText(`${h(topic.question)} ${h(topic.answer)}`)
                     .includes(term),
             ),
     );

@@ -155,3 +155,7 @@ v2box 端沿用 api/v2board、node、core 的 Go 包内回归，覆盖完整用�
 统一个人时区显示沿用 timezone、api、app、AppleAccounts、UsageChart、usage-data 与 localization 现有模块；覆盖 Unix 秒/明确时区 ISO、非法数据、偏好即时重绘、跨日/夏令时、历史统计日及未来记录过滤。下载账户上游时间在现有 apple-accounts 模块检查三个 PHP 默认时区下的 18 类输入和 V10 投影；可销毁副本执行 1/1 通过、134 checks。前端全量 1628 项通过、1 项静态扫描因默认时限超时，最终含该项的 74 项针对性复验通过；构建和发布资源清单完整。
 
 GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有模块；新增事件偏移格式与十四语种一致性断言，确认省略后缀的场景不受影响。相关 7 个文件共 164 项通过。
+
+数量精度复用 api、localization、UsageBilling、UsageChart、NodeList、BillingFlow、CouponCenter/Picker、admin-workspaces、JourneyAnalytics、OperationsAnalytics 等既有模块。共享格式测试覆盖二进制单位边界进位、空值/非法值、负零、小百分比/近满额、极小倍率、毫秒/秒维度及十四语言数字格式；组件断言保留原始进度值和计费输入不变。未新增独立运行器或后台计费逻辑。
+
+本轮数量显示完整回归共 1645 项；其中 1642 项首轮通过，两项 GB/GiB 关键词兼容问题在生产搜索逻辑修正后按既有 HelpGuides 模块复验通过，一项语言加载重试并行时限失败在 app 模块独立复验通过。HelpGuides 保留旧 GB 搜索断言并追加 GiB，避免仅随文案机械修改测试。最终构建与资源清单完整。

@@ -1,3 +1,4 @@
+import { finiteNumber, formatBytes, formatNumber } from "./number-format";
 import { localPreferences } from "./browser-storage";
 import {
     configureTimeZone,
@@ -332,29 +333,13 @@ export function rows(data: unknown): Row[] {
             .filter((x) => x && typeof x === "object");
     return [];
 }
-let moneyLocale = "";
-let moneyFormatter: Intl.NumberFormat | undefined;
-export const money = (n: unknown, currency = "CNY") => {
-    const amount = Number(n ?? 0);
-    if (!Number.isFinite(amount)) return "—";
-    const language = locale();
-    if (!moneyFormatter || moneyLocale !== language) {
-        moneyLocale = language;
-        moneyFormatter = new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    }
-    // Explicit ISO codes distinguish account and settlement currencies, including USD/CNY.
-    return `${currency} ${moneyFormatter.format((Object.is(amount, -0) ? 0 : amount) / 100)}`;
+export const money = (value: unknown, currency = "CNY") => {
+    const amount = finiteNumber(value);
+    if (amount === null) return "—";
+    // Explicit ISO codes distinguish account and settlement currencies.
+    return `${currency} ${formatNumber(amount / 100, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
-export const bytes = (n: unknown) => {
-    let v = Number(n || 0),
-        i = 0;
-    const units = ["B", "KB", "MB", "GB", "TB"];
-    while (v >= 1024 && i < 4) {
-        v /= 1024;
-        i++;
-    }
-    return `${v.toFixed(i ? 2 : 0)} ${units[i]}`;
-};
+export const bytes = formatBytes;
 export const date = (value: unknown): string => {
     const text = typeof value === "string" ? value.trim() : "";
     const numeric = text && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text);

@@ -1,3 +1,4 @@
+import { formatDuration, formatPercent } from "../shared/number-format";
 import { useRef, useState } from "react";
 import { admin, bytes, request, type Row } from "../shared/api";
 import { Modal, Panel, State, Table, useData } from "../shared/ui";
@@ -14,8 +15,7 @@ const fields = [
     ["queue_wait_seconds", "队列等待告警时长（秒）", 1, 86400],
     ["failed_jobs", "近期失败任务告警数量", 1, 100000],
 ] as const;
-const ms = (value: unknown) =>
-    value == null ? "—" : `${Number(value).toFixed(1)} ms`;
+const ms = (value: unknown) => formatDuration(value);
 const states: Record<string, string> = {
     pending: "待确认",
     firing: "需处理",
@@ -85,7 +85,7 @@ export function AdminObservability() {
                         )}
                         <p className="muted">
                             最近 15 分钟 · 采样{" "}
-                            {report?.settings.sample_percent}% · 保留约 1
+                            {formatPercent(report?.settings.sample_percent)} · 保留约 1
                             小时。以下为样本统计，非总访问量。采样为 0
                             时仅停止请求采集。
                         </p>

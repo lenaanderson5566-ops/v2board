@@ -1,3 +1,4 @@
+import { formatDuration } from "../shared/number-format";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
@@ -213,7 +214,7 @@ export function AdminSystemLogs() {
                                         </td>
                                         <td>
                                             {r.http_status ?? "—"} ·{" "}
-                                            {r.duration_ms ?? "—"} ms
+                                            {r.duration_ms == null ? "—" : formatDuration(r.duration_ms)}
                                         </td>
                                         <td>
                                             <span className="admin-ua-text">

@@ -4,7 +4,7 @@ vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } a
 import { configureTimeZone } from "../shared/timezone";
 import { normalizeUserFilters, emailSearchFilters } from "./user-filters";
 describe("user filters", () => {
-    it("retains zero and GB units for server conversion", () => {
+    it("retains zero and GiB units for server conversion", () => {
         expect(
             normalizeUserFilters([
                 { key: "d", condition: ">=", value: 0 },

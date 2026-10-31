@@ -1,3 +1,4 @@
+import { formatDuration } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
@@ -450,7 +451,7 @@ export function AdminMailLogs() {
                                                 <td>
                                                     {row.duration_ms == null
                                                         ? "—"
-                                                        : `${row.duration_ms} ms`}
+                                                        : formatDuration(row.duration_ms)}
                                                 </td>
                                             </tr>
                                         ))}

@@ -1,3 +1,4 @@
+import { formatPercent } from "../shared/number-format";
 import { useState, type FormEvent } from "react";
 import { Send, ListFilter, Users, Eye } from "lucide-react";
 import { admin, request, type Row } from "../shared/api";
@@ -105,7 +106,7 @@ export function AdminCouponIssue({ onQueued }: { onQueued: () => void }) {
                                 <option value="">选择百分比券</option>
                                 {templates.map((item) => (
                                     <option key={item.id} value={item.id}>
-                                        {item.name} · 减 {item.value}%
+                                        {item.name} · 减 {formatPercent(item.value, { bounded: true })}
                                     </option>
                                 ))}
                             </select>

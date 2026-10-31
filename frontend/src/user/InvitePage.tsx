@@ -1,3 +1,4 @@
+import { formatNumber, formatPercent } from "../shared/number-format";
 import { lazy, useState } from "react";
 import { e } from "../shared/experience-copy";
 import { tx } from "../shared/i18n";
@@ -23,8 +24,8 @@ export function Invite() {
                     <span className="muted">{tx("可用佣金")}</span>
                     <strong>{money(stat[4],v.currency)}</strong>
                     <div className="invite-wallet-facts">
-                        <span>{tx("邀请用户")} <b>{stat[0] || 0}</b></span>
-                        <span>{tx("佣金比例")} <b>{stat[3] || 0}%</b></span>
+                        <span>{tx("邀请用户")} <b>{formatNumber(stat[0], { maximumFractionDigits: 0 })}</b></span>
+                        <span>{tx("佣金比例")} <b>{formatPercent(stat[3], { maximumFractionDigits: 0 })}</b></span>
                     </div>
                 </div>
                 <div className="invite-wallet-actions">

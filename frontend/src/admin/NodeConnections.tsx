@@ -1,3 +1,4 @@
+import { formatMultiplier } from "../shared/number-format";
 import { type ReactNode, useMemo, useEffect, useRef, useState } from "react";
 import { admin, query, request, type Row } from "../shared/api";
 import { Modal, Panel, Table, State, useData } from "../shared/ui";
@@ -105,7 +106,7 @@ export function NodeConnectionEditor({ node, nodes, groups = [], close, onSaved,
                     {!!draft.entry_id && <><label>入口域名<select value={draft.entry_id} disabled={busy} onChange={e => change("entry_id", e.target.value)}><option value="pending">选择入口</option>{entries.map(e => <option key={e.id} value={e.id}>{e.domain} · {servers.find(s => s.id === e.server_id)?.name}</option>)}</select></label><label>入口端口<input type="number" min={1} max={65535} value={draft.entry_port || ""} disabled={busy} onChange={e => change("entry_port", e.target.value)} /></label></>}
                     </>}
                     {view!=="path" && <div role="group" aria-label="权限组"><span>权限组</span><div inert={busy}><AdminMultiSelect label="权限组" options={(service?.group_id || []).map((g: number) => [String(g), groups.find(group => Number(group.id) === Number(g))?.name || `权限组 #${g}`])} value={draft.group_id} onChange={value => change("group_id", value)} /></div><small className="muted">仅可选择关联代理服务开放的权限组；未选择权限组时，用户无法获取此线路。</small></div>}
-                    {service && <p className="muted">计费倍率：{service.rate ?? 1}，随共享服务设置。协议、监听和证书在保存后通过“代理服务”维护。</p>}
+                    {service && <p className="muted">计费倍率：{formatMultiplier(service.rate ?? 1)}，随共享服务设置。协议、监听和证书在保存后通过“代理服务”维护。</p>}
                     {view!=="path" && <label>发布后展示<AdminSwitch label="发布后展示" checked={!!Number(draft.show)} disabled={busy} onChange={async value => change("show", Number(value))} /></label>}
                 </div>
                 {view!=="path" && <><div className="field-section">展示信息</div><NodeIdentityFields values={draft} onChange={change} keys={["region_code", "city_code", "display_label", "tags"]} disabled={busy} /></>}

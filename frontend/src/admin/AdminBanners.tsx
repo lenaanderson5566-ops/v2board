@@ -201,7 +201,7 @@ export function BannerEditor({
             !["image/png", "image/jpeg", "image/webp"].includes(file.type) ||
             file.size > 5 * 1024 * 1024
         ) {
-            setError("请上传不超过 5 MB 的 PNG、JPG 或 WebP 图片。");
+            setError("请上传不超过 5 MiB 的 PNG、JPG 或 WebP 图片。");
             return;
         }
         lock.current = true;

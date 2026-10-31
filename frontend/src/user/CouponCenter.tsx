@@ -1,3 +1,4 @@
+import { formatPercent } from "../shared/number-format";
 import { useCouponActivities } from "./useCouponActivities";
 import { useRef, useState } from "react";
 import { Gift, TicketPercent, CheckCircle2, ArrowUpRight } from "lucide-react";
@@ -83,8 +84,7 @@ export function ActivityCenter() {
                             <span className="coupon-discount">
                                 <small>{tx("减免")}</small>
                                 <strong>
-                                    {offer.discountPercent}
-                                    <span>%</span>
+                                    {formatPercent(offer.discountPercent, { maximumFractionDigits: 0 })}
                                 </strong>
                             </span>
                             <h3>{offer.activityTitle || offer.name}</h3>
@@ -213,8 +213,7 @@ export function MyCoupons() {
                             <span className="coupon-discount">
                                 <small>{tx("减免")}</small>
                                 <strong>
-                                    {coupon.discountPercent}
-                                    <span>%</span>
+                                    {formatPercent(coupon.discountPercent, { maximumFractionDigits: 0 })}
                                 </strong>
                             </span>
                             <h3>{coupon.name}</h3>

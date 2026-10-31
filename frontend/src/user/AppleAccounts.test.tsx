@@ -2,12 +2,13 @@
 import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ request: vi.fn() }));
-vi.mock("../shared/api", () => ({ request: mocks.request }));
-vi.mock("../shared/i18n", () => ({ default: { addResourceBundle: vi.fn() }, tx: (s: string) => s }));
+vi.mock("../shared/api", () => ({ request: mocks.request, date: (value: unknown) => formatInstant(value as string | number) }));
+vi.mock("../shared/i18n", () => ({ default: { addResourceBundle: vi.fn() }, tx: (s: string) => s, locale: () => "en-GB" }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({ t: (key: string) => key }) }));
 vi.mock("../shared/ui", () => ({ Modal: ({ children, close }: any) => <div><button onClick={close}>close</button>{children}</div> }));
 import { AppleAccounts } from "./AppleAccounts";
-afterEach(() => { cleanup(); vi.clearAllMocks(); });
+import { configureTimeZone, formatInstant, setDisplayTimeZone } from "../shared/timezone";
+afterEach(() => { cleanup(); vi.clearAllMocks(); setDisplayTimeZone(null); });
 it("loads only on demand, hides password, and clears credentials on close", async () => {
     mocks.request.mockResolvedValue({ data: [{ username: "test-account", password: "secret-value", available: true }] });
     render(<AppleAccounts />);
@@ -103,4 +104,21 @@ it("does not offer password controls or a healthy status when the response lacks
     expect(screen.getByText("暂不可用")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "7" })).toBeNull();
     expect(screen.queryByRole("button", { name: "8" })).toBeNull();
+});
+
+it("formats download account checks in the selected time zone instead of displaying raw timestamps", async () => {
+    configureTimeZone("UTC");
+    setDisplayTimeZone("America/Los_Angeles");
+    const checked = "2026-11-30T00:00:00Z";
+    mocks.request.mockResolvedValue({ data: [
+        { username: "iso-account", available: false, last_check: checked },
+        { username: "timestamp-account", available: false, last_check: Date.parse(checked) / 1000 },
+        { username: "invalid-account", available: false, last_check: "unrecognized-source-time" },
+    ] });
+    render(<AppleAccounts />);
+    fireEvent.click(screen.getByText("0"));
+    await screen.findByText("iso-account");
+    expect(screen.getAllByText(/29\/11\/2026, 16:00:00/)).toHaveLength(2);
+    expect(screen.queryByText(checked, { exact: false })).toBeNull();
+    expect(screen.queryByText(/unrecognized-source-time/)).toBeNull();
 });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { locale, tx } from "./i18n";
-import { formatInstant, validZone } from "./timezone";
+import { formatInstant, utcOffsetLabel, validZone } from "./timezone";
 import "./timezone-picker.css";
 import { SelectionPicker } from "./ui/SelectionPicker";
 
@@ -16,13 +16,7 @@ const cities: Record<string, string> = {
     UTC: "UTC",
 };
 function name(zone: string, now: Date) {
-    const parts = new Intl.DateTimeFormat(locale(), {
-        timeZone: zone,
-        timeZoneName: "longOffset",
-    }).formatToParts(now);
-    const offset = (
-        parts.find((p) => p.type === "timeZoneName")?.value || "UTC"
-    ).replace("GMT", "UTC");
+    const offset = utcOffsetLabel(now, zone);
     const city = cities[zone]
         ? tx(cities[zone])
         : zone.split("/").pop()!.replaceAll("_", " ");

@@ -29,6 +29,7 @@ const {
     download,
     logoutSession,
     money,
+    date,
 } = await import("./api");
 const { prepareWorkspaceLanguage } = await import("./i18n");
 const { configureTimeZone, displayTimeZone, dateTimeInput, setDisplayTimeZone } = await import("./timezone");
@@ -441,6 +442,20 @@ describe("account display time zone", () => {
     const accountReply = (zone: string | null) => new Response(JSON.stringify({
         data: { id: 42, displayTimeZone: zone, systemTimeZone: "UTC" },
     }), { status: 200 });
+    it("formats Unix seconds, zoned ISO timestamps and Date objects in the personal zone", () => {
+        const iso = "2026-11-30T00:00:00Z";
+        const seconds = Date.parse(iso) / 1000;
+        expect(date(iso)).toBe(date(seconds));
+        expect(date(String(seconds))).toBe(date(seconds));
+        expect(date(new Date(iso))).toBe(date(seconds));
+        expect(date("2026-11-30T08:00:00+08:00")).toBe(date(seconds));
+        expect(date(iso)).toContain("08:00:00");
+        setDisplayTimeZone("UTC");
+        expect(date(iso)).toContain("00:00:00");
+        expect(date(0)).not.toBe("—");
+        for (const value of [null, undefined, "", "  ", false, {}, "2026-11-30", "2026-11-30 08:00:00", "2026-11-30T08:00:00", "invalid", Infinity, Number.MAX_VALUE])
+            expect(date(value)).toBe("—");
+    });
     it("restores an explicit UTC preference on fresh account loads and preserves the reset instant", async () => {
         const resetAt = "2026-11-30T00:00:00Z";
         vi.stubGlobal("fetch", vi.fn()

@@ -78,7 +78,8 @@ class AppleAccountService
             $enabled = (int) ($account['status'] ?? 0) === 1;
             $checked = in_array($account['last_check_success'] ?? null, [true, 1, '1'], true);
             $available = $enabled && $checked && is_string($account['password'] ?? null) && $account['password'] !== '';
-            $row = array_intersect_key($account, array_flip(['username', 'region_display', 'last_check']));
+            $row = array_intersect_key($account, array_flip(['username', 'region_display']));
+            $row['last_check'] = self::checkedAt($account['last_check'] ?? null);
             $row['available'] = $available;
             $row['status'] = !$enabled ? 'disabled' : ($available ? 'normal' : 'unavailable');
             if ($available) $row['password'] = $account['password'];
@@ -87,4 +88,24 @@ class AppleAccountService
         usort($result, function ($a, $b) { return (int) $b['available'] - (int) $a['available']; });
         return array_slice($result, 0, 20);
     }
+
+    /** Upstream wall-clock strings have no reliable source zone; never guess one. */
+    private static function checkedAt($value): ?int
+    {
+        if (is_int($value) || is_float($value) || (is_string($value) && preg_match('/^[0-9]{1,12}$/D', $value))) {
+            $seconds = (float) $value;
+            return is_finite($seconds) && $seconds > 0 && $seconds <= 253402300799 && floor($seconds) === $seconds
+                ? (int) $seconds : null;
+        }
+        if (!is_string($value) || !preg_match('/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d{1,9})?(Z|[+-]\d{2}:\d{2})$/D', $value, $parts)) return null;
+        if (!checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])
+            || (int) $parts[4] > 23 || (int) $parts[5] > 59 || (int) $parts[6] > 59) return null;
+        $offset = $parts[7];
+        if ($offset !== 'Z' && ((int) substr($offset, 1, 2) > 23 || (int) substr($offset, 4, 2) > 59)) return null;
+        $at = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:sP', substr($value, 0, 19).($offset === 'Z' ? '+00:00' : $offset));
+        if (!$at) return null;
+        $seconds = $at->getTimestamp();
+        return $seconds > 0 && $seconds <= 253402300799 ? $seconds : null;
+    }
+
 }

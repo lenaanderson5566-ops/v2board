@@ -688,7 +688,8 @@
     "已应用的订单筛选": "Aktive Bestellfilter",
     "移除订单筛选条件 {{index}}": "Bestellfilter {{index}} entfernen",
     "支付接口列表": "Zahlungsschnittstellen",
-    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Die Zahlungsschnittstellen sind vorübergehend nicht verfügbar. Versuchen Sie es erneut, bevor Sie Zahlungskanäle hinzufügen oder bearbeiten."
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Die Zahlungsschnittstellen sind vorübergehend nicht verfügbar. Versuchen Sie es erneut, bevor Sie Zahlungskanäle hinzufügen oder bearbeiten.",
+    "按统计日汇总，日期以 {{zone}} 为准。": "Tagessummen verwenden die Kalenderdaten in {{zone}}."
   },
   "account": {
     "notificationAutoSave": "Änderungen werden automatisch gespeichert",

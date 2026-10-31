@@ -6,7 +6,7 @@ import {
     AnalyticsPrivacyFooter,
     PrivacyFooterLinks,
 } from "./AnalyticsPrivacy";
-import { displayTimeZone } from "../shared/timezone";
+import { displayTimeZone, subscribeTimeZone } from "../shared/timezone";
 import {
     initializeBrowserSession,
     hasBrowserSession,
@@ -19,7 +19,7 @@ import {
     setLanguagePersistence,
     applyAccountLanguage,
 } from "../shared/i18n";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
     Sparkles,
     LayoutDashboard,
@@ -74,6 +74,7 @@ const Landing = React.lazy(() => import("./Landing"));
 import { useTranslation } from "react-i18next";
 import { LanguagePicker } from "../shared/LanguagePicker";
 export default function UserWorkspace() {
+    const timeZone = useSyncExternalStore(subscribeTimeZone, displayTimeZone, displayTimeZone);
     useEffect(() => {
         setLanguagePersistence(async (language) => {
             if (!hasBrowserSession()) return false;
@@ -597,7 +598,7 @@ export default function UserWorkspace() {
                                 </div>
                                 <span className="today">
                                     {new Date().toLocaleDateString(locale(), {
-                                        timeZone: displayTimeZone(),
+                                        timeZone,
                                         month: "long",
                                         day: "numeric",
                                         weekday: "long",

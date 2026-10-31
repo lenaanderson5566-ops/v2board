@@ -85,7 +85,7 @@ it("uses one timezone hint for the workspace and formats ISO dates without a suf
     expect(screen.getAllByTestId("log-time-zone")).toHaveLength(1);
     expect(view.container.textContent).toContain("08:00:00");
     expect(view.container.textContent).not.toMatch(/GMT|EDT|EST/);
-    expect(formatInstant("2026-07-01T12:00:00Z",{timeZoneName:"longOffset"})).toContain("GMT-04:00");
+    expect(formatInstant("2026-07-01T12:00:00Z",{timeZoneName:"longOffset"})).toContain("UTC-04:00");
     configureTimeZone("Asia/Shanghai",true);
 });
 it("omits GMT in the shared user-management and online-user date renderer only in admin mode", async () => {

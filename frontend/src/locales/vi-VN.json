@@ -686,7 +686,8 @@
     "已应用的订单筛选": "Bộ lọc đơn hàng đang áp dụng",
     "移除订单筛选条件 {{index}}": "Xóa bộ lọc đơn hàng {{index}}",
     "支付接口列表": "Giao diện thanh toán",
-    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Giao diện thanh toán tạm thời không khả dụng. Hãy thử lại trước khi thêm hoặc sửa kênh."
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Giao diện thanh toán tạm thời không khả dụng. Hãy thử lại trước khi thêm hoặc sửa kênh.",
+    "按统计日汇总，日期以 {{zone}} 为准。": "Tổng hằng ngày sử dụng ngày theo múi giờ {{zone}}."
   },
   "account": {
     "notificationAutoSave": "Thay đổi được lưu tự động",

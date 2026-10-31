@@ -8,6 +8,7 @@ import {
     formatInstant,
     parseDateTimeInput,
     setDisplayTimeZone,
+    subscribeTimeZone,
     utcOffsetLabel,
 } from "./timezone";
 import { usageDays } from "../user/usage-data";
@@ -47,6 +48,24 @@ describe("time zone conversion", () => {
         expect(displayTimeZone()).toBe(
             Intl.DateTimeFormat().resolvedOptions().timeZone,
         );
+    });
+    it("notifies only effective zone changes and removes detached subscribers", () => {
+        setDisplayTimeZone("UTC");
+        const changed = vi.fn();
+        const unsubscribe = subscribeTimeZone(changed);
+        setDisplayTimeZone("Asia/Shanghai");
+        expect(changed).toHaveBeenCalledTimes(1);
+        setDisplayTimeZone("Asia/Shanghai");
+        configureTimeZone("America/New_York");
+        expect(changed).toHaveBeenCalledTimes(1);
+        configureTimeZone("America/New_York", true);
+        expect(changed).toHaveBeenCalledTimes(2);
+        setDisplayTimeZone("UTC");
+        expect(changed).toHaveBeenCalledTimes(2);
+        unsubscribe();
+        configureTimeZone("UTC", true);
+        expect(changed).toHaveBeenCalledTimes(2);
+        expect(formatInstant("2026-01-01T00:00:00Z", {}, "Invalid/Zone")).toBe("—");
     });
     it("labels UTC offsets at the represented reset date, including DST and quarter hours", () => {
         const summer = "2026-07-01T12:00:00Z";
@@ -95,10 +114,26 @@ it("removes only the timezone suffix for log display and preserves explicit form
     expect(logTime(summer)).toContain("08:00:00");
     expect(logTime(winter)).toContain("07:00:00");
     expect(logTime(summer)).not.toMatch(/GMT|UTC|EDT|EST/);
-    expect(formatInstant(summer, {timeZoneName:"longOffset"})).toContain("GMT-04:00");
-    expect(formatInstant(winter, {timeZoneName:"longOffset"})).toContain("GMT-05:00");
+    expect(formatInstant(summer, {timeZoneName:"longOffset"})).toContain("UTC-04:00");
+    expect(formatInstant(winter, {timeZoneName:"longOffset"})).toContain("UTC-05:00");
     expect(logTime(null)).toBe("—");
     expect(logTime("")).toBe("—");
     expect(logTime("invalid")).toBe("—");
     expect(logTime(0)).not.toBe("—");
+});
+
+it.each([
+    ["UTC", "2026-11-30T00:00:00Z", "UTC+00:00"],
+    ["Asia/Shanghai", "2026-11-30T00:00:00Z", "UTC+08:00"],
+    ["Asia/Kathmandu", "2026-11-30T00:00:00Z", "UTC+05:45"],
+    ["America/New_York", "2026-07-01T12:00:00Z", "UTC-04:00"],
+    ["America/New_York", "2026-11-30T00:00:00Z", "UTC-05:00"],
+])("uses the same UTC notation for timestamp labels in %s", (zone, instant, offset) => {
+    configureTimeZone("UTC");
+    setDisplayTimeZone(zone);
+    const formatted = formatInstant(instant);
+    expect(formatted).toContain(offset);
+    expect(formatted).not.toMatch(/GMT|EST|EDT/);
+    expect(formatInstant(instant, { timeZoneName: undefined })).not.toContain("UTC");
+    expect(formatInstant(instant, { timeZoneName: "longOffset" })).toBe(formatted);
 });

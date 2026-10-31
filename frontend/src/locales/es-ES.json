@@ -688,7 +688,8 @@
     "已应用的订单筛选": "Filtros de pedidos aplicados",
     "移除订单筛选条件 {{index}}": "Eliminar filtro de pedidos {{index}}",
     "支付接口列表": "Interfaces de pago",
-    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Las interfaces de pago no están disponibles temporalmente. Vuelve a intentarlo antes de añadir o editar canales."
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Las interfaces de pago no están disponibles temporalmente. Vuelve a intentarlo antes de añadir o editar canales.",
+    "按统计日汇总，日期以 {{zone}} 为准。": "Los totales diarios usan las fechas de {{zone}}."
   },
   "account": {
     "notificationAutoSave": "Los cambios se guardan automáticamente",

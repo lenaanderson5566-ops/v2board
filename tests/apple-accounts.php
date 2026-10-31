@@ -26,6 +26,31 @@ $assert(count($accounts) === 4 && $accounts[0]['username'] === 'allowed');
 $assert(!isset($accounts[0]['private']));
 $assert($accounts[0]['available'] && $accounts[0]['status'] === 'normal');
 foreach (array_slice($accounts, 1) as $row) $assert(!$row['available'] && !isset($row['password']));
+// All account check times are normalized before the V10 timestamp projection.
+$instant = 1793404800; // 2026-10-31T00:00:00Z
+$checkedTimes = [$instant, (string) $instant, (float) $instant, '2026-10-31T00:00:00Z',
+    '2026-10-31T08:00:00+08:00', '2026-10-30T17:00:00-07:00', '2026-10-31T00:00:00.123456789Z',
+    '2026-10-31 08:00:00', '2026-10-31T08:00:00', '2026-02-30T00:00:00Z',
+    '2026-10-31T24:00:00Z', '2026-10-31T00:00:00+24:00', 'invalid', '2026-10-31T00:00:00+00:99', 253402300800, 1.5, true, null];
+Http::swap(new Illuminate\Http\Client\Factory);
+Http::fake(function ($request) use ($checkedTimes) {
+    if (str_contains($request->url(), '/client/getAllSharepages')) return Http::response(['ret'=>1,'data'=>[['id'=>9,'share_link'=>'chosen']]]);
+    return Http::response(['ret'=>1,'data'=>array_map(fn($value, $index)=>[
+        'username'=>'time-'.$index, 'status'=>0, 'last_check'=>$value,
+    ], $checkedTimes, array_keys($checkedTimes))]);
+});
+$originalZone = date_default_timezone_get();
+try {
+    foreach (['UTC', 'Asia/Shanghai', 'America/Los_Angeles'] as $zone) {
+        date_default_timezone_set($zone);
+        $normalized = $service->accounts();
+        foreach ($normalized as $index=>$row) {
+            $assert($row['last_check'] === ($index < 7 ? $instant : null));
+            $wire = App\Http\Resources\V10\Resource::encode('apple', $row);
+            $assert($wire['lastCheckedAt'] === ($index < 7 ? '2026-10-31T00:00:00Z' : null));
+        }
+    }
+} finally { date_default_timezone_set($originalZone); }
 foreach ([[0,time()+100,100,0,true],[0,time()-100,100,1,true],[0,time()-100,100,0,false],[1,time()+100,100,100,false]] as [$banned,$expiry,$quota,$credits,$expected]) {
     $user = new User; $user->banned=$banned; $user->expired_at=$expiry; $user->transfer_enable=$quota; $user->credit_balance=$credits;
     $assert((new UserService)->isAvailable($user) === $expected);

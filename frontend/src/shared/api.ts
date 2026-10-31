@@ -355,8 +355,16 @@ export const bytes = (n: unknown) => {
     }
     return `${v.toFixed(i ? 2 : 0)} ${units[i]}`;
 };
-export const date = (n: unknown) =>
-    n != null && n !== "" ? formatInstant(Number(n), boot.mode === "admin" ? { timeZoneName: undefined } : {}) : "—";
+export const date = (value: unknown): string => {
+    const text = typeof value === "string" ? value.trim() : "";
+    const numeric = text && /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)$/.test(text);
+    // Legacy numeric values are Unix seconds; strings must carry an explicit
+    // zone so the browser's local parser cannot silently choose a different instant.
+    const instant = value instanceof Date || typeof value === "number" ? value
+        : numeric ? Number(text)
+        : /^\d{4}-\d\d-\d\dT\d\d:\d\d(?::\d\d(?:\.\d+)?)?(?:Z|[+-]\d\d:\d\d)$/i.test(text) ? text : null;
+    return instant === null ? "—" : formatInstant(instant, boot.mode === "admin" ? { timeZoneName: undefined } : {});
+};
 export const navigate = (path: string) => {
     location.hash = "/" + path;
 };

@@ -688,7 +688,8 @@
     "已应用的订单筛选": "Filter pesanan yang diterapkan",
     "移除订单筛选条件 {{index}}": "Hapus filter pesanan {{index}}",
     "支付接口列表": "Antarmuka pembayaran",
-    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Antarmuka pembayaran sementara tidak tersedia. Coba lagi sebelum menambahkan atau mengedit kanal."
+    "支付接口列表暂不可用，重试后可添加或编辑渠道。": "Antarmuka pembayaran sementara tidak tersedia. Coba lagi sebelum menambahkan atau mengedit kanal.",
+    "按统计日汇总，日期以 {{zone}} 为准。": "Total harian mengikuti tanggal dalam zona waktu {{zone}}."
   },
   "account": {
     "notificationAutoSave": "Perubahan disimpan secara otomatis",

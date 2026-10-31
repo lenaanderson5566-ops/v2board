@@ -72,7 +72,7 @@ export function AccountList({ showNotice = true }: { showNotice?: boolean } = {}
                         <dd><span className="apple-account-password" dir="ltr">{visible[index] ? account.password : "••••••••"}</span><span className="apple-account-field-actions"><button type="button" className="apple-account-reveal" aria-label={t(visible[index] ? "9" : "8")} aria-pressed={Boolean(visible[index])} onClick={() => setVisible(previous => ({ ...previous, [index]: !previous[index] }))}>{visible[index] ? <EyeOff size={17} aria-hidden="true" /> : <Eye size={17} aria-hidden="true" />}</button><button type="button" onClick={() => copy(account.password!)}><Copy size={15} aria-hidden="true" />{t("7")}</button></span></dd>
                     </div>}
                 </dl>
-                {account.last_check && <p className="apple-account-checked muted">{t("12")}: {typeof account.last_check === 'number' ? date(account.last_check) : account.last_check}</p>}
+                {account.last_check && <p className="apple-account-checked muted">{t("12")}: {date(account.last_check)}</p>}
             </section>;
         })}</div>}
         {!busy && (error || accounts.length === 0) && <button disabled={retryIn > 0} onClick={() => {if(retryAt>Date.now())return;setAttempt(value => value + 1);}}>{retryIn > 0 ? tx("retryIn", {ns:"pricing", seconds:retryIn}) : t("5")}</button>}

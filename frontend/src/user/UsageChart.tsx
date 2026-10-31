@@ -1,11 +1,11 @@
-import { businessTimeZone, calendarDay } from "../shared/timezone";
+import { businessTimeZone, validZone } from "../shared/timezone";
 import { useEffect, useRef, useState } from "react";
 import { e } from "../shared/experience-copy";
 import { tx, locale } from "../shared/i18n";
-import { bytes, date } from "../shared/api";
+import { bytes } from "../shared/api";
 import { State, Table, useData } from "../shared/ui";
 import { b } from "../shared/billing-copy";
-import { usageDays, type UsageRecord } from "./usage-data";
+import { usageDays, usageRecordDay, type UsageRecord } from "./usage-data";
 
 export function UsageChart({
     showDetails = true,
@@ -44,7 +44,6 @@ export function UsageChart({
         <section className="usage-analysis">
             <header>
                 <h2>{e("usageAnalysis")}</h2>
-                <small>{businessTimeZone()}</small>
                 <div
                     className="usage-period"
                     role="group"
@@ -68,7 +67,7 @@ export function UsageChart({
             <p className="muted usage-scope">
                 {tx("按日汇总近{{days}}天上传与下载用量，包含今天。", {
                     days: period === "week" ? 7 : 30,
-                })}
+                })}{" "}{tx("按统计日汇总，日期以 {{zone}} 为准。", { zone: businessTimeZone() })}
             </p>
             <State {...data} retry={data.reload}>
                 {data.data?.length ? (
@@ -159,22 +158,24 @@ export function UsageChart({
                     <summary>{b("usageDetails")}</summary>
                     <Table
                         compact
-                        data={data.data.filter(
-                            (row) =>
-                                (row.business_date ||
-                                    calendarDay(
-                                        new Date(Number(row.record_at) * 1000),
-                                    )) >=
-                                days[0].date.toISOString().slice(0, 10),
-                        )}
+                        data={data.data.filter((row) => {
+                            const day = usageRecordDay(row);
+                            return day !== null && day >= days[0].date.toISOString().slice(0, 10)
+                                && day <= days[days.length - 1].date.toISOString().slice(0, 10);
+                        })}
                         columns={[
                             [
                                 "record_at",
                                 tx("日期"),
-                                (row) =>
-                                    row.business_date
-                                        ? `${row.business_date} · ${row.record_timezone}`
-                                        : date(row.record_at),
+                                (row) => {
+                                    const day = usageRecordDay(row);
+                                    if (!day) return "—";
+                                    const zone = typeof row.record_timezone === "string" && validZone(row.record_timezone)
+                                        ? row.record_timezone : businessTimeZone();
+                                    return `${new Date(`${day}T00:00:00Z`).toLocaleDateString(locale(), {
+                                        year: "numeric", month: "2-digit", day: "2-digit", timeZone: "UTC",
+                                    })} · ${zone}`;
+                                },
                             ],
                             ["u", tx("上传"), (row) => bytes(row.u)],
                             ["d", tx("下载"), (row) => bytes(row.d)],

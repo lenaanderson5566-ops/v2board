@@ -3,6 +3,15 @@ import { locale, tx } from "./i18n";
 let preference: string | null = null;
 let systemZone = "Asia/Shanghai";
 let administrator = false;
+const listeners = new Set<() => void>();
+/** Subscribe to effective display-zone changes without fetching account data again. */
+export function subscribeTimeZone(listener: () => void) {
+    listeners.add(listener);
+    return () => { listeners.delete(listener); };
+}
+function notifyTimeZone(previous: string) {
+    if (previous !== displayTimeZone()) for (const listener of listeners) listener();
+}
 export function validZone(zone: string): boolean {
     try {
         new Intl.DateTimeFormat("en", { timeZone: zone }).format(0);
@@ -12,11 +21,15 @@ export function validZone(zone: string): boolean {
     }
 }
 export function configureTimeZone(system: string, admin = false) {
+    const previous = displayTimeZone();
     systemZone = validZone(system) ? system : "UTC";
     administrator = admin;
+    notifyTimeZone(previous);
 }
 export function setDisplayTimeZone(value: unknown) {
+    const previous = displayTimeZone();
     preference = typeof value === "string" && validZone(value) ? value : null;
+    notifyTimeZone(previous);
 }
 export function businessTimeZone() {
     return systemZone;
@@ -50,7 +63,7 @@ export function formatInstant(
         value instanceof Date
             ? value
             : new Date(typeof value === "number" ? value * 1000 : value);
-    if (!Number.isFinite(date.getTime())) return "—";
+    if (!Number.isFinite(date.getTime()) || !validZone(zone)) return "—";
     return new Intl.DateTimeFormat(locale(), {
         year: "numeric",
         month: "2-digit",
@@ -62,7 +75,8 @@ export function formatInstant(
         timeZoneName: "short",
         ...options,
         timeZone: zone,
-    }).format(date);
+    }).formatToParts(date).map(part => part.type === "timeZoneName"
+        ? utcOffsetLabel(date, zone) : part.value).join("");
 }
 export function calendarDay(value: Date, zone = businessTimeZone()): string {
     const parts = new Intl.DateTimeFormat("en", {

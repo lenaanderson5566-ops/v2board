@@ -432,3 +432,24 @@ it("formats scheduled reset timestamps in the selected display zone", async () =
         setDisplayTimeZone(null);
     }
 });
+
+it("uses consistent UTC offset labels in every interface language", async () => {
+    const { configureTimeZone, formatInstant, setDisplayTimeZone } = await import("./timezone");
+    const previousLanguage = i18n.language;
+    configureTimeZone("UTC");
+    try {
+        for (const { code } of languages) {
+            await i18n.changeLanguage(code);
+            const at = "2026-11-30T00:00:00Z";
+            setDisplayTimeZone("Asia/Kathmandu");
+            expect(formatInstant(at), code).toContain("UTC+05:45");
+            expect(formatInstant(at), code).not.toContain("GMT");
+            setDisplayTimeZone("UTC");
+            expect(formatInstant(at), code).toContain("UTC+00:00");
+            expect(formatInstant(at, { timeZoneName: undefined }), code).not.toContain("UTC");
+        }
+    } finally {
+        setDisplayTimeZone(null);
+        await i18n.changeLanguage(previousLanguage);
+    }
+});

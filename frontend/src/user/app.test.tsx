@@ -25,6 +25,7 @@ vi.mock("./user-entry",()=>({default:({current,path}:any)=> {
     return <><p>Protected workspace</p><output data-testid="workspace-path">{path}</output><input aria-label="Page action" /></>;
 }}));
 import App from "./app";
+import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { browserHandoffUrl } from "../shared/browser-access";
 beforeEach(()=>{
@@ -32,6 +33,7 @@ beforeEach(()=>{
     mocks.workspaceLanguage.mockReset().mockResolvedValue(undefined);
     mocks.initialize.mockReset().mockResolvedValue(undefined);mocks.forget.mockClear();mocks.authenticated=true;mocks.gateAllowed=true;
     mocks.logins=[];
+    configureTimeZone("UTC"); setDisplayTimeZone(null);
     document.title="Test";
     window.location.hash="#/dashboard";window.scrollTo=vi.fn();
     vi.stubGlobal("matchMedia",()=>({matches:false,addEventListener:vi.fn(),removeEventListener:vi.fn()}));
@@ -269,4 +271,23 @@ it("loads and sanitizes an optional custom footer without delaying authenticatio
         expect(screen.getByText("Footer link").getAttribute("href")).toBeNull();
         cleanup();expect(document.getElementById("custom-footer")).toBeNull();
     } finally {delete boot.footerHtml;}
+});
+
+it("redraws the workspace calendar immediately when the personal zone changes without refetching", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-11-01T00:30:00Z"));
+    try {
+        setDisplayTimeZone("Asia/Shanghai");
+        signedIn();
+        render(<App />);
+        await screen.findByText("Protected workspace");
+        const today = document.querySelector(".today")!;
+        expect(today.textContent).toContain("November 1");
+        const reads = mocks.read.mock.calls.length;
+        act(() => setDisplayTimeZone("Pacific/Honolulu"));
+        expect(today.textContent).toContain("October 31");
+        expect(mocks.read).toHaveBeenCalledTimes(reads);
+        act(() => setDisplayTimeZone("Asia/Shanghai"));
+        expect(today.textContent).toContain("November 1");
+    } finally { vi.useRealTimers(); }
 });

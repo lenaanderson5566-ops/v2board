@@ -1,8 +1,8 @@
 vi.mock("../shared/i18n", () => ({ locale: () => "en-GB" }));
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { configureTimeZone } from "../shared/timezone";
+import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 beforeEach(() => configureTimeZone("UTC"));
-import { usageDays } from "./usage-data";
+import { usageDays, usageRecordDay } from "./usage-data";
 const now = new Date(Date.UTC(2026, 9, 12, 12));
 const record = (day: number, u: number, d: number) => ({
     record_at: new Date(Date.UTC(2026, 9, day)).getTime() / 1000,
@@ -69,4 +69,29 @@ it("keeps the original business date when the system zone changes", () => {
     );
     expect(days[1]).toMatchObject({ upload: 3, download: 4 });
     expect(days[0]).toMatchObject({ upload: 0, download: 0 });
+});
+
+it("keeps daily buckets independent of personal display time zones", () => {
+    const records = [{record_at: Date.parse("2026-10-02T00:00:00Z") / 1000, u: 3, d: 4}];
+    setDisplayTimeZone("America/Los_Angeles");
+    const west = usageDays(records, "week", new Date("2026-10-02T00:30:00Z"));
+    setDisplayTimeZone("Asia/Tokyo");
+    const east = usageDays(records, "week", new Date("2026-10-02T00:30:00Z"));
+    expect(west).toEqual(east);
+    expect(west[6]).toMatchObject({ upload: 3, download: 4 });
+    setDisplayTimeZone(null);
+});
+it("uses a real business date and falls back safely for invalid bucket metadata", () => {
+    const row = {record_at: Date.parse("2026-10-02T00:00:00Z") / 1000, u: 3, d: 4};
+    expect(usageRecordDay({...row, business_date: "2026-02-30"})).toBe("2026-10-02");
+    expect(usageRecordDay({...row, business_date: "private-data"})).toBe("2026-10-02");
+    expect(usageRecordDay({...row, record_at: NaN})).toBeNull();
+    expect(usageRecordDay({...row, record_timezone: "America/Los_Angeles"})).toBe("2026-10-01");
+});
+
+it("accepts date-only projection fields without requiring traffic counters and rejects missing instants", () => {
+    expect(usageRecordDay({record_at: "1790899200"})).toBe("2026-10-02");
+    for (const record_at of [undefined, null, false, "", " ", {}, Symbol("invalid")])
+        expect(usageRecordDay({record_at})).toBeNull();
+    expect(usageRecordDay({})).toBeNull();
 });

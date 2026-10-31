@@ -151,3 +151,7 @@ v2box 端沿用 api/v2board、node、core 的 Go 包内回归，覆盖完整用�
 配置更新记录复用 api-v10、api-v10-inventory、browser-session、既有订阅策略/访问保护/风险与日志保留测试。覆盖本人隔离、过期与无套餐、未登录/查询凭据/受限账户、稳定分页、最大整数页码无溢出、保留期读时过滤、原始凭据/UA/异常不外露及 GET 不写订阅日志/触发风险；实际脚本仍在可销毁副本和随机数据库/缓存前缀执行。前端独立 ConfigurationUpdates 测试与 AccountControls、QuickStart、app、EmbeddedBrowserNotice、v10-api、localization 共用已有运行器，验证入口不提前拉日志、懒加载、时区、分页失败/迟到响应、未知结果、脱敏与人工刷新。新增 API 只在源模块维护，统一生成并检查七份发布物，不恢复旧用户 API。
 
 重置时间、iOS 下载账户及配置更新记录的界面精简复用 UsageBilling、AppleAccounts、ClientDownload、ConfigurationUpdates 和 localization 现有测试模块：覆盖个人时区与夏令时、异常时间戳、待确认状态、按需加载和关闭清除凭据、密码隐藏与复制、权限和限流、历史失败原因与未知字段过滤。未新增独立运行器；本轮 133 项相关回归与生产构建通过。
+
+统一个人时区显示沿用 timezone、api、app、AppleAccounts、UsageChart、usage-data 与 localization 现有模块；覆盖 Unix 秒/明确时区 ISO、非法数据、偏好即时重绘、跨日/夏令时、历史统计日及未来记录过滤。下载账户上游时间在现有 apple-accounts 模块检查三个 PHP 默认时区下的 18 类输入和 V10 投影；可销毁副本执行 1/1 通过、134 checks。前端全量 1628 项通过、1 项静态扫描因默认时限超时，最终含该项的 74 项针对性复验通过；构建和发布资源清单完整。
+
+GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有模块；新增事件偏移格式与十四语种一致性断言，确认省略后缀的场景不受影响。相关 7 个文件共 164 项通过。

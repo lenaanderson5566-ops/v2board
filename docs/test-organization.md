@@ -161,3 +161,5 @@ GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有
 本轮数量显示完整回归共 1645 项；其中 1642 项首轮通过，两项 GB/GiB 关键词兼容问题在生产搜索逻辑修正后按既有 HelpGuides 模块复验通过，一项语言加载重试并行时限失败在 app 模块独立复验通过。HelpGuides 保留旧 GB 搜索断言并追加 GiB，避免仅随文案机械修改测试。最终构建与资源清单完整。
 
 简洁时间格式沿用 timezone、api、localization、UsageBilling、AccountEntry、AccountControls、ConfigurationUpdates 及后台时区模块，核对中文完整到期示例、时区后置、秒的显隐、UTC/正负偏移/四分之一小时和夏令时，不改变真实到期时刻。
+
+重置卡片补齐简短时区标记沿用 UsageBilling：验证计划、待确认/待重试、UTC 与上海跨日、夏令时以及四分之一小时偏移；保留 ISO 时间和不重复显示系统时间的断言。该模块 45 项通过。

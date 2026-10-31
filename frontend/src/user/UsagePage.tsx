@@ -176,7 +176,7 @@ export function UsagePage() {
                                                 ? <time dateTime={new Date(resetAt * 1000).toISOString()} title={displayTimeZone()}>{tx(resetCopy, {
                                                       ns: "credits",
                                                       defaultValue: resetCopy === "resetPending" ? "Reset awaiting confirmation: {{date}}" : resetCopy === "resetFailed" ? "Reset awaiting retry: {{date}}" : "Next reset: {{date}}",
-                                                      date: formatInstant(resetAt, { second: undefined, timeZoneName: undefined }),
+                                                      date: formatInstant(resetAt, { second: undefined }),
                                                   })}</time>
                                                 : c(
                                                       sub.data

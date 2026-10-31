@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 141121,
+      "startupGzipBytes": 141125,
       "startupBytes": 466099,
       "startupFileCount": 16,
       "largestStartupAssets": [
@@ -18,9 +18,9 @@
           "gzipBytes": 52388
         },
         {
-          "file": "assets/app-B5y0s7Pm.js",
+          "file": "assets/app-uzOgVFQ8.js",
           "bytes": 12448,
-          "gzipBytes": 5185
+          "gzipBytes": 5186
         },
         {
           "file": "assets/runtime-config-CRfRjY9P.js",
@@ -38,40 +38,40 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 141121,
+          "gzipBytes": 141125,
           "bytes": 466099,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 206074,
+          "gzipBytes": 206076,
           "bytes": 763737,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 219086,
+          "gzipBytes": 219087,
           "bytes": 806521,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 209205,
+          "gzipBytes": 209207,
           "bytes": 731025,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 222217,
+          "gzipBytes": 222218,
           "bytes": 773809,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3449501,
+      "totalBytes": 3449481,
       "fileCount": 345
     },
     {

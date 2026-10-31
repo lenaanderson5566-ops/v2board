@@ -9,7 +9,7 @@ import {
     type ReactNode,
 } from "react";
 import { Eye, EyeOff, Check } from "lucide-react";
-import { displayTimeZone } from "../timezone";
+import { inputTimeZone } from "../timezone";
 import { dateTimeFieldValue, dateTimeFieldInstant } from "../date-time-field";
 import { browserSessionKey } from "../browser-session";
 import { e } from "../experience-copy";
@@ -332,7 +332,7 @@ export function Editor({
             {activeFields.some((field) => field.type === "datetime-local") && (
                 <p className="muted">
                     {tx("日期时间按 {{zone}} 输入和显示。", {
-                        zone: displayTimeZone(),
+                        zone: inputTimeZone(),
                     })}
                 </p>
             )}

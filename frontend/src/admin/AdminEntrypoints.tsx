@@ -7,6 +7,9 @@ export interface ServiceEntrypoint {
     enabled: boolean;
     priority: number;
 }
+type EntrypointCheck = { checkedAt: string; durationMs: number } | string;
+const checkDescription = (check: EntrypointCheck) => typeof check === "string"
+    ? check : `检查通过 · ${formatDuration(check.durationMs)} · ${adminInstant(check.checkedAt)}`;
 export function AdminEntrypoints({
     initial,
     publicKey,
@@ -20,7 +23,7 @@ export function AdminEntrypoints({
 }) {
     const [entries, setEntries] = useState(initial);
     const [cleanEntries, setCleanEntries] = useState(JSON.stringify(initial));
-    const [checks, setChecks] = useState<Record<string, string>>({});
+    const [checks, setChecks] = useState<Record<string, EntrypointCheck>>({});
     const [checking, setChecking] = useState<string | null>(null);
     async function check(origin: string) {
         setChecking(origin);
@@ -31,7 +34,7 @@ export function AdminEntrypoints({
             }>(admin("config/testFastaiEntrypoint"), { origin });
             setChecks((values) => ({
                 ...values,
-                [origin]: `检查通过 · ${formatDuration(data.durationMs)} · ${adminInstant(data.checkedAt)}`,
+                [origin]: data,
             }));
         } catch (error) {
             setChecks((values) => ({
@@ -145,7 +148,7 @@ export function AdminEntrypoints({
                             {checking === entry.origin ? "检查中…" : "检查服务"}
                         </button>
                         {checks[entry.origin] && (
-                            <p role="status">{checks[entry.origin]}</p>
+                            <p role="status">{checkDescription(checks[entry.origin])}</p>
                         )}
                         <button
                             type="button"

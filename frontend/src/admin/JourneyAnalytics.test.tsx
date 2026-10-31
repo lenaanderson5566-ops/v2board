@@ -160,3 +160,16 @@ it("explains opt-in sample coverage in the standalone experience report", async 
     expect(screen.getByText(/不应把体验事件会话数作为业务漏斗分母/)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "注册到首次使用 · 7 日观察窗" })).toBeNull();
 });
+
+it("separates business cohort bounds from the generation instant in the admin display zone", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("America/New_York");
+    api.request.mockResolvedValue({data:fixture()});
+    try {
+        render(<JourneyAnalytics days={7} device="all" />);
+        expect((await screen.findByText(/生成于.*统计区间按业务时区/)).textContent).toContain("2026/09/30 20:00:00");
+        expect(screen.getByText(/注册区间：/).textContent).toContain("2026/10/01 08:00:00");
+        expect(screen.getByText(/当前到期时间范围：/).textContent).toContain("2026/10/01 08:00:00");
+    } finally { setAdminDisplayTimeZone("business"); }
+});

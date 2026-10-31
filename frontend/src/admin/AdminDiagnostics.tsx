@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
     AdminLogTimeZone,
+    AdminBusinessTimeZoneNote,
     adminInstant as formatInstant,
 } from "./admin-log-time";
 import { admin, bytes, date, request, type Row } from "../shared/api";
@@ -342,6 +343,7 @@ function NodeMaintenanceForm({
                 </div>
                 {enabled && (
                     <>
+                        <AdminBusinessTimeZoneNote />
                         <label>
                             维护原因
                             <input

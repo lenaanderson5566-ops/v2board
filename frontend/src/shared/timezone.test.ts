@@ -7,8 +7,10 @@ import {
     displayTimeZone,
     formatInstant,
     instantDate,
+    inputTimeZone,
     parseDateTimeInput,
     setDisplayTimeZone,
+    setAdminDisplayTimeZone,
     subscribeTimeZone,
     utcOffsetLabel,
 } from "./timezone";
@@ -18,6 +20,7 @@ describe("time zone conversion", () => {
     beforeEach(() => {
         configureTimeZone("Asia/Shanghai");
         setDisplayTimeZone(null);
+        setAdminDisplayTimeZone("business");
     });
     it.each([
         "Asia/Shanghai",
@@ -87,6 +90,43 @@ describe("time zone conversion", () => {
         setDisplayTimeZone("UTC");
         expect(dateTimeInput(0)).toBe("1970-01-01T05:30");
         expect(displayTimeZone()).toBe("Asia/Kathmandu");
+    });
+    it("separates administrator display preferences from business input and user preferences", () => {
+        configureTimeZone("America/New_York", true);
+        setDisplayTimeZone("Asia/Tokyo");
+        const at = Date.parse("2026-07-01T12:34:37Z") / 1000;
+        setAdminDisplayTimeZone("Asia/Kathmandu");
+        expect(displayTimeZone()).toBe("Asia/Kathmandu");
+        expect(formatInstant(at)).toContain("18:19:37");
+        expect(inputTimeZone()).toBe("America/New_York");
+        expect(dateTimeInput(at, undefined, "second")).toBe("2026-07-01T08:34:37");
+        expect(parseDateTimeInput("2026-07-01T08:34:37")).toBe(at);
+        setAdminDisplayTimeZone("device");
+        expect(displayTimeZone()).toBe(Intl.DateTimeFormat().resolvedOptions().timeZone);
+        expect(inputTimeZone()).toBe("America/New_York");
+        setAdminDisplayTimeZone("Invalid/Zone");
+        expect(displayTimeZone()).toBe("America/New_York");
+        configureTimeZone("UTC");
+        expect(displayTimeZone()).toBe("Asia/Tokyo");
+        expect(inputTimeZone()).toBe("Asia/Tokyo");
+        setAdminDisplayTimeZone("business");
+    });
+    it("redraws administrator event times without changing a business-date bucket", () => {
+        configureTimeZone("America/New_York", true);
+        const at = new Date("2026-07-01T02:00:00Z");
+        const businessDay = calendarDay(at);
+        const changed = vi.fn();
+        const unsubscribe = subscribeTimeZone(changed);
+        setAdminDisplayTimeZone("Asia/Kathmandu");
+        expect(changed).toHaveBeenCalledOnce();
+        expect(calendarDay(at)).toBe(businessDay);
+        expect(businessDay).toBe("2026-06-30");
+        configureTimeZone("UTC", true);
+        expect(displayTimeZone()).toBe("Asia/Kathmandu");
+        expect(inputTimeZone()).toBe("UTC");
+        expect(changed).toHaveBeenCalledTimes(2);
+        unsubscribe();
+        setAdminDisplayTimeZone("business");
     });
     it("keeps business chart dates stable across user preferences and DST", () => {
         configureTimeZone("America/New_York");

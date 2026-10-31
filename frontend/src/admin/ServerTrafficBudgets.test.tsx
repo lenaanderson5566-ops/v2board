@@ -82,7 +82,20 @@ it("updates live server reports without replacing unsaved configuration",async()
  expect(screen.queryByText("尚未收到本机 IP：请生成上报命令，并在此服务器执行。")).toBeNull();
 });
 
-import {serverReportStatus} from "./ServerTrafficSummary";
+import {ServerTrafficSummary, ServerStatus, serverReportStatus} from "./ServerTrafficSummary";
+it("keeps daily usage and billing boundaries in the business zone while report instants follow display preferences",async()=>{
+ const {configureTimeZone,setAdminDisplayTimeZone}=await import("../shared/timezone");
+ configureTimeZone("UTC",true);setAdminDisplayTimeZone("America/New_York");
+ const dayAt=Date.parse("2026-11-30T00:00:00Z")/1000;
+ api.request.mockResolvedValue({data:{budget:quota,nodes:[],history:[{dayAt,uploadBytes:10,downloadBytes:20}]}});
+ try {
+  render(<><ServerTrafficSummary server={machine}/><ServerStatus server={{...machine,ipv4_seen_at:dayAt}}/></>);
+  expect((await screen.findByText(/当前周期（业务时区 UTC）/)).textContent).toContain("2026/10/01 00:00:00");
+  expect(screen.getByText("2026/11/30")).toBeTruthy();
+  expect(screen.getByText(/日期按业务时区 UTC/)).toBeTruthy();
+  expect(screen.getByText("2026/11/29 19:00:00")).toBeTruthy();
+ } finally {setAdminDisplayTimeZone("business");configureTimeZone("Asia/Shanghai",true);}
+});
 it("distinguishes incomplete dual-stack reports from stale reports and disabled servers",()=>{
  expect(serverReportStatus({...machine,family:"dual",ipv4:"203.0.113.10",ipv4_seen_at:1000},1000)).toBe("待上报 IPv6");
  expect(serverReportStatus({...machine,ipv4:"203.0.113.10",ipv4_seen_at:1},1000)).toContain("上报已过期");

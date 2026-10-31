@@ -1,7 +1,7 @@
 import { formatDuration, formatNumber, formatPercent } from "../shared/number-format";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-import { adminInstant as formatInstant } from "./admin-log-time";
+import { adminInstant as formatInstant, adminBusinessInstant } from "./admin-log-time";
 import { ReportTable } from "./ReportTable";
 import { analyticsLabels } from "./analytics-labels";
 
@@ -131,8 +131,8 @@ export function JourneyAnalytics({
                 </State>
                 {!experienceOnly && b && (
                     <p className="muted">
-                        生成于 {formatInstant(b.generatedAt)} · 系统时区{" "}
-                        {b.timeZone}
+                        生成于 {formatInstant(b.generatedAt)} · 统计区间按业务时区{" "}
+                        {b.timeZone} 展示
                     </p>
                 )}
             </Panel>
@@ -140,8 +140,8 @@ export function JourneyAnalytics({
                 <>
                     <Panel padded title="注册到首次使用 · 7 日观察窗">
                         <p className="muted">
-                            注册区间：{formatInstant(b.activation.from)} 至{" "}
-                            {formatInstant(b.activation.to)}
+                            注册区间：{adminBusinessInstant(b.activation.from, {}, b.timeZone)} 至{" "}
+                            {adminBusinessInstant(b.activation.to, {}, b.timeZone)}
                             （不含结束）。只纳入已完成 7
                             个自然日观察窗的账户，注册当天为第 1 日。
                         </p>
@@ -219,7 +219,7 @@ export function JourneyAnalytics({
                             ]}
                             rows={b.retentionCohorts.map((r) => [
                                 `第 ${r.day} 日`,
-                                `${formatInstant(r.from)} — ${formatInstant(r.to)}`,
+                                `${adminBusinessInstant(r.from, {}, b.timeZone)} — ${adminBusinessInstant(r.to, {}, b.timeZone)}`,
                                 r.registered,
                                 count(r.login),
                                 ratio(r.loginRate),
@@ -246,8 +246,8 @@ export function JourneyAnalytics({
                     <Panel padded title="续费与到期未恢复">
                         <p className="muted">
                             首笔非零金额套餐付款批次：
-                            {formatInstant(b.repurchase.from)} 至{" "}
-                            {formatInstant(b.repurchase.to)}
+                            {adminBusinessInstant(b.repurchase.from, {}, b.timeZone)} 至{" "}
+                            {adminBusinessInstant(b.repurchase.to, {}, b.timeZone)}
                             （不含结束）；仅纳入已完成 30×24
                             小时观察的首付账户。
                         </p>
@@ -275,8 +275,8 @@ export function JourneyAnalytics({
                             <strong>{b.expiredUnrestored}</strong>
                         </p>
                         <p className="muted">
-                            当前到期时间范围：{formatInstant(b.expiryFrom)} —{" "}
-                            {formatInstant(b.expiryTo)}
+                            当前到期时间范围：{adminBusinessInstant(b.expiryFrom, {}, b.timeZone)} —{" "}
+                            {adminBusinessInstant(b.expiryTo, {}, b.timeZone)}
                             。只看当前套餐和到期时间，不包括已恢复账户；缺少完整历史到期快照，不计算历史流失率。
                         </p>
                     </Panel>

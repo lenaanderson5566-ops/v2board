@@ -3,24 +3,24 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 141440,
-      "startupBytes": 466557,
+      "startupGzipBytes": 141560,
+      "startupBytes": 466867,
       "startupFileCount": 16,
       "largestStartupAssets": [
         {
-          "file": "assets/render-app-BYN2fJOh.js",
+          "file": "assets/render-app-BOdnGADm.js",
           "bytes": 210023,
-          "gzipBytes": 65539
+          "gzipBytes": 65540
         },
         {
-          "file": "assets/createLucideIcon-ByTXAX_o.js",
-          "bytes": 201112,
-          "gzipBytes": 52701
+          "file": "assets/createLucideIcon-D2gzKZZM.js",
+          "bytes": 201427,
+          "gzipBytes": 52826
         },
         {
-          "file": "assets/app-CSbyRP0o.js",
+          "file": "assets/app-B9ZT5adB.js",
           "bytes": 12448,
-          "gzipBytes": 5184
+          "gzipBytes": 5182
         },
         {
           "file": "assets/runtime-config-CRfRjY9P.js",
@@ -28,9 +28,9 @@
           "gzipBytes": 3521
         },
         {
-          "file": "assets/browser-access-jwYUvUpX.js",
-          "bytes": 8176,
-          "gzipBytes": 3405
+          "file": "assets/browser-access-B_hVPqsF.js",
+          "bytes": 8171,
+          "gzipBytes": 3400
         }
       ],
       "budget": 163840,
@@ -38,76 +38,76 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 141440,
-          "bytes": 466557,
+          "gzipBytes": 141560,
+          "bytes": 466867,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 206508,
-          "bytes": 764639,
+          "gzipBytes": 206636,
+          "bytes": 764947,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 219532,
-          "bytes": 807423,
+          "gzipBytes": 219656,
+          "bytes": 807731,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 209639,
-          "bytes": 731927,
+          "gzipBytes": 209767,
+          "bytes": 732235,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 222663,
-          "bytes": 774711,
+          "gzipBytes": 222787,
+          "bytes": 775019,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3451124,
+      "totalBytes": 3451438,
       "fileCount": 345
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 376503,
-      "startupBytes": 1277625,
+      "startupGzipBytes": 378016,
+      "startupBytes": 1282984,
       "startupFileCount": 31,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-CRhtUUnl.js",
-          "bytes": 514228,
-          "gzipBytes": 145303
+          "file": "assets/AdminApp-DNGIoYXr.js",
+          "bytes": 518446,
+          "gzipBytes": 146605
         },
         {
-          "file": "assets/render-app-BYN2fJOh.js",
+          "file": "assets/render-app-BOdnGADm.js",
           "bytes": 210023,
-          "gzipBytes": 65539
+          "gzipBytes": 65540
         },
         {
-          "file": "assets/createLucideIcon-ByTXAX_o.js",
-          "bytes": 201112,
-          "gzipBytes": 52701
+          "file": "assets/createLucideIcon-D2gzKZZM.js",
+          "bytes": 201427,
+          "gzipBytes": 52826
         },
         {
-          "file": "assets/admin-status-BrqpSHsP.js",
+          "file": "assets/admin-status-CrBabgVt.js",
           "bytes": 117505,
-          "gzipBytes": 47823
+          "gzipBytes": 47821
         },
         {
-          "file": "assets/AdminApp-DnFt8xbR.css",
-          "bytes": 99818,
-          "gzipBytes": 16261
+          "file": "assets/AdminApp-DQRyGCuQ.css",
+          "bytes": 100649,
+          "gzipBytes": 16350
         }
       ],
       "budget": 460800,
-      "totalBytes": 4719794,
+      "totalBytes": 4726088,
       "fileCount": 93
     }
   ],

@@ -169,3 +169,7 @@ GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有
 后端复用 timezones 与 coupon-campaigns：核对 CSV 明确偏移、同一本地重复小时对应两次不同瞬间、保留秒、无期限空单元格和既有列顺序；合成导出不输出优惠码或卡号明文。两个脚本共 106 项断言通过，五个 PHP 文件语法检查通过。脚本在可销毁项目副本和随机数据库执行，测试库与临时目录已清除；使用 array 缓存或纯计算，无业务 Redis 写入。
 
 最终全量回归 115 文件、1681 项通过；最后补充的安装包选择与发布时间同步由 AdminFastaiDownloads 11 项复验通过。先前执行期间的新增测试和可见性计时断言问题已修正后重新运行，不删除或放宽业务断言。生产构建与清单完整性检查通过；最终浏览器只读合成验收记录见 frontend-validation。
+
+后台独立显示时区继续复用 timezone、admin-shell、Editor、AdminLogFilters、AdminEntrypoints、admin-workspaces、ServerTrafficBudgets、JourneyAnalytics、OperationsAnalytics 等现有模块。覆盖业务/设备/指定模式、站点和管理员隔离、非法存储、安全降级、跨标签页同步、退出恢复默认、菜单到弹窗焦点、原地重绘保留草稿、日期编辑与筛选保持原始业务时刻、统计分桶不移动及账户偏好不受影响。不增加数据库迁移、接口字段或平行测试运行器。
+
+本轮完整前端回归 115 文件、1696 项通过；最后补充的内存降级偏好重新挂载提示、成功写入恢复持久状态，以及拒绝 sessionStorage/未知来源事件，由 admin-shell 11 项复验通过。八模块输入与格式聚焦 125 项、五模块统计与事件聚焦 195 项均通过；最终类型、构建和资源清单验证通过。没有后端业务代码改动，不运行数据库脚本；浏览器只读合成验收见 frontend-validation。

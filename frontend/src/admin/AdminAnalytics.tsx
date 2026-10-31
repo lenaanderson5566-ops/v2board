@@ -6,7 +6,7 @@ import { analyticsLabels as labels } from "./analytics-labels";
 import { useState } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-import { adminInstant as formatInstant } from "./admin-log-time";
+import { adminInstant as formatInstant, adminBusinessInstant } from "./admin-log-time";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
 import { browserLabel } from "./browser-labels";
@@ -145,8 +145,8 @@ export function AdminAnalytics() {
                 {productTab && data && (
                     <>
                         <p className="muted">
-                            {formatInstant(data.from)} —{" "}
-                            {formatInstant(data.to)} · 按系统时区{" "}
+                            {adminBusinessInstant(data.from, {}, data.timeZone)} —{" "}
+                            {adminBusinessInstant(data.to, {}, data.timeZone)} · 按业务时区{" "}
                             {data.timeZone} 划分日期 · 最多缓存 60 秒
                         </p>
                         {!data.ready && (
@@ -365,9 +365,10 @@ export function AdminAnalytics() {
                                 >
                                     <p className="muted">
                                         注册区间：
-                                        {formatInstant(
+                                        {adminBusinessInstant(
                                             data.cohort.from,
-                                        )} 至 {formatInstant(data.cohort.to)}
+                                            {}, data.timeZone,
+                                        )} 至 {adminBusinessInstant(data.cohort.to, {}, data.timeZone)}
                                         （不含结束时刻）。为避免新用户尚未来得及购买，只统计已满
                                         7
                                         天的注册用户；与上方访问统计不是同一批样本。

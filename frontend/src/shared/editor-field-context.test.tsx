@@ -61,6 +61,29 @@ it("keeps exact seconds when saving another field beside an existing expiry", as
     } finally { setDisplayTimeZone(null); configureTimeZone("Asia/Shanghai", true); }
 });
 
+it("keeps an active expiry draft in business time while administrator display time changes", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone, displayTimeZone } = await import("./timezone");
+    configureTimeZone("Asia/Kathmandu", true);
+    setAdminDisplayTimeZone("America/New_York");
+    const at = Date.parse("2026-10-19T00:00:37Z") / 1000;
+    const save = vi.fn().mockResolvedValue(undefined);
+    const editor = <Editor fields={[
+        { key: "name", label: "名称", type: "text" },
+        { key: "expiry", label: "到期时间", type: "datetime-local" },
+    ]} initial={{ name: "Original", expiry: at }} onSave={save} />;
+    try {
+        const view = render(editor);
+        fireEvent.change(screen.getByLabelText("名称"), { target: { value: "Unsaved draft" } });
+        setAdminDisplayTimeZone("UTC");
+        view.rerender(<>{editor}</>);
+        expect(displayTimeZone()).toBe("UTC");
+        expect((screen.getByLabelText("到期时间") as HTMLInputElement).value.replace(/\.0{1,3}$/, "")).toBe("2026-10-19T05:45:37");
+        expect(screen.getByText(/日期时间按 Asia\/Kathmandu 输入和显示/)).toBeTruthy();
+        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        await waitFor(() => expect(save).toHaveBeenCalledWith({ name: "Unsaved draft", expiry: at }));
+    } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai", true); }
+});
+
 it.each(["2026-11-01T05:30:37Z", "2026-11-01T06:30:37Z"])("retains an unchanged expiry within the DST repeated hour: %s", async (iso) => {
     const { configureTimeZone } = await import("./timezone");
     configureTimeZone("America/New_York", true);

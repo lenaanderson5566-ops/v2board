@@ -160,6 +160,24 @@ it("rejects ambiguous DST filter times without sending a query", async () => {
     configureTimeZone("Asia/Shanghai", true);
 });
 
+it("keeps log queries in the business zone when displayed event dates use another zone", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone, formatInstant } = await import("../shared/timezone");
+    configureTimeZone("America/New_York", true);
+    setAdminDisplayTimeZone("Asia/Kathmandu");
+    const at = Date.parse("2026-07-01T12:34:37Z") / 1000;
+    const apply = vi.fn();
+    try {
+        render(<AdminLogFilters kind="login" initialFilters={{ from: at }} onApply={apply} />);
+        expect(formatInstant(at)).toContain("18:19:37");
+        expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value.replace(/\.0{1,3}$/, "")).toBe("2026-07-01T08:34:37");
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(apply).toHaveBeenCalledWith({ from: at });
+        fireEvent.change(screen.getByLabelText("日志开始时间"), { target: { value: "2026-07-01T09:34:37" } });
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(apply).toHaveBeenLastCalledWith({ from: at + 3600 });
+    } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai", true); }
+});
+
 it("preserves both distinct applied instants inside a DST repeated hour", async () => {
     const { configureTimeZone } = await import("../shared/timezone");
     configureTimeZone("America/New_York", true);

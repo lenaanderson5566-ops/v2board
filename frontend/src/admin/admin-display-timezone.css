@@ -1,0 +1,11 @@
+body[data-console="admin"] .admin-display-timezone { display: grid; gap: 16px; padding: 24px; }
+body[data-console="admin"] .admin-display-timezone p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; }
+body[data-console="admin"] .admin-display-timezone dl { display: grid; gap: 12px; margin: 0; }
+body[data-console="admin"] .admin-display-timezone dl > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 12px; }
+body[data-console="admin"] .admin-display-timezone dt { color: var(--muted); }
+body[data-console="admin"] .admin-display-timezone dd { margin: 0; overflow-wrap: anywhere; text-align: end; }
+body[data-console="admin"] .admin-display-timezone footer { display: flex; justify-content: flex-end; }
+@media (max-width: 575px) {
+    body[data-console="admin"] .admin-display-timezone { padding: 18px; }
+    body[data-console="admin"] .admin-display-timezone .admin-choice-group { flex-wrap: wrap; }
+}

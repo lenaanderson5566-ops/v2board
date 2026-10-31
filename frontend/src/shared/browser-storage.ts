@@ -2,6 +2,8 @@
 function optionalStorage(kind: "localStorage" | "sessionStorage") {
     const memory = new Map<string, string | null>();
     return {
+        /** A previous write exists only in this page's fallback memory. */
+        isTemporary(key: string): boolean { return memory.has(key); },
         getItem(key: string): string | null {
             if (memory.has(key)) return memory.get(key) ?? null;
             try { return globalThis[kind].getItem(key); }

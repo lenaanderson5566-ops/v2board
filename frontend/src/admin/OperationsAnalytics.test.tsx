@@ -157,6 +157,27 @@ function fixture(): OperationsReport {
 function setup(data = fixture()) {
     api.request.mockResolvedValue({ data });
 }
+it("keeps report bounds and daily schedules in the business zone while generation uses the admin display zone", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("America/New_York");
+    setup();
+    try {
+        const view = render(<OperationsAnalytics days={30} />);
+        const note = await screen.findByText(/统计区间（业务时区 Asia\/Shanghai）/);
+        expect(note.textContent).toContain("2026/09/21 00:00:00");
+        expect(note.textContent).toContain("2026/10/19 10:00:00");
+        expect(note.textContent).toContain("2026/10/18 22:00:00");
+        expect(screen.getByText("业务时区执行时间")).toBeTruthy();
+        expect(screen.getByText("00:00")).toBeTruthy();
+        const reads = api.request.mock.calls.length;
+        setAdminDisplayTimeZone("UTC");
+        view.rerender(<OperationsAnalytics days={30} />);
+        expect(note.textContent).toContain("2026/09/21 00:00:00");
+        expect(note.textContent).toContain("2026/10/19 02:00:00");
+        expect(api.request).toHaveBeenCalledTimes(reads);
+    } finally { setAdminDisplayTimeZone("business"); }
+});
 it("shows review denominators, separate currencies, callback counts and honest latency labels", async () => {
     setup();
     render(<OperationsAnalytics days={30} />);

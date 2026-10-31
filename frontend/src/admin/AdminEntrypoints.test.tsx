@@ -29,3 +29,26 @@ it("converts entrypoint check instants to the system display zone instead of sho
     expect(screen.queryByText(/2026-11-30T00:00:00Z/)).toBeNull();
     setDisplayTimeZone(null);
 });
+
+it("reformats an existing check when the admin display zone changes without repeating the check or losing edits", async () => {
+    const { request } = await import("../shared/api");
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("UTC", true);
+    setAdminDisplayTimeZone("UTC");
+    const initial = [{origin:"https://entry.example.test",enabled:true,priority:1}];
+    const save = vi.fn();
+    vi.mocked(request).mockResolvedValueOnce({data:{checkedAt:"2026-11-30T00:00:37Z",durationMs:12}});
+    try {
+        const view = render(<AdminEntrypoints initial={initial} version={1} publicKey="public-key" save={save} />);
+        fireEvent.change(screen.getByLabelText("优先级"), {target:{value:"2"}});
+        fireEvent.click(screen.getByRole("button", {name:"检查服务"}));
+        expect(await screen.findByText(/检查通过.*00:00:37/)).toBeTruthy();
+        const checks = vi.mocked(request).mock.calls.length;
+        setAdminDisplayTimeZone("Asia/Kathmandu");
+        view.rerender(<AdminEntrypoints initial={initial} version={1} publicKey="public-key" save={save} />);
+        expect(screen.getByText(/检查通过.*05:45:37/)).toBeTruthy();
+        expect(screen.getByLabelText("优先级")).toHaveProperty("value","2");
+        expect(request).toHaveBeenCalledTimes(checks);
+        expect(save).not.toHaveBeenCalled();
+    } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai",true); }
+});

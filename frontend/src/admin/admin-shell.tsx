@@ -13,6 +13,7 @@ import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { boot, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { adminWorkspace } from "./admin-navigation";
+import { AdminDisplayTimeZoneDialog, useAdminDisplayTimeZone } from "./AdminDisplayTimeZone";
 import "./admin-shell-experience.css";
 
 // Stable menu order and canonical navigation; styling is owned by admin.css.
@@ -68,6 +69,10 @@ export function AdminShell({
     children: ReactNode;
     logout: () => void;
 }) {
+    const displayTimeZonePreference = useAdminDisplayTimeZone();
+    const [showTimeZone, setShowTimeZone] = useState(false);
+    const timeZoneOpening = useRef(false);
+    const accountTrigger = useRef<HTMLButtonElement>(null);
     const mobileToggle = useRef<HTMLButtonElement>(null);
     const sidebar = useRef<HTMLElement>(null);
     const searchInput = useRef<HTMLInputElement>(null);
@@ -412,6 +417,7 @@ export function AdminShell({
                             <div className="admin-account">
                                 <DropdownMenu.Trigger asChild>
                                     <button
+                                        ref={accountTrigger}
                                         className="admin-account-trigger"
                                         aria-label="账户菜单"
                                         id="page-header-user-dropdown"
@@ -435,6 +441,9 @@ export function AdminShell({
                                         align="end"
                                         sideOffset={8}
                                         collisionPadding={12}
+                                        onCloseAutoFocus={event => {
+                                            if (timeZoneOpening.current) event.preventDefault();
+                                        }}
                                     >
                                         <DropdownMenu.Item asChild>
                                             <a
@@ -454,6 +463,14 @@ export function AdminShell({
                                                 账户安全
                                             </a>
                                         </DropdownMenu.Item>
+                                        {displayTimeZonePreference && <DropdownMenu.Item
+                                            className="admin-account-item"
+                                            onSelect={() => {
+                                                timeZoneOpening.current = true;
+                                                accountTrigger.current?.focus();
+                                                setShowTimeZone(true);
+                                            }}
+                                        >界面显示时区</DropdownMenu.Item>}
                                         <DropdownMenu.Item
                                             className="admin-account-item"
                                             onSelect={(event) => {
@@ -492,6 +509,10 @@ export function AdminShell({
                     {children}
                 </div>
             </main>
+            {showTimeZone && <AdminDisplayTimeZoneDialog close={() => {
+                timeZoneOpening.current = false;
+                setShowTimeZone(false);
+            }} />}
         </div>
     );
 }

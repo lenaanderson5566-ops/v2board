@@ -3,7 +3,7 @@ import { browserLabel } from "./browser-labels";
 import { useState } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
-import { adminInstant as formatInstant } from "./admin-log-time";
+import { adminInstant as formatInstant, adminBusinessInstant } from "./admin-log-time";
 import { ReportTable } from "./ReportTable";
 export { ReportTable } from "./ReportTable";
 
@@ -345,8 +345,8 @@ export function OperationsAnalytics({
                 </State>
                 {data && (
                     <p className="muted">
-                        {formatInstant(data.from)} — {formatInstant(data.to)} ·
-                        系统时区 {data.timeZone} · 生成于{" "}
+                        统计区间（业务时区 {data.timeZone}）：
+                        {adminBusinessInstant(data.from, {}, data.timeZone)} — {adminBusinessInstant(data.to, {}, data.timeZone)} · 生成于{" "}
                         {formatInstant(data.generatedAt)}
                     </p>
                 )}
@@ -612,7 +612,7 @@ export function OperationsAnalytics({
                                 <ReportTable
                                     headers={[
                                         "任务",
-                                        "系统时区执行时间",
+                                        "业务时区执行时间",
                                         "今日状态",
                                         "最近成功",
                                     ]}

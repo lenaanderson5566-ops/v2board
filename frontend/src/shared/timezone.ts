@@ -3,8 +3,9 @@ import { locale, tx } from "./i18n";
 let preference: string | null = null;
 let systemZone = "Asia/Shanghai";
 let administrator = false;
+let adminDisplayPreference = "business";
 const listeners = new Set<() => void>();
-/** Subscribe to effective display-zone changes without fetching account data again. */
+/** Repaint time settings without fetching account data again. */
 export function subscribeTimeZone(listener: () => void) {
     listeners.add(listener);
     return () => { listeners.delete(listener); };
@@ -22,24 +23,39 @@ export function validZone(zone: string): boolean {
 }
 export function configureTimeZone(system: string, admin = false) {
     const previous = displayTimeZone();
+    const previousBusiness = systemZone;
     systemZone = validZone(system) ? system : "UTC";
     administrator = admin;
-    notifyTimeZone(previous);
+    if (admin && previousBusiness !== systemZone && previous === displayTimeZone()) {
+        for (const listener of listeners) listener();
+    } else notifyTimeZone(previous);
 }
 export function setDisplayTimeZone(value: unknown) {
     const previous = displayTimeZone();
     preference = typeof value === "string" && validZone(value) ? value : null;
     notifyTimeZone(previous);
 }
+/** Administrator-only, browser-scoped preference; never changes business rules or account preferences. */
+export function setAdminDisplayTimeZone(value: unknown) {
+    const previous = displayTimeZone();
+    adminDisplayPreference = value === "device" || (typeof value === "string" && validZone(value))
+        ? value : "business";
+    notifyTimeZone(previous);
+}
 export function businessTimeZone() {
     return systemZone;
 }
 export function displayTimeZone() {
-    return administrator
-        ? systemZone
-        : preference ||
-              Intl.DateTimeFormat().resolvedOptions().timeZone ||
-              "UTC";
+    if (!administrator) return preference || deviceTimeZone();
+    if (adminDisplayPreference === "device") return deviceTimeZone();
+    return adminDisplayPreference === "business" ? systemZone : adminDisplayPreference;
+}
+function deviceTimeZone() {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+}
+/** Administrative wall-clock fields stay in the business zone even when event displays change. */
+export function inputTimeZone() {
+    return administrator ? businessTimeZone() : displayTimeZone();
 }
 /** Accept event instants only; never interpret a missing value or a naive wall clock. */
 export function instantDate(value: unknown): Date | null {
@@ -113,7 +129,7 @@ export function calendarDay(value: Date, zone = businessTimeZone()): string {
 }
 export function dateTimeInput(
     seconds: number,
-    zone = displayTimeZone(),
+    zone = inputTimeZone(),
     precision: "minute" | "second" = "minute",
 ): string {
     const date = instantDate(seconds);
@@ -133,7 +149,7 @@ export function dateTimeInput(
 }
 export function parseDateTimeInput(
     value: string,
-    zone = displayTimeZone(),
+    zone = inputTimeZone(),
 ): number {
     // datetime-local controls may serialize whole seconds with zero milliseconds.
     value = value.replace(/\.0{1,3}$/, "");

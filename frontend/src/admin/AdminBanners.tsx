@@ -1,4 +1,4 @@
-import { displayTimeZone } from "../shared/timezone";
+import { businessTimeZone } from "../shared/timezone";
 import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { adminInstant as formatInstant } from "./admin-log-time";
 import { useRef, useState } from "react";
@@ -374,7 +374,7 @@ export function BannerEditor({
                         <input disabled={busy || uploading}
                             type="datetime-local"
                             step={1}
-                            title={`时区：${displayTimeZone()}`}
+                            title={`业务时区：${businessTimeZone()}`}
                             value={draft.starts_at}
                             onChange={(e) =>
                                 change("starts_at", e.target.value)
@@ -386,13 +386,13 @@ export function BannerEditor({
                         <input disabled={busy || uploading}
                             type="datetime-local"
                             step={1}
-                            title={`时区：${displayTimeZone()}`}
+                            title={`业务时区：${businessTimeZone()}`}
                             value={draft.ends_at}
                             onChange={(e) => change("ends_at", e.target.value)}
                         />
                     </label>
                 </div>
-                <small>时间按系统业务时区 {displayTimeZone()} 填写；留空表示不限制。</small>
+                <small>时间按系统业务时区 {businessTimeZone()} 填写；留空表示不限制。</small>
                 <label style={{ display: "flex", alignItems: "center" }}>
                     <input disabled={busy || uploading}
                         type="checkbox"

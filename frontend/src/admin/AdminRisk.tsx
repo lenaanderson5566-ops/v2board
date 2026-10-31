@@ -1,7 +1,8 @@
 import { formatNumber } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminChoiceGroup } from "./AdminChoices";
-import { adminInstant } from "./admin-log-time";
+import { adminBusinessInstant } from "./admin-log-time";
+import { businessTimeZone } from "../shared/timezone";
 import { AdminSubscriptionProtection } from "./AdminSubscriptionProtection";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useState } from "react";
@@ -79,11 +80,12 @@ export function RiskOverview() {
                 </div>
                 <div className="split">
                     <Panel title="命中趋势">
+                        <p className="muted">时间轴按业务时区 {businessTimeZone()} 标注固定统计区间；切换界面时区不会重新划分统计。</p>
                         <div className="risk-trend" aria-label="风控命中趋势">
                             {trend.map((r) => (
                                 <div
                                     key={r.at}
-                                    title={`${date(r.at)} · ${r.hits} 次`}
+                                    title={`${adminBusinessInstant(r.at)} · ${businessTimeZone()} · ${r.hits} 次`}
                                 >
                                     <span>{r.hits || ""}</span>
                                     <i
@@ -92,7 +94,7 @@ export function RiskOverview() {
                                         }}
                                     />
                                     <small>
-                                        {adminInstant(r.at, window === "today"
+                                        {adminBusinessInstant(r.at, window === "today"
                                             ? {year: undefined, month: undefined, day: undefined, hour: "2-digit", minute: undefined, second: undefined}
                                             : {year: undefined, month: "numeric", day: "numeric", hour: undefined, minute: undefined, second: undefined})}
                                     </small>

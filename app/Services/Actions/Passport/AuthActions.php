@@ -6,7 +6,6 @@ namespace App\Services\Actions\Passport;
 use App\Http\Requests\Passport\AuthForget;
 use App\Http\Requests\Passport\AuthLogin;
 use App\Http\Requests\Passport\AuthRegister;
-use App\Jobs\SendEmailJob;
 use App\Services\EmailInvitationService;
 use App\Models\Plan;
 use App\Models\User;
@@ -127,7 +126,7 @@ class AuthActions
 
     public function login(AuthLogin $request)
     {
-        $email = $request->input('email');
+        $email = \App\Services\EmailAddress::key($request->input('email'));
         $password = $request->input('password');
         $riskLogService = new RiskLogService();
         $limitEmail = strtolower(trim($email));
@@ -141,7 +140,7 @@ class AuthActions
             }
         }
 
-        $user = User::where('email', $email)->first();
+        $user = \App\Services\EmailAddress::find($email);
         if (!$user) {
             $riskLogService->createLoginLog([
                 'email' => $email,
@@ -237,41 +236,9 @@ class AuthActions
 
     public function forget(AuthForget $request)
     {
-        $email     = $request->input('email');
-        $inputCode = $request->input('email_code');
-        $password  = $request->input('password');
-
-        if (!is_string($email) || !is_string($inputCode) || !is_string($password)) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Incorrect email verification code'));
-        }
-        if (!preg_match('/^\d{6}$/', $inputCode)) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Incorrect email verification code'));
-        }
-
-        $cacheKeyEmail         = strtolower(trim($email));
-        $forgetRequestLimitKey = CacheKey::get('FORGET_REQUEST_LIMIT', $cacheKeyEmail);
-        $forgetRequestLimit    = (int)Cache::get($forgetRequestLimitKey);
-        if ($forgetRequestLimit >= 3) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Reset failed, Please try again later'));
-        }
-
-        $cachedCode = Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
-        if ($cachedCode === null || $cachedCode === '' || !hash_equals((string)$cachedCode, $inputCode)) {
-            Cache::put($forgetRequestLimitKey, $forgetRequestLimit + 1, 300);
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Incorrect email verification code'));
-        }
-        $user = User::where('email', $email)->first();
-        if (!$user) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('This email is not registered in the system'));
-        }
-        $user->password      = password_hash($password, PASSWORD_DEFAULT);
-        $user->password_algo = null;
-        $user->password_salt = null;
-        if (!$user->save()) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Reset failed'));
-        }
-        Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
-        (new AuthService($user))->removeAllSession();
+        app(\App\Services\PasswordRecovery::class)->recover(
+            $request->input('email'), $request->input('email_code'), $request->input('password')
+        );
         return response([
             'data' => true
         ]);

@@ -2,6 +2,8 @@
 
 本文维护当前测试入口、隔离要求和验证边界。逐轮测试数量、旧版发布结果和临时日志路径不再累积为操作说明；已提交的历史记录可通过 Git 查阅。当前是否通过必须以本次执行结果为准。
 
+邮箱身份与密码找回复用 `tests/auth-security.php`，通过真实 V10 路由和假邮件队列验证重音排序规则碰撞、IDNA 等价与不同域名、验证码用途隔离、账号状态绑定、过期/重放拒绝和正常找回后的会话撤销。`tests/api-v10.php` 从找回接口签发的邮件夹具读取验证码，不再注入共享注册验证码作为重置凭据；`tests/session-concurrency.php` 使用两个实际进程验证同一码只能成功重置一次；`tests/product-mail.php` 验证找回邮件在模拟传输中的有效投递和过期拒绝。测试只在隔离项目、独立 MySQL 与 Redis 中运行，不投递真实邮件。
+
 原生路由回归复用 `node-routes`、`console-smoke`、`Nodes.test.tsx` 与 `admin-linkage.test.ts`：覆盖原生创建、兼容规则编辑、模板隔离、引用服务数、合并后跨片段标签检查及失败回滚。面板模板来自 `resources/client/node-route-presets.json`；V2Box 的 `core/testdata/panel-routing-presets.json` 是同内容测试快照，更新模板时同步，并运行 `TestPanelRoutingPresets` 验证固定核心解析。
 
 ## 测试入口

@@ -160,6 +160,32 @@ try {
     Cache::put(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$user->email),'123456',300);
     (new SendEmailJob($otp))->handle(); $assert($transport->sent===$before+1,'Valid verification code skipped');
     Cache::forget(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$user->email));
+    // Recovery has its own proof; the queued job must validate it before transport.
+    $recoveryKey=App\Services\PasswordRecovery::challengeKey((int)$user->id);
+    $savedRecoveryQueue=Illuminate\Support\Facades\Queue::getFacadeRoot();
+    Illuminate\Support\Facades\Queue::fake([SendEmailJob::class]);
+    try {
+        app(App\Services\PasswordRecovery::class)->send(strtoupper($user->email));
+        $recoveryJob=Illuminate\Support\Facades\Queue::pushed(SendEmailJob::class)->last();
+        $assert($recoveryJob instanceof SendEmailJob && $recoveryJob->queue==='send_email_priority','Recovery did not queue a priority verification email');
+        $params=(new ReflectionProperty(SendEmailJob::class,'params'))->getValue($recoveryJob);
+        $assert($params['email']===$user->email && $params['recovery_user_id']===(int)$user->id,'Recovery queued the requested spelling instead of the stored account mailbox');
+        $before=$transport->sent;
+        $result=$recoveryJob->handle();
+        $assert(empty($result['error']) && !isset($result['skipped']) && $transport->sent===$before+1,'Valid purpose-bound recovery code did not reach the mocked transport');
+        $challenge=Cache::get($recoveryKey);
+        $challenge['expiresAt']=time()-1;
+        Cache::put($recoveryKey,$challenge,300);
+        $before=$transport->sent;
+        $result=$recoveryJob->handle();
+        $assert(!empty($result['skipped']) && $transport->sent===$before,'Expired recovery proof reached the mocked transport');
+        Cache::forget($recoveryKey);
+        $result=$recoveryJob->handle();
+        $assert(!empty($result['skipped']) && $transport->sent===$before,'Consumed recovery proof reached the mocked transport');
+    } finally {
+        Illuminate\Support\Facades\Queue::swap($savedRecoveryQueue);
+        foreach (['',':sent',':attempts'] as $suffix) Cache::forget($recoveryKey.$suffix);
+    }
     $before=$transport->sent;
     $preview=(new App\Http\Controllers\V1\Admin\ConfigController)->previewMail(Illuminate\Http\Request::create('/', 'POST',['template'=>'verify','language'=>'fa-IR']));
     $assert($preview->getStatusCode()===200 && $before===$transport->sent,'Preview sends email');

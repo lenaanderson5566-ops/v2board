@@ -23,7 +23,14 @@ class CommActions
 
         $email = $request->input('email');
         $cacheKeyEmail = strtolower(trim((string)$email));
-        $isforget = $request->input('isforget');
+        $isforget = (int)$request->input('isforget', 0);
+        // Recovery is explicit and never shares registration verification codes.
+        if ($isforget === 1) {
+            $jobId = app(\App\Services\PasswordRecovery::class)->send($email);
+            return response([
+                'data' => $request->is('api/v10/*') ? ['task_id'=>$jobId,'status'=>'queued'] : true
+            ]);
+        }
         $email_exists = User::where('email', $email)->exists();
         //检查是否在白名单内
         if (!$isforget && (int)config('v2board.email_whitelist_enable', 0)) {
@@ -46,14 +53,7 @@ class CommActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
             }
         }
-        if (isset($isforget)) {
-            if ($isforget == 0 && $email_exists) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('This email is registered'));
-            }
-            if ($isforget == 1 && !$email_exists) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('This email is not registered in the system'));
-            }
-        }
+        if ($email_exists) abort(request()->is('api/v10/*') ? 409 : 500, __('This email is registered'));
         if (Cache::get(CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP', $cacheKeyEmail))) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Email verification code has been sent, please request again later'));
         }

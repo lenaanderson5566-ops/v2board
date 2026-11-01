@@ -49,7 +49,9 @@ class SendEmailJob implements ShouldQueue
         if ($this->deadline && time() >= $this->deadline) return ['skipped'=>true];
         if (\App\Services\Mail\MailBlocklist::contains($params['email'])) return $this->skipBlocked($announcement);
         if (($params['template_name'] ?? '') === 'verify') {
-            if (isset($params['mfa_challenge_key'])) {
+            if (isset($params['recovery_user_id'])) {
+                if (!\App\Services\PasswordRecovery::deliveryIsCurrent($params)) return ['skipped'=>true];
+            } elseif (isset($params['mfa_challenge_key'])) {
                 $challenge = Cache::get($params['mfa_challenge_key']);
                 if (!$challenge || $challenge['expiresAt'] <= time() || !isset($challenge['emailHash'])
                     || !hash_equals($challenge['emailHash'], hash_hmac('sha256', (string)($params['template_value']['code'] ?? ''), config('app.key')))) return ['skipped'=>true];

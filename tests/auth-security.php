@@ -262,6 +262,123 @@ try {
     try {$deleting->update(['banned'=>0]);$assert(false,'Deleted account was restored');} catch(RuntimeException $e) {$assert(str_contains($e->getMessage(),'cannot be restored'),'Deletion marker prevents restoration');}
     $assert(App\Models\User::whereKey($target->id)->exists(),'Unrelated account remains intact');
     Illuminate\Support\Facades\RateLimiter::clear('ACCOUNT_DELETION:'.$deleting->id);
+    // Recovery must bind a code to the stored mailbox, account and credential state.
+    // These requests traverse the public router while mail stays in the fake queue.
+    $recoveryQueue=Illuminate\Support\Facades\Queue::getFacadeRoot();
+    Illuminate\Support\Facades\Queue::fake();
+    $recoveryUsers=[]; $recoveryCache=[]; $recoveryRequest=0;
+    $recoveryOriginalRequest=app('request');
+    try {
+        config(['v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.email_verify'=>1,'v2board.mfa_enable'=>0]);
+        $recoverCall=function(string $path,array $body) use($kernel,&$recoveryRequest) {
+            $request=Illuminate\Http\Request::create('/api/v10/auth/'.$path,'POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>'198.51.100.'.(++$recoveryRequest),'HTTP_USER_AGENT'=>'RecoverySecurityTest'],json_encode($body));
+            app()->instance('request',$request);
+            return $kernel->handle($request);
+        };
+        $recoveryFixture=function(?string $email=null) use(&$recoveryUsers,&$recoveryCache) {
+            $account=App\Models\User::create(['email'=>$email ?? 'recovery-'.bin2hex(random_bytes(6)).'@example.com','password'=>password_hash('RecoveryOriginal!2026',PASSWORD_DEFAULT),'token'=>App\Utils\Helper::guid(),'uuid'=>App\Utils\Helper::guid(true),'is_admin'=>1]);
+            $recoveryUsers[]=$account;
+            $key=App\Services\PasswordRecovery::challengeKey((int)$account->id);
+            array_push($recoveryCache,$key,$key.':sent',$key.':attempts');
+            return $account;
+        };
+        $recoveryMail=function() {
+            $job=Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->last();
+            if (!$job) throw new RuntimeException('Expected a queued verification email');
+            return (new ReflectionProperty($job,'params'))->getValue($job);
+        };
+        $sendRecovery=function($account,?string $email=null) use($recoverCall,$recoveryMail,$assert) {
+            $before=Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->count();
+            $response=$recoverCall('email-verifications',['email'=>$email ?? $account->email,'resetPassword'=>true]);
+            $assert($response->getStatusCode()===202,'Recovery request queues a code through V10: '.$response->getContent());
+            $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->count()===$before+1,'Recovery sends exactly one mail');
+            $mail=$recoveryMail();
+            $assert($mail['email']===$account->email,'Recovery mail goes to the stored mailbox');
+            return $mail;
+        };
+        $resetRecovery=fn($account,$code,$email=null)=>$recoverCall('password-resets',['email'=>$email ?? $account->email,'emailCode'=>$code,'password'=>'RecoveryReplaced!2026']);
+        $assert(App\Services\EmailAddress::key('admin@example.com')!==App\Services\EmailAddress::key('admin@éxample.com'),'Accented domain is a distinct email identity');
+        $assert(App\Services\EmailAddress::key('admin@example.com')!==App\Services\EmailAddress::key('ádmin@example.com'),'Accented local part is a distinct email identity');
+        $assert(App\Services\EmailAddress::key('Admin@éxample.com')===App\Services\EmailAddress::key('admin@xn--xample-9ua.com'),'IDNA spellings share one exact mailbox identity');
+        $assert(App\Services\EmailAddress::key('admin@faß.de')!==App\Services\EmailAddress::key('admin@fass.de'),'IDNA normalization must not merge sharp-s and ss domains');
+        $assert(App\Services\EmailAddress::key('admin@faß.de')===App\Services\EmailAddress::key('admin@xn--fa-hia.de'),'Nontransitional IDNA spellings share one mailbox identity');
+
+        $victim=$recoveryFixture(); $originalPassword=$victim->password;
+        foreach ([str_replace('@example.com','@éxample.com',$victim->email),str_replace('recovery-','récovery-',$victim->email)] as $lookalike) {
+            $assert(App\Models\User::where('email',$lookalike)->value('id')===$victim->id,'Fixture reproduces an accent-insensitive database collision');
+            $count=Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->count();
+            $response=$recoverCall('email-verifications',['email'=>$lookalike,'resetPassword'=>true]);
+            $assert($response->getStatusCode()===409,'Collation-equivalent attacker mailbox cannot request victim recovery');
+            $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->count()===$count,'No verification mail is sent to a collation lookalike');
+            $assert($recoverCall('sessions',['email'=>$lookalike,'password'=>'RecoveryOriginal!2026'])->getStatusCode()===401,'Database-equivalent mailbox cannot log in as the victim even with its password');
+            $shared=App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',strtolower($lookalike)); $recoveryCache[]=$shared;
+            Cache::put($shared,'123456',300);
+            $assert($resetRecovery($victim,'123456',$lookalike)->getStatusCode()===409 && $victim->fresh()->password===$originalPassword,'Attacker-held shared code cannot change the colliding account');
+        }
+        $oldCode=App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',strtolower($victim->email)); $recoveryCache[]=$oldCode;
+        Cache::put($oldCode,'123456',300);
+        $assert($resetRecovery($victim,'123456')->getStatusCode()===409 && $victim->fresh()->password===$originalPassword,'Pre-upgrade shared verification code cannot reset an exact account');
+
+        $registrationEmail='registration-purpose-'.bin2hex(random_bytes(6)).'@example.com';
+        $response=$recoverCall('email-verifications',['email'=>$registrationEmail]);
+        $assert($response->getStatusCode()===202,'Omitted recovery purpose remains a registration request');
+        $registrationCode=$recoveryMail()['template_value']['code'];
+        foreach (['EMAIL_VERIFY_CODE','LAST_SEND_EMAIL_VERIFY_TIMESTAMP'] as $name) $recoveryCache[]=App\Utils\CacheKey::get($name,$registrationEmail);
+        $registered=$recoveryFixture($registrationEmail); $registeredHash=$registered->password;
+        $assert($resetRecovery($registered,$registrationCode)->getStatusCode()===409 && $registered->fresh()->password===$registeredHash,'Registration verification cannot authorize later account recovery');
+
+        $normal=$recoveryFixture();
+        $oldSession=(new App\Services\AuthService($normal))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $mail=$sendRecovery($normal,strtoupper($normal->email)); $code=$mail['template_value']['code'];
+        $assert(App\Services\PasswordRecovery::deliveryIsCurrent($mail),'Current recovery job remains deliverable');
+        $assert($recoverCall('email-verifications',['email'=>strtoupper($normal->email),'resetPassword'=>true])->getStatusCode()===409,'Case variants share the recovery resend cooldown');
+        $assert($resetRecovery($normal,'000000')->getStatusCode()===409,'Wrong recovery code is rejected');
+        $response=$resetRecovery($normal,$code,strtoupper($normal->email));
+        $assert($response->getStatusCode()===204 && password_verify('RecoveryReplaced!2026',$normal->fresh()->password),'Exact mailbox can reset normally after a wrong attempt');
+        $assert(App\Services\AuthService::decryptAuthData($oldSession)===false,'Recovery revokes pre-existing login sessions');
+        $assert($resetRecovery($normal,$code)->getStatusCode()===409,'Consumed recovery code cannot replay');
+        $assert(!App\Services\PasswordRecovery::deliveryIsCurrent($mail),'Consumed recovery email job is suppressed');
+
+        $limited=$recoveryFixture(); $mail=$sendRecovery($limited); $limitedHash=$limited->password;
+        for ($attempt=0;$attempt<3;$attempt++) $assert($resetRecovery($limited,'000000')->getStatusCode()===409,'Recovery wrong-attempt limit counts each failed proof');
+        $assert($resetRecovery($limited,$mail['template_value']['code'])->getStatusCode()===409 && $limited->fresh()->password===$limitedHash,'Exhausted recovery challenge rejects even the correct code');
+        Cache::forget(App\Services\PasswordRecovery::challengeKey((int)$limited->id).':sent');
+        $assert($recoverCall('email-verifications',['email'=>strtoupper($limited->email),'resetPassword'=>true])->getStatusCode()===409,'Resending under another spelling cannot clear the failed-attempt limit');
+
+        foreach (['password','email','expiry','replacement'] as $change) {
+            $account=$recoveryFixture(); $mail=$sendRecovery($account); $code=$mail['template_value']['code']; $email=$account->email;
+            $key=App\Services\PasswordRecovery::challengeKey((int)$account->id);
+            if ($change==='password') $account->update(['password'=>password_hash('ChangedElsewhere!2026',PASSWORD_DEFAULT)]);
+            if ($change==='email') $account->update(['email'=>'changed-'.bin2hex(random_bytes(6)).'@example.com']);
+            if ($change==='expiry') { $challenge=Cache::get($key); $challenge['expiresAt']=time()-1; Cache::put($key,$challenge,300); }
+            if ($change==='replacement') {
+                Cache::forget($key.':sent'); $replacement=$sendRecovery($account);
+                $assert($replacement['template_value']['code']!==$code,'Resend replaces the previous recovery code');
+            }
+            $hash=$account->fresh()->password;
+            $assert($resetRecovery($account,$code,$email)->getStatusCode()===409 && $account->fresh()->password===$hash,'Recovery is invalidated by '.$change);
+            $assert(!App\Services\PasswordRecovery::deliveryIsCurrent($mail),'Stale queued recovery mail is suppressed after '.$change);
+        }
+        $idn=$recoveryFixture('idn-'.bin2hex(random_bytes(6)).'@éxample.com');
+        $idnEmail=str_replace('@éxample.com','@xn--xample-9ua.com',$idn->email);
+        $mail=$sendRecovery($idn,$idnEmail);
+        $assert($recoverCall('email-verifications',['email'=>$idn->email,'resetPassword'=>true])->getStatusCode()===409,'IDNA spellings share one recovery cooldown');
+        $assert($resetRecovery($idn,$mail['template_value']['code'],$idnEmail)->getStatusCode()===204,'Legacy IDN mailbox recovers through equivalent ASCII spelling');
+        $login=$recoverCall('sessions',['email'=>$idnEmail,'password'=>'RecoveryReplaced!2026']);
+        $assert($login->getStatusCode()===200 && isset(json_decode($login->getContent(),true)['data']['accessToken']),'Exact IDNA mailbox can log in normally after recovery');
+        $duplicate=$recoveryFixture($idnEmail);
+        $count=Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->count();
+        foreach ([$idn->email,$duplicate->email] as $ambiguous) {
+            $assert($recoverCall('email-verifications',['email'=>$ambiguous,'resetPassword'=>true])->getStatusCode()===409,'Ambiguous legacy IDNA accounts cannot select a recovery target');
+            $assert($recoverCall('sessions',['email'=>$ambiguous,'password'=>'RecoveryOriginal!2026'])->getStatusCode()===401,'Ambiguous legacy IDNA accounts cannot select a login target');
+        }
+        $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->count()===$count,'Ambiguous identities send no recovery mail');
+    } finally {
+        foreach ($recoveryUsers as $account) (new App\Services\AuthService($account))->removeAllSession();
+        foreach ($recoveryCache as $key) Cache::forget($key);
+        Illuminate\Support\Facades\Queue::swap($recoveryQueue);
+        app()->instance('request',$recoveryOriginalRequest);
+    }
     echo "Authentication security: $checks checks passed\n";
 } finally {
     if ($auth) $auth->removeAllSession();

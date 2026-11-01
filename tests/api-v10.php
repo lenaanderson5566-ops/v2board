@@ -485,8 +485,12 @@ try {
     $registered=User::where('email',$email)->first(); $cleanupUsers[]=$registered;
     $assert($registered->invite_user_id===$user->id && $registered->language==='zh-TW','Registration preserves invitation and language');
     $registrationToken=$j['data']['accessToken'];
-    Illuminate\Support\Facades\Cache::put(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$email),'123456',300);
-    [$r,$j]=$call('POST','/api/v10/auth/password-resets',['email'=>$email,'password'=>'V10changedpassword','emailCode'=>'123456']);
+    Illuminate\Support\Facades\RateLimiter::clear($testIp);
+    [$r,$j]=$call('POST','/api/v10/auth/email-verifications',['email'=>$email,'resetPassword'=>true]);
+    $assert($r->getStatusCode()===202, 'Password recovery queues a purpose-bound challenge');
+    $recoveryJob=Illuminate\Support\Facades\Queue::pushed(App\Jobs\SendEmailJob::class)->last();
+    $recoveryParams=(new ReflectionProperty($recoveryJob, 'params'))->getValue($recoveryJob);
+    [$r,$j]=$call('POST','/api/v10/auth/password-resets',['email'=>$email,'password'=>'V10changedpassword','emailCode'=>$recoveryParams['template_value']['code']]);
     $assert($r->getStatusCode()===204 && !App\Services\AuthService::decryptAuthData($registrationToken),'Password reset revokes shared sessions');
     [$r,$j]=$call('GET','/api/v10/public/settings',[],null,'en-US;q=0.3, zh-TW;q=0.9');
     $assert($r->headers->get('Content-Language')==='zh-TW','Language quality negotiation');

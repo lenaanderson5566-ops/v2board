@@ -38,6 +38,8 @@ try{
  $assert(!$inv->fresh()->accepted_at,'OTP consumed invitation');
  config(['v2board.stop_register'=>1]);$send(['email'=>$emails[1],'isforget'=>1]);
  $assert(Queue::pushed(App\Jobs\SendEmailJob::class)->count()===2,'Existing account recovery blocked');
+ $reject(fn()=>$send(['email'=>'policy-boolean-purpose@example.test','isforget'=>true]));
+ $assert(Queue::pushed(App\Jobs\SendEmailJob::class)->count()===2,'Boolean recovery purpose bypassed registration policy for an unknown account');
  $guest=(new App\Services\Actions\Guest\CommActions)->config()->getOriginalContent()['data'];
  $assert($guest['email_whitelist_suffix']===['example.test']&&$guest['is_invite_force']===1,'Guest configuration differs from policy');
 }finally{

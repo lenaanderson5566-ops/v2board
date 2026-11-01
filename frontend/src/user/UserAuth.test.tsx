@@ -85,6 +85,66 @@ it("returns to the pending app authorization after website sign-in", async () =>
     fireEvent.click(screen.getByRole("button", { name: "登录" }));
     await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(target));
 });
+it.each([true, false])("takes a newly registered account without service directly to plans (email verification %s)", async (verify) => {
+    mocks.boot.emailVerify = verify;
+    const fallback = mocks.request.getMockImplementation()!;
+    mocks.request.mockImplementation(async (path: string, body?: unknown) => path === "user/info"
+        ? { data: { email: "review@example.test", account_status: { state: "new" } } }
+        : fallback(path, body));
+    page(); credentials();
+    fireEvent.click(screen.getByRole("button", { name: verify ? "next" : "注册账户" }));
+    if (verify) {
+        await screen.findByLabelText("邮箱验证码");
+        fireEvent.change(screen.getByLabelText("邮箱验证码"), { target: { value: "123456" } });
+        fireEvent.click(screen.getByRole("button", { name: "create" }));
+    }
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("plan"));
+});
+it.each(["plan/7?period=year_price&couponId=8", "client-authorize?authorizationId=" + "a".repeat(64)])("preserves an explicit return after registration: %s", async (destination) => {
+    mocks.boot.emailVerify = false;
+    const fallback = mocks.request.getMockImplementation()!;
+    mocks.request.mockImplementation(async (path: string, body?: unknown) => path === "user/info"
+        ? { data: { account_status: { state: "new" } } } : fallback(path, body));
+    page("register", destination); credentials();
+    fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith(destination));
+});
+it.each(["active", "expired", "banned"])("keeps authoritative %s account routing after signup", async (state) => {
+    mocks.boot.emailVerify = false;
+    const fallback = mocks.request.getMockImplementation()!;
+    mocks.request.mockImplementation(async (path: string, body?: unknown) => path === "user/info"
+        ? { data: { account_status: { state }, plan_id: state === "active" ? 3 : null } } : fallback(path, body));
+    page(); credentials();
+    fireEvent.click(screen.getByRole("button", { name: "注册账户" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("dashboard"));
+    expect(mocks.navigate).not.toHaveBeenCalledWith("plan");
+});
+it("keeps ordinary logins to new accounts on the dashboard rather than forcing a purchase", async () => {
+    const fallback = mocks.request.getMockImplementation()!;
+    mocks.request.mockImplementation(async (path: string, body?: unknown) => path === "user/info"
+        ? { data: { account_status: { state: "new" } } } : fallback(path, body));
+    page("login"); credentials();
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    await waitFor(() => expect(mocks.navigate).toHaveBeenCalledWith("dashboard"));
+});
+it.each([true, false])("preserves purchase handoff and session-owner acceptance after MFA (%s)", async (accepted) => {
+    const user = { email: "review@example.test", account_status: { state: "new" } };
+    mocks.request.mockImplementation(async (path: string) => ({ data: path === "passport/auth/login"
+        ? { mfaRequired: true, challengeId: "a".repeat(64), methods: ["totp"], preferredMethod: "totp" }
+        : path === "user/info" ? user : true }));
+    vi.mocked(applyAccountLanguage).mockRejectedValueOnce(new Error("Language unavailable"));
+    const view = page("login", "plan/7?period=month_price");
+    view.onLogin.mockReturnValue(accepted);
+    credentials();
+    fireEvent.click(screen.getByRole("button", { name: "登录" }));
+    await screen.findByRole("heading", { name: "登录安全验证" });
+    fireEvent.change(screen.getByLabelText("验证码"), { target: { value: "123456" } });
+    fireEvent.click(screen.getByRole("button", { name: "验证并登录" }));
+    await waitFor(() => expect(view.onLogin).toHaveBeenCalledWith(user, { languagePending: true }));
+    if (accepted) expect(mocks.navigate).toHaveBeenCalledWith("plan/7?period=month_price");
+    else expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(screen.queryByRole("alert")).toBeNull();
+});
 it("completes sign-in with a recoverable language notice if the saved language cannot load", async () => {
     vi.mocked(applyAccountLanguage).mockRejectedValueOnce(new Error("Language unavailable"));
     const view=page("login", "plan/1?period=year_price");
@@ -287,7 +347,7 @@ describe("user account steps", () => {
             return {
                 data:
                     path === "user/info"
-                        ? { email: "review@example.test" }
+                        ? { email: "review@example.test", account_status: { state: "new" } }
                         : true,
             };
         });
@@ -297,6 +357,7 @@ describe("user account steps", () => {
         await screen.findByRole("alert");
         fireEvent.click(screen.getByRole("button", { name: "登录" }));
         await waitFor(() => expect(onLogin).toHaveBeenCalled());
+        expect(mocks.navigate).toHaveBeenCalledWith("plan");
         expect(
             mocks.request.mock.calls.filter(
                 (call) => call[0] === "passport/auth/register",

@@ -49,6 +49,10 @@ export function BillingPage() {
         );
     const retryIn = useRetryCountdown(orders.retryAt);
     const blocked = orders.loading || retryIn > 0;
+    const newAccount = info.data?.account_status?.state === "new";
+    const offerFirstPlan = newAccount && !filtered && page === 1 &&
+        !orders.loading && !orders.error && orders.total === 0 &&
+        Array.isArray(orders.data) && orders.data.length === 0;
     const [dialog, setDialog] = useState<"gift" | "deposit" | null>(null);
     const [all, setAll] = useState(false);
     const status = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
@@ -88,6 +92,11 @@ export function BillingPage() {
                                     ? `${tx("订阅到期")} · ${sub.data.expired_at ? date(sub.data.expired_at, { second: undefined }) : tx("长期有效")}`
                                     : b("choosePlan")}
                             </p>
+                            {newAccount && (
+                                <p className="muted">
+                                    {tx("购买套餐可直接付款，无需先充值账户余额。")}
+                                </p>
+                            )}
                         </div>
                         <a className="button soft-button" href="#/plan">
                             {tx(sub.data?.plan ? "管理订阅" : "购买订阅")}
@@ -296,6 +305,13 @@ export function BillingPage() {
                                         : "noTransactions",
                                 )}
                             />
+                            {offerFirstPlan && (
+                                <div className="actions">
+                                    <a className="button primary" href="#/plan">
+                                        {tx("选择套餐")}
+                                    </a>
+                                </div>
+                            )}
                         </div>
                     )}
                 </State>

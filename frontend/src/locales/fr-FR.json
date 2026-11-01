@@ -1,5 +1,8 @@
 {
   "translation": {
+    "您有一笔待完成的订单": "Vous avez une commande en cours",
+    "继续完成订单即可开通服务，无需重新选择套餐。": "Terminez votre commande actuelle pour activer le service. Il n’est pas nécessaire de choisir à nouveau une offre.",
+    "购买套餐可直接付款，无需先充值账户余额。": "Vous pouvez payer une offre directement, sans recharger au préalable le solde de votre compte.",
     "此次请求时订阅已到期，请检查有效期或续费后更新配置。": "L’abonnement avait expiré au moment de cette demande. Vérifiez sa date d’expiration ou renouvelez-le, puis mettez à jour la configuration.",
     "此次请求时没有可用订阅，请检查套餐状态。": "Aucun abonnement n’était disponible au moment de cette demande. Vérifiez l’état de votre forfait.",
     "此次请求时账户不可用，请联系支持核实账户状态。": "Le compte n’était pas disponible au moment de cette demande. Contactez l’assistance pour vérifier son état.",

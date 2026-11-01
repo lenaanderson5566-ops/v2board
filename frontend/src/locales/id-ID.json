@@ -1,5 +1,8 @@
 {
   "translation": {
+    "您有一笔待完成的订单": "Anda memiliki pesanan yang belum selesai",
+    "继续完成订单即可开通服务，无需重新选择套餐。": "Selesaikan pesanan yang ada untuk mengaktifkan layanan. Anda tidak perlu memilih paket lagi.",
+    "购买套餐可直接付款，无需先充值账户余额。": "Anda dapat membayar paket secara langsung. Tidak perlu mengisi saldo akun terlebih dahulu.",
     "此次请求时订阅已到期，请检查有效期或续费后更新配置。": "Langganan telah kedaluwarsa saat permintaan ini dibuat. Periksa masa berlaku atau perpanjang langganan, lalu perbarui konfigurasi.",
     "此次请求时没有可用订阅，请检查套餐状态。": "Tidak ada langganan yang tersedia saat permintaan ini dibuat. Periksa status paket.",
     "此次请求时账户不可用，请联系支持核实账户状态。": "Akun tidak tersedia saat permintaan ini dibuat. Hubungi dukungan untuk memeriksa status akun.",

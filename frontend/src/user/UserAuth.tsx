@@ -86,6 +86,7 @@ export function UserAuth({
     const verificationFocusPending = useRef(false);
     const verificationEmail = useRef("");
     const submitting = useRef(false);
+    const registeredInFlow = useRef(false);
     const mounted = useRef(true);
     useEffect(() => {
         mounted.current = true;
@@ -117,6 +118,11 @@ export function UserAuth({
                   ? tx("受邀加入")
                   : tx("创建账户")
               : tx("欢迎回来");
+    function postLoginPath(user: Row) {
+        // Only a just-created account without usable service skips the overview.
+        // Trials and explicit purchase/client authorization returns keep their destination.
+        return redirectPath ?? (registeredInFlow.current && user.account_status?.state === "new" ? "plan" : "dashboard");
+    }
     async function completeLogin() {
         const info = await request("user/info");
         if (!mounted.current) return;
@@ -129,7 +135,7 @@ export function UserAuth({
         if (!mounted.current) return;
         const accepted = languagePending
             ? onLogin(info.data, { languagePending }) : onLogin(info.data);
-        if (accepted !== false) navigate(redirectPath ?? "dashboard");
+        if (accepted !== false) navigate(postLoginPath(info.data));
     }
     async function sendCode() {
         if (register) {
@@ -190,6 +196,7 @@ export function UserAuth({
             }
             if (register && !registered) {
                 await request("passport/auth/register", body);
+                registeredInFlow.current = true;
                 setRegistered(true);
             }
             const login = await request("passport/auth/login", {
@@ -281,12 +288,7 @@ export function UserAuth({
                 <MfaLogin
                     challenge={mfa}
                     onCancel={() => setMfa(null)}
-                    onComplete={async () => {
-                        const info = await request("user/info");
-                        await applyAccountLanguage(info.data.language);
-                        onLogin(info.data);
-                        navigate(redirectPath ?? "dashboard");
-                    }}
+                    onComplete={completeLogin}
                 />
             </div>
         );

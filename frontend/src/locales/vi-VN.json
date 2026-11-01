@@ -1,5 +1,8 @@
 {
   "translation": {
+    "您有一笔待完成的订单": "Bạn có một đơn hàng chưa hoàn tất",
+    "继续完成订单即可开通服务，无需重新选择套餐。": "Tiếp tục hoàn tất đơn hàng hiện có để kích hoạt dịch vụ. Bạn không cần chọn lại gói.",
+    "购买套餐可直接付款，无需先充值账户余额。": "Bạn có thể thanh toán trực tiếp cho gói. Không cần nạp tiền vào số dư tài khoản trước.",
     "此次请求时订阅已到期，请检查有效期或续费后更新配置。": "Đăng ký đã hết hạn tại thời điểm gửi yêu cầu này. Hãy kiểm tra ngày hết hạn hoặc gia hạn rồi cập nhật cấu hình.",
     "此次请求时没有可用订阅，请检查套餐状态。": "Không có đăng ký khả dụng tại thời điểm gửi yêu cầu này. Hãy kiểm tra trạng thái gói.",
     "此次请求时账户不可用，请联系支持核实账户状态。": "Tài khoản không khả dụng tại thời điểm gửi yêu cầu này. Hãy liên hệ hỗ trợ để kiểm tra trạng thái tài khoản.",

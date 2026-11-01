@@ -18,7 +18,15 @@ Mail intentionally contains a generic service confirmation and account link, wit
 
 ## Account navigation
 
-New accounts keep **Choose a plan / Documentation**. Configuration is useful after activation; linking there before purchase adds an empty step. The explanatory sequence is **Choose a plan → Confirm and pay → Configuration center**. Account security shares the account pages' width, outer heading and section cards; remove its extra dashboard-back level. Session revocation and password/subscription reset behavior remain unchanged.
+After successful registration, an account whose authoritative service state is `new` goes directly to the existing plan catalog. An explicit purchase, coupon or client-authorization return takes priority. Accounts with trial/usable service keep the dashboard destination, as do ordinary sign-ins. No plan, order, discount or payment is selected automatically.
+
+When a user without service returns to the dashboard, check existing orders before showing **Choose a plan / Documentation**. An unpaid order offers **Continue payment** through its existing checkout; a processing order offers its activation progress. Reuse the existing cancellation confirmation, server order amounts and ownership checks. A failed or incomplete order lookup provides retry instead of treating unknown state as an empty history. Deposits and credit orders keep their own order destination and do not promise subscription activation.
+
+The billing page explains to accounts without a plan that they can pay for a plan directly without first topping up their wallet. A successfully loaded, unfiltered empty history includes a plan-selection link; filtered results, stale failures and active/expired accounts keep their existing behavior. Wallet deposits and gift-card redemption remain available.
+
+Configuration is useful after activation; linking there before purchase adds an empty step. The explanatory sequence is **Choose a plan → Confirm and pay → Configuration center**. Account security shares the account pages' width, outer heading and section cards; remove its extra dashboard-back level. Session revocation and password/subscription reset behavior remain unchanged.
+
+Validate the changes with `UserAuth`, `AccountEntry`, `UsageBilling`, `PendingOrderNotice` and purchase-flow tests. This removes navigation and payment-recovery friction; it does not establish a measured conversion uplift. Use existing mature registration cohorts and registration-to-payment timing for follow-up. Their confirmed-order metrics include wallet/zero-value payments and must not be described as an external-cash first-purchase rate. No new tracking or marketing messages are introduced.
 
 ## Deployment and validation
 

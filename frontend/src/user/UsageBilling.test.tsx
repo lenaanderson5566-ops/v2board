@@ -333,6 +333,56 @@ it("keeps recharge on the existing server order and payment flow", async () => {
         }),
     );
 });
+it("shows new accounts that a plan can be paid directly and offers the catalog from empty history", () => {
+    mocks.info.account_status.state = "new";
+    mocks.subscription = { has_subscription: false };
+    const view = render(<BillingPage />);
+    const guidance = screen.getByText("购买套餐可直接付款，无需先充值账户余额。");
+    expect(guidance.closest(".billing-current-plan")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "购买订阅" }).getAttribute("href")).toBe("#/plan");
+    expect(screen.getByText("noTransactions")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "选择套餐" }).getAttribute("href")).toBe("#/plan");
+    expect(screen.getByRole("button", { name: "账户充值" })).toBeTruthy();
+    expect(view.container.querySelector(".balance-amount")?.textContent).toBe("¥12.34");
+    expect(mocks.request).not.toHaveBeenCalled();
+});
+it.each(["active", "expired", "banned", undefined])(
+    "does not offer new-account purchase guidance for account state %s",
+    (state) => {
+        mocks.info.account_status = state ? { state } : undefined;
+        render(<BillingPage />);
+        expect(screen.queryByText("购买套餐可直接付款，无需先充值账户余额。")).toBeNull();
+        expect(screen.queryByRole("link", { name: "选择套餐" })).toBeNull();
+        expect(screen.getByRole("link", { name: "管理订阅" }).getAttribute("href")).toBe("#/plan");
+        expect(screen.getByRole("button", { name: "账户充值" })).toBeTruthy();
+    },
+);
+it("keeps new-account filtered no-results separate from an empty unfiltered transaction history", () => {
+    mocks.info.account_status.state = "new";
+    render(<BillingPage />);
+    fireEvent.change(screen.getByLabelText("状态"), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "searchTransactions" }));
+    expect(screen.getByText("noMatchingTransactions")).toBeTruthy();
+    expect(screen.queryByText("noTransactions")).toBeNull();
+    expect(screen.queryByRole("link", { name: "选择套餐" })).toBeNull();
+    expect(screen.getByText("购买套餐可直接付款，无需先充值账户余额。")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "重置" }));
+    expect(screen.getByText("noTransactions")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "选择套餐" }).getAttribute("href")).toBe("#/plan");
+});
+it("waits for a successful empty-history response before offering a new account a plan", () => {
+    mocks.info.account_status.state = "new";
+    mocks.orderLoading = true;
+    const view = render(<BillingPage />);
+    expect(screen.queryByRole("link", { name: "选择套餐" })).toBeNull();
+    mocks.orderLoading = false;
+    mocks.orderError = "order history unavailable";
+    view.rerender(<BillingPage />);
+    expect(screen.queryByRole("link", { name: "选择套餐" })).toBeNull();
+    mocks.orderError = "";
+    view.rerender(<BillingPage />);
+    expect(screen.getByRole("link", { name: "选择套餐" }).getAttribute("href")).toBe("#/plan");
+});
 it("expands all transactions and retains order detail links", () => {
     mocks.orders = Array.from({ length: 6 }, (_, i) => ({
         trade_no: `order-${i}`,

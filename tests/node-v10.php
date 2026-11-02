@@ -339,6 +339,113 @@ try {
     $user=new App\Models\User(['email'=>'node-v10-test@example.test','password'=>'unused','uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','token'=>'node-v10-test','group_id'=>999997,'expired_at'=>null,'transfer_enable'=>1024,'u'=>0,'d'=>0,'banned'=>0]);$user->save();
     $r=$call('GET',$root.'/users');$list=json_decode($r->getContent(),true)['data'];
     $assert(count($list)===1 && $list[0]['uuid']===$user->uuid && array_key_exists('speedLimit',$list[0]),'User resource projection');
+    // Business fulfillment must reach both node contracts on the next pull.
+    // No cache flush, scheduler tick or new UUID is needed to restore access.
+    (function () use ($call,$root,$node,$nodeId,$assert) {
+        $originalConfig=config('fastai');
+        config(['fastai.new_user_currency'=>'CNY','fastai.credit_base_group_id'=>null,
+            'fastai.plan_change_enable'=>1,'fastai.surplus_enable'=>0,
+            'fastai.new_order_event_id'=>0,'fastai.renew_order_event_id'=>0,'fastai.change_order_event_id'=>0]);
+        $plan=App\Models\Plan::create(['name'=>'Node renewal fixture','group_id'=>999997,'transfer_enable'=>1,
+            'month_price'=>100,'onetime_price'=>50,'show'=>1,'renew'=>1,'speed_limit'=>10,'device_limit'=>2]);
+        $nextPlan=App\Models\Plan::create(['name'=>'Node switch fixture','group_id'=>999996,'transfer_enable'=>2,
+            'month_price'=>200,'show'=>1,'renew'=>1,'speed_limit'=>25,'device_limit'=>4]);
+        $otherNode=$node->replicate();$otherNode->name='Renewal second group';$otherNode->group_id=[999996];$otherNode->save();
+        $subscriber=App\Models\User::create(['email'=>'node-renewal@example.test','password'=>'test-only',
+            'uuid'=>(string)Illuminate\Support\Str::uuid(),'token'=>Illuminate\Support\Str::random(32),
+            'plan_id'=>$plan->id,'group_id'=>999997,'transfer_enable'=>1073741824,'u'=>1073741824,'d'=>0,
+            'expired_at'=>time()-86400,'credit_balance'=>0,'balance'=>10000,'banned'=>0]);
+        $uuid=$subscriber->uuid;
+        $pull=function($previous=[],int $expectedStatus=200,?bool $present=null,string $label='',?int $target=null,?array $limits=null) use ($call,$root,$nodeId,$subscriber,$assert) {
+            $result=[];$target=$target??$nodeId;
+            foreach (['v10'=>$root.'/users','legacy'=>'/api/v1/server/UniProxy/user?node_type=v2box&node_id='.$target] as $contract=>$path) {
+                $headers=['HTTP_X_NODE_ID'=>(string)$target];
+                if (isset($previous[$contract])) $headers['HTTP_IF_NONE_MATCH']=$previous[$contract];
+                $response=$call('GET',$path,[],$headers);
+                $assert($response->getStatusCode()===$expectedStatus,$label.' '.$contract.' HTTP status');
+                $result[$contract]=$response->headers->get('ETag')??($previous[$contract]??null);
+                if ($expectedStatus===304) continue;
+                $wire=json_decode($response->getContent(),true,512,JSON_THROW_ON_ERROR);
+                $rows=$wire[$contract==='v10'?'data':'users'];
+                $row=collect($rows)->firstWhere('id',$subscriber->id);
+                $assert(($row!==null)===$present,$label.' '.$contract.' current authorization');
+                if ($row!==null) {
+                    $assert($row['uuid']===$subscriber->uuid,$label.' '.$contract.' preserves current credentials');
+                    if ($limits!==null) foreach (['speed','device'] as $index=>$field) {
+                        $key=$contract==='v10'?$field.'Limit':$field.'_limit';
+                        $assert((int)$row[$key]===$limits[$index],$label.' '.$contract.' current '.$field.' limit');
+                    }
+                }
+            }
+            return $result;
+        };
+        $place=function($targetPlan,$period='month_price') use ($subscriber,$assert) {
+            $request=App\Http\Requests\User\OrderSave::create('/api/v10/me/orders','POST',['plan_id'=>$targetPlan->id,'period'=>$period]);
+            $request->user=['id'=>$subscriber->id];
+            $response=(new App\Services\Actions\User\OrderActions())->save($request);
+            $order=App\Models\Order::where('trade_no',json_decode($response->getContent(),true)['data'])->firstOrFail();
+            $assert((int)$order->status===0 && (int)$order->total_amount===0 && (int)$order->balance_amount>0,'Real order action reserves the fixture wallet payment');
+            return $order;
+        };
+        $fulfill=function($order) use ($subscriber,$assert) {
+            (new App\Services\OrderService($order))->paid('node-renewal-'.$order->id);
+            // Execute the same queued handler used after a confirmed payment.
+            (new App\Jobs\OrderHandleJob($order->trade_no))->handle();
+            $assert((int)$order->fresh()->status===3,'Payment handler completes entitlement fulfillment');
+            $subscriber->refresh();
+        };
+        try {
+            $missing=$pull([],200,false,'Expired exhausted subscriber');
+            $renewal=$place($plan);
+            $pull($missing,304,null,'Unpaid order grants no access');
+            $fulfill($renewal);
+            $assert($subscriber->expired_at>time()+25*86400 && (int)$subscriber->u===0 && $subscriber->uuid===$uuid,'Expired renewal restores allowance and expiry without changing UUID');
+            $available=$pull($missing,200,true,'Expired renewal immediately restores node access',null,[10,2]);
+            $expiry=$subscriber->expired_at;
+            $fulfill($place($plan));
+            $assert($subscriber->expired_at>$expiry,'An active renewal extends its actual expiry');
+            $available=$pull($available,304,null,'Expiry-only renewal keeps an unchanged user wire ETag');
+
+            // Renewal is not an implicit traffic reset outside the configured
+            // renewal event/expiry-day rules. An independently paid credit is.
+            $subscriber->u=$subscriber->transfer_enable;$subscriber->expired_at=time()+70*86400;$subscriber->save();
+            $exhausted=$pull($available,200,false,'Exhausted subscriber is removed');
+            $used=$subscriber->u;$expiry=$subscriber->expired_at;
+            $fulfill($place($plan));
+            $assert((int)$subscriber->u===(int)$used && $subscriber->expired_at>$expiry,'Ordinary renewal respects the existing no-reset rule');
+            $pull($exhausted,304,null,'Exhausted renewal cannot manufacture usable traffic');
+            $fulfill($place($plan,'onetime_price'));
+            $assert($subscriber->credit_balance===1073741824,'Paid independent credit grants its exact allowance');
+            $available=$pull($exhausted,200,true,'Paid credit immediately restores exhausted access',null,[10,2]);
+
+            $otherMissing=$pull([],200,false,'Different node group remains unauthorized',$otherNode->id);
+            $fulfill($place($nextPlan));
+            $pull($available,200,false,'Plan switch immediately removes old group access');
+            $otherAvailable=$pull($otherMissing,200,true,'Plan switch grants new group and limits',$otherNode->id,[25,4]);
+            $assert((int)$subscriber->group_id===999996 && $subscriber->uuid===$uuid,'Plan switch preserves UUID while changing the stored access group');
+
+            $edit=function(array $changes) use ($subscriber,$assert) {
+                $request=App\Http\Requests\Admin\UserUpdate::create('/','POST',$changes+[
+                    'id'=>$subscriber->id,'email'=>$subscriber->email,'banned'=>0,'is_admin'=>0]);
+                $validator=Illuminate\Support\Facades\Validator::make($request->all(),$request->rules());
+                $validator->validate();$request->setValidator($validator);
+                $assert((new App\Http\Controllers\V1\Admin\UserController())->update($request)->getStatusCode()===200,'Validated administrator edit succeeds');
+                $subscriber->refresh();
+            };
+            $edit(['banned'=>1]);
+            $banned=$pull($otherAvailable,200,false,'Ban immediately revokes paid and credit access',$otherNode->id);
+            $edit(['banned'=>0,'speed_limit'=>7,'device_limit'=>1]);
+            $restored=$pull($banned,200,true,'Unban restores current administrative limits',$otherNode->id,[7,1]);
+            $edit(['speed_limit'=>9,'device_limit'=>3]);
+            $pull($restored,200,true,'Limit-only edit invalidates both node ETags',$otherNode->id,[9,3]);
+        } finally {
+            config(['fastai'=>$originalConfig]);
+            DB::table('v2_credit_batch')->where('user_id',$subscriber->id)->delete();
+            DB::table('v2_traffic_credit_log')->where('user_id',$subscriber->id)->delete();
+            App\Models\Order::where('user_id',$subscriber->id)->delete();
+            $subscriber->delete();$otherNode->delete();$plan->delete();$nextPlan->delete();
+        }
+    })();
     $maintenance=App\Services\NodeMaintenance::class;
     $child=$node->replicate();$child->name='maintenance child';$child->service_id=$nodeId;$child->save();
     $maintenance::save('v2box',$nodeId,['enabled'=>true,'reason'=>'maintenance-test','endsAt'=>time()+3600,'hideSubscription'=>true]);

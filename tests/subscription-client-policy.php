@@ -140,13 +140,25 @@ try {
   $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'QX negative fixture has one authorized catalog node');
   $qx=$call('Quantumult X/1.5.0','quantumult-x');$notice($qx,'no_available_nodes');
   $assert(!str_contains(base64_decode($qx->getContent(),true)?:'','grpc-only.example.test'),'A filtered gRPC node cannot survive in QX output');
-  App\Models\ServerV2box::create(['group_id'=>[98763],'name'=>'Shadowrocket unsupported Naive','host'=>'naive-only.example.test','port'=>'443','server_port'=>443,
-   'protocol'=>'naive','show'=>1,'rate'=>1,'tls'=>1,'network'=>'tcp','up_mbps'=>0,'down_mbps'=>0]);
+  App\Models\ServerV2box::create(['group_id'=>[98763],'name'=>'Shadowrocket Naive-only','host'=>'naive-only.example.test','port'=>'443','server_port'=>443,
+   'protocol'=>'naive','show'=>1,'rate'=>1,'tls'=>1,'network'=>'tcp','tls_settings'=>['cert_mode'=>'http','server_name'=>'naive-sni.example.test'],'up_mbps'=>0,'down_mbps'=>0]);
   $user->group_id=98763;$user->save();
-  $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'Shadowrocket negative fixture has one authorized Naive node');
+  $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'Shadowrocket Naive-only fixture has one authorized node');
+  $rocket=$call('Shadowrocket/2.2.0','shadowrocket');
+  $rocketBody=base64_decode($rocket->getContent(),true)?:'';
+  $assert($rocket->getStatusCode()===200 && !$rocket->headers->has('X-Subscription-Notice'),'A Naive-only Shadowrocket subscription remains real usable output');
+  $assert(preg_match('/^http2:\/\/([^?#\r\n]+)\?([^#\r\n]*)#/m',$rocketBody,$naiveParts)===1,'Naive-only HTTP subscription contains a Shadowrocket HTTP2 proxy');
+  $assert(base64_decode($naiveParts[1],true)===rawurlencode($user->uuid).':'.rawurlencode($user->uuid).'@naive-only.example.test:443','Naive-only HTTP subscription retains the real user and endpoint');
+  parse_str($naiveParts[2],$naiveQuery);
+  $assert($naiveQuery===['peer'=>'naive-sni.example.test','alpn'=>'h2','padding'=>'1'],'Naive-only HTTP subscription carries SNI, HTTP2 and mandatory padding');
+  // Deliberately bypass admin validation to exercise unsupported-renderer safety.
+  App\Models\ServerV2box::create(['group_id'=>[98762],'name'=>'Shadowrocket unsupported future protocol','host'=>'unsupported-only.example.test','port'=>'443','server_port'=>443,
+   'protocol'=>'future-protocol','show'=>1,'rate'=>1,'tls'=>0,'network'=>'tcp','up_mbps'=>0,'down_mbps'=>0]);
+  $user->group_id=98762;$user->save();
+  $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'Unsupported-renderer fixture still has one authorized catalog node');
   $rocket=$call('Shadowrocket/2.2.0','shadowrocket');$notice($rocket,'no_available_nodes');
   $rocketBody=base64_decode($rocket->getContent(),true)?:'';
-  $assert(!str_contains($rocketBody,'STATUS=') && !str_contains($rocketBody,'naive-only.example.test'),'STATUS-only Shadowrocket content is replaced by a safe warning node');
+  $assert(!str_contains($rocketBody,'STATUS=') && !str_contains($rocketBody,'unsupported-only.example.test'),'Unsupported STATUS-only Shadowrocket output is still replaced by a safe warning node');
  } finally {$user->group_id=$oldGroup;$user->save();}
  config(['fastai.subscription_user_minute_limit'=>1]);
  $limited=$call('FlClash/0.8.0');

@@ -87,6 +87,10 @@ FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树�
 
 模板无关列表覆盖协议过滤后的空输出、Shadowrocket 仅 STATUS，以及 QX、Shadowrocket、SIP008 有效节点不误报。YAML/JSON/URI/列表解析和安全断言不等于代理内核或第三方客户端验证。`api-v10`、`browser-session` 及风险/日志模块验证本人配置记录、保留期读时过滤、稳定分页和最大整数页码、无套餐/过期及受限状态、原始凭据/UA/异常不外露、GET 不写订阅日志或触发风险。
 
+`naive` 与 `subscription-client-policy` 覆盖 Shadowrocket 专用 HTTP2 URI：完整认证/地址的内层 Base64、订阅外层 Base64、用户名/密码均为用户 UUID、IPv6/SNI/名称编码、Naive padding 和默认 TLS 校验；通用 `naive+https`、sing-box、混合订阅中的 VLESS/AnyTLS 及其他客户端过滤保持各自协议。支持 Naive 的有效节点应实际下发，不能再把该节点固定当作空列表；无权益响应和真正不支持的节点仍须保留原安全提示断言。解析/字段断言不表示已在 Shadowrocket 真机导入或完成网络连接。
+
+该适配在独立副本完成 7/7 个既有 PHP 模块；旧源配合同一新增回归，在缺少 HTTP2 代理处失败。同一安装树实际执行 `composer install --no-dev` 后，生产兼容的 `console-verify`、`framework-upgrade` 两模块 2/2 通过。真实 PHP 导出的合成分享夹具经独立核对 URI、UUID、地址、端口及 SNI，再由固定标签的 Go/sing-box Naive 消费者执行本机回环：严格校验证书 SAN、可信根及 ServerName，协商 h2，带 padding 的 HTTP2 CONNECT 回显成功，错误 UUID 返回 407。源码及既有前端产物哈希核对一致；此结果不包含 Shadowrocket 真机导入、生产网络连接或托管 CI 验收。
+
 ### 节点、路由与在线统计
 
 `node-routes`、`node-v10`、`v2box`、`console-smoke` 和前端 `Nodes`/`admin-linkage` 验证原生与兼容路由、模板隔离、服务引用计数、跨片段标签合并、非法条件拒绝及失败回滚。可视化/高级 JSON 无损切换、复杂条件复制和搜索、引用明细、删除保护及未保存保护保留。面板 `resources/client/node-route-presets.json` 与节点 `core/testdata/panel-routing-presets.json` 同步，节点 `TestPanelRoutingPresets` 验证固定核心解析。

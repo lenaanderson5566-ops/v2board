@@ -30,9 +30,9 @@ class Shadowrocket
         }
 
         foreach ($this->servers as $server) {
-            // Naive is exported through URI clients/sing-box until this format is adapted.
-            if (($server['protocol'] ?? $server['type']) === 'naive') continue;
-            if ($server['type'] === 'vmess' || (in_array($server['type'], ['v2box'], true) && $server['protocol'] === 'vmess')) {
+            if (($server['protocol'] ?? $server['type']) === 'naive') {
+                $uri .= self::buildNaive($user['uuid'], $server);
+            } elseif ($server['type'] === 'vmess' || (in_array($server['type'], ['v2box'], true) && $server['protocol'] === 'vmess')) {
                 $uri .= self::buildVmess($user['uuid'], $server);
             } else {
                 $uri .= Helper::buildUri($this->user['uuid'], $server);
@@ -56,6 +56,18 @@ class Shadowrocket
 
         // Warning-only placeholder nodes: keep node names as the primary message.
         return false;
+    }
+
+    public static function buildNaive($password, $server)
+    {
+        $credential = rawurlencode((string) $password);
+        $host = Helper::formatHost($server['host']);
+        $authority = base64_encode("{$credential}:{$credential}@{$host}:{$server['port']}");
+        $peer = trim((string) ($server['server_name'] ?? ''));
+        if ($peer === '') $peer = trim((string) ($server['tls_settings']['server_name'] ?? ''));
+        if ($peer === '') $peer = trim((string) $server['host'], '[]');
+        $query = http_build_query(['peer' => $peer, 'alpn' => 'h2', 'padding' => 1], '', '&', PHP_QUERY_RFC3986);
+        return 'http2://' . $authority . '?' . $query . '#' . rawurlencode($server['name']) . "\r\n";
     }
 
     public static function buildVmess($uuid, $server)

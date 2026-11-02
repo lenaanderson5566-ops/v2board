@@ -17,10 +17,12 @@ V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS、
 - 管理后台选择 V2Box → Naive。首版仅 HTTPS/HTTP2：TCP + TLS；不支持 QUIC/HTTP3、Reality 或其他传输。
 - 填写证书 SNI；证书模式选 HTTP/DNS 申请或已有文件，文件模式须填写证书和私钥路径。证书须被客户端信任并匹配 SNI；不提供面板生成自签名或跳过校验。
 - 用户名与密码均使用订阅用户 UUID。支持用户热更新、账户撤销、流量计费和现有限速/设备限制；撤销时关闭该账户的 HTTP2 会话，其他账户不受影响。
-- 订阅输出为 sing-box `type=naive`（需支持 Naive 的 1.13+ 客户端构建）和通用 `naive+https://` 链接；未适配的专用客户端格式跳过该协议。不能把通用链接支持理解为所有客户端均可用。
+- 订阅输出为 sing-box `type=naive`（需支持 Naive 的 1.13+ 客户端构建）和通用 `naive+https://` 链接。Shadowrocket 使用独立的 HTTP2 分享格式：`http2://` 后使用 Base64 编码完整的 `用户名:密码@地址:端口`，携带 Naive `padding=1` 和证书 SNI，不复用通用 URI；IPv6 地址保留方括号。其他未适配的专用格式继续跳过，不能把通用链接支持理解为所有客户端均可用。
 - 服务端不需要 libcronet；客户端可能需要。当前实现不包含 Naive 出站和网站回落/应用前置配置。
 
 测试：`php tests/naive.php`、前端 admin-linkage 测试、节点 `GOEXPERIMENT=jsonv2 go test -race -tags with_quic,with_utls ./core -run Naive`。协议测试使用独立 HTTP2/Naive padding 测试客户端，覆盖实际 TLS 连接、流量计数、撤销/重加和并发更新；不替代目标 Chromium 客户端部署验收。
+
+Shadowrocket 适配只改变该格式的 Naive 下发，不改用户 UUID、节点配置、证书或通用订阅。分享格式参考开源面板的 [HTTP2 导出实现](https://github.com/alireza0/s-ui/blob/db6f7abf7df93fe319161b0b44b2dc2341f84637/util/genLink.go#L239)，不是 Shadowrocket 发布的接口规范；实际导入和连接仍需在目标版本验收。自动回归应核对外层订阅与内层认证编码、SNI、IPv6、名称编码、必须的 padding，以及有节点/过滤后无节点和不可用账户的安全提示，同时保留混合订阅中的 VLESS 和 AnyTLS 输出。
 
 部署顺序：先发布包含 NodeType 支持的 V2Box Release，再升级面板并创建 V2Box 节点，最后使用后台安装命令部署。节点与面板须使用匹配的 V2Box 配置。
 

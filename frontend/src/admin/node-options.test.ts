@@ -30,7 +30,7 @@ it("keeps DDNS opt-in and quotes generated shell arguments", () => {
 
 
 it("uses the short server-provided upgrade command", () => {
- const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.18";
+ const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.19";
  expect(nodeUpgradeCommand({upgrade_command:command})).toBe(command);
  expect(nodeUpgradeCommand({})).toBe("");
 });

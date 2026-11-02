@@ -23,9 +23,9 @@ import urllib.request
 import uuid
 import zipfile
 
-RELEASE_TAG = 'v1.0.18'
+RELEASE_TAG = 'v1.0.19'
 RELEASE_ASSET_URL = f'https://github.com/lenaanderson5566-ops/v2box/releases/download/{RELEASE_TAG}/v2box-linux-amd64.zip'
-RELEASE_ASSET_SHA256 = '9e92a391222f2ad01ac6214b072aab201800dfe1471d1be7230997b45036fc70'
+RELEASE_ASSET_SHA256 = 'a29aae3b50b2fa6efc5ffa3ff176eb54660b74b5d07bbfffcad54a4841089c2a'
 
 def wait(check, label, seconds=35):
     end=time.monotonic()+seconds

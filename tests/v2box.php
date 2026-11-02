@@ -99,7 +99,8 @@ try {
     $assert(str_contains($schema['region_code'],'US') && str_contains($schema['protocol'],'naive'),'Admin schema publishes the same supported regions and protocols as save validation');
     // Run the shipped bootstrap with fake downloads/services and a private config directory.
     // No installation, external HTTP, system service changes or real credentials are involved.
-    // Opt-in: a disposable Linux root container with bash/jq; regular PHP runs need neither.
+    // Opt-in: disposable Linux with bash/jq; root identity and OpenRC are simulated
+    // only inside the temporary bootstrap. Production privilege guards stay intact.
     foreach (getenv('V2BOX_BOOTSTRAP_TEST')==='1' ? [[0,false,false],[1,false,false],[0,true,false],[1,true,false],[0,true,true],[1,true,true]] : [] as [$reportFailure,$networkOnly,$serverOnly]) {
         $fixture=sys_get_temp_dir().'/v2box-deploy-test-'.bin2hex(random_bytes(8));
         mkdir($fixture,0700);mkdir($fixture.'/bin',0700);mkdir($fixture.'/tmp',0700);mkdir($fixture.'/lib',0700);
@@ -158,12 +159,13 @@ SH,
 echo "$1" >> "$DNS_FIXTURE/events"
 SH,
                 'systemctl'=>"#!/bin/sh\necho active\n",
+                'rc-service'=>"#!/bin/sh\n[ \"\$1\" = v2box ] && [ \"\$2\" = status ]\n",
                 'python3'=><<<'SH'
 #!/bin/bash
 set -eu
 if [[ "$1" == -m && "$2" == py_compile ]]; then exit 0; fi
 if [[ "${2:-}" == capabilities ]]; then echo '{"features":["report-multi-target-v1"]}'; exit 0; fi
-if [[ "$1" == */panel-deploy.py ]]; then exec /usr/bin/python3 "$@"; fi
+if [[ "$1" == */panel-deploy.py ]]; then exec /usr/bin/python3 -c 'import os,runpy,sys; os.geteuid=lambda:0; program=sys.argv.pop(1); runpy.run_path(program,run_name="__main__")' "$@"; fi
 [[ "$1" == */node-network.py && "$2" == report-configure && "$3" == --panel-url && ( "$4" == https://panel.example.invalid || "$4" == https://another.example.invalid ) && "$5" == --family && "$6" == ipv4 && "$7" == --token-file ]] || exit 2
 [[ "$(stat -c %a "$8")" == 600 && "$(cat "$8")" =~ ^c{64}$ ]] || exit 3
 echo report >> "$DNS_FIXTURE/events"
@@ -172,7 +174,7 @@ SH,
             ];
             foreach ($mocks as $name=>$script) {file_put_contents($fixture.'/bin/'.$name,$script."\n");chmod($fixture.'/bin/'.$name,0700);}
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
-            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network','/usr/local/bin/v2box'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network',$fixture.'/bin/v2box'],$script);
+            $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network','/usr/local/bin/v2box','/run/systemd/system','[[ $EUID -eq 0 && $(uname -s) == Linux ]]'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network',$fixture.'/bin/v2box',$fixture.'/no-systemd','[[ $(uname -s) == Linux ]]'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
             $run=function($failure=null,$nodeId=3,$panelHost='https://panel.example.invalid')use($fixture,$reportFailure,$networkOnly,$serverOnly){
                 $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host',$panelHost,...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').hash('sha256',$panelHost.'|'.$nodeId)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));

@@ -185,6 +185,14 @@ jobs:
         env:
           NAIVE_CLIENT_FIXTURE: storage/app/test-organization/ci-naive-client-fixture.json
         run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,client-access-unified,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,fastai-entrypoints,fastai-entrypoint-check,framework-upgrade,lightsail,mfa-api,mfa,naive,node-v10,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,update-script,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
+      - name: Run existing V2Box deployment workflow
+        env:
+          V2BOX_BOOTSTRAP_TEST: '1'
+        run: |
+          for tool in bash python3 jq openssl flock timeout curl unzip sha256sum install; do
+            command -v "$tool" >/dev/null
+          done
+          php tests/run.php --only=v2box --results=storage/app/test-organization/ci-v2box-deployment-results.json
       - name: Verify a real production dependency installation
         run: |
           composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader

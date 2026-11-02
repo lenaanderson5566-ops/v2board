@@ -1379,6 +1379,9 @@ def main():
     try:
         if os.geteuid() != 0:
             raise DeploymentError("Run as root")
+        if len(sys.argv) == 2 and sys.argv[1] == "--capabilities":
+            print(json.dumps({"features": ["management-lock-delegation-v1"]}))
+            return 0
         if len(sys.argv) == 7 and sys.argv[1] == "--completed":
             return (
                 0

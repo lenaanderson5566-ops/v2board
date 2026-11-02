@@ -51,6 +51,15 @@ class WorkflowTests(unittest.TestCase):
             "completed": action == "complete",
         }
 
+    def test_capability_probe_is_local_and_never_reads_deployment_state(self):
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--capabilities"]), patch.object(m.sys, "stdout", io.StringIO()) as output, patch.object(m, "Deployment") as deployment, patch.object(m, "read_object") as read, patch.object(m, "json_request") as request:
+            self.assertEqual(m.main(), 0)
+        self.assertEqual(json.loads(output.getvalue()), {"features": ["management-lock-delegation-v1"]})
+        deployment.assert_not_called()
+        read.assert_not_called()
+        request.assert_not_called()
+        self.assertNotIn(self.data["apiKey"], output.getvalue())
+
     def test_managed_launch_uses_private_state_without_credentials_in_unit(self):
         with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run") as run, patch.object(m.sys, "stdout", io.StringIO()) as output:
             self.assertTrue(m.launch_managed(self.path))
@@ -459,13 +468,18 @@ class WorkflowTests(unittest.TestCase):
                 m.json_request("https://panel.example.test")
 
     def test_expired_authorization_guides_new_command_not_resume(self):
+        with patch.object(m.os, "geteuid", return_value=1000), patch.object(m, "Deployment") as deployment, patch.object(m.sys, "stderr", io.StringIO()) as output:
+            self.assertEqual(m.main(), 1)
+            deployment.assert_not_called()
+            self.assertIn("Run as root", output.getvalue())
+            self.assertTrue(self.path.exists())
         with patch.object(
             m,
             "Deployment",
             side_effect=m.DeploymentError(
                 "Deployment authorization expired. Generate a new deployment task in the panel."
             ),
-        ), patch.object(m.sys, "argv", ["deploy", str(self.path)]), patch.object(
+        ), patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", str(self.path)]), patch.object(
             m.sys, "stderr", io.StringIO()
         ) as output:
             self.assertEqual(m.main(), 1)
@@ -1058,6 +1072,7 @@ wait "$child"
             .read_text()
             .replace("__NODE_PREREQUISITES__", "")
             .replace("__NODE_DEPLOY_HELPER__", "pass")
+            .replace('[[ $EUID -eq 0 && $(uname -s) == Linux ]]', '[[ $(uname -s) == Linux ]]')
         )
         script = (
             script.replace("/etc/v2box", str(root))
@@ -2051,7 +2066,7 @@ exec "$@"''')
         with open(self.path.parent / ".deployment.lock", "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             result = subprocess.run(
-                [sys.executable, sys.argv[1], str(self.path)],
+                [sys.executable, "-c", 'import os,runpy,sys; os.geteuid=lambda:0; program=sys.argv.pop(1); runpy.run_path(program,run_name="__main__")', sys.argv[1], "--worker", str(self.path)],
                 capture_output=True,
                 text=True,
                 timeout=10,

@@ -91,6 +91,98 @@ try {
     $assert($body['meta']['configurationHash']===hash('sha256',json_encode(App\Services\Actions\NodeV10Config::build($node->fresh()))),'Receipt metadata identifies exactly the authoritative configuration');
     $assert(is_object(json_decode($r->getContent())->data->tlsSettings),'Empty TLS settings encoded as object');
     $assert(is_object(json_decode($r->getContent())->data->networkSettings) && is_object(json_decode($r->getContent())->data->encryptionSettings),'Empty protocol settings encoded as objects');
+
+    // Exercise the actual admin save, persisted JSON and V10 response. These
+    // deterministic keys belong only to the disposable Reality fixture.
+    $realityPair=ParagonIE_Sodium_Compat::crypto_box_seed_keypair(str_repeat("\x42",32));
+    $realityIdentity=[
+        'private_key'=>App\Utils\Helper::base64EncodeUrlSafe(ParagonIE_Sodium_Compat::crypto_box_secretkey($realityPair)),
+        'public_key'=>App\Utils\Helper::base64EncodeUrlSafe(ParagonIE_Sodium_Compat::crypto_box_publickey($realityPair)),
+        'short_id'=>'0123456789abcdef','short_ids'=>['0123456789abcdef'],
+        'server_name'=>'www.example.org','server_names'=>['www.example.org'],'dest'=>'www.example.org:443',
+    ];
+    $realityCases=[
+        'integer-port'=>['server_port'=>443],
+        'integer-xver'=>['server_port'=>'443','xver'=>0],
+        'integer-reject'=>['server_port'=>'443','reject_unknown_sni'=>0],
+        'integer-combined'=>['server_port'=>443,'xver'=>0,'reject_unknown_sni'=>0],
+        'integral-float'=>['server_port'=>443.0,'xver'=>0.0,'reject_unknown_sni'=>0.0],
+        'strings'=>['server_port'=>'443','xver'=>'0','reject_unknown_sni'=>'0'],
+        'missing'=>[],
+        'nullable'=>['server_port'=>null,'xver'=>null,'reject_unknown_sni'=>null],
+    ];
+    $primaryNodeId=$nodeId;
+    $primaryAttributes=$node->fresh()->getRawOriginal();
+    foreach($realityCases as $caseName=>$settings) {
+        DB::beginTransaction();
+        try {
+            $name='V10 Reality wire '.$caseName;
+            $tls=$realityIdentity+$settings;
+            $admin->save(Request::create('/','POST',array_merge($base,[
+                'name'=>$name,'host'=>'reality-wire.example.test','tls'=>2,'tls_settings'=>$tls,'route_id'=>[],
+            ])));
+            $realityNode=ServerV2box::where('name',$name)->firstOrFail();
+            $nodeId=$realityNode->id;
+            $rawTls=$realityNode->getRawOriginal('tls_settings');
+            $storedTls=json_decode($rawTls,true,512,JSON_THROW_ON_ERROR);
+            // Existing admin behavior supplies the default for absent/null ports;
+            // ordinary JSON storage also encodes integral floats as integers.
+            $expectedTls=$tls;
+            if(!isset($expectedTls['server_port']))$expectedTls['server_port']='443';
+            $expectedStored=json_decode(json_encode($expectedTls,JSON_THROW_ON_ERROR),true,512,JSON_THROW_ON_ERROR);
+            $realityResponse=$call('GET',$root.'/configuration');
+            $assert($realityResponse->getStatusCode()===200,'Reality configuration is served: '.$caseName);
+            $realityBody=json_decode($realityResponse->getContent(),true,512,JSON_THROW_ON_ERROR);
+            $wireTls=$realityBody['data']['tlsSettings'];
+            $assert(is_object(json_decode($realityResponse->getContent())->data->tlsSettings),'Reality TLS settings remain an object: '.$caseName);
+            $assert($realityBody['data']['protocol']==='vless' && $realityBody['data']['tls']===2
+                && $realityBody['data']['listenPort']===443,'Reality projection preserves top-level protocol and numeric fields: '.$caseName);
+            foreach(['server_port'=>'serverPort','xver'=>'xver','reject_unknown_sni'=>'rejectUnknownSni'] as $old=>$wire) {
+                $assert(array_key_exists($old,$storedTls)===array_key_exists($old,$expectedStored)
+                    && (!array_key_exists($old,$expectedStored) || $storedTls[$old]===$expectedStored[$old]),'Admin save retains original Reality field types: '.$caseName.'/'.$old);
+                if(!array_key_exists($old,$expectedStored)) {
+                    $assert(!array_key_exists($wire,$wireTls),'Projection does not invent missing optional Reality fields: '.$caseName.'/'.$wire);
+                } else {
+                    $expectedWire=$expectedStored[$old]===null?null:(string)$expectedStored[$old];
+                    $assert(array_key_exists($wire,$wireTls) && $wireTls[$wire]===$expectedWire,'Reality wire scalar matches the node decoder: '.$caseName.'/'.$wire);
+                }
+            }
+            foreach(['private_key'=>'privateKey','short_id'=>'shortId','short_ids'=>'shortIds','server_name'=>'serverName','server_names'=>'serverNames','dest'=>'dest'] as $old=>$wire) {
+                $assert($storedTls[$old]===$realityIdentity[$old] && $wireTls[$wire]===$realityIdentity[$old],'Reality key and TLS identity remain unchanged: '.$caseName.'/'.$wire);
+            }
+            $assert($storedTls['public_key']===$realityIdentity['public_key'],'Reality public key is not replaced during admin save: '.$caseName);
+            $assert($realityNode->fresh()->getRawOriginal('tls_settings')===$rawTls,'Serving Reality configuration never rewrites stored JSON: '.$caseName);
+            $assert(($realityBody['meta']['configurationHash']??null)===trim($realityResponse->headers->get('ETag'),'"')
+                && $realityBody['meta']['configurationHash']===hash('sha256',json_encode(App\Services\Actions\NodeV10Config::build($realityNode->fresh()))),'Reality receipt identifies the normalized wire configuration: '.$caseName);
+            if($caseName==='integer-combined') {
+                // Projection is a compatibility conversion, not permissive
+                // validation of malformed or non-integral stored values.
+                foreach([true,false,[],['unexpected'=>1],0.5,INF,NAN] as $invalid) {
+                    $probe=new Illuminate\Support\Fluent($realityNode->toArray());
+                    $probe->tls_settings=$realityIdentity+['server_port'=>$invalid,'xver'=>$invalid,'reject_unknown_sni'=>$invalid];
+                    $projected=(array)App\Services\Actions\NodeV10Config::build($probe)['tlsSettings'];
+                    foreach(['serverPort','xver','rejectUnknownSni'] as $wire) {
+                        $assert(is_float($invalid)&&is_nan($invalid)?is_float($projected[$wire])&&is_nan($projected[$wire]):$projected[$wire]===$invalid,'Projection leaves invalid Reality scalar values unchanged: '.$wire);
+                    }
+                }
+                $probe=new Illuminate\Support\Fluent($realityNode->toArray());
+                $probe->tls_settings=$realityIdentity+['server_port'=>443.0,'xver'=>0.0,'reject_unknown_sni'=>0.0];
+                $projected=(array)App\Services\Actions\NodeV10Config::build($probe)['tlsSettings'];
+                $assert($projected['serverPort']==='443' && $projected['xver']==='0' && $projected['rejectUnknownSni']==='0','Projection handles integral floats without rewriting the model');
+                $assert(is_float($probe->tls_settings['server_port']) && $probe->tls_settings['server_port']===443.0
+                    && $realityNode->fresh()->getRawOriginal('tls_settings')===$rawTls,'Projection leaves in-memory scalar types and original database JSON unchanged');
+            }
+            if($fixture=getenv('NODE_V10_REALITY_FIXTURE')) {
+                $path=$fixture.'.reality-'.$caseName.'.json';
+                $assert(file_put_contents($path,$realityResponse->getContent())!==false && chmod($path,0600),'Synthetic Reality fixture exported: '.$caseName);
+                if($caseName==='integer-combined')$assert(file_put_contents($fixture,$realityResponse->getContent())!==false && chmod($fixture,0600),'Synthetic combined Reality fixture exported');
+            }
+        } finally {
+            $nodeId=$primaryNodeId;
+            DB::rollBack();
+        }
+        $assert($node->fresh()->getRawOriginal()===$primaryAttributes,'Reality case leaves the original node unchanged: '.$caseName);
+    }
     $assert($call('GET',$root.'/configuration',[],['HTTP_IF_NONE_MATCH'=>$r->headers->get('ETag')])->getStatusCode()===304,'Config ETag');
     $assert($call('GET',$root.'/configuration',[],['HTTP_X_NODE_CAPABILITIES'=>''])->getStatusCode()===409,'Capability guard');
     $tag=$r->headers->get('ETag');

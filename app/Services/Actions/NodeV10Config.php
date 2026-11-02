@@ -59,10 +59,21 @@ class NodeV10Config {
         foreach ($mapping as $old => $new) if (array_key_exists($old, $source)) $out[$new] = $source[$old];
         return $out;
     }
+    private static function tlsSettings(array $settings): object {
+        // These wire fields are strings, including when older JSON settings stored integers.
+        foreach (['server_port', 'xver', 'reject_unknown_sni'] as $key) {
+            $value = $settings[$key] ?? null;
+            if (is_int($value) || (is_float($value) && is_finite($value) && floor($value) === $value)) {
+                $settings[$key] = (string) $value;
+            }
+        }
+        return (object) self::fields($settings, self::NESTED);
+    }
     public static function build($node): array {
         [$node,$transition] = \App\Services\NodeTlsTransition::overlay($node);
         $source = NodeConfiguration::build($node);
-        foreach (['tls_settings', 'base_config'] as $key) $source[$key] = (object) self::fields($source[$key] ?? [], self::NESTED);
+        $source['tls_settings'] = self::tlsSettings($source['tls_settings'] ?? []);
+        $source['base_config'] = (object) self::fields($source['base_config'] ?? [], self::NESTED);
         if (isset($source['routes']) && $source['routes'] instanceof \Illuminate\Contracts\Support\Arrayable) $source['routes'] = $source['routes']->toArray();
         $source['routes'] = array_map(fn($r) => self::fields($r, self::NESTED), $source['routes'] ?? []);
         foreach (['network_settings', 'encryption_settings'] as $key) {

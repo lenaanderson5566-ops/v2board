@@ -42,6 +42,12 @@ ACME 申请失败保护在节点本地实现，不通过面板清除；修复后
 
 V10 节点身份通过 `X-Node-Type: v2box` 和 `X-Node-ID: 节点编号` 请求头传递；URL 统一为 `/api/v10/server/...`。当前仅接受 v2box 类型。类型或编号缺失、非法时返回 422；未知节点返回 404。旧 `/api/v10/nodes/v2box/{id}/...` 路径已移除，面板与节点应同步升级。
 
+V10 的 `tlsSettings.serverPort`（Reality 目标端口）、`xver`、`rejectUnknownSni` 按既有契约使用字符串或 null，区别于整数类型的顶层 `listenPort`（节点监听端口）。历史配置或管理 API 可保存数值型整数；下发时只规范化这三个 TLS 字段的表示，不重写存储、私钥或其他协议数字字段。既有字符串和 null 保留，布尔值、数组及其他错误结构不作为有效字符串吞掉。
+
+固定 v2box v1.0.16 的实际消费者已验证这类字段的解码兼容，真实面板导出与既有部署回归范围见 [测试组织](test-organization.md)。本地解码通过不等同于真实 Reality 握手或生产节点验收。
+
+部署日志中的 `errorCode=decode` 只表示节点尚未接受当前配置，不能单独判定为证书申请失败：v1.0.16 也会将无效配置间隔等错误归入该代码。应查看主服务 `journalctl -u v2box` 中具体的 `decode node params error` 或配置错误行，再结合实际协议、TLS 模式与字段类型定位；不要贴出完整配置、API Key、Reality 私钥或 DNS 凭据。修复序列化兼容不要求重新生成节点密钥。
+
 
 ## 独立路由规则升级
 

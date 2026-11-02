@@ -182,7 +182,7 @@ jobs:
       - run: composer check-platform-reqs
       - run: php tests/run.php --validate
       - name: Run existing critical modules
-        run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,fastai-entrypoints,fastai-entrypoint-check,framework-upgrade,lightsail,mfa-api,mfa,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,update-script,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
+        run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,fastai-entrypoints,fastai-entrypoint-check,framework-upgrade,lightsail,mfa-api,mfa,node-v10,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,update-script,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
       - name: Verify a real production dependency installation
         run: |
           composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader

@@ -93,6 +93,14 @@ FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树�
 
 `NODE_ROUTING_FIXTURE` 可在一次性面板副本导出兼容/V10 响应，节点用 `V2BOX_ROUTING_FIXTURE` 验证解码和条件请求，不使用生产响应。真实本地核心覆盖阻断匹配、HTTP 代理/默认出口、DNS 命中/回退及测试证书 HTTPS 规则集，并与出站保护同时执行。`node-backends` 和 `retired-node-tables` 保留来源兼容、旧数据迁移及数据保护。
 
+TLS 字段兼容复用 `node-v10` 和节点已有消费者测试：从实际管理保存与 V10 响应导出合成 Reality 配置，对照固定 v2box 标签解析，分别验证数值型目标端口、`xver`/`reject_unknown_sni` 的合法零值及字符串/null。出站转换只限三个已声明为字符串的 TLS 字段；顶层监听端口等数字、密钥、数据库原值及兼容接口保持既有语义，错误结构不被转换掩盖。失败证据与修复后的相同夹具结果分别保存，不能以手写 JSON 代替真实面板输出，也不能将用户的笼统 decode 回执直接当作这一类型问题的证明。
+
+`node-v10` 的 PHP 契约断言纳入常规质量工作流的后端关键模块。固定标签的 Go 消费者互通属于另行执行的本地隔离验证，不表示托管 CI 自动运行节点仓库的 Go 测试。
+
+该兼容修复在可销毁副本完成 9/9 个既有 PHP 模块、699 份 PHP 语法检查、七份契约发布物一致性检查及 13 项生成器单元测试。旧源的真实保存/下发回归在数值型 Reality 目标端口处失败；固定 v2box v1.0.16、`GOWORK=off` 的实际解码器和 `GetNodeInfo` 也验证数字与字符串的差异。修复后的八种真实 Reality 保存/下发夹具均被同标签消费者成功解析，组合场景额外主夹具及原 TLS 关闭夹具也通过。既有部署验证保留 94 项集成检查和 107 项 Python 测试，其中 106 项通过、1 项为原有跳过；未进行真实 Reality 握手或生产节点验收。
+
+同一安装树实际执行 `composer install --no-dev` 后，生产兼容的 `console-verify`、`framework-upgrade` 两模块 2/2 通过，分别为 4/265 项检查；未补回开发依赖，不与开发模块重复计数。
+
 `node-v10`、`risk-activity`、`admin-user-activity-columns`、`node-traffic-batches`、`node-traffic-concurrency` 及既有 worker 验证空/遗漏快照清理、非法 JSON 不清理、IPv4/IPv6 映射去重、严格/宽松模式、动态有效期、陈旧缓存、部分失败索引恢复和无近期计费的在线用户。多进程重叠上报须同时保留节点、唯一历史快照、日志节流、逐节点清空和计费守恒；重复领取不重复计费，调度能恢复未处理批次。
 
 ### Lightsail、内容与任务

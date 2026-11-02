@@ -12,7 +12,7 @@ import {
 import { boot } from "../shared/api";
 import { tx } from "../shared/i18n";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
-import { localPreferences, preferenceStorageEvent } from "../shared/browser-storage";
+import { localPreferences } from "../shared/browser-storage";
 
 let configuration: V10AnalyticsConfiguration | null = null;
 let revision = 0;
@@ -117,9 +117,10 @@ export function AnalyticsPrivacy() {
         }
         void refresh();
         const sync = (event: StorageEvent) => {
-            if (!preferenceStorageEvent(event.key, privacyKey)) return;
+            const change = localPreferences.storageEvent(event, privacyKey);
+            if (change === "ignore") return;
             // Removing either generation revokes permission, including its alias.
-            if (event.newValue === null) localPreferences.removeItem(privacyKey);
+            if (change === "remove") localPreferences.removeItem(privacyKey);
             setCollection(permitted());
             publish();
         };

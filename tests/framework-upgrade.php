@@ -79,9 +79,18 @@ $storageSeed=base64_encode(str_repeat("\x42",32));
 $seedFile=$bootstrapFixture.'/storage/app/fastai-entrypoint.seed';
 file_put_contents($seedFile,$storageSeed); chmod($seedFile,0600);
 $seedFileHash=hash_file('sha256',$seedFile);
-$diskLegacy=['app_url'=>'https://legacy-config.example.test','secure_path'=>'legacy-console','new_user_currency'=>'USD','system_timezone'=>'Asia/Kathmandu','disabled'=>false,'zero'=>0];
+$customConfiguration=[
+    'app_name'=>'Custom owner name','subscribe_url'=>'https://subscription.example.test','subscribe_path'=>'/custom-subscription',
+    'server_api_url'=>'https://node-api.example.test','custom_footer_html'=>'<p>Custom owner footer</p>',
+    'email_provider'=>'smtp','email_host'=>'smtp.example.test','email_username'=>'synthetic-mail-user',
+    'email_password'=>Illuminate\Support\Facades\Crypt::encryptString('synthetic-mail-secret'),'email_password_encrypted'=>true,
+    'payment_extension'=>['merchant_key'=>'synthetic-payment-secret'],
+    'unknown_null'=>null,'unknown_false'=>false,'unknown_zero'=>0,'unknown_empty'=>[],
+    'unknown_extension'=>['null'=>null,'false'=>false,'zero'=>0,'empty'=>[],'nested'=>['values'=>[null,false,0,[]]]],
+];
+$diskLegacy=array_merge($customConfiguration,['app_url'=>'https://legacy-config.example.test','secure_path'=>'legacy-console','new_user_currency'=>'USD','system_timezone'=>'Asia/Kathmandu','disabled'=>false,'zero'=>0]);
 $cachedLegacy=$diskLegacy; $cachedLegacy['app_url']='https://cached-config.example.test';
-$canonicalSite=['app_url'=>'https://current-config.example.test','secure_path'=>'current-console','new_user_currency'=>'CNY','system_timezone'=>'UTC','disabled'=>false,'zero'=>0];
+$canonicalSite=array_merge($customConfiguration,['app_name'=>'Current custom owner','app_url'=>'https://current-config.example.test','secure_path'=>'current-console','new_user_currency'=>'CNY','system_timezone'=>'UTC','disabled'=>false,'zero'=>0]);
 $seedOnlySite=['entrypoint_signing_seed'=>'deliberate-private-fixture'];
 $cachedBase=app('config')->all();
 unset($cachedBase['fastai'],$cachedBase['v2board'],$cachedBase['entrypoint-signing']);

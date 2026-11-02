@@ -27,6 +27,33 @@ it("accepts a previous bootstrap input and normalizes only exact default names",
     expect(window.FASTAI.title).toBe("My V2Board service");
 });
 
+it.each(["FASTAI", "V2BOARD"] as const)("keeps custom runtime settings and the final shared alias from %s input", async (name) => {
+    const supplied = {
+        mode: "user", title: "My V2Board service", description: "Custom description",
+        footerHtml: '<a href="https://site.example/help">Custom footer</a>',
+        apiBaseUrl: "https://api.example.com/", tosUrl: "https://site.example/terms",
+        adminPath: "custom-admin", opsPath: "custom-ops", landing: false, landingStyle: "minimal",
+        emailVerify: true, registerClosed: true, passkeyEnabled: true, inviteRequired: false,
+        appleAccountEnabled: false, clientMirrors: { clash_windows: "https://downloads.example/client" },
+        clientPolicies: { mihomo: { enabled: false, minVersion: "1.2.3" } },
+        customTheme: { color: "#123456", enabled: false, items: [] },
+    };
+    window[name] = supplied as any;
+    await initializeRuntime("user");
+    expect(window.V2BOARD).toBe(window.FASTAI);
+    expect(window.FASTAI).toMatchObject({ ...supplied, apiBaseUrl: "https://api.example.com", adminPath: "", opsPath: "" });
+    expect(window.FASTAI.clientPolicies).toBe(supplied.clientPolicies);
+    expect((window.FASTAI as any).customTheme).toBe(supplied.customTheme);
+    expect(document.title).toBe(supplied.title);
+});
+
+it("shares normalized custom administrative paths through both bootstrap names", async () => {
+    window.FASTAI = { mode: "admin", title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-ops" } as any;
+    await initializeRuntime("admin");
+    expect(window.V2BOARD).toBe(window.FASTAI);
+    expect(window.V2BOARD).toMatchObject({ title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-ops" });
+});
+
 it.each(["", "v2boad", " V2BOARD "])("uses the FastAI default for %j", async (title) => {
     window.FASTAI={mode:"user",title} as any;
     await initializeRuntime("user");

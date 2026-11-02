@@ -46,6 +46,24 @@ function optionalStorage(kind: "localStorage" | "sessionStorage") {
             return candidates(key).find(value => key.endsWith(".auth.pendingLogout") ? !!value : value !== null) ?? null;
         },
         getCandidates: candidates,
+        storageEvent(event: Pick<StorageEvent, "key" | "newValue" | "storageArea">, key: string): "ignore" | "update" | "remove" {
+            if (key.endsWith(".auth")) return "ignore";
+            if (!preferenceStorageEvent(event.key, key)) return "ignore";
+            if (event.storageArea) {
+                try {
+                    const other = kind === "localStorage" ? "sessionStorage" : "localStorage";
+                    if (event.storageArea === globalThis[other]) return "ignore";
+                } catch { /* The other storage area may be unavailable. */ }
+                try { if (event.storageArea !== globalThis[kind]) return "ignore"; }
+                catch { /* Unreadable storage still revokes permission conservatively. */ }
+            }
+            if (event.newValue !== null) return "update";
+            const removed = event.key === null
+                ? [key, legacyPreferenceKey(key)].filter((value): value is string => value !== null)
+                : [event.key];
+            // An old queued deletion must not erase a newer explicit choice.
+            return removed.every(candidate => persistentRead(candidate) === null) ? "remove" : "update";
+        },
         /** Observe both generations, even when a newer key already exists. */
         revision(key: string): string | null {
             if (key.endsWith(".auth")) return null;

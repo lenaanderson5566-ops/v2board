@@ -572,6 +572,125 @@ try {
     $assert(strpos($call('/')->getContent(), '<title>' . e(App\Support\Branding::name(config('fastai.app_name'))) . '</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
     $assert(strpos($call('/' . $securePath)->getContent(), $footer) === false, 'User footer leaked into admin shell');
     $assert(Illuminate\Support\Facades\Artisan::call('console:verify')===0, 'Production console assets or Laravel rendering failed');
+    // The preceding real config:cache boot replaced globals; restore this fixture's transaction.
+    Illuminate\Container\Container::setInstance($app);
+    Illuminate\Support\Facades\Facade::setFacadeApplication($app);
+    Illuminate\Support\Facades\Facade::clearResolvedInstances();
+    Illuminate\Database\Eloquent\Model::setConnectionResolver($app['db']);
+    Illuminate\Database\Eloquent\Model::setEventDispatcher($app['events']);
+    $assert(Illuminate\Support\Facades\DB::transactionLevel()>0,'Custom settings checks must remain in the existing disposable transaction');
+    // Preserve the complete custom tree when only one ordinary setting is saved.
+    $customFixture=sys_get_temp_dir().'/custom-settings-'.bin2hex(random_bytes(8));
+    foreach (['config','storage/app','storage/framework/cache/data','storage/framework/views','storage/framework/sessions','bootstrap/cache'] as $directory) mkdir($customFixture.'/'.$directory,0700,true);
+    $customSourceConfigPath=$app->configPath();
+    foreach (glob($customSourceConfigPath.'/*.php') as $publicConfig) {
+        if (!in_array(basename($publicConfig),['fastai.php','v2board.php'],true)) copy($publicConfig,$customFixture.'/config/'.basename($publicConfig));
+    }
+    $customShim="<?php\n\$app=require ".var_export(base_path('bootstrap/app.php'),true).";\n"
+        ."\$app->useConfigPath(".var_export($customFixture.'/config',true).");\n"
+        ."\$app->useStoragePath(".var_export($customFixture.'/storage',true).");\n"
+        ."\$app->useBootstrapPath(".var_export($customFixture.'/bootstrap',true).");\nreturn \$app;\n";
+    file_put_contents($customFixture.'/bootstrap/app.php',$customShim);
+    $customCache=$customFixture.'/bootstrap/cache/config.php';
+    $customProbe=<<<'PHP'
+require 'tests/support/autoload.php';
+set_exception_handler(static function(Throwable $error) { fwrite(STDERR,get_class($error).' at '.basename($error->getFile()).':'.$error->getLine()); exit(1); });
+$input=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);
+$app=require $input['bootstrap'];
+$kernel=$app->make(Illuminate\Contracts\Console\Kernel::class); $kernel->bootstrap();
+if ($input['cache']) {
+    $status=$kernel->call('config:cache',[],new Symfony\Component\Console\Output\NullOutput);
+    echo json_encode(['cacheReady'=>$status===0 && is_file($app->getCachedConfigPath())],JSON_THROW_ON_ERROR); exit;
+}
+$site=config('fastai');
+echo json_encode([
+    'matches'=>$site===$input['expected'],
+    'legacyAlias'=>config('v2board')===$site,
+    'canonicalExport'=>!array_key_exists('v2board',app('config')->all()),
+    'footer'=>App\Support\FrontendConfig::footer()===$input['expected']['custom_footer_html'],
+    'mailSecret'=>Illuminate\Support\Facades\Crypt::decryptString(config('fastai.email_password'))==='synthetic-smtp-secret',
+],JSON_THROW_ON_ERROR);
+PHP;
+    $customRun=function(array $expected,bool $cache) use($customFixture,$customCache,$customProbe): array {
+        $environment=array_merge(getenv(),[
+            'APP_CONFIG_CACHE'=>$customCache,'APP_SERVICES_CACHE'=>$customFixture.'/bootstrap/cache/services.php',
+            'APP_PACKAGES_CACHE'=>$customFixture.'/bootstrap/cache/packages.php','APP_EVENTS_CACHE'=>$customFixture.'/bootstrap/cache/events.php',
+            'APP_ROUTES_CACHE'=>$customFixture.'/bootstrap/cache/routes.php','FASTAI_ENTRYPOINT_SIGNING_SEED'=>'',
+        ]);
+        $process=proc_open([PHP_BINARY,'-r',$customProbe],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,base_path(),$environment);
+        if (!is_resource($process)) throw new RuntimeException('Cannot start the custom settings fixture');
+        fwrite($pipes[0],json_encode(['bootstrap'=>$customFixture.'/bootstrap/app.php','expected'=>$expected,'cache'=>$cache],JSON_THROW_ON_ERROR)); fclose($pipes[0]);
+        $output=stream_get_contents($pipes[1]);$error=stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
+        if (proc_close($process)!==0) throw new RuntimeException('Custom settings bootstrap failed: '.$error);
+        return json_decode($output,true,512,JSON_THROW_ON_ERROR);
+    };
+    $customOriginalSettings=config('fastai');
+    $customArtisan=Illuminate\Support\Facades\Artisan::getFacadeRoot();
+    $customSecret=Illuminate\Support\Facades\Crypt::encryptString('synthetic-smtp-secret');
+    $customPayment=App\Models\Payment::create(['name'=>'custom-settings-payment','payment'=>'Paytaro','uuid'=>App\Utils\Helper::guid(),
+        'config'=>['pid'=>'synthetic-custom-merchant','key'=>'synthetic-custom-payment-secret','options'=>['disabled'=>false,'zero'=>0]],'enable'=>0]);
+    $customPaymentId=$customPayment->id;
+    $customPaymentConnection=$app['db']->connection();
+    $customPaymentBefore=$customPaymentConnection->table('v2_payment')->where('id',$customPaymentId)->value('config');
+    $assert(is_string($customPaymentBefore),'The dedicated payment fixture must exist on the original transaction connection');
+    $customBase=[
+        'app_name'=>'Custom owner brand','app_description'=>'Original custom description',
+        'app_url'=>'https://owner.example.test','subscribe_url'=>'https://subscriptions.owner.example.test','subscribe_path'=>'/owner-subscription',
+        'server_api_url'=>'https://nodes.owner.example.test','secure_path'=>$securePath,'ops_api_path'=>$opsPath,
+        'custom_footer_html'=>'<p>Owner footer &amp; custom content</p>',
+        'email_provider'=>'smtp','email_host'=>'smtp.owner.example.test','email_port'=>587,'email_username'=>'synthetic-mail-user',
+        'email_password'=>$customSecret,'email_password_encrypted'=>true,'email_encryption'=>'tls','email_from_address'=>'owner@example.test',
+        'email_announcement_separate'=>0,'email_announcements_enabled'=>0,'new_user_currency'=>'CNY',
+        'stop_register'=>0,'force_https'=>0,'plan_change_enable'=>0,'email_verify'=>0,
+        'system_timezone'=>'UTC','show_subscribe_method'=>0,'show_subscribe_expire'=>5,
+        'payment_extension'=>['merchant_key'=>'synthetic-payment-secret'],
+        'unknown_null'=>null,'unknown_false'=>false,'unknown_zero'=>0,'unknown_empty'=>[],
+        'unknown_extension'=>['null'=>null,'false'=>false,'zero'=>0,'empty'=>[],'nested'=>['values'=>[null,false,0,[]]]],
+    ];
+    try {
+        foreach (['legacy-only','canonical-only','both'] as $layout) {
+            foreach (['fastai.php','v2board.php'] as $file) if (is_file($customFixture.'/config/'.$file)) unlink($customFixture.'/config/'.$file);
+            if (is_file($customCache)) unlink($customCache);
+            $legacyCustom=$customBase; $legacyCustom['app_name']='Legacy custom owner'; $legacyCustom['legacy_only_key']='must-not-be-merged';
+            $canonicalCustom=$customBase; $canonicalCustom['app_name']='Canonical custom owner'; $canonicalCustom['app_url']='https://canonical.owner.example.test';
+            if ($layout!=='canonical-only') { file_put_contents($customFixture.'/config/v2board.php','<?php return '.var_export($legacyCustom,true).';'); chmod($customFixture.'/config/v2board.php',0600); }
+            if ($layout!=='legacy-only') { file_put_contents($customFixture.'/config/fastai.php','<?php return '.var_export($canonicalCustom,true).';'); chmod($customFixture.'/config/fastai.php',0600); }
+            $expectedCustom=$layout==='legacy-only' ? $legacyCustom : $canonicalCustom;
+            $legacyCustomHash=is_file($customFixture.'/config/v2board.php') ? hash_file('sha256',$customFixture.'/config/v2board.php') : null;
+            $assert($customRun($expectedCustom,true)['cacheReady']===true,'Custom settings cache preparation failed: '.$layout);
+            foreach ($customRun($expectedCustom,false) as $boundary=>$valid) $assert($valid===true,'Custom settings initial bootstrap failed '.$layout.': '.$boundary);
+            $compiledCustom=require $customCache;
+            config(['fastai'=>$compiledCustom['fastai']]);
+            $app->useConfigPath($customFixture.'/config');
+            try {
+                // Assert the controller requests cache rebuilding, then run it in a real fresh process.
+                Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')->andReturn(0);
+                $customResponse=$call('/api/v1/'.$securePath.'/config/save',['app_description'=>'Changed description '.$layout,'email_password'=>''],$token);
+            } finally {
+                Illuminate\Support\Facades\Artisan::swap($customArtisan);
+                $app->useConfigPath($customSourceConfigPath);
+            }
+            $assert($customResponse->getStatusCode()===200,'Partial custom settings save failed: '.$layout);
+            $expectedCustom['app_description']='Changed description '.$layout;
+            $persistedCustom=require $customFixture.'/config/fastai.php';
+            $assert($persistedCustom===$expectedCustom,'Partial save changed an unrelated custom setting: '.$layout);
+            clearstatcache(true,$customFixture.'/config/fastai.php');
+            $assert((fileperms($customFixture.'/config/fastai.php')&0777)===0600,'Custom settings save changed private permissions: '.$layout);
+            $currentCustomPayment=App\Models\Payment::find($customPaymentId);
+            $assert($currentCustomPayment!==null,'Site settings save removed the dedicated payment fixture: '.$layout);
+            $assert($currentCustomPayment->getRawOriginal('config')===$customPaymentBefore
+                && $customPaymentConnection->table('v2_payment')->where('id',$customPaymentId)->value('config')===$customPaymentBefore,
+                'Site settings save changed payment-channel credentials: '.$layout);
+            $assert($legacyCustomHash===null || hash_file('sha256',$customFixture.'/config/v2board.php')===$legacyCustomHash,'Site settings save changed the legacy file: '.$layout);
+            $assert($customRun($expectedCustom,true)['cacheReady']===true,'Saved custom settings could not rebuild the real cache: '.$layout);
+            foreach ($customRun($expectedCustom,false) as $boundary=>$valid) $assert($valid===true,'Saved custom settings fresh bootstrap failed '.$layout.': '.$boundary);
+        }
+    } finally {
+        Illuminate\Support\Facades\Artisan::swap($customArtisan);
+        $app->useConfigPath($customSourceConfigPath);
+        config(['fastai'=>$customOriginalSettings]);
+        (new Illuminate\Filesystem\Filesystem)->deleteDirectory($customFixture);
+    }
     echo "Console smoke tests: {$checks} checks passed\n";
 } catch (Throwable $error) {
     $failure = $error;

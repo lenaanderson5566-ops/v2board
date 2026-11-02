@@ -162,6 +162,103 @@ new_site emptycanonicalconfig
 reject --check
 grep -q 'Existing settings file is empty: config/fastai.php' "$TMP/output"
 [[ ! -e storage/framework/down ]]
+
+# Shared private settings may live outside the checkout. Preserve their links
+# and archive their dereferenced contents separately, including on install failure.
+linked_site() {
+    new_site "$1"
+    LINKED_SHARED="$TMP/shared-$1"
+    LINKED_EXPECTED="$TMP/expected-$1"
+    LINKED_BACKUPS="$TMP/backups-$1"
+    mkdir -m 700 -- "$LINKED_SHARED" "$LINKED_EXPECTED"
+    mv .env "$LINKED_SHARED/env"
+    mv config/v2board.php "$LINKED_SHARED/legacy.php"
+    printf '<?php return ["canonical"=>true,"custom_nested"=>["disabled"=>false,"count"=>0]];\n' > "$LINKED_SHARED/current.php"
+    chmod 600 "$LINKED_SHARED/env" "$LINKED_SHARED/current.php"
+    chmod 640 "$LINKED_SHARED/legacy.php"
+    ln -s "$LINKED_SHARED/env" .env
+    ln -s "../../shared-$1/current.php" config/fastai.php
+    ln -s "../../shared-$1/legacy.php" config/v2board.php
+    for private in .env config/fastai.php config/v2board.php; do
+        mkdir -p -- "$LINKED_EXPECTED/$(dirname "$private")"
+        cp -pL -- "$private" "$LINKED_EXPECTED/$private"
+        readlink "$private" > "$LINKED_EXPECTED/$private.link"
+    done
+    ARGS+=(--backup-dir "$LINKED_BACKUPS")
+}
+assert_linked_backup() {
+    local protected snapshot archive mode
+    protected=$(find "$LINKED_BACKUPS" -name protected.sha256 -print -quit)
+    [[ -n "$protected" ]]
+    snapshot="${protected%/*}/private-config"
+    [[ $(stat -c %a "$snapshot") == 700 && $(stat -c %a "$snapshot/config") == 700 ]]
+    (cd "$snapshot"; sha256sum -c "$protected") > /dev/null
+    grep -q 'private-config/' "${protected%/*}/DEPLOYMENT.txt"
+    archive="$LINKED_EXPECTED/archive"
+    mkdir -m 700 -- "$archive" "$LINKED_EXPECTED/restored"
+    tar -xzf "${protected%/*}/site.tar.gz" -C "$archive" ./.env ./config/fastai.php ./config/v2board.php
+    for private in .env config/fastai.php config/v2board.php; do
+        [[ -L "$private" && -L "$archive/$private" ]]
+        [[ $(readlink "$private") == "$(cat "$LINKED_EXPECTED/$private.link")" ]]
+        [[ $(readlink "$archive/$private") == "$(cat "$LINKED_EXPECTED/$private.link")" ]]
+        cmp "$private" "$LINKED_EXPECTED/$private"
+        [[ -f "$snapshot/$private" && ! -L "$snapshot/$private" ]]
+        cmp "$snapshot/$private" "$LINKED_EXPECTED/$private"
+        mode=$(stat -c %a "$LINKED_EXPECTED/$private")
+        [[ $(stat -Lc %a "$private") == "$mode" && $(stat -c %a "$snapshot/$private") == "$mode" ]]
+        mkdir -p -- "$LINKED_EXPECTED/restored/$(dirname "$private")"
+        cp -p -- "$snapshot/$private" "$LINKED_EXPECTED/restored/$private"
+        cmp "$LINKED_EXPECTED/restored/$private" "$LINKED_EXPECTED/$private"
+        [[ $(stat -c %a "$LINKED_EXPECTED/restored/$private") == "$mode" ]]
+    done
+}
+linked_site linkedsettings
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+[[ $(git rev-parse HEAD) == "$TARGET" && -e storage/framework/down ]]
+assert_linked_backup
+linked_site linkedsettingsfailure
+export FAIL_INSTALL=1; reject --jobs-stopped; unset FAIL_INSTALL
+[[ $(git rev-parse HEAD) == "$TARGET" && -e storage/framework/down ]]
+grep -q 'keep maintenance' "$TMP/output"
+assert_linked_backup
+
+# Invalid link targets and directories must fail before maintenance, backup or
+# any PHP/Composer/Artisan invocation. Keep the established empty-file errors.
+for private in .env config/fastai.php config/v2board.php; do
+    for invalid in dangling directory empty; do
+        fixture="invalid-private-${private//[\/.]/-}-$invalid"
+        new_site "$fixture"
+        rm -f -- "$private"
+        if [[ "$invalid" == directory ]]; then
+            mkdir -m 700 -- "$private"
+        else
+            target="$TMP/$fixture-external"
+            if [[ "$invalid" == empty ]]; then touch "$target"; chmod 600 "$target"; fi
+            ln -s "$target" "$private"
+        fi
+        ARGS+=(--backup-dir "$TMP/backups-$fixture")
+        reject --jobs-stopped
+        [[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+        [[ ! -e calls.log && ! -e "$TMP/backups-$fixture" ]]
+        if [[ "$invalid" == directory ]]; then
+            [[ -d "$private" && ! -L "$private" && $(stat -c %a "$private") == 700 ]]
+            grep -q 'must be a regular file or a symbolic link to one' "$TMP/output"
+        else
+            [[ -L "$private" && $(readlink "$private") == "$target" ]]
+            if [[ "$invalid" == dangling ]]; then
+                [[ ! -e "$target" ]]
+                grep -q 'dangling symbolic link' "$TMP/output"
+            else
+                [[ -f "$target" && ! -s "$target" && $(stat -c %a "$target") == 600 ]]
+                if [[ "$private" == .env ]]; then
+                    grep -q 'Existing .env required' "$TMP/output"
+                else
+                    grep -q "Existing settings file is empty: $private" "$TMP/output"
+                fi
+            fi
+        fi
+    done
+done
 new_site targetlock
 ARGS=(--project "$PWD" --php "$TMP/php" --composer "$TMP/composer.phar" --backup-dir "$TMP/backups" --web-user "$(id -un)")
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
@@ -505,4 +602,4 @@ for version in current initial; do
     done
 done
 
-echo 'Updater: 45 isolated scenarios passed'
+echo 'Updater: 56 isolated scenarios passed'

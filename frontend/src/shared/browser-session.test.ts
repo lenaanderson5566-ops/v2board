@@ -76,6 +76,10 @@ it("deletes retired local credentials without sending them to the server", async
     const fetcher = vi.fn().mockResolvedValue(reply());
     vi.stubGlobal("fetch", fetcher);
     const sessions = await import("./browser-session");
+    const { localPreferences } = await import("./browser-storage");
+    for (const key of ["fastai.user.auth", "v2board.user.auth"]) {
+        expect(localPreferences.storageEvent({ key, newValue: null, storageArea: null }, key)).toBe("ignore");
+    }
     await sessions.initializeBrowserSession();
     await sessions.initializeBrowserSession();
     expect(fetcher).toHaveBeenCalledTimes(1);

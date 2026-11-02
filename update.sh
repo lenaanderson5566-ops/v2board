@@ -291,13 +291,18 @@ while IFS= read -r changed; do
         *) die "Review tracked change first: $changed";;
     esac
 done < <(git diff --name-only)
+[[ -e .env || -L .env ]] || die 'Existing .env required'
+[[ ! -L .env || -e .env ]] || die 'Existing .env is a dangling symbolic link'
+[[ -f .env ]] || die 'Existing .env must be a regular file or a symbolic link to one'
 [[ -s .env ]] || die 'Existing .env required'
 # Keep every existing private settings file protected, including the legacy one.
 for site_config in config/fastai.php config/v2board.php; do
     if [[ "$site_config" == config/fastai.php ]] && (( LEGACY_FASTAI_DEFAULTS == 1 )); then
         continue # Retired public code, not a private settings file to restore.
     fi
-    if [[ -e "$site_config" ]]; then
+    if [[ -e "$site_config" || -L "$site_config" ]]; then
+        [[ ! -L "$site_config" || -e "$site_config" ]] || die "Existing settings file is a dangling symbolic link: $site_config"
+        [[ -f "$site_config" ]] || die "Existing settings path must be a regular file or a symbolic link to one: $site_config"
         [[ -s "$site_config" ]] || die "Existing settings file is empty: $site_config"
         SITE_CONFIG_FILES+=("$site_config")
     fi
@@ -500,6 +505,16 @@ cp -- "$WORK_DIR/matched-composer.json" "$BACKUP/composer-baseline.json"
 cp -- "$WORK_DIR/composer.lock" "$BACKUP/target-composer.lock"
 git diff --binary -- composer.json > "$BACKUP/composer-local.patch"
 sha256sum .env "${SITE_CONFIG_FILES[@]}" > "$BACKUP/protected.sha256"
+# Preserve external shared-file contents as well as the links in site.tar.gz.
+# Only these explicit private paths are dereferenced; unknown storage links stay links.
+mkdir -m 0700 -- "$BACKUP/private-config"
+for protected in .env "${SITE_CONFIG_FILES[@]}"; do
+    snapshot="$BACKUP/private-config/$protected"
+    mkdir -p -- "$(dirname "$snapshot")"
+    cp -L --preserve=mode,timestamps -- "$protected" "$snapshot"
+    [[ -f "$snapshot" && ! -L "$snapshot" ]] || die "Private settings snapshot is not a regular file: $protected"
+done
+(cd "$BACKUP/private-config"; sha256sum -c "$BACKUP/protected.sha256")
 cat > "$BACKUP/DEPLOYMENT.txt" <<EOF
 Project: $PROJECT
 Original branch: $OLD_BRANCH
@@ -509,6 +524,10 @@ PHP: $PHP_BIN
 On failure retain maintenance and stopped jobs. Inspect the error first.
 Code rollback: git checkout --detach $OLD_COMMIT
 site.tar.gz contains ORIGINAL vendor, lock, config, storage and source files.
+The archive preserves symbolic links, not the contents of external link targets.
+private-config/ contains verified regular-file snapshots of .env and site settings,
+with their original modes. Restore external target contents deliberately from these
+snapshots and retain the original link layout; do not blindly replace live links.
 Restore original dependencies/config deliberately; do not overwrite newer uploads.
 Then config:clear, route:clear, view:clear, config:cache; restart PHP-FPM.
 Run artisan up only after verification, then restart original queue/scheduler.

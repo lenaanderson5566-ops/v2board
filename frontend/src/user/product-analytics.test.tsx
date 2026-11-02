@@ -29,7 +29,11 @@ function Page() {
     useAnalyticsPage("subscribe");
     return <div>连接与下载</div>;
 }
+let testWindow = Date.now();
 beforeEach(() => {
+    // Each case gets its own real production sampling-budget window.
+    testWindow += 60001;
+    vi.spyOn(Date, "now").mockReturnValue(testWindow);
     Object.defineProperty(navigator, "doNotTrack", {
         configurable: true,
         get: () => "0",
@@ -95,6 +99,70 @@ it("publishes a new withdrawal to older tabs and stops collection when an older 
     expect(savePrivacyChoice("deny",30)).toBe(true);
     expect(JSON.parse(localStorage.getItem(legacyPrivacyKey)!).choice).toBe("deny");
     expect(localStorage.getItem(privacyKey)).toBe(localStorage.getItem(legacyPrivacyKey));
+});
+
+it.each([privacyKey, legacyPrivacyKey, null])("keeps a newer explicit choice after a queued deletion of %s", async (removedKey) => {
+    fetcher.mockImplementation(async(url:string)=>url.endsWith("/configuration")
+        ? {ok:true,json:async()=>({data:{enabled:true,retentionDays:30}})} : {ok:true});
+    savePrivacyChoice("allow",30);
+    render(<><Page /><AnalyticsPrivacy /></>);
+    const reports=()=>fetcher.mock.calls.filter(([url])=>String(url).endsWith("/events"));
+    await waitFor(()=>expect(reports().length).toBeGreaterThan(0));
+    if(removedKey===null)localStorage.clear();else localStorage.removeItem(removedKey);
+    expect(savePrivacyChoice("allow",30)).toBe(true);
+    const newest=localStorage.getItem(privacyKey);
+    const before=reports().length;
+    await act(async()=>{
+        window.dispatchEvent(new StorageEvent("storage",{key:removedKey,newValue:null,storageArea:localStorage}));
+        trackAction("payment_open","payment");await Promise.resolve();
+    });
+    expect(consent()).toBe("allow");
+    expect(localStorage.getItem(privacyKey)).toBe(newest);
+    expect(localStorage.getItem(legacyPrivacyKey)).toBe(newest);
+    expect(reports().length).toBeGreaterThan(before);
+});
+
+it.each([privacyKey, legacyPrivacyKey, null])("ignores session storage deletion of %s without revoking local consent", async (removedKey) => {
+    fetcher.mockImplementation(async(url:string)=>url.endsWith("/configuration")
+        ? {ok:true,json:async()=>({data:{enabled:true,retentionDays:30}})} : {ok:true});
+    savePrivacyChoice("allow",30);
+    render(<><Page /><AnalyticsPrivacy /></>);
+    const reports=()=>fetcher.mock.calls.filter(([url])=>String(url).endsWith("/events"));
+    await waitFor(()=>expect(reports().length).toBeGreaterThan(0));
+    const choice=localStorage.getItem(privacyKey);
+    const before=reports().length;
+    await act(async()=>{
+        window.dispatchEvent(new StorageEvent("storage",{key:removedKey,newValue:null,storageArea:sessionStorage}));
+        trackAction("payment_open","payment");await Promise.resolve();
+    });
+    expect(consent()).toBe("allow");
+    expect(localStorage.getItem(privacyKey)).toBe(choice);
+    expect(localStorage.getItem(legacyPrivacyKey)).toBe(choice);
+    expect(reports().length).toBeGreaterThan(before);
+});
+
+it("stops collection conservatively if consent storage becomes unreadable during removal", async () => {
+    fetcher.mockImplementation(async(url:string)=>url.endsWith("/configuration")
+        ? {ok:true,json:async()=>({data:{enabled:true,retentionDays:30}})} : {ok:true});
+    savePrivacyChoice("allow",30);
+    render(<><Page /><AnalyticsPrivacy /></>);
+    const reports=()=>fetcher.mock.calls.filter(([url])=>String(url).endsWith("/events"));
+    await waitFor(()=>expect(reports().length).toBeGreaterThan(0));
+    const before=reports().length;
+    const get=Storage.prototype.getItem,remove=Storage.prototype.removeItem;
+    vi.spyOn(Storage.prototype,"getItem").mockImplementation(function(this:Storage,key:string){
+        if(key===privacyKey||key===legacyPrivacyKey)throw new DOMException("Blocked","SecurityError");
+        return get.call(this,key);
+    });
+    vi.spyOn(Storage.prototype,"removeItem").mockImplementation(function(this:Storage,key:string){
+        if(key===privacyKey||key===legacyPrivacyKey)throw new DOMException("Blocked","SecurityError");
+        remove.call(this,key);
+    });
+    await act(async()=>{
+        window.dispatchEvent(new StorageEvent("storage",{key:privacyKey,newValue:null,storageArea:localStorage}));
+        trackAction("payment_open","payment");await Promise.resolve();
+    });
+    expect(consent()).toBeNull();expect(reports()).toHaveLength(before);
 });
 
 it("shows the storage failure and grants no consent when the new preference cannot be persisted", async () => {

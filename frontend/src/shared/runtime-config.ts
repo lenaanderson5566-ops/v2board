@@ -89,6 +89,7 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
         window.FASTAI.adminPath = "";
         window.FASTAI.opsPath = "";
     }
+    window.V2BOARD = window.FASTAI;
     document.body.dataset.console = mode;
     document.title = window.FASTAI.title;
 }

@@ -305,6 +305,28 @@ it.each([privacyKey,"v2board.analytics.consent.v2.%2Fapi%2Fv10",null])("revokes 
     expect(localStorage.getItem("v2board.analytics.consent.v2.%2Fapi%2Fv10")).toBeNull();
     expect(container.querySelector(".analytics-privacy")).toBeNull();
 });
+it.each([privacyKey,"v2board.analytics.consent.v2.%2Fapi%2Fv10",null])("keeps the current privacy switch after a stale removal of %s", async (removedKey) => {
+    savePrivacyChoice("allow",30);
+    privacyScreen();
+    const toggle=screen.getByRole("switch");
+    await waitFor(()=>expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    act(()=>{
+        if(removedKey===null)localStorage.clear();else localStorage.removeItem(removedKey);
+        savePrivacyChoice("allow",30);
+        window.dispatchEvent(new StorageEvent("storage",{key:removedKey,newValue:null,storageArea:localStorage}));
+    });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(JSON.parse(localStorage.getItem(privacyKey)!).choice).toBe("allow");
+});
+it("keeps the saved privacy switch when another frame clears session storage", async () => {
+    savePrivacyChoice("allow",30);
+    privacyScreen();
+    const toggle=screen.getByRole("switch");
+    await waitFor(()=>expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    act(()=>window.dispatchEvent(new StorageEvent("storage",{key:null,newValue:null,storageArea:sessionStorage})));
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect(JSON.parse(localStorage.getItem(privacyKey)!).choice).toBe("allow");
+});
 it("requires renewed opt-in for a longer retention period", async () => {
     savePrivacyChoice("allow", 7);
     privacyScreen(90);

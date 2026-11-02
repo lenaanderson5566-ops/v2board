@@ -9,7 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 spec = importlib.util.spec_from_file_location("deploy", sys.argv[1])
 m = importlib.util.module_from_spec(spec)
@@ -52,8 +52,10 @@ class WorkflowTests(unittest.TestCase):
         }
 
     def test_managed_launch_uses_private_state_without_credentials_in_unit(self):
-        with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run") as run:
+        with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run") as run, patch.object(m.sys, "stdout", io.StringIO()) as output:
             self.assertTrue(m.launch_managed(self.path))
+        self.assertIn("systemctl stop v2box-deployment", output.getvalue())
+        self.assertIn("Recovery state is retained", output.getvalue())
         args = run.call_args.args[0]
         self.assertIn("--unit=v2box-deployment", args)
         self.assertIn("--worker", args)
@@ -61,6 +63,9 @@ class WorkflowTests(unittest.TestCase):
         self.assertNotIn(self.data["apiKey"], " ".join(args))
         self.assertNotIn(self.data["deployment"]["token"], " ".join(args))
         self.assertTrue(run.call_args.kwargs["check"])
+        self.assertTrue(run.call_args.kwargs["close_fds"])
+        for setting in ("RuntimeMaxSec=25h", "TimeoutStopSec=15s", "KillMode=control-group"):
+            self.assertIn("--property=" + setting, args)
 
     def test_managed_launch_failure_does_not_fall_back_to_duplicate_foreground(self):
         with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "systemd-run")):
@@ -484,13 +489,125 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(self.path.exists())
 
     def test_service_command_timeout_is_actionable(self):
-        with patch.object(
-            m.subprocess,
-            "run",
-            side_effect=m.subprocess.TimeoutExpired(["v2box", "restart"], 180),
-        ):
+        with patch.object(m.subprocess, "Popen") as popen, patch.object(m.os, "killpg") as kill:
+            child = popen.return_value.__enter__.return_value
+            child.pid = 4321
+            child.wait.side_effect = [m.subprocess.TimeoutExpired(["v2box", "restart"], 180), 0, 0]
             with self.assertRaisesRegex(m.DeploymentError, "timed out after 180"):
                 m.Deployment.command(self.deploy, ["v2box", "restart"])
+            self.assertEqual(kill.call_args_list, [call(4321, m.signal.SIGTERM), call(4321, m.signal.SIGKILL)])
+
+    def test_service_command_delegates_owned_locks_without_inheriting_descriptors(self):
+        with patch.object(m.subprocess, "Popen") as popen:
+            popen.return_value.__enter__.return_value.wait.return_value = 0
+            m.Deployment.command(self.deploy, ["v2box", "reload"])
+            settings = popen.call_args.kwargs
+            self.assertTrue(settings["close_fds"])
+            self.assertTrue(settings["start_new_session"])
+            self.assertEqual(settings["env"]["V2BOX_BOOTSTRAP_LOCK_HELD"], "1")
+            self.assertEqual(settings["env"]["V2BOX_DEPLOYMENT_LOCK_HELD"], "1")
+            with patch.dict(os.environ, {"V2BOX_BOOTSTRAP_LOCK_HELD": "1", "V2BOX_DEPLOYMENT_LOCK_HELD": "1"}):
+                m.run_command(["python3", "reporter"])
+            self.assertNotIn("V2BOX_BOOTSTRAP_LOCK_HELD", popen.call_args.kwargs["env"])
+            self.assertNotIn("V2BOX_DEPLOYMENT_LOCK_HELD", popen.call_args.kwargs["env"])
+
+    def test_service_timeout_stops_descendants_and_retains_recovery(self):
+        marker = self.path.parent / "orphan-wrote-after-timeout"
+        grandchild = "import signal,sys,time;from pathlib import Path;signal.signal(signal.SIGTERM,signal.SIG_IGN);time.sleep(0.8);Path(sys.argv[1]).write_text('unexpected')"
+        parent = '''child=''
+cleanup() { if [[ -n "$child" ]]; then kill -TERM -- "-$child" 2>/dev/null || kill -TERM "$child" 2>/dev/null || :; wait "$child" || :; fi; }
+trap cleanup EXIT
+trap 'exit 143' TERM INT
+timeout -k 0.2 30 "$1" -c "$2" "$3" &
+child=$!
+wait "$child"
+'''
+        self.deploy.prepare_config()
+        before, state = self.deploy.config.read_bytes(), self.path.read_bytes()
+        with patch.object(m, "COMMAND_TIMEOUT", 0.3):
+            with self.assertRaisesRegex(m.DeploymentError, "timed out"):
+                m.run_command(["bash", "-c", parent, "worker", sys.executable, grandchild, str(marker)])
+        m.time.sleep(1)
+        self.assertFalse(marker.exists(), "A timed-out manager must not leave a child modifying files")
+        self.assertEqual(self.deploy.config.read_bytes(), before)
+        self.assertEqual(self.path.read_bytes(), state)
+
+    def test_http_total_deadline_bounds_open_and_both_response_bodies(self):
+        class SlowResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self, limit):
+                m.time.sleep(0.3)
+                return b'{}'
+
+        for phase in ("open", "success", "error"):
+            with self.subTest(phase=phase), patch.object(m.urllib.request, "build_opener") as opener:
+                if phase == "open":
+                    opener.return_value.open.side_effect = lambda *args, **kwargs: m.time.sleep(0.3)
+                elif phase == "success":
+                    opener.return_value.open.return_value = SlowResponse()
+                else:
+                    error = m.urllib.error.HTTPError("https://panel.example.test", 403, "denied", {}, io.BytesIO(b'{}'))
+                    error.read = SlowResponse().read
+                    opener.return_value.open.side_effect = error
+                with self.assertRaises(TimeoutError):
+                    m.json_request("https://panel.example.test", timeout=0.03)
+
+    def test_http_deadline_preserves_prior_alarm_handler_and_schedule(self):
+        original_handler = m.signal.getsignal(m.signal.SIGALRM)
+        original_timer = m.signal.getitimer(m.signal.ITIMER_REAL)
+        fired = []
+        handler = lambda *args: fired.append(True)
+        try:
+            m.signal.signal(m.signal.SIGALRM, handler)
+            m.signal.setitimer(m.signal.ITIMER_REAL, 2, 0.5)
+            with m.request_deadline(0.1):
+                pass
+            remaining, interval = m.signal.getitimer(m.signal.ITIMER_REAL)
+            self.assertIs(m.signal.getsignal(m.signal.SIGALRM), handler)
+            self.assertGreater(remaining, 1)
+            self.assertLessEqual(remaining, 2)
+            self.assertEqual(interval, 0.5)
+            m.signal.setitimer(m.signal.ITIMER_REAL, 0.01)
+            with self.assertRaises(TimeoutError), m.request_deadline(0.03):
+                m.time.sleep(0.3)
+            self.assertEqual(fired, [True])
+        finally:
+            m.signal.setitimer(m.signal.ITIMER_REAL, 0)
+            m.signal.signal(m.signal.SIGALRM, original_handler)
+            m.signal.setitimer(m.signal.ITIMER_REAL, *original_timer)
+
+    def test_bootstrap_lock_has_bounded_contention_and_reuses_inherited_lock(self):
+        import fcntl
+
+        before = self.path.read_bytes()
+        with open(self.path.parent / ".bootstrap.lock", "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with patch.object(m, "BOOTSTRAP_LOCK_TIMEOUT", 0.1):
+                with self.assertRaisesRegex(m.DeploymentError, "bootstrap lock"):
+                    with m.bootstrap_lock(self.path.parent):
+                        self.fail("A concurrent bootstrap lock must not be bypassed")
+            try:
+                saved = os.dup(9)
+            except OSError:
+                saved = None
+            try:
+                os.dup2(held.fileno(), 9)
+                with m.bootstrap_lock(self.path.parent):
+                    with open(self.path.parent / ".bootstrap.lock", "w") as competing:
+                        with self.assertRaises(BlockingIOError):
+                            fcntl.flock(competing, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            finally:
+                if saved is None:
+                    os.close(9)
+                else:
+                    os.dup2(saved, 9)
+                    os.close(saved)
+        self.assertEqual(self.path.read_bytes(), before)
 
     def test_default_certificate_check_uses_panel_namespace(self):
         import hashlib
@@ -768,6 +885,9 @@ class WorkflowTests(unittest.TestCase):
             .replace("RESTORE_MANAGER", str(root / "manager"))
         )
         curl.chmod(0o700)
+        rc_service = binpath / "rc-service"
+        rc_service.write_text('#!/bin/sh\nexit 3\n')
+        rc_service.chmod(0o700)
         script = Path(sys.argv[1]).with_suffix(".sh").read_text()
         function = script.split("restore_programs() {", 1)[1].split(
             '\nif [[ "${1:-}" == --resume ]]', 1
@@ -817,6 +937,59 @@ class WorkflowTests(unittest.TestCase):
             self.assertTrue((root / "restored").exists())
             self.assertEqual(self.deploy.config.read_bytes(), before)
             self.assertEqual(cert.read_text(), "existing certificate")
+
+        timeout = binpath / "timeout"
+        timeout.write_text('#!/bin/bash\nif [[ "$3" == 900 ]]; then exit 124; fi\nexec /usr/bin/timeout "$@"\n')
+        timeout.chmod(0o700)
+        (root / "manager").unlink()
+        (root / "restored").unlink()
+        result = subprocess.run(
+            ["bash", "-c", function + "\nrestore_programs"],
+            env=dict(os.environ, PATH=str(binpath) + ":" + os.environ["PATH"]),
+            capture_output=True, text=True, timeout=10,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("exceeded 15 minutes", result.stderr)
+        self.assertFalse((root / "restored").exists())
+        self.assertEqual(self.deploy.config.read_bytes(), before)
+        self.assertEqual(cert.read_text(), "existing certificate")
+        self.assertTrue(self.path.exists())
+
+    def test_bootstrap_runtime_and_service_queries_stop_on_timeout(self):
+        root = Path(self.tmp.name)
+        binpath = root / "bounded-bin"
+        binpath.mkdir()
+        timeout = binpath / "timeout"
+        timeout.write_text('#!/bin/sh\nexit 124\n')
+        timeout.chmod(0o700)
+        script = Path(sys.argv[1]).with_suffix(".sh").read_text()
+        probe = "refuse_live_repair() {" + script.split("refuse_live_repair() {", 1)[1].split("\nrequire_support() {", 1)[0]
+        init = root / "systemd"
+        init.mkdir()
+        probe = probe.replace("/run/systemd/system", str(init))
+        runtime = "require_support() {" + script.split("require_support() {", 1)[1].split("\nselect_resume_state() {", 1)[0]
+        systemctl = binpath / "systemctl"
+        systemctl.write_text('#!/bin/sh\nexit 0\n')
+        systemctl.chmod(0o700)
+        jq = binpath / "jq"
+        jq.write_text('#!/bin/sh\nexit 0\n')
+        jq.chmod(0o700)
+        for function, call, expected in ((probe, "refuse_live_repair", "Service status check timed out"),
+                                         (runtime, "require_support", "does not support independent multi-panel deployment")):
+            with self.subTest(call=call):
+                result = subprocess.run(["bash", "-c", "set -o pipefail\n" + function + "\n" + call],
+                    env=dict(os.environ, PATH=str(binpath) + ":" + os.environ["PATH"]),
+                    capture_output=True, text=True, timeout=3)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(expected, result.stderr)
+                self.assertNotIn(self.data["apiKey"], result.stderr)
+        timeout.write_text('#!/bin/sh\nshift 3\nexec "$@"\n')
+        systemctl.write_text('#!/bin/sh\nexit 1\n')
+        result = subprocess.run(["bash", "-c", probe + "\nrefuse_live_repair"],
+            env=dict(os.environ, PATH=str(binpath) + ":" + os.environ["PATH"]), capture_output=True, text=True, timeout=3)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("could not be verified as stopped", result.stderr)
+        self.assertTrue(self.path.exists())
 
     def test_fresh_authorization_replaces_only_target_credential(self):
         self.deploy.prepare_config()
@@ -937,7 +1110,7 @@ class WorkflowTests(unittest.TestCase):
         self.assertTrue(json.loads(self.path.read_text())["replaceCredential"])
 
     def test_missing_program_has_actionable_error(self):
-        with patch.object(m.subprocess, "run", side_effect=FileNotFoundError()):
+        with patch.object(m.subprocess, "Popen", side_effect=FileNotFoundError()):
             with self.assertRaisesRegex(m.DeploymentError, "program is missing"):
                 m.Deployment.command(self.deploy, ["v2box", "restart"])
 
@@ -1105,7 +1278,7 @@ class WorkflowTests(unittest.TestCase):
         for state in ("active", "activating", "inactive", "failed"):
             with patch.object(
                 m.shutil, "which", return_value="/bin/systemctl"
-            ), patch.object(
+            ), patch.object(m.Path, "is_dir", return_value=True), patch.object(
                 m.subprocess,
                 "run",
                 return_value=subprocess.CompletedProcess([], 0, state + "\n"),
@@ -1115,15 +1288,15 @@ class WorkflowTests(unittest.TestCase):
             m.shutil,
             "which",
             side_effect=lambda name: (
-                "/bin/rc-service" if name == "rc-service" else None
+                "/bin/" + name if name in ("rc-service", "systemctl") else None
             ),
-        ), patch.object(
+        ), patch.object(m.Path, "is_dir", return_value=False), patch.object(
             m.subprocess, "run", return_value=subprocess.CompletedProcess([], 3)
         ):
             self.assertEqual(m.Deployment.service_state(self.deploy), "inactive")
         with patch.object(
             m.shutil, "which", return_value="/bin/systemctl"
-        ), patch.object(
+        ), patch.object(m.Path, "is_dir", return_value=True), patch.object(
             m.subprocess,
             "run",
             return_value=subprocess.CompletedProcess([], 1, "unknown"),
@@ -1201,7 +1374,7 @@ class WorkflowTests(unittest.TestCase):
             "entryAddresses": {"ipv4": "1.1.1.1"},
         }
         with patch.object(m, "dns_matches", side_effect=[True, False]), patch.object(
-            m.time, "monotonic", side_effect=[0, 0, 1000]
+            m.time, "monotonic", side_effect=[0, 0, 0, 1000]
         ), patch.object(m.time, "sleep") as sleep:
             with self.assertRaises(m.DeploymentError):
                 m.Deployment.wait_dns(self.deploy)
@@ -1230,7 +1403,7 @@ class WorkflowTests(unittest.TestCase):
                 ],
             )
         with patch.object(m, "dns_matches", side_effect=[True, False]), patch.object(
-            m.time, "monotonic", side_effect=[0, 0, 1000]
+            m.time, "monotonic", side_effect=[0, 0, 0, 1000]
         ), patch.object(m.time, "sleep"):
             with self.assertRaisesRegex(
                 m.DeploymentError, "point directly to the origin"
@@ -1275,7 +1448,7 @@ class WorkflowTests(unittest.TestCase):
                 }
             ],
         }
-        with patch.object(m.time, "monotonic", side_effect=[0, 0, 1000]), patch.object(
+        with patch.object(m.time, "monotonic", side_effect=[0, 0, 0, 1000]), patch.object(
             m.time, "sleep"
         ), patch("sys.stdout", new_callable=io.StringIO) as out:
             with self.assertRaisesRegex(
@@ -1283,6 +1456,7 @@ class WorkflowTests(unittest.TestCase):
             ):
                 m.Deployment.wait_dns(self.deploy)
             self.assertIn("Entry: missing or stale ipv6", out.getvalue())
+            self.assertIn("900 seconds remaining in DNS wait", out.getvalue())
         self.assertTrue(self.path.exists())
         self.assertNotIn("restart", self.events)
 
@@ -1598,6 +1772,9 @@ class WorkflowTests(unittest.TestCase):
         missing=False,
         failure=False,
         partial=False,
+        no_timeout=False,
+        timeout_failure=False,
+        gnu_missing=False,
     ):
         root = Path(self.tmp.name) / (
             "prerequisites-"
@@ -1615,6 +1792,7 @@ class WorkflowTests(unittest.TestCase):
 
         executable("id", 'printf "%s\\n" "$SIM_UID"')
         executable("uname", 'printf "%s\\n" "$SIM_OS"')
+        executable("true", "exit 0")
         for tool in (
             "curl",
             "bash",
@@ -1627,12 +1805,22 @@ class WorkflowTests(unittest.TestCase):
             "flock",
             "timeout",
         ):
-            if not (missing and tool == "bash"):
+            if not (missing and tool == "bash") and not (no_timeout and tool == "timeout"):
                 executable(tool, "exit 0")
+        executable("curl", 'printf redeemed > "$SIM_REDEEM"')
+        if not no_timeout:
+            executable("timeout", '''if [ "${1:-}" = --foreground ]; then
+  [ "$SIM_GNU_MISSING" = 0 ] || [ -f "$SIM_BIN/.gnu-fixed" ] || exit 125
+  shift
+fi
+if [ "${1:-}" = -k ]; then shift 2; fi
+shift
+if [ "$SIM_TIMEOUT_FAIL" = 1 ] && [ "$1" != true ]; then exit 124; fi
+exec "$@"''')
         if manager:
             executable(
                 manager,
-                'printf "%s\\n" "$*" >> "$SIM_LOG"\n[ "$SIM_FAIL" = 0 ] || exit 19\nif [ "$SIM_PARTIAL" = 0 ]; then printf "#!/bin/sh\\nexit 0\\n" > "$SIM_BIN/bash"; /bin/chmod 700 "$SIM_BIN/bash"; fi',
+                'printf "%s\\n" "$*" >> "$SIM_LOG"\nif read -r input; then echo stdin=open >> "$SIM_LOG"; else echo stdin=closed >> "$SIM_LOG"; fi\nprintf "frontend=%s\\n" "${DEBIAN_FRONTEND:-}" >> "$SIM_LOG"\n[ "$SIM_FAIL" = 0 ] || exit 19\nif [ "$SIM_PARTIAL" = 0 ]; then printf "#!/bin/sh\\nexit 0\\n" > "$SIM_BIN/bash"; /bin/chmod 700 "$SIM_BIN/bash"; : > "$SIM_BIN/.gnu-fixed"; fi',
             )
         env = dict(
             os.environ,
@@ -1643,14 +1831,19 @@ class WorkflowTests(unittest.TestCase):
             SIM_LOG=str(log),
             SIM_FAIL=str(int(failure)),
             SIM_PARTIAL=str(int(partial)),
+            SIM_TIMEOUT_FAIL=str(int(timeout_failure)),
+            SIM_GNU_MISSING=str(int(gnu_missing)),
+            SIM_REDEEM=str(root / "redeemed"),
         )
         result = subprocess.run(
-            ["/bin/sh", str(Path(sys.argv[1]).with_name("node-prerequisites.sh"))],
+            ["/bin/sh", "-c", '. "$1"; curl synthetic-enrollment', "prerequisites", str(Path(sys.argv[1]).with_name("node-prerequisites.sh"))],
             env=env,
+            input="This input must never answer a package-manager prompt\n",
             capture_output=True,
             text=True,
             timeout=10,
         )
+        self.last_prerequisite_redeemed = (root / "redeemed").exists()
         return result, log.read_text() if log.exists() else ""
 
     def test_prerequisites_reject_nonroot_and_nonlinux_before_package_changes(self):
@@ -1669,6 +1862,11 @@ class WorkflowTests(unittest.TestCase):
                 result, log = self.prerequisites(manager=manager, missing=True)
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertIn("python3", log)
+                self.assertIn("stdin=closed", log)
+                self.assertNotIn("stdin=open", log)
+                if manager == "apt-get":
+                    self.assertIn("frontend=noninteractive", log)
+                    self.assertIn("DPkg::Lock::Timeout=60", log)
 
     def test_prerequisites_reject_missing_manager_failed_install_and_partial_install(
         self,
@@ -1687,6 +1885,31 @@ class WorkflowTests(unittest.TestCase):
         result, log = self.prerequisites(manager="apt-get")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(log, "")
+
+    def test_prerequisite_failure_or_timeout_never_reaches_enrollment(self):
+        before = self.path.read_bytes()
+        for settings in ({"failure": True}, {"timeout_failure": True}):
+            with self.subTest(settings=settings):
+                result, _ = self.prerequisites(manager="apt-get", missing=True, **settings)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse(self.last_prerequisite_redeemed)
+                self.assertIn("authorization has not been consumed", result.stderr)
+                self.assertEqual(self.path.read_bytes(), before)
+
+    def test_prerequisites_require_timeout_and_repair_non_gnu_timeout(self):
+        result, log = self.prerequisites(manager="apt-get", no_timeout=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Install coreutils", result.stderr)
+        self.assertEqual(log, "")
+        self.assertFalse(self.last_prerequisite_redeemed)
+        result, log = self.prerequisites(manager="apk", gnu_missing=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("coreutils", log)
+        self.assertTrue(self.last_prerequisite_redeemed)
+        result, _ = self.prerequisites(manager="apk", gnu_missing=True, partial=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("GNU coreutils timeout is required", result.stderr)
+        self.assertFalse(self.last_prerequisite_redeemed)
 
     def test_progress_malformed_data_is_bounded_and_retryable(self):
         for payload in ({"data": None}, {"data": []}, {"data": "gateway"}, {}):

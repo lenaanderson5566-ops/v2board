@@ -16,7 +16,9 @@ if [[ "${1:-}" == --install ]]; then
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
   curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.16/script/install.sh -o "$stage/install.sh"
-  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" "$@" 9>&-
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" "$@" 9>&- || {
+    echo 'Installation or update failed or exceeded 15 minutes. Review the installer error above; existing configuration and certificates were retained. Re-run the original command after correcting the cause.' >&2; exit 1;
+  }
   exit
 fi
 # Install the panel-shipped workflow independently of the pinned node binary.
@@ -33,9 +35,25 @@ programs_ready() {
   [[ -x /usr/local/lib/v2box/v2box && -s /usr/local/lib/v2box/manager.sh && -s /usr/local/lib/v2box/install.sh && -s /usr/local/lib/v2box/node-network.py && -s /usr/local/lib/v2box/node-credentials.py && -x /usr/local/bin/v2box ]]
 }
 refuse_live_repair() {
-  if { command -v systemctl >/dev/null && systemctl is-active --quiet v2box; } || { ! command -v systemctl >/dev/null && command -v rc-service >/dev/null && rc-service v2box status >/dev/null 2>&1; }; then
+  local status manager
+  if [[ -d /run/systemd/system ]] && command -v systemctl >/dev/null; then
+    manager=systemd
+    timeout -k 2 10 systemctl is-active --quiet v2box && status=0 || status=$?
+  elif command -v rc-service >/dev/null; then
+    manager=openrc
+    timeout -k 2 10 rc-service v2box status >/dev/null 2>&1 && status=0 || status=$?
+  else
+    echo 'Cannot determine the active service manager. Check V2Box status before repairing; existing files and authorization were retained.' >&2; exit 1
+  fi
+  if ((status == 124 || status == 137)); then
+    echo 'Service status check timed out. Check the service manager before repairing; existing files and authorization were retained.' >&2; exit 1
+  fi
+  if ((status == 0)); then
     echo 'Running V2Box has missing program files. Repair or upgrade it in a maintenance window first; existing nodes and authorization were preserved.' >&2
     exit 1
+  fi
+  if ! { ((status == 3)) || { [[ "$manager" == systemd ]] && ((status == 4)); }; }; then
+    echo 'Service state could not be verified as stopped. Check the service manager before repairing; existing files and authorization were retained.' >&2; exit 1
   fi
 }
 require_support() {
@@ -49,8 +67,8 @@ require_support() {
   if [[ -z "$sharing" && -n "${deployment_state:-}" && -f "$deployment_state" ]]; then sharing=$(jq -r '.sharedListener // ""' "$deployment_state"); fi
   if [[ -n "$sharing" ]]; then
     timeout -k 2 10 /usr/local/lib/v2box/v2box capabilities | jq -e '.features | index("shared-listener-v1") != null' >/dev/null || { echo 'Shared listeners requires a newer node program; authorization preserved.' >&2; exit 1; }
-    /usr/local/bin/v2box check-runtime shared-listener-v1 | grep -qx shared-listener-v1 || { echo 'Running program or management script lacks shared listeners support; upgrade first.' >&2; exit 1; }
-  else /usr/local/bin/v2box check-runtime; fi
+    timeout -k 2 30 /usr/local/bin/v2box check-runtime shared-listener-v1 | grep -qx shared-listener-v1 || { echo 'Runtime check failed or timed out, or the running program lacks shared listener support; check service status and upgrade first.' >&2; exit 1; }
+  else timeout -k 2 30 /usr/local/bin/v2box check-runtime || { echo 'Runtime check failed or timed out. Check v2box status and the service manager before resuming; existing settings and authorization were retained.' >&2; exit 1; }; fi
 }
 select_resume_state() {
   shopt -s nullglob
@@ -68,7 +86,7 @@ restore_programs() {
     stage=$(mktemp -d)
     trap 'rm -rf -- "$stage"' EXIT
     curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.16/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
-    V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.16 </dev/null 9>&- || { echo 'Program restoration failed. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
+    V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.16 </dev/null 9>&- || { echo 'Program restoration failed or exceeded 15 minutes. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
     programs_ready || { echo 'Program restoration is incomplete. Check disk space, permissions and release files, then run --resume; do not remove configuration or certificates.' >&2; exit 1; }
     rm -rf -- "$stage"
     trap - EXIT
@@ -126,7 +144,7 @@ if $network_only; then
   # Download and validate prerequisites before consuming the one-use grant.
   curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.16/script/node-network.py -o "$stage/node-network.py"
   python3 -m py_compile "$stage/node-network.py"
-  python3 "$stage/node-network.py" capabilities | jq -e '.features | index("report-multi-target-v1") != null' >/dev/null || { echo 'Downloaded reporting helper lacks multi-target support; no authorization was consumed.' >&2; exit 1; }
+  timeout -k 2 15 python3 "$stage/node-network.py" capabilities | jq -e '.features | index("report-multi-target-v1") != null' >/dev/null || { echo 'Reporting helper check failed or timed out, or lacks multi-target support; no authorization was consumed.' >&2; exit 1; }
   install_helper
   if $server_only; then python3 /usr/local/lib/v2box/panel-deploy.py --check-report-identity "$panel_url" "$requested_id"; fi
   install -m 755 "$stage/node-network.py" /usr/local/lib/v2box/node-network.py
@@ -196,7 +214,7 @@ if ! $existing_install || ! programs_ready; then
   echo 'Checking installation: installing or repairing V2Box program files; existing configuration and certificates are retained.'
   : > /etc/v2box/.deployment-pending
   curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.16/script/install.sh -o "$stage/install.sh"
-  V2BOX_BOOTSTRAP_LOCK_HELD=1 bash "$stage/install.sh" v1.0.16 </dev/null 9>&-
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.16 </dev/null 9>&- || { echo 'Installation failed or exceeded 15 minutes. Configuration and certificates were retained and deployment authorization has not been consumed; correct the installer error, then rerun the original command.' >&2; exit 1; }
   programs_ready || { echo 'Installation is incomplete. Check disk space, permissions and release files, then rerun this command. Deployment authorization has not been consumed.' >&2; exit 1; }
 fi
 require_support

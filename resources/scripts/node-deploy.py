@@ -2,6 +2,7 @@
 """Resumable panel deployment. Standard library only; never bypass ACME failure guards."""
 
 import fcntl
+from contextlib import contextmanager
 import hashlib
 import errno
 import ipaddress
@@ -10,6 +11,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import socket
 import ssl
 import subprocess
@@ -30,7 +32,49 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 
+@contextmanager
+def request_deadline(seconds):
+    """Bound DNS, connect and body reads together in this Linux worker."""
+    started = time.monotonic()
+    deadline = started + seconds
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    previous_delay, previous_interval = signal.getitimer(signal.ITIMER_REAL)
+    previous_due = started + previous_delay if previous_delay else None
+
+    def schedule():
+        due = min(deadline, previous_due) if previous_due is not None else deadline
+        signal.setitimer(signal.ITIMER_REAL, max(0.000001, due - time.monotonic()))
+
+    def expired(signum, frame):
+        nonlocal previous_due
+        if previous_due is not None and previous_due <= deadline:
+            previous_due = previous_due + previous_interval if previous_interval else None
+            if callable(previous_handler):
+                previous_handler(signum, frame)
+            elif previous_handler == signal.SIG_DFL:
+                signal.signal(signal.SIGALRM, signal.SIG_DFL)
+                signal.raise_signal(signal.SIGALRM)
+            schedule()
+            return
+        raise TimeoutError("Deployment HTTP request exceeded its time limit")
+
+    signal.signal(signal.SIGALRM, expired)
+    schedule()
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
+        if previous_due is not None:
+            signal.setitimer(signal.ITIMER_REAL, max(0.000001, previous_due - time.monotonic()), previous_interval)
+
+
 def json_request(url, token=None, body=None, timeout=10, extra_headers=None):
+    with request_deadline(timeout):
+        return _json_request(url, token, body, timeout, extra_headers)
+
+
+def _json_request(url, token=None, body=None, timeout=10, extra_headers=None):
     headers = {
         "User-Agent": "v2box-deployment/1.0 (+https://github.com/lenaanderson5566-ops/v2box)",
         "Accept": "application/dns-json" if body is None else "application/json",
@@ -61,6 +105,8 @@ def json_request(url, token=None, body=None, timeout=10, extra_headers=None):
         try:
             try:
                 payload = json.loads(e.read(16384))
+            except TimeoutError:
+                raise
             except (ValueError, UnicodeError, OSError):
                 payload = {}
             if not isinstance(payload, dict):
@@ -303,9 +349,41 @@ def completed_enrollment(path, config, host, node_id, grant_hash):
     )
 
 
-def run_command(args):
+COMMAND_TIMEOUT = 180
+COMMAND_STOP_GRACE = 15
+BOOTSTRAP_LOCK_TIMEOUT = 30
+
+
+def run_command(args, deployment_locked=False):
+    limit = 660 if "report-configure" in args else COMMAND_TIMEOUT
+    environment = os.environ.copy()
+    environment.pop("V2BOX_BOOTSTRAP_LOCK_HELD", None)
+    environment.pop("V2BOX_DEPLOYMENT_LOCK_HELD", None)
+    if deployment_locked and args[0] in ("v2box", "/usr/local/bin/v2box"):
+        environment.update(V2BOX_BOOTSTRAP_LOCK_HELD="1", V2BOX_DEPLOYMENT_LOCK_HELD="1")
     try:
-        subprocess.run(args, check=True, timeout=180)
+        with subprocess.Popen(args, env=environment, start_new_session=True, close_fds=True) as child:
+            try:
+                returncode = child.wait(timeout=limit)
+            except subprocess.TimeoutExpired:
+                # Killing only the wrapper would leave its installer/service
+                # children changing files after the deployment reports failure.
+                try:
+                    os.killpg(child.pid, signal.SIGTERM)
+                except ProcessLookupError:
+                    pass
+                try:
+                    child.wait(timeout=COMMAND_STOP_GRACE)
+                except subprocess.TimeoutExpired:
+                    pass
+                try:
+                    os.killpg(child.pid, signal.SIGKILL)
+                except ProcessLookupError:
+                    pass
+                child.wait(timeout=5)
+                raise
+            if returncode:
+                raise subprocess.CalledProcessError(returncode, args)
     except (
         FileNotFoundError,
         subprocess.TimeoutExpired,
@@ -317,12 +395,12 @@ def run_command(args):
             else "V2Box service command"
         )
         reason = (
-            "timed out after 180 seconds"
+            "timed out after %s seconds" % limit
             if isinstance(error, subprocess.TimeoutExpired)
             else (
                 "program is missing"
                 if isinstance(error, FileNotFoundError)
-                else "failed"
+                else "failed (exit status %s)" % error.returncode
             )
         )
         raise DeploymentError(
@@ -378,12 +456,43 @@ def launch_managed(path):
     subprocess.run([
         "systemd-run", "--unit=v2box-deployment", "--collect",
         "--description=V2Box panel deployment", "--property=Type=exec",
-        "--property=UMask=0077", "--property=TimeoutStartSec=infinity",
+        "--property=UMask=0077", "--property=TimeoutStartSec=30s",
+        "--property=RuntimeMaxSec=25h", "--property=TimeoutStopSec=15s",
+        "--property=KillMode=control-group",
         sys.executable, "-u", str(Path(__file__).resolve()), "--worker", str(Path(path).resolve()),
-    ], check=True, timeout=30)
+    ], check=True, timeout=30, close_fds=True)
     print("Deployment continues after SSH closes. Status: systemctl status v2box-deployment --no-pager", flush=True)
     print("Logs: journalctl -u v2box-deployment -f (Ctrl+C closes only the log view).", flush=True)
+    print("Stop this deployment: systemctl stop v2box-deployment. Recovery state is retained; resume using the original panel command.", flush=True)
     return True
+
+
+@contextmanager
+def bootstrap_lock(directory):
+    fd = os.open(directory / ".bootstrap.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        # The foreground bootstrap already owns fd 9. Reuse its open-file
+        # description rather than waiting on our own parent's lock.
+        try:
+            inherited, opened = os.fstat(9), os.fstat(fd)
+            if (inherited.st_dev, inherited.st_ino) == (opened.st_dev, opened.st_ino):
+                replacement = os.dup(9)
+                os.close(fd)
+                fd = replacement
+        except OSError:
+            pass
+        deadline = time.monotonic() + BOOTSTRAP_LOCK_TIMEOUT
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except BlockingIOError:
+                if time.monotonic() >= deadline:
+                    raise DeploymentError("Another installer or deployment still holds the bootstrap lock. Check its status before resuming; saved state and configuration were retained.") from None
+                time.sleep(0.1)
+        yield
+    finally:
+        os.close(fd)
 
 
 class Deployment:
@@ -467,7 +576,7 @@ class Deployment:
                 time.sleep(2)
 
     def command(self, args):
-        run_command(args)
+        run_command(args, deployment_locked=True)
 
     def backup_path(self, action):
         namespace = hashlib.sha256(panel_identity(self.host).encode()).hexdigest()[:16]
@@ -823,7 +932,7 @@ class Deployment:
         )
 
     def service_state(self):
-        if shutil.which("systemctl"):
+        if Path("/run/systemd/system").is_dir() and shutil.which("systemctl"):
             result = subprocess.run(
                 ["systemctl", "show", "v2box", "--property=ActiveState", "--value"],
                 capture_output=True,
@@ -1049,7 +1158,7 @@ class Deployment:
                     self.dns_observation["dnsState"] = "unavailable"
                     reason = "Public DNS query services unavailable; neither provider returned a usable response. Check outbound HTTPS and local DNS, then resume. No certificate request was started."
             if reason != last_reason or polls % 4 == 0:
-                print(reason, flush=True)
+                print(reason + " (%s seconds remaining in DNS wait)." % max(0, int(deadline - time.monotonic())), flush=True)
                 last_reason = reason
             polls += 1
             time.sleep(15)
@@ -1305,18 +1414,14 @@ def main():
         if len(sys.argv) != 2:
             raise DeploymentError("Run with a deployment state file")
         path = Path(sys.argv[1])
-        bootstrap_handle = None
-        if managed:
-            bootstrap_fd = os.open(path.parent / ".bootstrap.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-            bootstrap_handle = os.fdopen(bootstrap_fd, "w")
-            fcntl.flock(bootstrap_handle, fcntl.LOCK_EX)
-        lock = path.parent / ".deployment.lock"
-        fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
-        with os.fdopen(fd, "w") as handle:
-            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            deployment = Deployment(path)
-            deployment.managed = managed
-            deployment.run()
+        with bootstrap_lock(path.parent):
+            lock = path.parent / ".deployment.lock"
+            fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+            with os.fdopen(fd, "w") as handle:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                deployment = Deployment(path)
+                deployment.managed = managed
+                deployment.run()
     except (
         DeploymentError,
         OSError,

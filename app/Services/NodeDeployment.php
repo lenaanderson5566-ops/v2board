@@ -51,7 +51,7 @@ final class NodeDeployment
 
     public static function host(): string
     {
-        $host = rtrim((string)(config('v2board.server_api_url') ?: config('v2board.app_url')), '/');
+        $host = rtrim((string)(config('fastai.server_api_url') ?: config('fastai.app_url')), '/');
         $parts = parse_url($host);
         abort_unless($parts && ($parts['scheme'] ?? '') === 'https' && !empty($parts['host'])
             && !isset($parts['user']) && !isset($parts['pass'])

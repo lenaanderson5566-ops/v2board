@@ -1,9 +1,9 @@
 {
-    "name": "v2board/v2board",
+    "name": "fastai/panel",
     "type": "project",
-    "description": "v2board is a proxy protocol manage.",
+    "description": "FastAI subscription and account console.",
     "keywords": [
-        "v2board",
+        "fastai",
         "v2ray",
         "shadowsocks",
         "trojan",

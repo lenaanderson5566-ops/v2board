@@ -7,11 +7,11 @@ use App\Models\Order;
 use App\Http\Resources\V10\Resource;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-$checks=0;$original=config('v2board');
+$checks=0;$original=config('fastai');
 $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
- config(['v2board.currency'=>'USD','v2board.currency_symbol'=>'$']);
+ config(['fastai.currency'=>'USD','fastai.currency_symbol'=>'$']);
  $o=Order::create(['user_id'=>2147483000,'plan_id'=>0,'period'=>'deposit','trade_no'=>'cny-test-'.uniqid(),'total_amount'=>2880,'status'=>0,'type'=>1]);
  $assert($o->fresh()->currency==='CNY','New order currency changed');
  DB::table('v2_order')->insert(['user_id'=>2147483000,'plan_id'=>0,'period'=>'deposit','trade_no'=>'cny-legacy-'.uniqid(),'total_amount'=>1234,'status'=>0,'type'=>1,'created_at'=>time(),'updated_at'=>time()]);
@@ -29,4 +29,4 @@ try {
  $assert($rejected,'Unsupported currency accepted');
  $assert(App\Services\Money::format(2880)==='CNY 28.80','Money format incorrect');
  echo "CNY currency: $checks checks passed; rollback.\n";
-} finally {DB::rollBack();config(['v2board'=>$original]);}
+} finally {DB::rollBack();config(['fastai'=>$original]);}

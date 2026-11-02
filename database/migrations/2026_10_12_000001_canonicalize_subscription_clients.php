@@ -14,12 +14,12 @@ return new class extends Migration {
             $rows = DB::table('v2_client_strategy')->orderBy('id')->lockForUpdate()->get();
             $groups = $rows->groupBy(fn ($row) => $this->canonical($row->client_type));
             $unified = DB::table('v2_risk_setting')->where('key','client_access_unified')->exists();
-            $whitelist = array_map(fn ($id) => $this->canonical((string)$id), (array)config('v2board.subscription_ua_whitelist', []));
+            $whitelist = array_map(fn ($id) => $this->canonical((string)$id), (array)config('fastai.subscription_ua_whitelist', []));
             $policies = [];
             foreach (self::CLIENTS as $id) {
                 $group = $groups->get($id, collect());
                 $enabled = $group->isEmpty() ? (!$unified && !in_array($id,['clash-party','throne','nekobox','husi'],true)) : $group->every(fn ($row)=>(bool)$row->is_enabled);
-                if (!$unified && config('v2board.subscription_ua_whitelist_enabled',0) && !in_array($id,$whitelist,true)) $enabled=false;
+                if (!$unified && config('fastai.subscription_ua_whitelist_enabled',0) && !in_array($id,$whitelist,true)) $enabled=false;
                 $minimum = null;
                 foreach ($group as $row) {
                     if (trim((string)$row->min_version)==='') continue;

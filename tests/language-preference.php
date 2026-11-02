@@ -11,8 +11,8 @@ $call = function ($path, $body = null, $token = null) use ($kernel) {
     if ($token) $request->headers->set('Authorization', $token);
     return $kernel->handle($request);
 };
-$original = config('v2board');
-config([ 'v2board.email_verify'=>0, 'v2board.invite_force'=>0, 'v2board.stop_register'=>0, 'v2board.email_whitelist_enable'=>0, 'v2board.register_limit_by_ip_enable'=>0, 'v2board.password_limit_enable'=>0]);
+$original = config('fastai');
+config([ 'fastai.email_verify'=>0, 'fastai.invite_force'=>0, 'fastai.stop_register'=>0, 'fastai.email_whitelist_enable'=>0, 'fastai.register_limit_by_ip_enable'=>0, 'fastai.password_limit_enable'=>0]);
 Illuminate\Support\Facades\DB::beginTransaction();
 $user = null;
 try {
@@ -50,5 +50,5 @@ try {
 } finally {
     if ($user) (new App\Services\AuthService($user))->removeAllSession();
     Illuminate\Support\Facades\DB::rollBack();
-    config(['v2board'=>$original]);
+    config(['fastai'=>$original]);
 }

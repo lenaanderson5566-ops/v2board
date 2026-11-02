@@ -16,10 +16,10 @@ $data=fn($response)=>json_decode($response->getContent(),true)['data'] ?? [];
 $verifier=str_repeat('a',43);
 $challenge=rtrim(strtr(base64_encode(hash('sha256',$verifier,true)),'+/','-_'),'=');
 $body=['codeChallenge'=>$challenge,'state'=>str_repeat('s',43),'redirectUri'=>'http://127.0.0.1:48321/fastai-auth/callback','platform'=>'windows'];
-$original=config('v2board.app_url'); $sessions=[]; $user=null;
+$original=config('fastai.app_url'); $sessions=[]; $user=null;
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
-    config(['v2board.app_url'=>'https://fastdog.ws']);
+    config(['fastai.app_url'=>'https://fastdog.ws']);
     $user=new App\Models\User(); $user->email='browser-auth-'.bin2hex(random_bytes(4)).'@example.com';
     $user->password=password_hash('Testing!2026',PASSWORD_DEFAULT); $user->token=bin2hex(random_bytes(16)); $user->uuid=Illuminate\Support\Str::uuid(); $user->save();
     $browser=(new App\Services\AuthService($user))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data']; $sessions[]=$browser;
@@ -60,6 +60,6 @@ try {
     $assert($call('me',[],$token,'GET')->getStatusCode()===200,'Already authorized App survives browser logout');
 } finally {
     if ($user) (new App\Services\AuthService($user))->removeAllSession();
-    Illuminate\Support\Facades\DB::rollBack(); config(['v2board.app_url'=>$original]);
+    Illuminate\Support\Facades\DB::rollBack(); config(['fastai.app_url'=>$original]);
 }
 echo "FastAI browser login: $checks checks passed\n";

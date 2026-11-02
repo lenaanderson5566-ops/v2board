@@ -105,7 +105,7 @@ class ServerService
             }
             if (!empty($v['service_id'])) continue; // Connections are never deployment targets.
 
-            $apiHost = rtrim((string)(config('v2board.server_api_url') ?: config('v2board.app_url')), '/');
+            $apiHost = rtrim((string)(config('fastai.server_api_url') ?: config('fastai.app_url')), '/');
             $nodeId = (int) $v['id'];
             $apiHostArg = escapeshellarg((string) $apiHost);
             $entry = NodeDeployment::bootstrapCommand($apiHost) . ' --install v1.0.16';

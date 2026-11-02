@@ -1,6 +1,6 @@
 <?php
 /**
- * Paytaro 弹窗显码支付接口（V2Board）—— 无收银台模式
+ * Paytaro 弹窗显码支付接口（FastAI）—— 无收银台模式
  * 由 Paytaro 一键脚本 install-qr.sh 生成。可与收银台模式的 Paytaro.php 共存。
  * 后台「支付配置」添加时接口选择 PaytaroQR，每个 Paytaro 支付方式（支付宝 / USDT-TRC20 …）各添加一条，填对应的支付方式 UUID。
  * 文档：https://v3.paytaro.com/#/docs/install-script   客服：https://t.me/paytaro
@@ -63,7 +63,7 @@ class PaytaroQR
         }
         $payload = [
             'merchant_no' => (string) $order['trade_no'],
-            'order_amount' => round(((int) $order['total_amount']) / 100, 2), // V2Board 以分计
+            'order_amount' => round(((int) $order['total_amount']) / 100, 2), // FastAI 以分计
             'notify_url' => (string) $order['notify_url'],
             'method_uuid' => $methodUuid,
         ];
@@ -80,7 +80,7 @@ class PaytaroQR
         $linkType = strtolower((string) ($payment['link_type'] ?? ''));
         $isAlipay = $linkType === 'h5' || $linkType === 'pc' || strtolower((string) ($payment['type'] ?? '')) === 'alipay';
 
-        // V2Board：type 0 = 面板弹窗显示二维码，1 = 跳转 data
+        // FastAI：type 0 = 面板弹窗显示二维码，1 = 跳转 data
         if ($isAlipay) {
             if ($this->isMobile()) {
                 return ['type' => 1, 'data' => !empty($payment['mobile_url']) ? $payment['mobile_url'] : $payment['data']];
@@ -152,7 +152,7 @@ class PaytaroQR
                 'Content-Type: application/json',
                 'Accept: application/json',
                 'X-App-Secret: ' . $this->appSecret(),
-                'User-Agent: PaytaroQR-V2Board/' . $this->appId(),
+                'User-Agent: PaytaroQR-FastAI/' . $this->appId(),
             ],
         ]);
         $body = curl_exec($ch);

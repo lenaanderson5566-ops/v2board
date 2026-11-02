@@ -18,6 +18,7 @@ import { ux } from "../ux";
 import { inputValue, apiValue } from "../field-values";
 import { boot, type Row } from "../api";
 import { ModalClose } from "./Modal";
+import { sessionPreferences } from "../browser-storage";
 
 export interface Field {
     columns?: number;
@@ -97,11 +98,11 @@ export function Editor({
 }) {
     const renderField = useContext(EditorFieldContext);
     const draftStorageKey = draftKey
-        ? `v2board.draft.${boot.mode}.${browserSessionKey()}.${draftKey}`
+        ? `fastai.draft.${boot.mode}.${browserSessionKey()}.${draftKey}`
         : "";
     const readDraft = (): Row => {
         try {
-            return JSON.parse(sessionStorage.getItem(draftStorageKey) || "{}");
+            return JSON.parse(sessionPreferences.getItem(draftStorageKey) || "{}");
         } catch {
             return {};
         }
@@ -193,7 +194,7 @@ export function Editor({
             next = next.split(",");
         if (draftKey) {
             try {
-                sessionStorage.setItem(
+                sessionPreferences.setItem(
                     draftStorageKey,
                     JSON.stringify(
                         linkValues
@@ -289,7 +290,7 @@ export function Editor({
             await onSave(body);
             if (draftKey) {
                 try {
-                    sessionStorage.removeItem(draftStorageKey);
+                    sessionPreferences.removeItem(draftStorageKey);
                 } catch {
                     /* Optional persistence. */
                 }

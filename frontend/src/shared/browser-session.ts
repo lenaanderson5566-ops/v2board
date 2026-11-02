@@ -1,19 +1,19 @@
-import { localPreferences } from "./browser-storage";
+import { localPreferences, preferenceStorageEvent } from "./browser-storage";
 import { tx } from "./i18n";
 import { apiUrl } from "./runtime-config";
 import { setDisplayTimeZone } from "./timezone";
 
-const mode = () => window.V2BOARD.mode;
+const mode = () => window.FASTAI.mode;
 const legacyKey = () =>
-    `v2board.${mode()}${window.V2BOARD.apiBaseUrl ? "." + encodeURIComponent(window.V2BOARD.apiBaseUrl) : ""}.auth`;
+    `fastai.${mode()}${window.FASTAI.apiBaseUrl ? "." + encodeURIComponent(window.FASTAI.apiBaseUrl) : ""}.auth`;
 let csrfToken = "";
 let authenticated = false;
 let accountId: number | null = null;
 export const browserSessionKey = () =>
-    `${window.V2BOARD?.mode ?? "guest"}:${accountId ?? "guest"}`;
+    `${window.FASTAI?.mode ?? "guest"}:${accountId ?? "guest"}`;
 let pending: Promise<void> | undefined;
 export const hasBrowserSession = () => authenticated;
-const revisionKey = () => `v2board.${mode()}.sessionRevision`;
+const revisionKey = () => `fastai.${mode()}.sessionRevision`;
 let observedRevision: string | null = null;
 let invalidated = false;
 let observing = false;
@@ -31,8 +31,8 @@ function observeSession() {
     if (observing) return;
     observing = true;
     window.addEventListener("storage", (event) => {
-        if ((event.key === revisionKey() || event.key === null) &&
-            localPreferences.getItem(revisionKey()) !== observedRevision) {
+        if (preferenceStorageEvent(event.key, revisionKey()) &&
+            localPreferences.revision(revisionKey()) !== observedRevision) {
             // Storage events are external to this tab. Block old forms until reload.
             try { changedSession(); } catch { /* The active request also checks invalidation. */ }
         }
@@ -41,8 +41,8 @@ function observeSession() {
 function signalSessionChange() {
     if (invalidated) return;
     const revision = `${Date.now()}:${Math.random()}`;
-    observedRevision = localPreferences.setItem(revisionKey(), revision)
-        ? revision : localPreferences.getItem(revisionKey());
+    localPreferences.setItem(revisionKey(), revision);
+    observedRevision = localPreferences.revision(revisionKey());
 }
 export function forgetBrowserSession() {
     setDisplayTimeZone(null);
@@ -76,7 +76,7 @@ async function sessionFetch(url: string, options: RequestInit, readJson = false)
 }
 async function bootstrap() {
     observeSession();
-    observedRevision = localPreferences.getItem(revisionKey());
+    observedRevision = localPreferences.revision(revisionKey());
     const { response, data: result } = await sessionFetch(apiUrl("/api/v10/auth/browser-session"), {
         credentials: "include",
         headers: { Accept: "application/json", "X-Browser-Client": mode() },
@@ -117,7 +117,7 @@ async function bootstrap() {
         accountId = null;
     }
     // Delete obsolete JavaScript-readable credentials; never exchange or reuse them.
-    try { localStorage.removeItem(legacyKey()); } catch { /* Storage may be blocked. */ }
+    localPreferences.removeItem(legacyKey());
 }
 export async function initializeBrowserSession() {
     if (invalidated) throw Object.assign(new Error(tx("登录已过期")), { code: "SESSION_CHANGED" });
@@ -132,7 +132,7 @@ export async function initializeBrowserSession() {
 }
 export async function browserHeaders() {
     await initializeBrowserSession();
-    if (invalidated || localPreferences.getItem(revisionKey()) !== observedRevision) changedSession();
+    if (invalidated || localPreferences.revision(revisionKey()) !== observedRevision) changedSession();
     return { "X-Browser-Client": mode(), "X-CSRF-Token": csrfToken };
 }
 export async function browserFetch(url: string, options: RequestInit = {}) {

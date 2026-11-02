@@ -6,7 +6,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Carbon\CarbonImmutable as C;
 use App\Services\DashboardRevenue;
 if (getenv('DASHBOARD_FINANCIAL_PERF')==='1') {
-    if(!app()->environment('local') || DB::getDriverName()!=='mysql' || !str_starts_with(DB::connection()->getDatabaseName(),'v2board_test_'))throw new RuntimeException('Financial load fixture requires an isolated MySQL database');
+    if(!app()->environment('local') || DB::getDriverName()!=='mysql' || !str_starts_with(DB::connection()->getDatabaseName(),'fastai_test_'))throw new RuntimeException('Financial load fixture requires an isolated MySQL database');
     Schema::create('v2_order',function(Blueprint $t){$t->increments('id');$t->string('currency',3);$t->integer('paid_at');$t->integer('status');$t->integer('total_amount');$t->string('period',24);$t->integer('commission_status');$t->integer('commission_balance');$t->integer('invite_user_id')->nullable();});
     Schema::create('v2_commission_log',function(Blueprint $t){$t->increments('id');$t->string('currency',3);$t->integer('created_at');$t->integer('get_amount');});
     $now=C::now();

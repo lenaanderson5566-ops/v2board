@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => \App\Support\Branding::name(env('APP_NAME', 'FastAI')),
 
     /*
     |--------------------------------------------------------------------------
@@ -231,7 +231,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | V2board version
+    | FastAI version
     |--------------------------------------------------------------------------
     |
     | The only modification by laravel config

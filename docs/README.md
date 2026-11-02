@@ -1,4 +1,4 @@
-# 项目文档
+# FastAI 项目文档
 
 日常部署从 [安装升级流程](update-script.md) 开始。公开接口及兼容范围以 [V10 规范](api-v10/README.md) 和 [保留接口清单](api-v10/retained-endpoints.md) 为准；功能文档中的内部 action 名称不应直接当作公开 URL。
 
@@ -6,7 +6,7 @@
 
 本文按功能收录现有说明。部署版本和当前字段优先核对代码、锁文件及生成契约；历史审计和逐轮验证结果通过 Git、忽略的测试日志及 Actions run 查阅，不作为当前部署命令或通过保证。Laravel 9–12 的过渡说明已移除，当前要求见 [Laravel 13](laravel13-upgrade.md)，无需逐版重做旧升级。
 
-实际执行入口：浏览器认证为 `app/Http/Middleware/{BrowserSession,BrowserOrigins,CORS}.php` 与 `config/browser.php`；计费为 `app/Services/{BillingCurrency,PaymentQuote,ExchangeRate}.php`；安装为 `app/Console/Commands/V2boardInstall.php` 与 `database/install.sql`；升级顺序和恢复访问规则为根目录 `update.sh`。历史报告不能替代这些入口。
+实际执行入口：浏览器认证为 `app/Http/Middleware/{BrowserSession,BrowserOrigins,CORS}.php` 与 `config/browser.php`；计费为 `app/Services/{BillingCurrency,PaymentQuote,ExchangeRate}.php`；安装为 `app/Console/Commands/FastaiInstall.php` 与 `database/install.sql`；升级顺序和恢复访问规则为根目录 `update.sh`。历史报告不能替代这些入口。
 
 ## 部署、维护与验证
 

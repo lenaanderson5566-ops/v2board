@@ -164,7 +164,7 @@ try {
         $auth=new App\Services\AuthService($admin);
         $token=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
         $kernel=app(Illuminate\Contracts\Http\Kernel::class);
-        $prefix='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+        $prefix='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
         $call=function($method,$suffix,$body=[],$authorized=true) use($kernel,$prefix,$token) {
             $request=Illuminate\Http\Request::create($prefix.'/system/observability'.$suffix,$method,[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'],json_encode($body));
             if ($authorized) $request->headers->set('Authorization',$token);

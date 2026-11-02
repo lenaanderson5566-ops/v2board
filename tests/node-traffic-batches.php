@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
-config(['cache.default'=>'array','v2board.server_token'=>'batch-test-token']);Queue::fake();
+config(['cache.default'=>'array','fastai.server_token'=>'batch-test-token']);Queue::fake();
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
 DB::beginTransaction();
 try {

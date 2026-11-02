@@ -20,7 +20,7 @@ foreach($entries as $entry){
 }
 $assert($call('GET','/api/v1/user/resetSecurity')->getStatusCode()===404,'Retired GET credential rotation remains');
 // Removed administrator account export and generation must not remain as dead code.
-$adminPath=config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+$adminPath=config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
 foreach (['dumpCSV', 'generate'] as $action) {
     foreach (['GET','POST'] as $method) {
         $assert($call($method,'/api/v1/'.$adminPath.'/user/'.$action)->getStatusCode()===404,'Removed admin user action still resolves: '.$action);

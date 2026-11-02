@@ -6,7 +6,7 @@ set_exception_handler(function ($error) { fwrite(STDERR, $error->getMessage()."\
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 
-$originalConfig = config('v2board');
+$originalConfig = config('fastai');
 $originalPublic = public_path();
 $originalRoutes = Route::getRoutes();
 $temporary = sys_get_temp_dir() . '/console-verify-' . bin2hex(random_bytes(8));
@@ -16,7 +16,7 @@ $assert = function ($condition, $message) use (&$checks) {
     $checks++;
 };
 try {
-    config(['v2board.safe_mode_enable' => 1, 'v2board.app_url' => 'https://console.example.com']);
+    config(['fastai.safe_mode_enable' => 1, 'fastai.app_url' => 'https://console.example.com']);
     $assert(Artisan::call('console:verify', ['--host' => 'console.example.com']) === 0, 'Valid deployment rejected');
     $assert(Artisan::call('console:verify', ['--host' => 'wrong.example.com']) === 1 && strpos(Artisan::output(), '403') !== false, 'Domain mismatch not detected');
 
@@ -31,7 +31,7 @@ try {
     $app->usePublicPath($temporary);
     $assert(Artisan::call('console:verify') === 1 && strpos(Artisan::output(), 'Missing or invalid console asset') !== false, 'Missing asset not detected');
 } finally {
-    config(['v2board' => $originalConfig]);
+    config(['fastai' => $originalConfig]);
     $app->usePublicPath($originalPublic);
     Route::setRoutes($originalRoutes);
     if (is_file($temporary . '/console/.vite/manifest.json')) unlink($temporary . '/console/.vite/manifest.json');

@@ -6,7 +6,7 @@ class MailWebhook
 {
     private function secret(string $provider): string
     {
-        try { $key=Crypt::decryptString((string)config('v2board.email_'.$provider.'_webhook_key')); }
+        try { $key=Crypt::decryptString((string)config('fastai.email_'.$provider.'_webhook_key')); }
         catch (\Throwable $e) { abort(403,'Webhook not configured'); }
         abort_if($key==='',403); return $key;
     }
@@ -44,7 +44,7 @@ class MailWebhook
     }
     private function ses(array $body): void
     {
-        $topic=(string)config('v2board.email_ses_topic_arn');
+        $topic=(string)config('fastai.email_ses_topic_arn');
         abort_unless(preg_match('/^arn:aws:sns:([a-z0-9-]+):[0-9]{12}:[A-Za-z0-9_-]+$/D',$topic,$m) && ($body['TopicArn'] ?? '')===$topic,403);
         $host='sns.'.$m[1].'.amazonaws.com'; $cert=(string)($body['SigningCertURL'] ?? '');
         abort_unless(preg_match('~^https://'.preg_quote($host,'~').'/SimpleNotificationService-[a-fA-F0-9]{32,64}\.pem$~D',$cert),403);

@@ -30,7 +30,7 @@ try {
     };
     [$user, $token] = $makeUser(); [$admin, $adminToken] = $makeUser(true); [$other, $otherToken] = $makeUser();
     $service = new UsageResetService();
-    $adminPath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
+    $adminPath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
     // The admin API prefix is independent of the frontend secret route.
     $adminPath = 'admin';
     foreach (app('router')->getRoutes() as $route) {

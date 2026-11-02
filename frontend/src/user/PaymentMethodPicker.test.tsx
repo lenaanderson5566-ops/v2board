@@ -38,7 +38,7 @@ it("keeps same-network channels distinguishable and selectable", () => {
     expect(select).toHaveBeenLastCalledWith(5);
 });
 it("resolves local PNG and network SVG assets against a separate API host", () => {
-    vi.stubGlobal("V2BOARD", { apiBaseUrl: "https://api.example.test" });
+    vi.stubGlobal("FASTAI", { apiBaseUrl: "https://api.example.test" });
     expect(paymentIconUrl("/payment-icons/alipay-blue.png")).toBe("https://api.example.test/payment-icons/alipay-blue.png");
     expect(paymentIconUrl("/payment-icons/crypto-trx.svg")).toBe("https://api.example.test/payment-icons/crypto-trx.svg");
     expect(paymentIconUrl("https://images.example.test/custom.png")).toBe("https://images.example.test/custom.png");

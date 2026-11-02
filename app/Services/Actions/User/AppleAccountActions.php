@@ -11,7 +11,7 @@ class AppleAccountActions
 {
     public function fetch(Request $request, AppleAccountService $service)
     {
-        abort_unless(config('v2board.apple_account_enable', 0), 404);
+        abort_unless(config('fastai.apple_account_enable', 0), 404);
         $user = User::findOrFail($request->user['id']);
         abort_unless((new UserService)->isAvailable($user), 403, __('An active subscription or remaining credits are required.'));
         try {

@@ -5,24 +5,24 @@ use Illuminate\Support\Facades\DB;
 use App\Services\SubscriptionInfo;
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$enabled = config('v2board.show_info_to_server_enable');
+$enabled = config('fastai.show_info_to_server_enable');
 $locale = app()->getLocale();
 $timezone = config('app.timezone');
-$businessTimezone = config('v2board.system_timezone');
+$businessTimezone = config('fastai.system_timezone');
 $phpTimezone = date_default_timezone_get();
 DB::beginTransaction();
 try {
     $user = App\Models\User::create(['email'=>'info-'.bin2hex(random_bytes(6)).'@example.com','password'=>password_hash('fixture-password',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'credit_balance'=>30*1073741824]);
     DB::table('v2_credit_batch')->insert(['user_id'=>$user->id,'reference'=>'info-expired','remaining_bytes'=>10*1073741824,'expires_at'=>time()-60,'created_at'=>time()]);
     foreach ([[2,time()+3600],[5,time()-60],[0,null]] as $batch=>[$remaining,$expires]) DB::table('v2_usage_reset_credit')->insert(['batch_id'=>$batch+1,'user_id'=>$user->id,'quantity'=>max(1,$remaining),'remaining'=>$remaining,'expires_at'=>$expires,'created_at'=>time()]);
-    config(['v2board.show_info_to_server_enable'=>1]);
+    config(['fastai.show_info_to_server_enable'=>1]);
     $plan = App\Models\Plan::firstOrFail()->replicate();
     $plan->reset_traffic_method = 0;
     $plan->save();
     $user->plan_id = $plan->id;
     $user->transfer_enable = 1073741824;
     $user->expired_at = time()+90*86400;
-    config(['app.timezone'=>'Asia/Shanghai', 'v2board.system_timezone'=>'Asia/Shanghai']);
+    config(['app.timezone'=>'Asia/Shanghai', 'fastai.system_timezone'=>'Asia/Shanghai']);
     date_default_timezone_set('Asia/Shanghai');
     DB::table('v2_daily_user_reset')->insert(['user_id'=>$user->id,'business_date'=>date('Y-m-d')]);
     $resetAt = (new App\Services\UserService())->getResetAt($user);
@@ -33,12 +33,12 @@ try {
         $assert($lines === [$copy['next_reset'].': '.$resetDate,$copy['independent'].': '.App\Utils\Helper::trafficConvert(20*1073741824),$copy['reset_count'].': '.sprintf($copy['reset_quantity'],2)], 'Wrong effective credits or locale '.$language);
     }
     foreach (['UTC'=>'UTC+00:00', 'Asia/Kathmandu'=>'UTC+05:45', 'America/Panama'=>'UTC-05:00'] as $zone=>$suffix) {
-        config(['app.timezone'=>$zone, 'v2board.system_timezone'=>$zone]);
+        config(['app.timezone'=>$zone, 'fastai.system_timezone'=>$zone]);
         date_default_timezone_set($zone);
         DB::table('v2_daily_user_reset')->updateOrInsert(['user_id'=>$user->id,'business_date'=>date('Y-m-d')]);
         $assert(str_ends_with(SubscriptionInfo::lines($user)[0], ' 00:00 '.$suffix.' · '.$zone), 'Incorrect reset time or UTC offset '.$zone);
     }
-    config(['app.timezone'=>'Asia/Shanghai', 'v2board.system_timezone'=>'Asia/Shanghai']);
+    config(['app.timezone'=>'Asia/Shanghai', 'fastai.system_timezone'=>'Asia/Shanghai']);
     date_default_timezone_set('Asia/Shanghai');
     app()->setLocale('en-US');
     $copy = (require resource_path('client/copy.php'))['en-US'];
@@ -81,14 +81,14 @@ try {
     $assert(SubscriptionInfo::lines($user)===[], 'Expired plan must omit reset date');
     $user->plan_id = null;
     $assert(SubscriptionInfo::lines($user)===[], 'Zero balances should be omitted');
-    config(['v2board.show_info_to_server_enable'=>0]);
+    config(['fastai.show_info_to_server_enable'=>0]);
     $user->credit_balance = 1073741824;
     $assert(SubscriptionInfo::lines($user)===[], 'Disabled output must stay empty');
     echo "Subscription info: $checks checks passed\n";
 } finally {
     DB::rollBack();
-    config(['v2board.show_info_to_server_enable'=>$enabled]);
+    config(['fastai.show_info_to_server_enable'=>$enabled]);
     app()->setLocale($locale);
-    config(['app.timezone'=>$timezone, 'v2board.system_timezone'=>$businessTimezone]);
+    config(['app.timezone'=>$timezone, 'fastai.system_timezone'=>$businessTimezone]);
     date_default_timezone_set($phpTimezone);
 }

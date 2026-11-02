@@ -10,7 +10,7 @@ vi.mock("./browser-session", () => ({
     markBrowserAuthenticated: () => { session.active = true; },
 }));
 vi.stubGlobal("window", {
-    V2BOARD: { mode: "user", currencySymbol: "¥" },
+    FASTAI: { mode: "user", currencySymbol: "¥" },
     dispatchEvent: vi.fn(),
 });
 vi.stubGlobal("document", { documentElement: { lang: "", dir: "" } });
@@ -324,7 +324,7 @@ it.each(["headers", "body"])("times out stalled CSV %s without replaying export"
 });
 
 it("uses the configured backend origin for authenticated API calls with scoped cookies", async () => {
-    window.V2BOARD.apiBaseUrl = "https://api.example.com";
+    window.FASTAI.apiBaseUrl = "https://api.example.com";
     const fetcher = vi
         .fn()
         .mockResolvedValue(
@@ -338,7 +338,7 @@ it("uses the configured backend origin for authenticated API calls with scoped c
         );
         expect(fetcher.mock.calls[0][1].credentials).toBe("include");
     } finally {
-        delete window.V2BOARD.apiBaseUrl;
+        delete window.FASTAI.apiBaseUrl;
     }
 });
 
@@ -367,9 +367,9 @@ it("maps private ticket notification receipts to their explicit V10 route",async
 });
 
 it("loads administrator account identity from the retained V10 account endpoint",async()=>{
- window.V2BOARD.mode="admin";session.active=true;
+ window.FASTAI.mode="admin";session.active=true;
  const send=vi.fn().mockResolvedValue(new Response(JSON.stringify({data:{id:42,email:"admin@example.test"}}),{status:200}));vi.stubGlobal("fetch",send);
- try{await request("user/info");expect(send.mock.calls[0][0]).toBe("/api/v10/me");}finally{window.V2BOARD.mode="user";}
+ try{await request("user/info");expect(send.mock.calls[0][0]).toBe("/api/v10/me");}finally{window.FASTAI.mode="user";}
 });
 
 it("uses PATCH for narrow administrative edits while retaining browser session handling",async()=>{
@@ -422,7 +422,7 @@ it.each(["seconds", "date"])("preserves server rate-limit cooldown from Retry-Af
 
 describe("account display time zone", () => {
     beforeEach(async () => {
-        window.V2BOARD.mode = "user";
+        window.FASTAI.mode = "user";
         session.active = true;
         session.identity = "user:42";
         storage.clear();
@@ -432,7 +432,7 @@ describe("account display time zone", () => {
         clearReadCache();
     });
     afterEach(() => {
-        window.V2BOARD.mode = "user";
+        window.FASTAI.mode = "user";
         session.active = true;
         session.identity = "user:42";
         setDisplayTimeZone(null);
@@ -512,7 +512,7 @@ describe("account display time zone", () => {
         const older = request("user/info");
         await vi.waitFor(() => expect(json).toHaveBeenCalled());
         if (changed === "identity") session.identity = "user:99";
-        else storage.set("v2board.user.sessionRevision", "new-login");
+        else storage.set("fastai.user.sessionRevision", "new-login");
         setDisplayTimeZone("UTC");
         finish({ data: { displayTimeZone: "Asia/Shanghai", systemTimeZone: "UTC" } });
         await older;
@@ -542,7 +542,7 @@ describe("account display time zone", () => {
         expect(displayTimeZone()).toBe("UTC");
     });
     it("keeps administrator dates in the business zone when reading account identity", async () => {
-        window.V2BOARD.mode = "admin";
+        window.FASTAI.mode = "admin";
         vi.stubGlobal("fetch", vi.fn().mockResolvedValue(accountReply("Asia/Shanghai")));
         await request("user/info");
         expect(displayTimeZone()).toBe("UTC");

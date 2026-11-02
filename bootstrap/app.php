@@ -15,6 +15,11 @@ $app = new Illuminate\Foundation\Application(
     $_ENV['APP_BASE_PATH'] ?? dirname(__DIR__)
 );
 
+// Install the site-settings aliases before any facade or provider resolves config.
+$app->afterBootstrapping(Illuminate\Foundation\Bootstrap\LoadConfiguration::class, function ($app) {
+    App\Support\SiteConfiguration::install($app);
+});
+
 /*
 |--------------------------------------------------------------------------
 | Bind Important Interfaces

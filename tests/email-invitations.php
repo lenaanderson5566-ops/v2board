@@ -25,7 +25,7 @@ $call = function ($path, $body=null, $token=null) use ($kernel) {
     if ($token) $request->headers->set('Authorization','Bearer '.$token);
     return $kernel->handle($request);
 };
-$config = config('v2board');
+$config = config('fastai');
 $queue = Queue::getFacadeRoot(); $mail = Mail::getFacadeRoot();
 Queue::fake(); Mail::fake();
 $app->instance(App\Services\Mail\MailRateLimiter::class, new class extends App\Services\Mail\MailRateLimiter {
@@ -35,7 +35,7 @@ $app->instance(App\Services\Mail\MailRateLimiter::class, new class extends App\S
 DB::beginTransaction();
 $users = []; $tokens = [];
 try {
-    config(['v2board.app_url'=>'https://site.example','v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.invite_gen_limit'=>5,'v2board.email_verify'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
+    config(['fastai.app_url'=>'https://site.example','fastai.stop_register'=>0,'fastai.invite_force'=>0,'fastai.invite_gen_limit'=>5,'fastai.email_verify'=>0,'fastai.email_whitelist_enable'=>0,'fastai.email_gmail_limit_enable'=>0,'fastai.register_limit_by_ip_enable'=>0,'fastai.try_out_plan_id'=>0]);
     $makeUser = function ($email) use (&$users) {
         $user=User::create(['email'=>$email,'password'=>password_hash('Test-phrase-123!',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
         $users[]=$user; return $user;
@@ -71,11 +71,11 @@ try {
     $reject(fn()=>$service->send($sender->id,$sender->email),422);
     $reject(fn()=>$service->send($sender->id,$other->email),422);
     $reject(fn()=>$service->send($sender->id,$recipient),429);
-    config(['v2board.invite_gen_limit'=>1]);
+    config(['fastai.invite_gen_limit'=>1]);
     $reject(fn()=>$service->send($sender->id,'limit-'.$suffix.'@example.com'),422);
-    config(['v2board.invite_gen_limit'=>0]);
+    config(['fastai.invite_gen_limit'=>0]);
     $reject(fn()=>$service->send($other->id,'disabled-'.$suffix.'@example.com'),422);
-    config(['v2board.invite_gen_limit'=>5]);
+    config(['fastai.invite_gen_limit'=>5]);
     $called=false;
     $reject(function () use ($service,$job,&$called) { $service->register($job->token,'wrong@example.com',function () use (&$called) { $called=true; }); },422);
     $assert(!$called && !$record->fresh()->accepted_at,'Recipient mismatch consumed invitation');
@@ -83,7 +83,7 @@ try {
     $assert($record->fresh()->sent_at && $service->history($sender->id,90)[0]['status']==='sent','Fake mail delivery not tracked');
     $html=view('mail.emailInvitation',['name'=>'<unsafe>','url'=>'https://site.example/app#/register?invitation='.$job->token.'&email='.rawurlencode($recipient),'expires_at'=>$record->expires_at])->render();
     $assert(strpos($html,'&lt;unsafe&gt;')!==false && strpos($html,$job->token)!==false,'Mail template link or escaping incorrect');
-    config(['v2board.invite_force'=>1]);
+    config(['fastai.invite_force'=>1]);
     $assert($call('auth/registrations',['email'=>'noinvite-'.$suffix.'@example.com','password'=>'Test-phrase-123!'])->getStatusCode()===422,'Forced email invitation bypassed');
     $response=$call('auth/registrations',['email'=>$recipient,'password'=>'Test-phrase-123!','invitation'=>$job->token]);
     $assert($response->getStatusCode()===201,'Private registration failed: '.$response->getContent());
@@ -92,7 +92,7 @@ try {
     $assert($registered->invite_user_id===$sender->id && $record->fresh()->accepted_user_id===$registered->id,'Affiliate or accepted recipient missing');
     $assert($service->history($sender->id,90)[0]['status']==='accepted','Accepted history incorrect');
     $reject(fn()=>$service->register($job->token,$recipient,fn()=>throw new RuntimeException('Replay callback ran')),422);
-    config(['v2board.invite_force'=>0]);
+    config(['fastai.invite_force'=>0]);
     $assert($call('auth/registrations',['email'=>'legacy-'.$suffix.'@example.com','password'=>'Test-phrase-123!','inviteCode'=>'oldcode'])->getStatusCode()===410,'Legacy public registration accepted');
     $expired=$service->send($sender->id,'expired-'.$suffix.'@example.com');
     $expiredJob=Queue::pushed(SendInvitationEmailJob::class)->last();
@@ -121,7 +121,7 @@ try {
     $reject(fn()=>$service->register($renewedJob->token,$renewed->email,fn()=>throw new RuntimeException('Banned callback ran')),422);
     echo "Email invitations: $checks checks passed (mail/queue faked; DB rolled back).\n";
 } finally {
-    DB::rollBack(); config(['v2board'=>$config]); Queue::swap($queue); Mail::swap($mail);
+    DB::rollBack(); config(['fastai'=>$config]); Queue::swap($queue); Mail::swap($mail);
     foreach ($users as $user) { (new AuthService($user))->removeAllSession(); RateLimiter::clear('email-invitation:'.$user->id); }
     foreach ($tokens as $token) Illuminate\Support\Facades\Cache::forget($token);
 }

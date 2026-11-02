@@ -64,7 +64,7 @@ class ClientConfigService
             $config['rules'][$index] = implode(',', $parts);
         }
         // Replace BEFORE serializing: quotes/newlines in a brand must not corrupt YAML.
-        $appName = trim(str_replace(',', '，', preg_replace('/[\x00-\x1f\x7f]/u', ' ', (string) config('v2board.app_name', 'V2Board'))));
+        $appName = trim(str_replace(',', '，', preg_replace('/[\x00-\x1f\x7f]/u', ' ', (string) \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))))));
         if ($appName === '' || in_array($appName, array_merge(['DIRECT', 'REJECT', 'GLOBAL'], $names, array_column($existing, 'name'), array_column($config['proxy-groups'], 'name')), true)) $appName = 'Proxy selection';
         array_walk_recursive($config, function (&$value) use ($appName) {
             if (is_string($value)) $value = str_replace('$app_name', $appName, $value);

@@ -5,7 +5,7 @@ namespace App\Payments;
 use \Curl\Curl;
 
 /**
- * V2Board EPay MAPI adapter.
+ * FastAI EPay MAPI adapter.
  *
  * Creates an order through /mapi.php and returns QR/deep-link data directly,
  * instead of redirecting the customer to /submit.php cashier.
@@ -64,7 +64,7 @@ class EPayQrcode
         $params['sign_type'] = 'MD5';
 
         $curl = new Curl();
-        $curl->setUserAgent('V2Board-EPay-MAPI/1.0');
+        $curl->setUserAgent('FastAI-EPay-MAPI/1.0');
         $curl->setHeader('Accept', 'application/json');
         $curl->setHeader('Content-Type', 'application/x-www-form-urlencoded');
         $curl->setOpt(CURLOPT_CONNECTTIMEOUT, 10);
@@ -101,7 +101,7 @@ class EPayQrcode
         }
 
         return [
-            // V2Board: 0 = render data as QR code, 1 = open data as URL.
+            // FastAI: 0 = render data as QR code, 1 = open data as URL.
             // Desktop always displays a QR code; mobile opens the returned
             // QR scheme, URL scheme, or payment URL directly.
             'type' => $this->isMobile() ? 1 : 0,

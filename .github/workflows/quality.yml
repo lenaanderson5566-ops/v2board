@@ -165,7 +165,7 @@ jobs:
         run: |
           mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/app/test-organization bootstrap/cache
           printf '# Disposable CI workspace\n' > .env
-          printf '<?php return [];\n' > config/v2board.php
+          printf '<?php return [];\n' > config/fastai.php
           rm -f resources/rules/custom.*
           ci_app_key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
           printf '::add-mask::%s\n' "$ci_app_key"

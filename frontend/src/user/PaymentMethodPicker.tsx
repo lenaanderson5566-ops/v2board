@@ -8,7 +8,7 @@ import "./payment-method-picker.css";
 export function paymentIconUrl(source: unknown) {
     const url = typeof source === "string" ? source.trim() : "";
     return /^\/payment-icons\/[a-z0-9-]+\.(svg|png)$/.test(url)
-        ? normalizeApiOrigin(window.V2BOARD?.apiBaseUrl || "") + url : url;
+        ? normalizeApiOrigin(window.FASTAI?.apiBaseUrl || "") + url : url;
 }
 export function PaymentIcon({ source }: { source: unknown }) {
     const [failed, setFailed] = useState(false);

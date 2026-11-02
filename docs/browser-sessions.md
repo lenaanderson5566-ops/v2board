@@ -20,7 +20,7 @@ Authenticated cookies expire on seven days of user inactivity or twelve hours of
 
 ## Deployment
 
-Deploy backend and rebuilt frontend together. Set canonical HTTPS `v2board.app_url`. Set `APP_ENV=production` explicitly: the installation template starts as local, and the Secure default depends on APP_ENV. Production cookies must be Secure. Only local HTTP development may set `BROWSER_COOKIE_SECURE=false`; never use this in production. The Cookie change itself needs no database migration; a full version upgrade must still execute every approved migration through update.sh.
+Deploy backend and rebuilt frontend together. Set canonical HTTPS `fastai.app_url`. Set `APP_ENV=production` explicitly: the installation template starts as local, and the Secure default depends on APP_ENV. Production cookies must be Secure. Only local HTTP development may set `BROWSER_COOKIE_SECURE=false`; never use this in production. The Cookie change itself needs no database migration; a full version upgrade must still execute every approved migration through update.sh.
 
 CORS no longer reflects arbitrary origins: canonical website origin and exact `FRONTEND_ALLOWED_ORIGINS` entries are accepted; `*` does not authorize credentialed browser access. Same-origin hosting is preferred. Frontend/API subdomains must be on the same site and use HTTPS; API cookies stay host-only. Unrelated-site deployments are not supported by this SameSite=Lax design; use a same-site API gateway rather than weakening cookies to None. Configure trusted reverse proxies and restart workers using the normal deployment procedure. Do not clear shared Redis/application caches or change APP_KEY during deployment; either will invalidate sessions.
 

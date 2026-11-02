@@ -15,7 +15,7 @@ try{
  $data=json_decode($controller->getRuleHits($r)->getContent(),true)['data'];
  if($data[0]['payload']['failed_count']!==6)throw new RuntimeException('Grouped evidence missing');
  try{$controller->reviewRuleHit(Request::create('/','POST',['id'=>$hit->id,'state'=>'blocked']));throw new RuntimeException('Invalid state accepted');}catch(Illuminate\Validation\ValidationException $e){}
- $r=Request::create('/api/v1/'.config('v2board.ops_api_path','ops').'/log/rule-hit/review','POST',['id'=>$hit->id,'state'=>'ignored']);$r->headers->set('Accept','application/json');
+ $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/log/rule-hit/review','POST',['id'=>$hit->id,'state'=>'ignored']);$r->headers->set('Accept','application/json');
  if(app(Illuminate\Contracts\Http\Kernel::class)->handle($r)->getStatusCode()!==403)throw new RuntimeException('Unauthorized access');
  echo "PASS: review history, preserved evidence, grouped payload, validation and authorization\n";
 }finally{DB::rollBack();}

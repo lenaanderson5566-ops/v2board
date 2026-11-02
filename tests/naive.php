@@ -23,7 +23,7 @@ try {
         $schema=json_decode((new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>$backend]))->getContent(),true)['data'];
         $assert(str_contains($schema['protocol'],'naive')===($backend==='v2box'),'Naive offered only for V2Box');
     }
-    config(['v2board.server_token'=>'local-naive-test']);
+    config(['fastai.server_token'=>'local-naive-test']);
     $request=Request::create('/api/v2/server/config','GET',['token'=>'local-naive-test','node_type'=>'v2box','node_id'=>$node->id]);
     $config=json_decode((new App\Http\Controllers\V2\Server\ServerController($request))->config($request)->getContent(),true);
     $assert($config['protocol']==='naive' && $config['network']==='tcp' && $config['tls_settings']['cert_mode']==='http','Node config retains Naive TLS settings');

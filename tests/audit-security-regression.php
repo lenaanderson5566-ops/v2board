@@ -21,7 +21,7 @@ try {
  $user->update(['invite_user_id'=>$admin->id]);
  $adminAuth=new App\Services\AuthService($admin);
  $adminToken=$adminAuth->generateAuthData(Request::create('/'))['auth_data'];
- $adminPath='/api/v1/'.config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
+ $adminPath='/api/v1/'.config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
  $as=function($path,$credential,$params=[])use($kernel){return $kernel->handle(Request::create($path,'GET',$params,[],[],['HTTP_AUTHORIZATION'=>$credential,'HTTP_ACCEPT'=>'application/json']));};
  $secrets=['password','password_algo','password_salt','token','uuid','auth_data','is_staff'];
  $assert(!array_intersect(['password','password_algo','password_salt'],array_keys($user->toArray())) && password_verify('Original-test-123',$user->password),'Model serialization hides password material without breaking verification');

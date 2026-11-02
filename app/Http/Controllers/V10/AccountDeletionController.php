@@ -10,7 +10,7 @@ final class AccountDeletionController extends ResourceController
     public function state(Request $request, DeleteAccount $action)
     {
         $this->prepare($request,'getMeAccountDeletion');
-        $enabled=(bool)config('v2board.account_deletion_enable',0);
+        $enabled=(bool)config('fastai.account_deletion_enable',0);
         return response()->json(['data'=>['enabled'=>$enabled,'blockers'=>$enabled ? $action->blockers(User::findOrFail($request->user['id'])) : []]]);
     }
     public function remove(Request $request, DeleteAccount $action)

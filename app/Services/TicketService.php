@@ -43,11 +43,11 @@ class TicketService {
             Cache::put($cacheKey, 1, 1800);
             SendEmailJob::dispatch([
                 'email' => $user->email,
-                'subject' => '您在' . config('v2board.app_name', 'V2Board') . '的工单得到了回复',
+                'subject' => '您在' . \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))) . '的工单得到了回复',
                 'template_name' => 'ticketReply',
                 'template_value' => [
-                    'name' => config('v2board.app_name', 'V2Board'),
-                    'url' => config('v2board.app_url'),
+                    'name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))),
+                    'url' => config('fastai.app_url'),
                     'ticket_id' => (int) $ticket->id
                 ]
             ]);

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
     public function up(): void {
-        // Original V2Board did not run the operations migrations. Preserve existing tables and policies.
+        // Older installations did not run the operations migrations. Preserve existing tables and policies.
         if (!Schema::hasTable('v2_login_log')) {
             require_once __DIR__.'/2026_02_21_000001_create_login_log_table.php';
             (new CreateLoginLogTable())->up();

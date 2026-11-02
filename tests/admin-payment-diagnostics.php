@@ -31,7 +31,7 @@ try {
     $assert(count(PaymentCallbackHistory::forOrder($order)['events']) === 1, 'Forged order reference remains unassociated');
     $assert($order->fresh()->status === 0, 'Diagnostic recording does not settle an order');
     ClientStrategy::updateOrCreate(['client_type'=>'fastai'], ['client_name'=>'FastAI', 'is_enabled'=>1, 'min_version'=>'v1.3.0']);
-    config(['v2board.fastai_releases'=>[['platform'=>'windows', 'architecture'=>'x64', 'minimumVersion'=>'1.2.0', 'latestVersion'=>'1.2.5']]]);
+    config(['fastai.fastai_releases'=>[['platform'=>'windows', 'architecture'=>'x64', 'minimumVersion'=>'1.2.0', 'latestVersion'=>'1.2.5']]]);
     $row = (new ClientStrategyService())->getStrategies()->firstWhere('client_type', 'fastai');
     $target = $row->effective_minimums[0];
     $assert($target['effectiveMinimum'] === '1.3.0' && !$target['latestAllowed'], 'Effective minimum uses normalized policy and warns when latest is blocked');
@@ -39,7 +39,7 @@ try {
     $row = (new ClientStrategyService())->getStrategies()->firstWhere('client_type', 'fastai');
     $assert($row->effective_minimums[0]['effectiveMinimum'] === '1.2.0', 'Release minimum applies without policy minimum');
     // Operations reports reuse persisted records; all destructive fixture setup is rolled back.
-    config(['cache.default'=>'array','v2board.system_timezone'=>'Asia/Kathmandu']);
+    config(['cache.default'=>'array','fastai.system_timezone'=>'Asia/Kathmandu']);
     $now=time();
     $from=(new DateTimeImmutable('tomorrow',new DateTimeZone('Asia/Kathmandu')))->modify('-7 days')->getTimestamp();
     foreach (['v2_login_log','v2_subscribe_log','v2_risk_rule_hit','v2_order','v2_payment_callback_event','v2_mail_log','v2_daily_task_run','v2_analytics_page','v2_analytics_session'] as $table) DB::table($table)->delete();
@@ -58,6 +58,7 @@ try {
     $zone=new DateTimeZone('Asia/Kathmandu');
     $today=(new DateTimeImmutable('@'.$now))->setTimezone($zone)->format('Y-m-d');
     DB::table('v2_daily_task_run')->insert(['task'=>'reset:traffic','business_date'=>$today,'timezone'=>'Asia/Kathmandu','status'=>'completed','updated_at'=>$now-20]);
+    DB::table('v2_daily_task_run')->insert(['task'=>'v2board:statistics','business_date'=>$today,'timezone'=>'Asia/Kathmandu','status'=>'completed','updated_at'=>$now-40]);
     Illuminate\Support\Facades\Cache::put('LOG_RETENTION_LAST_RUN',['at'=>$now-30,'deleted'=>['secret'=>1]]);
     $health=Mockery::mock(App\Services\SystemHealthService::class);
     $health->shouldReceive('inspect')->andReturn(['checks'=>[['key'=>'scheduler','label'=>'定时任务','status'=>'healthy','message'=>'正常']]]);
@@ -84,6 +85,9 @@ try {
     $assert($mail['delivered']===1 && $mail['negative']===1 && $mail['averageTransportMs']===300,'Mail transport duration and delivery receipts are separate');
     $assert($report['health']['queues'][0]===['name'=>'order_handle','length'=>3,'waitSeconds'=>12,'processes'=>1],'Queue response uses a safe field whitelist');
     $assert($report['health']['lastPruneAt']===gmdate('c',$now-30) && $report['health']['dailyTasks'][0]['lastSuccessAt']===gmdate('c',$now-20),'Task snapshots expose persisted successful timestamps');
+    $statisticsTask=collect($report['health']['dailyTasks'])->firstWhere('task','fastai:statistics');
+    $assert($statisticsTask && $statisticsTask['status']==='completed' && $statisticsTask['lastSuccessAt']===gmdate('c',$now-40), 'Canonical statistics health must read its existing daily status and successful timestamp');
+    $assert(!collect($report['health']['dailyTasks'])->contains('task','v2board:statistics'), 'Operations output must use only the canonical statistics name');
     $assert($report['login']['clients']['uniqueIps']===1 && $report['login']['clients']['topIps'][0]['maskedIp']==='192.0.2.***','Existing IPs are counted by scope and masked');
     $assert($report['subscription']['clients']['uniqueIps']===0 && $report['subscription']['clients']['unknownIpEvents']===3,'Missing IPs are not counted as visitors');
     $serialized=json_encode($report);

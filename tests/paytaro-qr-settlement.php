@@ -6,7 +6,7 @@ use App\Models\{Order, Payment};
 use Illuminate\Support\Facades\{DB, Queue};
 use Illuminate\Http\Request;
 Queue::fake();
-config(['v2board.telegram_bot_enable'=>0]);
+config(['fastai.telegram_bot_enable'=>0]);
 $n = 0;
 $assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();

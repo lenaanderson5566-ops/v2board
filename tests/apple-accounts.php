@@ -7,7 +7,7 @@ use App\Services\UserService;
 use App\Models\User;
 $checks = 0;
 $assert = function ($ok) use (&$checks) { if (!$ok) throw new RuntimeException('Check failed: '.($checks + 1)); $checks++; };
-config(['v2board.apple_account_url' => 'https://apple.example/', 'v2board.apple_account_token' => 'test-only', 'v2board.apple_account_share' => 'chosen']);
+config(['fastai.apple_account_url' => 'https://apple.example/', 'fastai.apple_account_token' => 'test-only', 'fastai.apple_account_share' => 'chosen']);
 $service = new class extends AppleAccountService { protected function resolveHost(string $host): array { return ['93.184.216.34']; } };
 Http::fake(function ($request) use ($assert) {
     $assert(str_starts_with($request->url(), 'https://apple.example/client/'));

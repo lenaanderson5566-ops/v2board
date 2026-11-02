@@ -8,7 +8,7 @@ use App\Http\Requests\Admin\UserFetch;
 use App\Http\Controllers\V1\Admin\UserController;
 config(['database.default' => 'activity_test', 'database.connections.activity_test' => ['driver' => 'sqlite', 'database' => ':memory:', 'prefix' => ''], 'cache.default' => 'array']);
 Cache::setDefaultDriver('array');
-config(['v2board.server_push_interval'=>60,'v2board.device_limit_mode'=>0]);
+config(['fastai.server_push_interval'=>60,'fastai.device_limit_mode'=>0]);
 Schema::create('v2_user', function (Blueprint $table) {
     $table->increments('id'); $table->string('email'); $table->integer('invite_user_id')->nullable();
     foreach (['t', 'last_login_at', 'created_at', 'plan_id', 'u', 'd'] as $key) $table->integer($key)->default(0);

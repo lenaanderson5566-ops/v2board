@@ -28,7 +28,7 @@ class AppleAccountService
     private function connection(): array
     {
         try {
-            $origin = self::normalizeOrigin((string) config('v2board.apple_account_url', self::ORIGIN));
+            $origin = self::normalizeOrigin((string) config('fastai.apple_account_url', self::ORIGIN));
         } catch (\InvalidArgumentException $e) {
             abort(503, 'Invalid Apple account service URL.');
         }
@@ -46,7 +46,7 @@ class AppleAccountService
 
     private function get(string $path, array $query = []): array
     {
-        $token = (string) config('v2board.apple_account_token', '');
+        $token = (string) config('fastai.apple_account_token', '');
         abort_if($token === '', 503, 'Apple account service is not configured.');
         [$origin, $options] = $this->connection();
         try {
@@ -64,7 +64,7 @@ class AppleAccountService
 
     public function accounts(): array
     {
-        $code = trim((string) config('v2board.apple_account_share', ''));
+        $code = trim((string) config('fastai.apple_account_share', ''));
         abort_if($code === '', 503, 'Apple account share page is not configured.');
         $pages = $this->get('/client/getAllSharepages');
         $page = collect($pages)->first(function ($page) use ($code) {

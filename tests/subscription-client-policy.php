@@ -9,7 +9,7 @@ try {
  $service=new App\Services\ClientStrategyService();$service->syncStrategies();
  $user=App\Models\User::create(['email'=>Illuminate\Support\Str::uuid().'@example.com','password'=>'unused','uuid'=>(string)Illuminate\Support\Str::uuid(),'token'=>Illuminate\Support\Str::random(32),'plan_id'=>1,'group_id'=>98765,'transfer_enable'=>1073741824,'expired_at'=>time()+86400,'credit_balance'=>1073741824]);
  App\Models\ClientStrategy::whereIn('client_type',['mihomo','flclash','general'])->update(['is_enabled'=>1,'min_version'=>null]);
- config(['v2board.subscription_ua_whitelist_enabled'=>1,'v2board.subscription_ua_whitelist'=>['flclash']]);
+ config(['fastai.subscription_ua_whitelist_enabled'=>1,'fastai.subscription_ua_whitelist'=>['flclash']]);
  $call=function($ua,$format='flclash',$suffix='',$token=null)use($app,$user){
   $r=Illuminate\Http\Request::create('/api/v10/subscriptions/'.($token??$user->token).$suffix.'?format='.$format,'GET',[],[],[],['HTTP_USER_AGENT'=>$ua,'REMOTE_ADDR'=>'192.0.2.'.($user->id % 240 + 10),'HTTP_ACCEPT'=>'application/yaml']);
   $app->instance('request',$r);
@@ -49,7 +49,7 @@ try {
  $assert($call('FlClash/0.8.0','general')->getStatusCode()===422,'General removed');
  $assert($call('FlClash/0.8.0','sing-box')->getStatusCode()===422,'Incompatible format rejected');
  $assert($call('Mozilla/5.0','flclash','/application-config')->getStatusCode()===403,'Legacy config cannot bypass whitelist');
- config(['v2board.subscription_ua_whitelist_enabled'=>0]);
+ config(['fastai.subscription_ua_whitelist_enabled'=>0]);
  $assert($call('curl/8.0')->getStatusCode()===403,'Unknown UA remains blocked without whitelist');
  $invalid=$call('FlClash/0.8.0','flclash','',str_repeat('0',32));
  $assert(in_array($invalid->getStatusCode(),[401,403],true) && !$invalid->headers->has('X-Subscription-Notice'),'Invalid credentials remain an authentication failure, not a warning subscription');
@@ -121,7 +121,7 @@ try {
   ['client_type'=>'shadowrocket','is_enabled'=>true,'min_version'=>null],
   ['client_type'=>'shadowsocks','is_enabled'=>true,'min_version'=>null],
  ]);
- config(['v2board.show_info_to_server_enable'=>0]);
+ config(['fastai.show_info_to_server_enable'=>0]);
  $qx=$call('Quantumult X/1.5.0','quantumult-x');
  $qxBody=base64_decode($qx->getContent(),true);
  $assert($qx->getStatusCode()===200 && !$qx->headers->has('X-Subscription-Notice') && str_contains($qxBody?:'','node.example.test') && str_contains($qxBody?:'',$user->uuid),'Supported QX nodes remain real output rather than an empty-list warning');
@@ -148,7 +148,7 @@ try {
   $rocketBody=base64_decode($rocket->getContent(),true)?:'';
   $assert(!str_contains($rocketBody,'STATUS=') && !str_contains($rocketBody,'naive-only.example.test'),'STATUS-only Shadowrocket content is replaced by a safe warning node');
  } finally {$user->group_id=$oldGroup;$user->save();}
- config(['v2board.subscription_user_minute_limit'=>1]);
+ config(['fastai.subscription_user_minute_limit'=>1]);
  $limited=$call('FlClash/0.8.0');
  $assert($limited->getStatusCode()===429 && (int)$limited->headers->get('Retry-After')>0,'HTTP rate limit and retry header');
  $assert(!$limited->headers->has('X-Subscription-Notice'),'Rate limits cannot become HTTP 200 notice subscriptions');

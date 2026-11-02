@@ -10,7 +10,7 @@ import {
     within,
 } from "@testing-library/react";
 const api = vi.hoisted(() => {
-    window.V2BOARD = {
+    window.FASTAI = {
         mode: "admin",
         adminPath: "test-admin",
         opsPath: "test-ops",

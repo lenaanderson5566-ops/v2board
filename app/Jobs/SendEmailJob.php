@@ -69,14 +69,14 @@ class SendEmailJob implements ShouldQueue
             if ($type === 'remindExpire' && (!$user->remind_expire || !$user->expired_at || $user->expired_at <= time() || $user->expired_at > time() + 86400)) return ['skipped'=>true];
             if ($type === 'remindTraffic' && (!$user->remind_traffic || !$user->transfer_enable || $user->u + $user->d < $user->transfer_enable * 0.95 || $user->u + $user->d >= $user->transfer_enable)) return ['skipped'=>true];
         }
-        if ($type==='notify' && $announcement && !config('v2board.email_announcements_enabled',1)) return ['skipped'=>true,'reason'=>'announcements_paused'];
+        if ($type==='notify' && $announcement && !config('fastai.email_announcements_enabled',1)) return ['skipped'=>true,'reason'=>'announcements_paused'];
         if (\App\Services\Mail\MailAudience::blocked($params['email'],$type==='notify' && !$announcement ? 'service' : $type)) return $this->skipBlocked($announcement, 'MAIL_RECIPIENT_SUPPRESSED');
-        $provider = config('v2board.email_provider', 'smtp');
-        if ($provider === 'smtp' && config('v2board.email_host')) {
-            foreach (['host','port','encryption','username'] as $field) Config::set('mail.'.$field, config('v2board.email_'.$field));
-            Config::set('mail.from.address', config('v2board.email_from_address'));
+        $provider = config('fastai.email_provider', 'smtp');
+        if ($provider === 'smtp' && config('fastai.email_host')) {
+            foreach (['host','port','encryption','username'] as $field) Config::set('mail.'.$field, config('fastai.email_'.$field));
+            Config::set('mail.from.address', config('fastai.email_from_address'));
         }
-        if (config('v2board.email_from_address')) Config::set('mail.from.address',config('v2board.email_from_address'));
+        if (config('fastai.email_from_address')) Config::set('mail.from.address',config('fastai.email_from_address'));
         Config::set('mail.scheme', config('mail.encryption') === 'ssl' || (int) config('mail.port') === 465 ? 'smtps' : 'smtp');
         Config::set('mail.timeout', 15);
         $data = app(ProductMail::class)->data($params);
@@ -113,12 +113,12 @@ class SendEmailJob implements ShouldQueue
                 throw new MailSendException('MAIL_PROVIDER_INVALID');
             } else {
                 Config::set('mail.driver','smtp');
-                $password = config('v2board.email_password');
-                if (config('v2board.email_password_encrypted')) {
+                $password = config('fastai.email_password');
+                if (config('fastai.email_password_encrypted')) {
                     try { $password = \Illuminate\Support\Facades\Crypt::decryptString((string)$password); }
                     catch (\Throwable $e) { throw new MailSendException('SMTP_KEY_INVALID'); }
                 }
-                if (config('v2board.email_host')) Config::set('mail.password', $password);
+                if (config('fastai.email_host')) Config::set('mail.password', $password);
                 // Rebuild cached transport after applying persisted SMTP settings.
                 Mail::forgetMailers();
                 \App\Services\Mail\MailBlocklist::enforce($params['email']);
@@ -166,7 +166,7 @@ class SendEmailJob implements ShouldQueue
 
     private function skipBlocked(bool $announcement, string $code = 'MAIL_MANUALLY_BLOCKED'): array
     {
-        $provider=config('v2board.email_provider','smtp');
+        $provider=config('fastai.email_provider','smtp');
         $log=MailDeliveryLog::begin($this->params['email'],$this->params['template_name'] ?? '',in_array($provider,['smtp','mailgun','ses','resend'],true) ? $provider:'unknown',$announcement ? 'announcement':'transactional');
         $this->linkInvitation($log);
         MailDeliveryLog::finish($log,'skipped',$code,null,0);

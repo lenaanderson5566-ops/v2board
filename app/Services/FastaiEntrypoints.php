@@ -50,13 +50,13 @@ final class FastaiEntrypoints
 
     public function envelope(): array
     {
-        $entries=self::validate(config('v2board.fastai_entrypoints',[]));
+        $entries=self::validate(config('fastai.fastai_entrypoints',[]));
         $entries=array_values(array_filter($entries,fn($entry)=>$entry['enabled']));
-        if (!$entries) $entries=[['origin'=>self::origin(config('v2board.app_url')),'enabled'=>true,'priority'=>1]];
+        if (!$entries) $entries=[['origin'=>self::origin(config('fastai.app_url')),'enabled'=>true,'priority'=>1]];
         usort($entries,fn($a,$b)=>$a['priority']<=>$b['priority']);
         $key=$this->secret();
         $payload=json_encode(['serviceId'=>hash('sha256',sodium_crypto_sign_publickey_from_secretkey($key)),
-            'version'=>(int)config('v2board.fastai_entrypoints_version',1),
+            'version'=>(int)config('fastai.fastai_entrypoints_version',1),
             'issuedAt'=>time(),'expiresAt'=>time()+7*86400,
             'endpoints'=>array_map(fn($entry)=>['origin'=>$entry['origin'],'priority'=>$entry['priority']],$entries)],JSON_UNESCAPED_SLASHES);
         return ['payload'=>base64_encode($payload),'signature'=>base64_encode(sodium_crypto_sign_detached($payload,$key))];
@@ -95,7 +95,7 @@ final class FastaiEntrypoints
     public function requireVerified(array $entries): void
     {
         if (!$entries) throw ValidationException::withMessages(['fastai_entrypoints'=>'Keep at least one enabled service origin.']);
-        $previous=array_column(array_filter(config('v2board.fastai_entrypoints',[]),fn($entry)=>$entry['enabled']),'origin');
+        $previous=array_column(array_filter(config('fastai.fastai_entrypoints',[]),fn($entry)=>$entry['enabled']),'origin');
         foreach ($entries as $entry) if ($entry['enabled'] && !in_array($entry['origin'],$previous,true)) {
             if (!\Illuminate\Support\Facades\Cache::get($this->verificationKey($entry['origin']))) throw ValidationException::withMessages(['fastai_entrypoints'=>'Check each new enabled domain before publishing (checks expire after ten minutes).']);
         }
@@ -103,9 +103,9 @@ final class FastaiEntrypoints
 
     public function requestOrigin(Request $request): string
     {
-        $canonical=self::origin((string)config('v2board.app_url'));
+        $canonical=self::origin((string)config('fastai.app_url'));
         $incoming=rtrim($request->getSchemeAndHttpHost(),'/');
-        foreach (self::validate(config('v2board.fastai_entrypoints',[])) as $entry) if ($entry['enabled'] && $entry['origin']===$incoming) return $incoming;
+        foreach (self::validate(config('fastai.fastai_entrypoints',[])) as $entry) if ($entry['enabled'] && $entry['origin']===$incoming) return $incoming;
         return $canonical;
     }
 }

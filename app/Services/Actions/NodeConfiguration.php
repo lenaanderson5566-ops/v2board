@@ -41,10 +41,10 @@ class NodeConfiguration {
         }
 
         $response['base_config'] = [
-            'push_interval' => (int)config('v2board.server_push_interval', 60),
-            'pull_interval' => (int)config('v2board.server_pull_interval', 60),
-            'node_report_min_traffic' => (int)config('v2board.server_node_report_min_traffic', 0),
-            'device_online_min_traffic' => (int)config('v2board.server_device_online_min_traffic', 0)
+            'push_interval' => (int)config('fastai.server_push_interval', 60),
+            'pull_interval' => (int)config('fastai.server_pull_interval', 60),
+            'node_report_min_traffic' => (int)config('fastai.server_node_report_min_traffic', 0),
+            'device_online_min_traffic' => (int)config('fastai.server_device_online_min_traffic', 0)
         ];
 
         if ($node['route_id']) {

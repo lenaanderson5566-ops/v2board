@@ -1,6 +1,10 @@
 # 宝塔分支升级脚本
 
-`update.sh` 默认目标为 `codex/payment-icon-picker`，适用于已运行的 Git 安装。保留 `.env`、APP_KEY、`config/v2board.php`、用户数据及既有会话，不删除原锁文件备份，不切回 master。使用现有 Composer 和与网站一致的 PHP。
+`update.sh` 默认目标为 `codex/payment-icon-picker`，适用于已运行的 FastAI Git 安装。保留 `.env`、APP_KEY、`config/fastai.php`、旧 `config/v2board.php`、用户数据及既有会话，不删除原锁文件备份，不切回 master。使用现有 Composer 和与网站一致的 PHP。
+
+新配置文件整份优先，缺失时才读取旧文件；保存设置始终写入 `config/fastai.php`，不会逐字段合并或删除旧文件。旧 `v2board.*` 是主 `fastai.*` 的同存储别名，旧命令也保留 alias。升级不迁移数据库表名、队列、Redis 身份、DNS 所有权或每日任务历史。详见 [名称与升级兼容](project-structure.md#fastai-名称与升级兼容)。脚本下载 URL 使用实际仓库路径，项目改名不等于仓库改名。
+
+预检要求至少存在一份非空的站点配置文件，存在的两份文件都纳入校验和及私有备份；内容为 `return [];` 的有效空配置与零字节损坏文件不同。目标提交不得跟踪任一私密配置文件。
 
 ## 全新安装（空数据库）
 
@@ -10,14 +14,16 @@
 
 ```sh
 composer install --no-dev --prefer-dist --optimize-autoloader
-php artisan v2board:install
+php artisan fastai:install
 ```
 
-命令中的 PHP 必须与后续 PHP-FPM、Horizon 和调度器一致。`V2boardInstall` 要求 `.env` 尚不存在，负责从 `.env.example` 创建环境文件、生成 APP_KEY、询问数据库信息、导入 `database/install.sql` 并创建管理员；不要事先复制 `.env` 或手动重复导入 SQL。只能使用专用空数据库，不能对旧库运行安装器，也不能为绕过安装检查而删除旧站 `.env`。安装器不是事务化的恢复工具，当前安装器要求所选数据库没有已有表，整体执行受信任的安装 SQL，导入异常立即停止并返回非零退出码，不再吞掉错误后打印完成；失败后保留现场并核对数据库，不能靠重复安装覆盖数据。
+命令中的 PHP 必须与后续 PHP-FPM、Horizon 和调度器一致。`FastaiInstall` 要求 `.env` 尚不存在，负责从 `.env.example` 创建环境文件、生成 APP_KEY、询问数据库信息、导入 `database/install.sql` 并创建管理员；不要事先复制 `.env` 或手动重复导入 SQL。只能使用专用空数据库，不能对旧库运行安装器，也不能为绕过安装检查而删除旧站 `.env`。安装器不是事务化的恢复工具，当前安装器要求所选数据库没有已有表，整体执行受信任的安装 SQL，导入异常立即停止并返回非零退出码，不再吞掉错误后打印完成；失败后保留现场并核对数据库，不能靠重复安装覆盖数据。
 
-安装器不会替你完成生产配置。开放站点前设置 `.env` 中 `APP_ENV=production`、`APP_DEBUG=false`、正确 APP_URL/数据库/Redis 等参数，以及后台规范 HTTPS 站点地址 `v2board.app_url`；生产 Cookie 保持 Secure，分离前端时配置精确来源并满足同站要求。私下保存并更换初始管理员密码。设置 storage、bootstrap/cache 的运行用户写权限，刷新配置缓存，配置本站 Horizon 和每分钟 `schedule:run`，检查管理员登录、静态资源及 `php artisan console:verify`。隔离回归覆盖实际安装命令的交互输入、完整 SQL 导入、管理员创建/认证、重复安装拒绝、错误退出及环境值转义；生产配置和公网服务仍需现场验收。
+安装器不会替你完成生产配置。开放站点前设置 `.env` 中 `APP_ENV=production`、`APP_DEBUG=false`、正确 APP_URL/数据库/Redis 等参数，以及后台规范 HTTPS 站点地址 `fastai.app_url`；生产 Cookie 保持 Secure，分离前端时配置精确来源并满足同站要求。私下保存并更换初始管理员密码。设置 storage、bootstrap/cache 的运行用户写权限，刷新配置缓存，配置本站 Horizon 和每分钟 `schedule:run`，检查管理员登录、静态资源及 `php artisan console:verify`。隔离回归覆盖实际安装命令的交互输入、完整 SQL 导入、管理员创建/认证、重复安装拒绝、错误退出及环境值转义；生产配置和公网服务仍需现场验收。
 
 全新安装使用当前 install.sql 的完整结构，不需要回放旧 update.sql 或无路径限制的历史迁移。后续版本更新使用下述 `update.sh`；运行时、安装和升级都不要求 Python 或服务器端 Node 构建。
+
+安装器也拒绝在已有新/旧站点配置时覆盖安装，即使 `.env` 已经缺失；不要为重装删除原站点文件。真正的新目录由安装器创建空的 `config/fastai.php`，不需提前手工建立配置文件。
 
 ## 自动迁移与重复执行
 
@@ -29,8 +35,8 @@ php artisan v2board:install
 
 ```bash
 cd /www/wwwroot/你的站点
-curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/v2board-update.sh
-bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --check
+curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/fastai-update.sh
+bash /tmp/fastai-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --check
 ```
 
 预检通过并完成数据库备份后，去掉 `--check` 执行相同命令，使用默认自动维护流程。普通更新不需要 `--lock-file` 或 `--resolve-dependencies`；只有本地额外依赖或已验证覆盖锁文件的情况才按下文添加。PHP-FPM、Horizon 和调度器使用与 CLI 相同的 PHP 8.4+；成功后核对本站 PHP-FPM/OPcache 是否加载新代码。
@@ -59,14 +65,14 @@ bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/co
 
 ```bash
 cd /www/wwwroot/你的站点
-curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/v2board-update.sh
-bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --check
+curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/fastai-update.sh
+bash /tmp/fastai-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --check
 ```
 
 预检通过后，暂停写入、队列和调度，完成数据库备份，运行以下命令（数据库备份路径须替换为实际文件）：
 
 ```bash
-bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --database-backup /www/backup/本次数据库备份.sql.gz --backup-dir /www/backup/v2board-upgrades --jobs-stopped
+bash /tmp/fastai-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --database-backup /www/backup/本次数据库备份.sql.gz --backup-dir /www/backup/fastai-upgrades --jobs-stopped
 ```
 
 成功保持维护模式。宝塔重启对应 PHP-FPM 后执行指定 PHP 的 `artisan up` 并验收，再恢复原队列和调度。回滚时需结合原 Composer 文件和完整归档恢复，本地新增依赖会让升级后的 `composer.json` 显示本地修改，这是预期结果。
@@ -82,9 +88,9 @@ bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/co
 
 ```bash
 curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh \
-  -o /tmp/v2board-update.sh
+  -o /tmp/fastai-update.sh
 
-bash /tmp/v2board-update.sh \
+bash /tmp/fastai-update.sh \
   --project /www/wwwroot/你的站点 \
   --php /www/server/php/84/bin/php \
   --composer /实际路径/composer.phar \
@@ -98,12 +104,12 @@ bash /tmp/v2board-update.sh \
 完成写入暂停、队列／调度暂停、数据库备份后，执行正式升级：
 
 ```bash
-bash /tmp/v2board-update.sh \
+bash /tmp/fastai-update.sh \
   --project /www/wwwroot/你的站点 \
   --php /www/server/php/84/bin/php \
   --composer /实际路径/composer.phar \
   --database-backup /www/backup/本次维护窗口数据库备份.sql.gz \
-  --backup-dir /www/backup/v2board-upgrades \
+  --backup-dir /www/backup/fastai-upgrades \
   --jobs-stopped
 ```
 
@@ -115,7 +121,7 @@ bash /tmp/v2board-update.sh \
 - 仅允许目标分支快进；本地目标分支若有额外提交会停止，不执行 reset --hard。
 - 正式安装从经过预检的锁文件执行 `composer install --no-dev --prefer-dist --optimize-autoloader`，检查运行平台；不下载 Composer、不在线上 vendor 执行 update/require。显式 `--resolve-dependencies` 会在停机前的临时目录执行 `update --no-install` 生成候选锁文件，详见上文。
 - 仅运行当前 update.sh 明确列入白名单的定向迁移，涵盖账户、账务、节点、邮件、MFA 及已批准的旧结构清理。完整路径和顺序以该次目标提交的脚本为准；发现未列入白名单的迁移差异会停止并要求单独审查。下面的单项说明用于解释业务变化，不代替完整白名单。
-- 不运行历史 update.sql、v2board:update、migrate:fresh、cache:clear、optimize:clear 或 Redis 清空。配置、路由、视图缓存单独处理。
+- 不运行历史 update.sql、fastai:update 或旧 v2board:update、migrate:fresh、cache:clear、optimize:clear 或 Redis 清空。配置、路由、视图缓存单独处理。
 - 校验生产 `.env` 和业务配置内容没有变化。使用私有备份权限，同时确保新发布的 PHP／静态文件对网站进程可读。
 
 ## 完成及失败处理
@@ -157,7 +163,7 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 
 旧节点表清理：`2026_10_11_000002_drop_retired_node_tables.php` 在 V2Box 建表迁移之后执行，定向删除 `v2_server_shadowsocks`、`v2_server_vmess`、`v2_server_vless`、`v2_server_trojan`、`v2_server_tuic`、`v2_server_hysteria`、`v2_server_anytls`。存在的数据一并删除，重复执行安全；down 不伪造空表回滚。保留 V2Box、共享权限组、路由、用户订单和统计表。历史 `database/update.sql` 不重放。
 
-`php artisan v2board:update` 的旧 SQL 重放入口已停用，返回非零状态并指向 `bash update.sh`，避免重新创建已删除的旧节点表。
+`php artisan fastai:update` 和兼容别名 `v2board:update` 均返回非零状态并指向 `bash update.sh`；旧 SQL 重放入口已停用，避免重新创建已删除的旧节点表。新安装使用 `fastai:install`，旧 `v2board:install` 仅为既有脚本兼容保留。
 
 后台进程需要在本站宝塔 Supervisor 配置 autorestart=true，并使用与 PHP-FPM 一致的 PHP 路径。若升级在 restart-jobs 阶段失败，修复并启动本站后台进程、确认 Horizon 正常，再执行 php artisan up；脚本会保留维护模式，以免依赖任务处理的业务在无队列状态下恢复。
 

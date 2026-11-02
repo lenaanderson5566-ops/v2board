@@ -27,7 +27,7 @@ class V2RayTun
         $body = base64_encode($uri);
 
         // 构建 v2raytun 标头
-        $appName = config('v2board.app_name', 'V2Board');
+        $appName = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')));
         $headers = [
             // profile-title 支持 base64 和原文
             'profile-title' => $this->getProfileTitle($appName),

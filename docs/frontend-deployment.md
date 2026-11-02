@@ -67,7 +67,7 @@ php artisan config:cache
 
 前端与 API 必须使用 HTTPS 且属于同一站点（例如同一主域的子域名），以符合 SameSite=Lax；任意跨站域名即使加入 CORS 也不能完成此 Cookie 登录。不同站点需通过同站 API 网关接入，不能沿用旧的 localStorage/Bearer 部署方式。设置生产 `APP_ENV`，保持 Secure Cookie，部署细节见 [浏览器会话](browser-sessions.md)。
 
-后端 V2Board 的站点 URL 应指向用户网站，以便续费和一次性网页登录链接进入正确网站；后端自身 `APP_URL` 使用后端地址。反向代理、TLS、支付回调、订阅路径仍由后端处理，需要按实际部署验证。
+FastAI 后端的站点 URL 应指向用户网站，以便续费和一次性网页登录链接进入正确网站；后端自身 `APP_URL` 使用后端地址。反向代理、TLS、支付回调、订阅路径仍由后端处理，需要按实际部署验证。
 
 ## 本地开发与运行配置
 

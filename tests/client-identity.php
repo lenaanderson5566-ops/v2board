@@ -103,7 +103,7 @@ try {
  $admin=App\Models\User::create(['email'=>'client-dictionary-test@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'is_admin'=>1,'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
  $auth=new App\Services\AuthService($admin);$token=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
  $kernel=app(Illuminate\Contracts\Http\Kernel::class);
- $prefix='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+ $prefix='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
  $call=function($method,$path,$body=[],$authorized=true)use($kernel,$prefix,$token){$r=Illuminate\Http\Request::create($prefix.'/dictionary/clients'.$path,$method,[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'],json_encode($body));if($authorized)$r->headers->set('Authorization',$token);return $kernel->handle($r);};
  $assert($call('GET','',[],false)->getStatusCode()===403,'Anonymous cannot read library');
  $assert($call('GET','')->getStatusCode()===200,'Admin reads library');

@@ -3,9 +3,10 @@ import { apiUrl } from "../shared/runtime-config";
 import { locale } from "../shared/i18n";
 import type { V10AnalyticsEvent } from "../shared/v10-types";
 import { setTelemetrySink } from "../shared/telemetry";
+import { localPreferences, sessionPreferences } from "../shared/browser-storage";
 
 export const privacyRevision = 5;
-export const privacyKey = `v2board.analytics.consent.v2.${encodeURIComponent(apiUrl("/api/v10"))}`;
+export const privacyKey = `fastai.analytics.consent.v2.${encodeURIComponent(apiUrl("/api/v10"))}`;
 export type PrivacyChoice = {
     choice: "allow" | "deny";
     version: number;
@@ -13,8 +14,9 @@ export type PrivacyChoice = {
     retentionDays: number;
 };
 export function privacyChoice(): PrivacyChoice | null {
-    try {
-        const value = JSON.parse(localStorage.getItem(privacyKey) || "null");
+    const choices: PrivacyChoice[] = [];
+    for (const stored of localPreferences.getCandidates(privacyKey)) try {
+        const value = JSON.parse(stored || "null");
         if (
             !value ||
             (value.version !== privacyRevision &&
@@ -27,18 +29,17 @@ export function privacyChoice(): PrivacyChoice | null {
             Date.now() - value.chosenAt > 180 * 86400000 ||
             ![7, 30, 90].includes(value.retentionDays)
         )
-            return null;
-        return value;
-    } catch {
-        return null;
-    }
+            continue;
+        choices.push(value);
+    } catch { /* Invalid stored values never grant permission. */ }
+    // Older tabs can still withdraw permission. At equal times denial wins.
+    return choices.sort((a,b) => b.chosenAt-a.chosenAt || (a.choice===b.choice ? 0 : a.choice==='deny' ? -1 : 1))[0] ?? null;
 }
 export function savePrivacyChoice(
     choice: "allow" | "deny",
     retentionDays: number,
 ): boolean {
-    try {
-        localStorage.setItem(
+    return localPreferences.setConsent(
             privacyKey,
             JSON.stringify({
                 choice,
@@ -46,13 +47,10 @@ export function savePrivacyChoice(
                 version: privacyRevision,
                 chosenAt: Date.now(),
             }),
+            choice === "deny",
         );
-        return true;
-    } catch {
-        return false;
-    }
 }
-const sessionKey = "v2board.analytics.session.v2";
+const sessionKey = "fastai.analytics.session.v2";
 const screens = new Map<symbol, V10AnalyticsEvent["page"]>();
 let enabled = false;
 let entryConsumed = false;
@@ -175,8 +173,8 @@ export function setCollection(value: boolean) {
         setTelemetrySink(undefined);
         activeRequest?.abort();
         try {
-            sessionStorage.removeItem(sessionKey);
-            sessionStorage.removeItem("v2board.analytics.session.v1");
+            sessionPreferences.removeItem(sessionKey);
+            sessionPreferences.removeItem("fastai.analytics.session.v1");
         } catch {}
     } else {
         screens.forEach((page) => send(page));
@@ -246,7 +244,7 @@ function send(
                 : attribution();
             entryConsumed = true;
             let session = JSON.parse(
-                sessionStorage.getItem(sessionKey) || "null",
+                sessionPreferences.getItem(sessionKey) || "null",
             ) as {
                 id: string;
                 start: number;
@@ -265,7 +263,7 @@ function send(
                     attribution: entry,
                 };
             session.last = now;
-            sessionStorage.setItem(sessionKey, JSON.stringify(session));
+            if (!sessionPreferences.setPersistentItem(sessionKey, JSON.stringify(session))) return;
             const event: V10AnalyticsEvent = {
                 sessionId: session.id,
                 ...session.attribution,

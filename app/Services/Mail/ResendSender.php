@@ -11,9 +11,9 @@ class ResendSender
     public function send(string $recipient, array $data, string $deliveryId): string
     {
         MailBlocklist::enforce($recipient);
-        $from = (string) config('v2board.email_from_address');
+        $from = (string) config('fastai.email_from_address');
         if (validator(['email'=>$from], ['email'=>'required|email:rfc'])->fails()) throw new MailSendException('RESEND_CONFIG_INVALID');
-        try { $key = Crypt::decryptString((string) config('v2board.email_resend_api_key')); }
+        try { $key = Crypt::decryptString((string) config('fastai.email_resend_api_key')); }
         catch (\Throwable $e) { throw new MailSendException('RESEND_KEY_INVALID'); }
         if (!preg_match('/^re_[A-Za-z0-9_-]+$/D', $key)) throw new MailSendException('RESEND_KEY_INVALID');
         $body = ['from'=>(new \Symfony\Component\Mime\Address($from, $data['brand']))->toString(),

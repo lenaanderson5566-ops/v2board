@@ -107,10 +107,10 @@ class Helper
 
     public static function getSubscribeUrl($token)
     {
-        $submethod = (int)config('v2board.show_subscribe_method', 0);
-        $path = '/' . trim((string) config('v2board.subscribe_path', ''), '/');
+        $submethod = (int)config('fastai.show_subscribe_method', 0);
+        $path = '/' . trim((string) config('fastai.subscribe_path', ''), '/');
         $v10 = in_array($path, ['/', '/api/v1/client/subscribe', '/api/v10/subscriptions'], true);
-        $subscribeUrls = explode(',', config('v2board.subscribe_url'));
+        $subscribeUrls = explode(',', config('fastai.subscribe_url'));
         $subscribeUrl = $subscribeUrls[rand(0, count($subscribeUrls) - 1)];
         switch ($submethod) {
             case 0:
@@ -134,7 +134,7 @@ class Helper
                 return url($path);
                 break;
             case 2:
-                $timestep = (int)config('v2board.show_subscribe_expire', 5) * 60;
+                $timestep = (int)config('fastai.show_subscribe_expire', 5) * 60;
                 $counter = floor(time() / $timestep);
                 $counterBytes = pack('N*', 0) . pack('N*', $counter);
                 $hash = hash_hmac('sha1', $counterBytes, $token, false);

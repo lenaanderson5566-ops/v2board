@@ -12,7 +12,7 @@ class User extends Model
     protected $hidden = ['password', 'password_algo', 'password_salt'];
     protected static function booted() {
         static::creating(function ($user) {
-            $currency = config('v2board.new_user_currency', 'CNY');
+            $currency = config('fastai.new_user_currency', 'CNY');
             if (!in_array($currency,['CNY','USD'],true)) throw new \InvalidArgumentException('Unsupported account currency');
             if ($currency !== 'CNY') $user->currency = $currency;
         });

@@ -25,7 +25,7 @@ class MailAudience
     }
     public static function origin(): string
     {
-        $origin=rtrim((string)config('v2board.email_public_url',config('app.url')),'/');
+        $origin=rtrim((string)config('fastai.email_public_url',config('app.url')),'/');
         if (!filter_var($origin,FILTER_VALIDATE_URL) || parse_url($origin,PHP_URL_SCHEME)!=='https' || parse_url($origin,PHP_URL_USER) || parse_url($origin,PHP_URL_QUERY) || parse_url($origin,PHP_URL_FRAGMENT)) throw new \RuntimeException('MAIL_UNSUBSCRIBE_HTTPS_REQUIRED');
         return $origin;
     }

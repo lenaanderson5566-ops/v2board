@@ -26,8 +26,8 @@ class SendInvitationEmailJob implements ShouldQueue
         if (!$record || $record->accepted_at || $record->expires_at<=time() || !hash_equals($record->token_hash,hash('sha256',$this->token))) return;
         $sender = User::find($record->user_id);
         if (!$sender || $sender->banned) { $record->update(['failed_at'=>time()]); return; }
-        $name = config('v2board.app_name','Studio');
-        $link = rtrim(config('v2board.app_url'),'/').'/app#/register?invitation='.rawurlencode($this->token).'&email='.rawurlencode($record->email);
+        $name = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')));
+        $link = rtrim(config('fastai.app_url'),'/').'/app#/register?invitation='.rawurlencode($this->token).'&email='.rawurlencode($record->email);
         $locale = app()->getLocale();
         try {
             app()->setLocale($this->language);

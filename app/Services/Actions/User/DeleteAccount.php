@@ -33,7 +33,7 @@ final class DeleteAccount
     public function remove(Request $request): void
     {
         $request->validate(['password'=>'required|string|max:128','confirmation'=>'required|in:DELETE']);
-        if (!config('v2board.account_deletion_enable',0)) $this->fail(403,'ACCOUNT_DELETION_DISABLED');
+        if (!config('fastai.account_deletion_enable',0)) $this->fail(403,'ACCOUNT_DELETION_DISABLED');
         $id = (int)$request->user['id'];
         if (!RateLimiter::attempt('ACCOUNT_DELETION:'.$id,5,fn()=>true,300)) $this->fail(429,'RATE_LIMITED');
         DB::transaction(function () use ($request,$id) {

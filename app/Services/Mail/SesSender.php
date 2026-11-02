@@ -14,10 +14,10 @@ class SesSender
     public function send(string $recipient, array $data): string
     {
         MailBlocklist::enforce($recipient);
-        $region = (string) config('v2board.email_ses_region', 'us-east-1');
-        $from = (string) config('v2board.email_from_address');
-        $mode = config('v2board.email_ses_auth', 'role');
-        $set = (string) config('v2board.email_ses_configuration_set', '');
+        $region = (string) config('fastai.email_ses_region', 'us-east-1');
+        $from = (string) config('fastai.email_from_address');
+        $mode = config('fastai.email_ses_auth', 'role');
+        $set = (string) config('fastai.email_ses_configuration_set', '');
         if (!preg_match('/^(us|eu|ap|ca|sa|me|af|il|mx)-(?:[a-z]+-)?[a-z]+-[1-9]$/D', $region)
             || !in_array($mode, ['role','key'], true)
             || ($set !== '' && !preg_match('/^[A-Za-z0-9_-]{1,64}$/D', $set))
@@ -27,8 +27,8 @@ class SesSender
             'retries'=>0, 'http'=>['connect_timeout'=>5, 'timeout'=>15, 'allow_redirects'=>false]];
         if ($mode === 'key') {
             try {
-                $key = Crypt::decryptString((string) config('v2board.email_ses_access_key'));
-                $secret = Crypt::decryptString((string) config('v2board.email_ses_secret_key'));
+                $key = Crypt::decryptString((string) config('fastai.email_ses_access_key'));
+                $secret = Crypt::decryptString((string) config('fastai.email_ses_secret_key'));
                 if (!preg_match('/^AKIA[A-Z0-9]{16}$/D', $key) || $secret === '') throw new \RuntimeException();
                 $options['credentials'] = ['key'=>$key, 'secret'=>$secret];
             } catch (\Throwable $e) { throw new MailSendException('SES_KEY_INVALID'); }

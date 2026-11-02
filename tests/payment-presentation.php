@@ -31,12 +31,12 @@ $returnService = new class extends \App\Services\PaymentService {
         $this->payment = new \App\Payments\V10TestPayment([]);
     }
 };
-$returnConfiguration = ['v2board.app_url'=>config('v2board.app_url'), 'cors.allowed_origins'=>config('cors.allowed_origins')];
+$returnConfiguration = ['fastai.app_url'=>config('fastai.app_url'), 'cors.allowed_origins'=>config('cors.allowed_origins')];
 $returnRequest = $app->make('request');
 $returnChecks = 0;
 $returnAssert = \Tests\Support\Assertions::counter($returnChecks);
 try {
-    config(['v2board.app_url'=>'https://panel.example/app', 'cors.allowed_origins'=>['*','https://frontend.example']]);
+    config(['fastai.app_url'=>'https://panel.example/app', 'cors.allowed_origins'=>['*','https://frontend.example']]);
     $trade = 'order_abc-123 +/&?=#中文';
     $baseOrder = ['trade_no'=>$trade, 'total_amount'=>100, 'user_id'=>1, 'stripe_token'=>null,
         'return_url'=>'https://evil.example/#/takeover', 'returnUrl'=>'https://evil.example/#/takeover'];

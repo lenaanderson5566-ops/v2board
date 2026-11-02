@@ -62,7 +62,7 @@ class UserService
         if ($user->plan->reset_traffic_method === 2) return null;
         switch (true) {
             case ($user->plan->reset_traffic_method === NULL): {
-                $resetTrafficMethod = config('v2board.reset_traffic_method', 0);
+                $resetTrafficMethod = config('fastai.reset_traffic_method', 0);
                 switch ((int)$resetTrafficMethod) {
                     // month first day
                     case 0:
@@ -115,7 +115,7 @@ class UserService
         if (!$user->plan_id || $user->transfer_enable <= 0 || !$user->expired_at || $user->expired_at <= $now) return $result;
         $plan = Plan::find($user->plan_id);
         if (!$plan) return $result;
-        $method = (int)($plan->reset_traffic_method ?? config('v2board.reset_traffic_method', 0));
+        $method = (int)($plan->reset_traffic_method ?? config('fastai.reset_traffic_method', 0));
         $future = TrafficResetSchedule::next($method, (int)$user->expired_at, $now, $zone);
         $result['at'] = $future;
         $result['state'] = $future ? 'scheduled' : null;
@@ -139,7 +139,7 @@ class UserService
         if ($plan->reset_traffic_method === 2) return null;
         switch (true) {
             case ($plan->reset_traffic_method === NULL) : {
-                $resetTrafficMethod = config('v2board.reset_traffic_method', 0);
+                $resetTrafficMethod = config('fastai.reset_traffic_method', 0);
                 switch ((int)$resetTrafficMethod) {
                     case 0:
                         return 1;

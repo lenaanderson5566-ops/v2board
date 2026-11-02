@@ -128,9 +128,9 @@ foreach ($entries as $entry) {
     $protectedCount++;
 }
 // Rebuild legacy client routes under each configured subscription path.
-$original=config('v2board.subscribe_path');
+$original=config('fastai.subscribe_path');
 foreach (['','/api/v1/client/subscribe','/custom-subscription'] as $custom) {
-    config(['v2board.subscribe_path'=>$custom]);
+    config(['fastai.subscribe_path'=>$custom]);
     $router=new Illuminate\Routing\Router(app('events'),app());
     $router->group(['prefix'=>'api/v1','namespace'=>'App\\Http\\Controllers'],function($router) { (new App\Http\Routes\V1\ClientRoute())->map($router); });
     $assert(in_array('client',$router->getRoutes()->match(Illuminate\Http\Request::create('/api/v1/client/app/getConfig','GET'))->gatherMiddleware(),true),'Client config remains protected');
@@ -139,7 +139,7 @@ foreach (['','/api/v1/client/subscribe','/custom-subscription'] as $custom) {
         $assert(false,'Old default subscription was reintroduced');
     } catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e) { $assert(true,'Old subscription is retired'); }
 }
-config(['v2board.subscribe_path'=>$original]);
+config(['fastai.subscribe_path'=>$original]);
 if (in_array('--write-inventory',$argv,true)) {
     $doc="# 后台之外的保留接口\n\n此清单由实际注册路由生成：`php tests/api-route-audit.php --write-inventory`。不包含 V10 新接口、管理/风控/客服后台接口。GET 路由同时支持 HEAD，表中省略 HEAD。仅表中入口继续保留；其余旧用户业务与公共内容 API 已移除。认证入口供现有后台使用。\n\n";
     $titles=['passport'=>'后台依赖的认证接口','user'=>'后台依赖的账户接口','guest'=>'旧公共接口与回调','client'=>'旧订阅与客户端接口'];

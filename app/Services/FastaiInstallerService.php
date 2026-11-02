@@ -48,7 +48,7 @@ final class FastaiInstallerService
 
     public function url(string $id): string
     {
-        $origin = rtrim((string)config('v2board.app_url', config('app.url')), '/');
+        $origin = rtrim((string)config('fastai.app_url', config('app.url')), '/');
         $parts = parse_url($origin);
         abort_unless(($parts['scheme'] ?? '') === 'https' && !empty($parts['host']) && !isset($parts['user']) && !isset($parts['pass']) && !isset($parts['query']) && !isset($parts['fragment']), 422, '请先把站点地址配置为公网 HTTPS 地址');
         return $origin.'/api/v10/public/client-installers/'.$id.'/content';

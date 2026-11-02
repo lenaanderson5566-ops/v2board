@@ -8,10 +8,10 @@ use Illuminate\Support\Facades\DB;
 class TelegramCommunityService
 {
     public function enabled(): bool {
-        return (bool) config('v2board.telegram_bot_enable', 0) && (bool) config('v2board.telegram_group_policy_enable', 0) && $this->chatId() < 0;
+        return (bool) config('fastai.telegram_bot_enable', 0) && (bool) config('fastai.telegram_group_policy_enable', 0) && $this->chatId() < 0;
     }
-    public function chatId(): int { return (int) config('v2board.telegram_discuss_id', 0); }
-    public function graceDays(): int { return max(0, min(30, (int) config('v2board.telegram_group_grace_days', 3))); }
+    public function chatId(): int { return (int) config('fastai.telegram_discuss_id', 0); }
+    public function graceDays(): int { return max(0, min(30, (int) config('fastai.telegram_group_grace_days', 3))); }
     public function eligibility(?User $user): string {
         if (!$user) return 'unbound';
         if ($user->banned) return 'banned';
@@ -33,7 +33,7 @@ class TelegramCommunityService
         DB::table('v2_telegram_group_member')->where('chat_id',$this->chatId())->where('telegram_id',$telegramId)->update(['next_check_at'=>0]);
     }
     public function bindingLink(User $user): array {
-        abort_unless(config('v2board.telegram_bot_enable',0), 409, 'Telegram is disabled');
+        abort_unless(config('fastai.telegram_bot_enable',0), 409, 'Telegram is disabled');
         abort_if($user->telegram_id, 409, 'Telegram is already linked');
         $bot = (new TelegramService())->getMe()->result;
         $token = bin2hex(random_bytes(24));
@@ -58,7 +58,7 @@ class TelegramCommunityService
         });
     }
     public function confirmBinding(User $user, string $expectedTelegramId): void {
-        abort_unless(config('v2board.telegram_bot_enable',0),409,'Telegram is disabled');
+        abort_unless(config('fastai.telegram_bot_enable',0),409,'Telegram is disabled');
         DB::transaction(function () use ($user, $expectedTelegramId) {
             $account = User::where('id',$user->id)->lockForUpdate()->firstOrFail();
             $row = DB::table('v2_telegram_binding_challenge')->where('user_id',$user->id)->lockForUpdate()->first();

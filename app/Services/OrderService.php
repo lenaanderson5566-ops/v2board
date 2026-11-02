@@ -94,13 +94,13 @@ class OrderService
 
         switch ((int)$order->type) {
             case 1:
-                $this->openEvent(config('v2board.new_order_event_id', 0));
+                $this->openEvent(config('fastai.new_order_event_id', 0));
                 break;
             case 2:
-                $this->openEvent(config('v2board.renew_order_event_id', 0));
+                $this->openEvent(config('fastai.renew_order_event_id', 0));
                 break;
             case 3:
-                $this->openEvent(config('v2board.change_order_event_id', 0));
+                $this->openEvent(config('fastai.change_order_event_id', 0));
                 break;
         }
 
@@ -133,9 +133,9 @@ class OrderService
         } else if ($order->period === 'reset_price') {
             $order->type = 4;
         } else if ($user->transfer_enable > 0 && $user->plan_id !== NULL && $order->plan_id !== $user->plan_id && ($user->expired_at > time() || $user->expired_at === NULL)) {
-            if (!(int)config('v2board.plan_change_enable', 1)) abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
+            if (!(int)config('fastai.plan_change_enable', 1)) abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
             $order->type = 3;
-            if ((int)config('v2board.surplus_enable', 1)) $this->getSurplusValue($user, $order);
+            if ((int)config('fastai.surplus_enable', 1)) $this->getSurplusValue($user, $order);
             if ($order->surplus_amount >= $order->total_amount) {
                 $order->refund_amount = $order->surplus_amount - $order->total_amount;
                 $order->total_amount = 0;
@@ -171,7 +171,7 @@ class OrderService
         $isCommission = false;
         switch ((int)$inviter->commission_type) {
             case 0:
-                $commissionFirstTime = (int)config('v2board.commission_first_time_enable', 1);
+                $commissionFirstTime = (int)config('fastai.commission_first_time_enable', 1);
                 $isCommission = (!$commissionFirstTime || ($commissionFirstTime && !$this->haveValidOrder($user)));
                 break;
             case 1:
@@ -184,7 +184,7 @@ class OrderService
 
         if (!$isCommission) return;
         $cursor = $inviter; $visited = [];
-        $levels = (int)config('v2board.commission_distribution_enable', 0) ? 3 : 1;
+        $levels = (int)config('fastai.commission_distribution_enable', 0) ? 3 : 1;
         for ($level=0; $cursor && $level<$levels; $level++) {
             if (in_array($cursor->id, $visited, true)) break;
             $visited[] = $cursor->id;
@@ -194,7 +194,7 @@ class OrderService
         if ($inviter && $inviter->commission_rate) {
             $order->commission_balance = $order->total_amount * ($inviter->commission_rate / 100);
         } else {
-            $order->commission_balance = $order->total_amount * (config('v2board.invite_commission', 10) / 100);
+            $order->commission_balance = $order->total_amount * (config('fastai.invite_commission', 10) / 100);
         }
     }
 
@@ -419,7 +419,7 @@ class OrderService
     }
 
     private function getbounus($total_amount) {
-        $deposit_bounus = config('v2board.deposit_bounus', []);
+        $deposit_bounus = config('fastai.deposit_bounus', []);
         if (empty($deposit_bounus) || $deposit_bounus[0] === null) {
             return 0;
         }

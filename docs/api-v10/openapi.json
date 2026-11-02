@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "FastDog user API",
+    "title": "FastAI user API",
     "version": "10.0.0",
     "description": "User API and V2Box machine API. Administrative, operations and legacy node contracts remain available separately. The unfinished staff API is retired."
   },

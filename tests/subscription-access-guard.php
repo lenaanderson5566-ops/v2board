@@ -12,7 +12,7 @@ $checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 $denied=function($run,$status)use($assert){try{$run();throw new RuntimeException('Expected rejection');}catch(HttpException $e){$assert($e->getStatusCode()===$status,'Correct rejection');if($status===429)$assert((int)($e->getHeaders()['Retry-After']??0)>0,'Retry-After present');}};
 DB::beginTransaction();
 try {
- config(['v2board.subscription_user_minute_limit'=>100,'v2board.subscription_user_day_limit'=>2,'v2board.subscription_ip_minute_limit'=>2]);
+ config(['fastai.subscription_user_minute_limit'=>100,'fastai.subscription_user_day_limit'=>2,'fastai.subscription_ip_minute_limit'=>2]);
  $guard->checkUser($id);$guard->checkUser($id);$denied(fn()=>$guard->checkUser($id),429);
  $r=Illuminate\Http\Request::create('/','GET',[],[],[],['REMOTE_ADDR'=>$ip,'HTTP_USER_AGENT'=>'FlClash/0.8.0']);
  $guard->checkIp($r);$guard->checkIp($r);$denied(fn()=>$guard->checkIp($r),429);

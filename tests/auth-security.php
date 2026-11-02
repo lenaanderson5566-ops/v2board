@@ -11,7 +11,7 @@ $assert(App\Services\GeoIpService::maskSessionIp('invalid') === null, 'Malformed
 $assert(app(App\Services\GeoIpService::class)->sessionCountry('127.0.0.1') === null, 'Private IP has no public location');
 Illuminate\Support\Facades\DB::beginTransaction();
 $auth = null; $cacheTokens = []; $limitKey = null;
-$originalConfig = config('v2board');
+$originalConfig = config('fastai');
 try {
     $user = App\Models\User::create(['email'=>'auth-review-'.bin2hex(random_bytes(6)).'@example.com','password'=>password_hash('test-only-password',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
     $auth = new App\Services\AuthService($user);
@@ -112,7 +112,7 @@ try {
     $user->update(['is_admin'=>0,'banned'=>0]);
     $limits = $originalConfig; unset($limits['password_limit_enable']);
     $limits['password_limit_count']=2; $limits['password_limit_expire']=1; $limits['recaptcha_enable']=0;
-    config(['v2board'=>$limits]);
+    config(['fastai'=>$limits]);
     $limitKey = App\Utils\CacheKey::get('PASSWORD_ERROR_LIMIT',strtolower($user->email));
     $login = function ($email,$password,$captcha=null) use ($kernel) {
         $request = Illuminate\Http\Request::create('/api/v1/passport/auth/login','POST',['email'=>$email,'password'=>$password,'recaptcha_data'=>$captcha]);
@@ -123,7 +123,7 @@ try {
     $login($user->email,'incorrect-password');
     $assert((int)Illuminate\Support\Facades\Cache::get($limitKey)===2, 'Case variation bypassed password limiter');
     $assert($login($user->email,'test-only-password')->getStatusCode()===500, 'Password limit not enforced');
-    config(['v2board.recaptcha_enable'=>1]);
+    config(['fastai.recaptcha_enable'=>1]);
     Illuminate\Support\Facades\Cache::forget($limitKey);
     $assert($login($user->email,'test-only-password')->getStatusCode()===200, 'Retired CAPTCHA configuration must not block password login');
     $auth->removeAllSession();
@@ -142,10 +142,10 @@ try {
         if ($credential) $req->headers->set('Authorization','Bearer '.$deleteToken);
         return $kernel->handle($req);
     };
-    config(['v2board.account_deletion_enable'=>0]);
+    config(['fastai.account_deletion_enable'=>0]);
     $assert(json_decode($deleteCall('GET')->getContent(),true)['data']['enabled']===false,'Deletion is disabled by default');
     $assert($deleteCall()->getStatusCode()===403,'Disabled deletion is enforced by the API');
-    config(['v2board.account_deletion_enable'=>1]);
+    config(['fastai.account_deletion_enable'=>1]);
     $assert($deleteCall('DELETE',null,false)->getStatusCode()===401,'Deletion requires authentication');
     $assert($deleteCall('DELETE',['password'=>'test-only-password','confirmation'=>'yes'])->getStatusCode()===422,'Deletion requires exact explicit confirmation');
     $assert($deleteCall('DELETE',['password'=>'wrong','confirmation'=>'DELETE'])->getStatusCode()===422,'Deletion requires current password');
@@ -239,7 +239,7 @@ try {
         catch (Illuminate\Http\Exceptions\HttpResponseException $error) { $assert($error->getResponse()->getStatusCode()>=400,'Pre-deletion authorization codes cannot issue sessions'); }
     }
     foreach ([0,1,2] as $method) {
-        config(['v2board.show_subscribe_method'=>$method]);
+        config(['fastai.show_subscribe_method'=>$method]);
         $subToken=$oldSubscription;
         if ($method===1) { $subToken='deletion-otp-'.bin2hex(random_bytes(8)); Cache::put('otpn_'.$subToken,$oldSubscription,60); }
         if ($method===2) { $subToken='deletion-totp-'.bin2hex(random_bytes(8)); Cache::put('totp_'.$subToken,$oldSubscription,60); }
@@ -269,7 +269,7 @@ try {
     $recoveryUsers=[]; $recoveryCache=[]; $recoveryRequest=0;
     $recoveryOriginalRequest=app('request');
     try {
-        config(['v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.email_verify'=>1,'v2board.mfa_enable'=>0]);
+        config(['fastai.stop_register'=>0,'fastai.invite_force'=>0,'fastai.email_whitelist_enable'=>0,'fastai.email_gmail_limit_enable'=>0,'fastai.email_verify'=>1,'fastai.mfa_enable'=>0]);
         $recoverCall=function(string $path,array $body) use($kernel,&$recoveryRequest) {
             $request=Illuminate\Http\Request::create('/api/v10/auth/'.$path,'POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>'198.51.100.'.(++$recoveryRequest),'HTTP_USER_AGENT'=>'RecoverySecurityTest'],json_encode($body));
             app()->instance('request',$request);
@@ -421,6 +421,6 @@ try {
     if ($auth) $auth->removeAllSession();
     foreach ($cacheTokens as $cached) Illuminate\Support\Facades\Cache::forget($cached);
     if ($limitKey) Illuminate\Support\Facades\Cache::forget($limitKey);
-    config(['v2board'=>$originalConfig]);
+    config(['fastai'=>$originalConfig]);
     Illuminate\Support\Facades\DB::rollBack();
 }

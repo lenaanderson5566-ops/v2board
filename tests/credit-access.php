@@ -8,12 +8,12 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$previous = config('v2board.credit_base_group_id');
+$previous = config('fastai.credit_base_group_id');
 DB::beginTransaction();
 try {
     $basic = DB::table('v2_server_group')->insertGetId(['name'=>'Credit access basic', 'created_at'=>time(), 'updated_at'=>time()]);
     $premium = DB::table('v2_server_group')->insertGetId(['name'=>'Credit access premium', 'created_at'=>time(), 'updated_at'=>time()]);
-    config(['v2board.credit_base_group_id'=>$basic]);
+    config(['fastai.credit_base_group_id'=>$basic]);
     $make = function ($fields=[]) use ($premium) { return User::create(array_merge([
         'email'=>'access-'.Str::uuid().'@example.test', 'password'=>'test-only', 'token'=>Str::random(32), 'uuid'=>(string)Str::uuid(),
         'group_id'=>$premium, 'transfer_enable'=>1000, 'u'=>1000, 'd'=>0, 'expired_at'=>time()+3600, 'credit_balance'=>500, 'banned'=>0,
@@ -68,9 +68,9 @@ try {
     $ordinary->u=0;$ordinary->save();
     $assert($server->getAvailableUsers([$basic,$premium])->where('id',$active->id)->count()===1,'Shared node duplicated user');
     $assert($server->getAvailableUsers([])->isEmpty(),'Empty group authorized users');
-    config(['v2board.credit_base_group_id'=>null]);
+    config(['fastai.credit_base_group_id'=>null]);
     $assert(Credits::effectiveGroupId($standalone)===$premium && $has($premium,$standalone),'Unconfigured rollout changed access');
-    config(['v2board.credit_base_group_id'=>$basic]);
+    config(['fastai.credit_base_group_id'=>$basic]);
     $rule = App\Http\Requests\Admin\ConfigSave::RULES['credit_base_group_id'];
     $assert(validator(['credit_base_group_id'=>$basic],['credit_base_group_id'=>$rule])->passes(),'Valid base group rejected');
     $assert(validator(['credit_base_group_id'=>-1],['credit_base_group_id'=>$rule])->fails(),'Invalid base group accepted');
@@ -80,5 +80,5 @@ try {
     echo "PASS: {$checks} credit access checks\n";
 } finally {
     DB::rollBack();
-    config(['v2board.credit_base_group_id'=>$previous]);
+    config(['fastai.credit_base_group_id'=>$previous]);
 }

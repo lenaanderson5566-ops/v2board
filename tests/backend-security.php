@@ -13,12 +13,12 @@ $status=function($callback){try{$callback();return 200;}catch(Symfony\Component\
 // Constructing the webhook action checks authentication without sending network traffic.
 foreach (['/api/v10/webhooks/telegram','/api/v1/guest/telegram/webhook'] as $path) {
     foreach ([[null,1,md5(''),401],['',1,md5(''),401],['test-token',0,md5('test-token'),401],['test-token',1,'wrong',401],['test-token',1,md5('test-token'),200]] as [$token,$enabled,$secret,$expected]) {
-        config(['v2board.telegram_bot_token'=>$token,'v2board.telegram_bot_enable'=>$enabled]);
+        config(['fastai.telegram_bot_token'=>$token,'fastai.telegram_bot_enable'=>$enabled]);
         $r=Illuminate\Http\Request::create($path,'POST',['access_token'=>$secret],[],[],['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'=>$secret]);
         $assert($status(fn()=>new App\Services\Actions\Guest\TelegramActions($r))===$expected,'Telegram rejects missing/disabled/incorrect credentials: '.$path.' '.$expected);
     }
 }
-config(['v2board.telegram_bot_enable'=>0]);
+config(['fastai.telegram_bot_enable'=>0]);
 $rules=(new App\Http\Requests\Admin\PlanSave())->rules();
 foreach (['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price','onetime_price','reset_price'] as $field) {
     foreach ([-1,null,0,100] as $price) {
@@ -86,15 +86,15 @@ try {
         }
         $request=Illuminate\Http\Request::create('/api/v1/user/info?auth_data[is_admin]=1','GET',[],[],[],['HTTP_AUTHORIZATION'=>$legacyToken]);
         $assert((new App\Http\Middleware\User())->handle($request,fn()=>response('ok'))->getStatusCode()===200,'Header credential takes priority over malicious query input');
-        $subscriptionMethod=config('v2board.show_subscribe_method');
+        $subscriptionMethod=config('fastai.show_subscribe_method');
         foreach ([0,1,2] as $mode) {
-            config(['v2board.show_subscribe_method'=>$mode]);
+            config(['fastai.show_subscribe_method'=>$mode]);
             foreach ([['token'=>$u->token],['is_admin'=>1],1,true] as $credential) {
                 $request=Illuminate\Http\Request::create('/api/v1/client/app/getVersion','GET',['token'=>$credential],[],[],['REMOTE_ADDR'=>'198.18.0.'.random_int(1,254)]);
                 $assert($status(fn()=>(new App\Http\Middleware\Client())->handle($request,fn()=>response('ok')))===403,'Subscription credentials must be strings in every legacy token mode');
             }
         }
-        config(['v2board.show_subscribe_method'=>$subscriptionMethod]);
+        config(['fastai.show_subscribe_method'=>$subscriptionMethod]);
         $request=Illuminate\Http\Request::create('/api/v1/user/info','GET',[],[],[],['HTTP_AUTHORIZATION'=>$legacyToken]);
         $middleware=new App\Http\Middleware\User();
         $assert(str_contains($middleware->handle($request,fn()=>response('ok'))->headers->get('Cache-Control'),'no-store'),'Legacy user data is not cached');
@@ -103,7 +103,7 @@ try {
         $u->banned=0;$u->save();
     } finally {$legacyAuth->removeAllSession();}
     require __DIR__.'/fixtures/V10TestPayment.php';
-    config(['v2board.app_url'=>'https://panel.example','cors.allowed_origins'=>['https://frontend.example']]);
+    config(['fastai.app_url'=>'https://panel.example','cors.allowed_origins'=>['https://frontend.example']]);
     $channel=App\Models\Payment::create(['name'=>'URL fixture','payment'=>'V10TestPayment','uuid'=>'url-fixture','enable'=>1,'config'=>[]]);
     foreach (['https://evil.example','https://frontend.example',null] as $origin) {
         $request=Illuminate\Http\Request::create('https://panel.example/api/v10/me/orders','POST',[],[],[],

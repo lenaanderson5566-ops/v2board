@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any; });
+vi.hoisted(() => { window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any; });
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import type { V10FastaiRelease } from "../shared/v10-types";

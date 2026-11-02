@@ -41,7 +41,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('traffic:process-batches')->everyMinute()->withoutOverlapping(10);
         $schedule->command('credits:expire')->everyMinute()->withoutOverlapping();
         $schedule->command('traffic:update')->everyMinute()->withoutOverlapping();
-        // v2board
+        // FastAI
         // check
         $schedule->command('check:order')->everyMinute()->withoutOverlapping();
         $schedule->command('check:commission')->everyFifteenMinutes();

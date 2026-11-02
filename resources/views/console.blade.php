@@ -9,7 +9,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="description" content="{{ $boot['description'] }}">
     <title>{{ $boot['title'] }}</title>
-    <script>window.V2BOARD = @json($boot);</script>
+    <script>window.FASTAI = @json($boot); window.V2BOARD = window.FASTAI;</script>
     @foreach($entry['css'] ?? [] as $css)
         <link rel="stylesheet" href="{{ '/console/' . $css }}">
     @endforeach

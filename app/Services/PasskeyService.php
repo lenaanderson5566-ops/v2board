@@ -11,7 +11,7 @@ use lbuchs\WebAuthn\Binary\ByteBuffer;
 final class PasskeyService
 {
     public function available(): bool { return Schema::hasTable('v2_passkey') && class_exists(WebAuthn::class); }
-    public function enabled(): bool { return (bool)config('v2board.passkey_enable',0) && $this->available(); }
+    public function enabled(): bool { return (bool)config('fastai.passkey_enable',0) && $this->available(); }
     public function assertConfigured(): void { $this->origin(); }
     public static function encode(string $bytes): string { return rtrim(strtr(base64_encode($bytes),'+/','-_'),'='); }
     public static function decode(string $value): string {
@@ -21,12 +21,12 @@ final class PasskeyService
         return $bytes;
     }
     private function origin(): array {
-        $p=parse_url((string)config('v2board.app_url'));
+        $p=parse_url((string)config('fastai.app_url'));
         $host=strtolower($p['host'] ?? ''); $scheme=strtolower($p['scheme'] ?? '');
         $local=app()->environment('local') && $host==='localhost' && $scheme==='http';
         abort_unless($p && !isset($p['user']) && !isset($p['pass']) && $host!=='' && (bool)filter_var($host,FILTER_VALIDATE_DOMAIN,FILTER_FLAG_HOSTNAME)
             && !filter_var($host,FILTER_VALIDATE_IP) && ($scheme==='https' || $local),503,'请先配置 HTTPS 站点 URL，再启用 Passkey。');
-        return [$host,\App\Http\Middleware\BrowserOrigins::canonical((string)config('v2board.app_url'))];
+        return [$host,\App\Http\Middleware\BrowserOrigins::canonical((string)config('fastai.app_url'))];
     }
     private function browser(Request $request, bool $enabled=true): array {
         abort_unless($enabled ? $this->enabled() : $this->available(),409,'Passkey 当前未开启或尚未安装。');
@@ -47,7 +47,7 @@ final class PasskeyService
         abort_unless($reference && (int)$reference['userId']===(int)$user->id && $meta && AuthService::authenticatedAt($reference)>=time()-300,409,'请先重新登录并完成已有安全验证，再于 5 分钟内管理 Passkey。');
         return $reference;
     }
-    private function engine(string $rp): WebAuthn { return new WebAuthn((string)config('v2board.app_name','V2Board'),$rp,['none']); }
+    private function engine(string $rp): WebAuthn { return new WebAuthn((string)\App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))),$rp,['none']); }
     private function verify(callable $operation) {
         try { return $operation(); }
         catch (\lbuchs\WebAuthn\WebAuthnException|\TypeError|\ValueError|\ErrorException $e) { abort(422,'Passkey 验证失败，请重试。'); }

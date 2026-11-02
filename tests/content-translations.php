@@ -7,7 +7,7 @@ use App\Services\Mail\ProductMail;
 if (!app()->environment('local')) throw new RuntimeException('Local tests only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
-config(['plan-translation.url'=>'https://translator.example.test','plan-translation.key'=>'fake-key','v2board.app_url'=>'https://app.example.test']);
+config(['plan-translation.url'=>'https://translator.example.test','plan-translation.key'=>'fake-key','fastai.app_url'=>'https://app.example.test']);
 Http::swap(new Illuminate\Http\Client\Factory);
 Http::fake(['*'=>Http::response([['translations'=>[['text'=>'維護通知']]],['translations'=>[['text'=>'<p>10 分鐘，<a href="https://example.test">詳情</a></p>']]]],200)]);
 $request=Illuminate\Http\Request::create('/', 'POST', ['source'=>'zh-CN','locale'=>'zh-TW','subject'=>'维护通知','content'=>'<p>10 分钟，<a href="https://example.test">详情</a></p>','format'=>'html']);

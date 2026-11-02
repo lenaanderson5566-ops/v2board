@@ -9,7 +9,7 @@ $c=config('database.connections.mysql');$c['database']=$name;
 config(['database.connections.mail_install_test'=>$c,'database.default'=>'mail_install_test']);
 Illuminate\Support\Facades\DB::purge('mail_install_test');
 if (Illuminate\Support\Facades\DB::select('SHOW TABLES')) throw new RuntimeException('Requires empty isolated database');
-$installer=new App\Console\Commands\V2boardInstall;
+$installer=new App\Console\Commands\FastaiInstall;
 $installer->setLaravel($app);
 $import=new ReflectionMethod($installer,'importDatabase');
 foreach (['', 'INVALID SQL containing_private_fixture'] as $sql) {
@@ -23,16 +23,40 @@ $environment=app()->environmentFilePath();
 $backup=$environment.'.install-fixture-'.bin2hex(random_bytes(6));
 $cached=app()->getCachedConfigPath();
 $cacheBefore=is_file($cached) ? file_get_contents($cached) : null;
+$settingsBackups=[];
 rename($environment,$backup);
 try {
+    foreach (['fastai.php','v2board.php'] as $filename) {
+        $path=config_path($filename);
+        $settingsBackups[$path]=is_file($path) ? $path.'.install-fixture-'.bin2hex(random_bytes(6)) : null;
+        if ($settingsBackups[$path]!==null && !rename($path,$settingsBackups[$path])) throw new LogicException('Could not isolate existing settings fixture');
+    }
+    foreach (['fastai.php','v2board.php'] as $filename) {
+        $path=config_path($filename);
+        $fixture='<?php return ["private_setting"=>"unchanged_fixture"];';
+        file_put_contents($path,$fixture);
+        $guardOutput=new Symfony\Component\Console\Output\BufferedOutput;
+        $guardStatus=$installer->run(new Symfony\Component\Console\Input\ArrayInput([]),$guardOutput);
+        if ($guardStatus!==1 || file_get_contents($path)!==$fixture || is_file($environment)
+            || Illuminate\Support\Facades\DB::select('SHOW TABLES')) throw new LogicException('Installer overwrote an existing canonical or legacy settings file');
+        unlink($path);
+    }
     $tester=new Symfony\Component\Console\Tester\CommandTester($installer);
     $tester->setInputs([$c['host'],$name,$c['username'],$c['password'],'installer-command@example.test']);
     $status=$tester->execute([]);
     if ($status!==0 || !str_contains($tester->getDisplay(),'数据库导入完成')) throw new LogicException('Interactive install failed');
+    if (!is_file(config_path('fastai.php')) || (require config_path('fastai.php'))!==[] || is_file(config_path('v2board.php'))) throw new LogicException('Fresh installation did not create only the canonical settings file');
+    clearstatcache(true,config_path('fastai.php'));
+    if ((fileperms(config_path('fastai.php')) & 0777)!==0640) throw new LogicException('Fresh private configuration permissions must not depend on the process umask');
     if (!App\Models\User::where('email','installer-command@example.test')->where('is_admin',1)->exists()) throw new LogicException('Interactive administrator missing');
 } finally {
     if (is_file($environment)) unlink($environment);
     rename($backup,$environment);
+    foreach ($settingsBackups as $path=>$saved) {
+        if ($saved!==null && !is_file($saved)) continue; // A failed initial rename leaves its original file untouched.
+        if (is_file($path)) unlink($path);
+        if ($saved!==null) rename($saved,$path);
+    }
     if ($cacheBefore===null) { if (is_file($cached)) unlink($cached); }
     else file_put_contents($cached,$cacheBefore);
 }
@@ -72,10 +96,10 @@ foreach(['v2_node_credential'=>['secret_hash','revoked_at','last_used_at'],'v2_n
     if (!Illuminate\Support\Facades\Schema::hasColumns($table,$columns)) throw new RuntimeException('Missing node credential schema: '.$table);
 }
 if (Illuminate\Support\Facades\Schema::hasColumn('v2_user','is_staff')) throw new RuntimeException('Fresh install recreated retired staff role');
-$registerAdmin=new ReflectionMethod(App\Console\Commands\V2boardInstall::class,'registerAdmin');
+$registerAdmin=new ReflectionMethod(App\Console\Commands\FastaiInstall::class,'registerAdmin');
 $registerAdmin->setAccessible(true);
 $password='Install-fixture-123';
-if (!$registerAdmin->invoke(new App\Console\Commands\V2boardInstall,'fresh-admin@example.test',$password)) throw new RuntimeException('Fresh administrator creation failed');
+if (!$registerAdmin->invoke(new App\Console\Commands\FastaiInstall,'fresh-admin@example.test',$password)) throw new RuntimeException('Fresh administrator creation failed');
 $admin=App\Models\User::where('email','fresh-admin@example.test')->firstOrFail();
 if ((int)$admin->is_admin!==1 || !password_verify($password,$admin->password) || !$admin->token || !$admin->uuid) throw new RuntimeException('Fresh administrator credentials or permissions invalid');
 $auth=new App\Services\AuthService($admin);

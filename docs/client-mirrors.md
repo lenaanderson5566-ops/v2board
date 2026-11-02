@@ -99,7 +99,7 @@ V10 和自定义订阅路径统一使用 `format=<规范标识>`，不传时按 
 
 服务端合并后计算 SHA-256，不解压、不执行文件。平台扩展名及发布元数据校验不等于验证安装包签名或实际运行兼容性。上传完成只生成草稿；「确认发布」保存版本目录后才开放下载。历史文件保留，可重新选择发布；回退发布目录不保证客户端自动降级。外部链接仍由管理员提供 HTTPS 地址和摘要。
 
-持久化目录为 `storage/app/fastai-installers`，不在 Web 根目录中。PHP 运行用户需有读写权限，部署时持久化并备份，多实例使用共享目录。`v2board.app_url` 需配置为用户可访问的 HTTPS 站点地址；源站在反向代理后使用 HTTP 不影响生成 HTTPS 地址。上传需要保留安装包两倍空间及额外 100 MiB。网关与 PHP 的单次请求限制应至少为 1 MiB，并允许 multipart 上传。下载通过 PHP 附件响应，支持 HEAD 和 Range；本次未接入对象存储，仍可使用对象存储生成的外部下载链接。
+持久化目录为 `storage/app/fastai-installers`，不在 Web 根目录中。PHP 运行用户需有读写权限，部署时持久化并备份，多实例使用共享目录。`fastai.app_url` 需配置为用户可访问的 HTTPS 站点地址；源站在反向代理后使用 HTTP 不影响生成 HTTPS 地址。上传需要保留安装包两倍空间及额外 100 MiB。网关与 PHP 的单次请求限制应至少为 1 MiB，并允许 multipart 上传。下载通过 PHP 附件响应，支持 HEAD 和 Range；本次未接入对象存储，仍可使用对象存储生成的外部下载链接。
 
 管理员 API（均在既有管理员前缀下）：`GET fastai-installers/fetch` 列出已完成文件；`POST fastai-installers/create` 接受 name/size/platform/architecture/latestVersion/latestBuild，返回 id/chunkBytes；`POST fastai-installers/chunk` 接受 multipart id/index/chunk；`POST fastai-installers/complete` 合并并返回 downloadUrl/sha256 等记录。写操作沿用管理员鉴权、浏览器 CSRF 与操作日志。上传目录无需数据库迁移。
 

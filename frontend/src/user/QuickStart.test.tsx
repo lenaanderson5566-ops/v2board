@@ -145,7 +145,7 @@ it("remembers each platform independently", () => {
  expect(screen.getByRole("link", {name:/在 Clash Verge/})).toBeTruthy();
  fireEvent.click(screen.getByRole("button", {name:"Android"}));
  expect(screen.getByRole("link", {name:/在 sing-box/})).toBeTruthy();
- expect(localStorage.getItem("v2board.import-client.android")).toBe("singbox");
+ expect(localStorage.getItem("fastai.import-client.android")).toBe("singbox");
 });
 
 it("returns from installation to the same selected client and import action", () => {

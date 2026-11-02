@@ -12,7 +12,7 @@ import {
 const uiMode = vi.hoisted(() => ({ mode: "user" }));
 vi.mock("./api", () => ({
     boot: uiMode,
-    storageKey: "v2board.user.auth",
+    storageKey: "fastai.user.auth",
     readRequest: vi.fn(),
 }));
 import { State, Editor, Modal, Table } from "./ui";

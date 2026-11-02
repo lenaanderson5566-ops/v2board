@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any; });
+vi.hoisted(() => { window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any; });
 import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 import { normalizeUserFilters, emailSearchFilters } from "./user-filters";
 describe("user filters", () => {

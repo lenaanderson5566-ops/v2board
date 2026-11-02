@@ -5,7 +5,7 @@ import { mailCredentialField } from "./mail-settings";
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const api = vi.hoisted(() => {
-    window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any;
+    window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any;
     return { request: vi.fn() };
 });
 vi.mock("../shared/api", async original => ({

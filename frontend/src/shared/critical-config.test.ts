@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any; });
+vi.hoisted(() => { window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any; });
 import { configField } from "../admin/admin-fields";
 import { nodeFields, linkNode, validateSettings } from "../admin/admin-linkage";
 import { nodeSettingsFields } from "../admin/node-settings";

@@ -79,7 +79,7 @@ try {
     catch (Illuminate\Validation\ValidationException $e) { $assert(true); }
     $kernel=app(Illuminate\Contracts\Http\Kernel::class);
     foreach (['risk/summary/fetch','client/releases/fetch','client/releases/check'] as $path) {
-        $r=Request::create('/api/v1/'.config('v2board.ops_api_path','ops').'/'.$path, str_ends_with($path,'check') ? 'POST':'GET');
+        $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/'.$path, str_ends_with($path,'check') ? 'POST':'GET');
         $r->headers->set('Accept','application/json');
         $assert($kernel->handle($r)->getStatusCode()===403);
     }

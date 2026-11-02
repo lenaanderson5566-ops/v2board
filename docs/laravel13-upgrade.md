@@ -1,6 +1,6 @@
 # Laravel 13 升级
 
-本分支从 Laravel 12 升级至 13，并在同主版本内继续更新依赖；具体版本以提交的 composer.lock 为准。项目要求 PHP 8.4+、Composer 2.2+、MySQL 5.7+（本地验证使用 MySQL 8）；生产部署使用 install，不在服务器直接 update。CLI、PHP-FPM、Horizon、调度器应使用同一 PHP 版本。保留现有 .env、APP_KEY、config/v2board.php、数据库、上传目录与 GeoIP 数据，不重新安装面板。
+本分支从 Laravel 12 升级至 13，并在同主版本内继续更新依赖；具体版本以提交的 composer.lock 为准。项目要求 PHP 8.4+、Composer 2.2+、MySQL 5.7+（本地验证使用 MySQL 8）；生产部署使用 install，不在服务器直接 update。CLI、PHP-FPM、Horizon、调度器应使用同一 PHP 版本。保留现有 .env、APP_KEY、config/fastai.php、数据库、上传目录与 GeoIP 数据，不重新安装面板。
 
 ## 上线步骤
 

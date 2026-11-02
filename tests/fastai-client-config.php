@@ -29,7 +29,7 @@ try {
         'host'=>'node.example.com', 'port'=>'443', 'server_port'=>443,
         'cipher'=>'aes-128-gcm', 'show'=>1, 'sort'=>1, 'protocol'=>'shadowsocks', 'tls'=>0, 'network'=>'tcp', 'up_mbps'=>0, 'down_mbps'=>0,
     ]);
-    config(['v2board.show_info_to_server_enable'=>1]);
+    config(['fastai.show_info_to_server_enable'=>1]);
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
     App\Models\ClientStrategy::whereIn('client_type', ['mihomo','flclash'])->update(['is_enabled'=>1, 'min_version'=>null]);
@@ -122,16 +122,16 @@ try {
     $assert($call($path, $token)->getStatusCode()===200, 'Independent traffic credit remains available');
     App\Models\ClientStrategy::updateOrCreate(['client_type'=>'flclash'], ['is_enabled'=>1, 'min_version'=>'9.0.0']);
     $assert($call($path, $token)->getStatusCode()===200, 'FastAI policy is independent of upstream FlClash version');
-    config(['v2board.fastai_releases'=>[['platform'=>'windows','architecture'=>'x64','channel'=>'stable','latestVersion'=>'9.0.0','latestBuild'=>1,'minimumVersion'=>'9.0.0','downloadUrl'=>'https://fastdog.ws/FastAI.exe','sha256'=>str_repeat('a',64),'publishedAt'=>'2026-10-06T00:00:00Z']]]);
+    config(['fastai.fastai_releases'=>[['platform'=>'windows','architecture'=>'x64','channel'=>'stable','latestVersion'=>'9.0.0','latestBuild'=>1,'minimumVersion'=>'9.0.0','downloadUrl'=>'https://fastdog.ws/FastAI.exe','sha256'=>str_repeat('a',64),'publishedAt'=>'2026-10-06T00:00:00Z']]]);
     $low = $call($path, $token);
     $assert($low->getStatusCode()===409 && json_decode($low->getContent(), true)['code']==='CLIENT_VERSION_TOO_LOW', 'Explicit client version policy');
-    config(['v2board.fastai_releases'=>[]]);
+    config(['fastai.fastai_releases'=>[]]);
     App\Models\ClientStrategy::where('client_type', 'flclash')->update(['is_enabled'=>0]);
     $assert($call($path, $token)->getStatusCode()===200, 'FastAI enabled independently of FlClash');
-    config(['v2board.fastai_enabled'=>0]);
+    config(['fastai.fastai_enabled'=>0]);
     $disabled = $call($path, $token);
     $assert($disabled->getStatusCode()===403 && json_decode($disabled->getContent(), true)['code']==='CLIENT_DISABLED', 'Disabled client policy');
-    config(['v2board.fastai_enabled'=>1]);
+    config(['fastai.fastai_enabled'=>1]);
     $assert($call($path.'&core=sing-box', $token, 'GET', 'application/json')->getStatusCode()===200, 'Enabling FastAI restores valid users without a new login');
     $policy = new App\Services\ClientStrategyService();
     $policy->updateStrategies([['client_type'=>'fastai', 'is_enabled'=>true, 'min_version'=>'0.8.99']]);

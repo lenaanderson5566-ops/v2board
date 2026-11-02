@@ -1,6 +1,6 @@
 import { beforeEach, expect, it, vi } from "vitest";
 const stored = new Map<string, string>();
-vi.stubGlobal("window", { V2BOARD: { mode: "user" } });
+vi.stubGlobal("window", { FASTAI: { mode: "user" } });
 vi.stubGlobal("document", { documentElement: { lang: "", dir: "" } });
 vi.stubGlobal("navigator", { language: "en-US" });
 const fakeStorage = {
@@ -25,7 +25,7 @@ beforeEach(() => {
     vi.resetModules();
     stored.clear();
     vi.stubGlobal("localStorage", fakeStorage);
-    window.V2BOARD.mode = "user";
+    window.FASTAI.mode = "user";
     window.dispatchEvent = vi.fn();
     window.addEventListener = vi.fn();
     Object.assign(window, {location:{reload:vi.fn()}});
@@ -70,6 +70,9 @@ it("times out stalled session metadata and allows a fresh initialization", async
 });
 it("deletes retired local credentials without sending them to the server", async () => {
     stored.set("v2board.user.auth", "legacy-secret");
+    stored.set("fastai.user.auth", "obsolete-renamed-secret");
+    const read = vi.fn(fakeStorage.getItem);
+    vi.stubGlobal("localStorage", { ...fakeStorage, getItem: read });
     const fetcher = vi.fn().mockResolvedValue(reply());
     vi.stubGlobal("fetch", fetcher);
     const sessions = await import("./browser-session");
@@ -77,6 +80,9 @@ it("deletes retired local credentials without sending them to the server", async
     await sessions.initializeBrowserSession();
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(JSON.stringify(fetcher.mock.calls)).not.toContain("legacy-secret");
+    expect(JSON.stringify(fetcher.mock.calls)).not.toContain("obsolete-renamed-secret");
+    expect(read.mock.calls.map(([key]) => key)).not.toContain("v2board.user.auth");
+    expect(read.mock.calls.map(([key]) => key)).not.toContain("fastai.user.auth");
     expect(stored.size).toBe(0);
     expect(sessions.hasBrowserSession()).toBe(false);
 });
@@ -97,7 +103,7 @@ it("refreshes a stale CSRF token and retries only after a pre-action rejection",
     expect(fetcher.mock.calls[3][1].headers.get("X-CSRF-Token")).toBe("fresh");
 });
 it("uses a separate administrative scope", async () => {
-    window.V2BOARD.mode = "admin";
+    window.FASTAI.mode = "admin";
     const fetcher = vi.fn().mockResolvedValue(reply(true));
     vi.stubGlobal("fetch", fetcher);
     const sessions = await import("./browser-session");
@@ -106,8 +112,8 @@ it("uses a separate administrative scope", async () => {
     expect(sessions.browserSessionKey()).toBe("admin:42");
 });
 
-it("finishes a queued offline logout before restoring any authenticated UI", async () => {
-    stored.set("v2board.user.auth.pendingLogout", "1");
+it.each(["fastai", "v2board"])("finishes a queued %s offline logout before restoring any authenticated UI", async (prefix) => {
+    stored.set(`${prefix}.user.auth.pendingLogout`, "1");
     const fetcher = vi
         .fn()
         .mockResolvedValueOnce(reply(true))
@@ -122,6 +128,7 @@ it("finishes a queued offline logout before restoring any authenticated UI", asy
     await sessions.initializeBrowserSession();
     expect(fetcher.mock.calls[1][1].method).toBe("DELETE");
     expect(sessions.hasBrowserSession()).toBe(false);
+    expect(stored.has("fastai.user.auth.pendingLogout")).toBe(false);
     expect(stored.has("v2board.user.auth.pendingLogout")).toBe(false);
 });
 
@@ -140,12 +147,12 @@ it("cookie login and logout state work with blocked Web Storage", async () => {
     expect(() => sessions.queueBrowserLogout()).toThrow();
 });
 it("failed queued revocation never exposes an authenticated session", async () => {
-    stored.set("v2board.user.auth.pendingLogout", "1");
+    stored.set("fastai.user.auth.pendingLogout", "1");
     vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(reply(true)).mockResolvedValueOnce(new Response(null, {status:503})));
     const sessions = await import("./browser-session");
     await expect(sessions.initializeBrowserSession()).rejects.toThrow();
     expect(sessions.hasBrowserSession()).toBe(false);
-    expect(stored.get("v2board.user.auth.pendingLogout")).toBe("1");
+    expect(stored.get("fastai.user.auth.pendingLogout")).toBe("1");
 });
 it.each([new Headers({"Content-Type":"application/json"}), [["Content-Type","application/json"]] as [string,string][]])("preserves caller headers across CSRF refresh", async (headers) => {
     const fetcher = vi.fn().mockResolvedValueOnce(reply(true)).mockResolvedValueOnce(new Response(null,{status:419})).mockResolvedValueOnce(reply(true,"fresh")).mockResolvedValueOnce(new Response(null,{status:204}));
@@ -191,31 +198,76 @@ it.each([{authenticated:"false",csrfToken:"token",accountId:42},{authenticated:t
     expect(sessions.hasBrowserSession()).toBe(false);
 });
 
-it("blocks old-tab submissions after another tab changes session revision",async()=>{
+it.each(["fastai", "v2board"])("blocks submissions when either %s session revision changes",async(prefix)=>{
+    stored.set("fastai.user.sessionRevision","original");
+    stored.set("v2board.user.sessionRevision","original");
     const fetcher=vi.fn().mockResolvedValue(reply(true));vi.stubGlobal("fetch",fetcher);
     const sessions=await import("./browser-session");await sessions.initializeBrowserSession();
-    stored.set("v2board.user.sessionRevision","other-tab");
+    stored.set(`${prefix}.user.sessionRevision`,"other-tab");
     await expect(sessions.browserFetch("/api/v10/me",{method:"PATCH",body:"{}"})).rejects.toMatchObject({code:"SESSION_CHANGED"});
     expect(fetcher).toHaveBeenCalledTimes(1);expect(window.location.reload).toHaveBeenCalledTimes(1);
     await expect(sessions.browserFetch("/api/v10/me",{method:"PATCH",body:"{}"})).rejects.toMatchObject({code:"SESSION_CHANGED"});
     expect(fetcher).toHaveBeenCalledTimes(1);
 });
-it("reacts to cross-tab session changes without rebroadcasting another revision",async()=>{
+it.each(["fastai", "v2board"])("reacts to %s cross-tab session changes without rebroadcasting another revision",async(prefix)=>{
+    stored.set("fastai.user.sessionRevision","original");
+    stored.set("v2board.user.sessionRevision","original");
     vi.stubGlobal("fetch",vi.fn().mockResolvedValue(reply(true)));
     const sessions=await import("./browser-session");await sessions.initializeBrowserSession();
-    stored.set("v2board.user.sessionRevision","external");
+    stored.set(`${prefix}.user.sessionRevision`,"external");
+    const listener=vi.mocked(window.addEventListener).mock.calls.find(([type])=>type==="storage")![1] as (event:any)=>void;
+    listener({key:`${prefix}.user.sessionRevision`});
+    expect(sessions.hasBrowserSession()).toBe(false);
+    expect(stored.get(`${prefix}.user.sessionRevision`)).toBe("external");
+    expect(stored.get(`${prefix==='fastai'?'v2board':'fastai'}.user.sessionRevision`)).toBe("original");
+    expect(window.location.reload).toHaveBeenCalledTimes(1);
+});
+
+it("signals authenticated changes to both generations and reports a failed durable logout write", async () => {
+    const sessions=await import("./browser-session");
+    sessions.markBrowserAuthenticated(42);
+    expect(stored.get("fastai.user.sessionRevision")).toBeTruthy();
+    expect(stored.get("v2board.user.sessionRevision")).toBe(stored.get("fastai.user.sessionRevision"));
+    vi.stubGlobal("localStorage", {...fakeStorage,setItem:(key:string,value:string)=>{
+        if(key.startsWith("fastai."))throw new DOMException("Full","QuotaExceededError");
+        stored.set(key,value);
+    }});
+    const {tx}=await import("./i18n");
+    expect(()=>sessions.queueBrowserLogout()).toThrow(tx("退出未完成，请联网后重试。"));
+    expect(stored.get("v2board.user.auth.pendingLogout")).toBe("1");
+});
+
+it("reads a previous scoped preference without copying it to another account or site", async () => {
+    const {localPreferences}=await import("./browser-storage");
+    stored.set("v2board.admin.displayTimeZone.site.admin.42","Asia/Tokyo");
+    expect(localPreferences.getItem("fastai.admin.displayTimeZone.site.admin.42")).toBe("Asia/Tokyo");
+    expect(localPreferences.getItem("fastai.admin.displayTimeZone.site.admin.99")).toBeNull();
+    expect(localPreferences.getItem("fastai.admin.displayTimeZone.other.admin.42")).toBeNull();
+    expect(stored.has("fastai.admin.displayTimeZone.site.admin.42")).toBe(false);
+});
+
+it("observes a durable older-tab revision after a failed local write and storage recovery", async () => {
+    let blocked=true;
+    vi.stubGlobal("localStorage",{...fakeStorage,setItem:(key:string,value:string)=>{
+        if(blocked)throw new DOMException("Full","QuotaExceededError");
+        stored.set(key,value);
+    }});
+    vi.stubGlobal("fetch",vi.fn().mockResolvedValue(reply(true)));
+    const sessions=await import("./browser-session");
+    await sessions.initializeBrowserSession();sessions.markBrowserAuthenticated(42);
+    blocked=false;stored.set("v2board.user.sessionRevision","other-tab-after-recovery");
     const listener=vi.mocked(window.addEventListener).mock.calls.find(([type])=>type==="storage")![1] as (event:any)=>void;
     listener({key:"v2board.user.sessionRevision"});
     expect(sessions.hasBrowserSession()).toBe(false);
-    expect(stored.get("v2board.user.sessionRevision")).toBe("external");
-    expect(window.location.reload).toHaveBeenCalledTimes(1);
+    await expect(sessions.browserHeaders()).rejects.toMatchObject({code:"SESSION_CHANGED"});
+    expect(window.location.reload).toHaveBeenCalledOnce();
 });
 
 it("does not cause a cross-tab reload loop when clearing an already anonymous session",async()=>{
     vi.stubGlobal("fetch",vi.fn().mockResolvedValue(reply(false)));
     const sessions=await import("./browser-session");await sessions.initializeBrowserSession();
     sessions.forgetBrowserSession();sessions.forgetBrowserSession();
-    expect(stored.has("v2board.user.sessionRevision")).toBe(false);
+    expect(stored.has("fastai.user.sessionRevision")).toBe(false);
     expect(window.location.reload).not.toHaveBeenCalled();
 });
 

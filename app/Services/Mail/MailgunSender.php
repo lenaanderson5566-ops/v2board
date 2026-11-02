@@ -11,15 +11,15 @@ class MailgunSender
     public function send(string $recipient, array $data): string
     {
         MailBlocklist::enforce($recipient);
-        $domain = (string) config('v2board.email_mailgun_domain');
-        $region = (string) config('v2board.email_mailgun_region', 'us');
-        $from = (string) config('v2board.email_from_address');
+        $domain = (string) config('fastai.email_mailgun_domain');
+        $region = (string) config('fastai.email_mailgun_region', 'us');
+        $from = (string) config('fastai.email_from_address');
         if (!preg_match('/^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/iD', $domain)
             || !in_array($region, ['us', 'eu'], true)
             || validator(['email'=>$from], ['email'=>'required|email:rfc'])->fails()) {
             throw new MailgunSendException('MAILGUN_CONFIG_INVALID');
         }
-        try { $key = Crypt::decryptString((string) config('v2board.email_mailgun_api_key')); }
+        try { $key = Crypt::decryptString((string) config('fastai.email_mailgun_api_key')); }
         catch (\Throwable $e) { throw new MailgunSendException('MAILGUN_KEY_INVALID'); }
         if ($key === '') throw new MailgunSendException('MAILGUN_KEY_INVALID');
         // Render before the network operation; never log message bodies or credentials.

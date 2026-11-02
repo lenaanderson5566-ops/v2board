@@ -26,7 +26,7 @@ $call=function($path,$body=[],$scope='user',$method='GET',$sendCsrf=true,$origin
 };
 DB::beginTransaction();
 try {
- config(['v2board.app_url'=>'https://mfa.example.test','v2board.passkey_enable'=>1,'v2board.mfa_enable'=>1]);
+ config(['fastai.app_url'=>'https://mfa.example.test','fastai.passkey_enable'=>1,'fastai.mfa_enable'=>1]);
  foreach(['user','admin'] as $scope){
   Cache::flush();$jar[$scope]=[];unset($csrf[$scope]);
   $user=User::create(['email'=>'browser-mfa-'.$scope.'@example.test','password'=>password_hash('BrowserMfa!2026',PASSWORD_DEFAULT),'token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'is_admin'=>$scope==='admin','transfer_enable'=>0]);
@@ -48,7 +48,7 @@ try {
   $assert($response->getStatusCode()===200 && $body['data']['authenticated'] && $body['data']['accountId']===$user->id,'MFA rotates authenticated browser cookie');
   $assert(!isset($body['data']['accessToken']) && !isset($body['data']['auth_data']),'No browser bearer disclosure');
   $assert(str_contains($response->headers->get('Cache-Control'),'no-store'),'Private MFA no-store');
-  $statePath=$scope==='user'?'v10/me/security/mfa':'v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key')))).'/security/mfa';
+  $statePath=$scope==='user'?'v10/me/security/mfa':'v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key')))).'/security/mfa';
   [$response,$body]=$call($statePath,[],$scope);$assert($response->getStatusCode()===200 && $body['data']['totpEnabled'],'Both scopes read security state');
   $assert(array_keys($body['data'])===['emailEnabled','totpEnabled','recoveryCodesRemaining','enrollmentEnabled'],'State never discloses secrets');
   $record=app(App\Services\BrowserSession::class)->load(Illuminate\Http\Request::create('/','GET',[],$jar[$scope]),$scope);
@@ -192,13 +192,13 @@ try {
    [$response]=$pk('auth/passkeys/sessions',$payload);$assert($response->getStatusCode()===($invalid==='unknown'?401:422),'Invalid '.$invalid.' rejected: '.$response->getContent());
    [$response]=$pk('auth/passkeys/sessions',$payload);$assert($response->getStatusCode()===409,'Failed login challenge consumed');
   }
-  config(['v2board.app_url'=>'HTTPS://MFA.EXAMPLE.TEST:443']);
+  config(['fastai.app_url'=>'HTTPS://MFA.EXAMPLE.TEST:443']);
   [, $body]=$pk('auth/passkeys/options');$payload=$assertion($body['data']);
   $previousJar=$jar[$scope];$previousCsrf=$csrf[$scope];$jar[$scope]=[];unset($csrf[$scope]);$call('v10/auth/browser-session',[],$scope);
   [$response]=$pk('auth/passkeys/sessions',$payload);$assert($response->getStatusCode()===409,'Challenge is bound to initiating browser');$jar[$scope]=$previousJar;$csrf[$scope]=$previousCsrf;
   [$response,$body]=$pk('auth/passkeys/sessions',$payload);$assert($response->getStatusCode()===200 && $body['data']['authenticated'] && $body['data']['accountId']===$user->id,'Signed assertion grants scoped cookie: '.$response->getContent());
   $assert(!isset($body['data']['accessToken']) && !isset($body['data']['auth_data']),'Passkey never exposes browser bearer');
-  config(['v2board.app_url'=>'https://mfa.example.test']);
+  config(['fastai.app_url'=>'https://mfa.example.test']);
   if($scope==='user'){
    $jar['admin']=[];unset($csrf['admin']);$call('v10/auth/browser-session',[],'admin');
    Illuminate\Support\Facades\RateLimiter::clear('passkey:'.sha1('|192.0.2.52'));
@@ -216,20 +216,20 @@ try {
   $finish=$scope==='user'?'v10/auth/mfa/verifications':'v1/passport/mfa/verifications';
   [$response,$body]=$call($finish,['challengeId'=>$challenge,'verificationMethod'=>'recovery','verificationCode'=>$recovery],$scope,'POST');$assert($response->getStatusCode()===200 && $body['data']['authenticated'],'Passkey MFA completion grants cookie');
   [, $body]=$pk('auth/passkeys/options');[$response,$body]=$pk('auth/passkeys/sessions',$assertion($body['data'],3));$challenge=$body['data']['challengeId'];
-  config(['v2board.passkey_enable'=>0]);
+  config(['fastai.passkey_enable'=>0]);
   [$response]=$pk('auth/passkeys/options');$assert($response->getStatusCode()===409,'Disabled feature rejects login options');
   [$response]=$pk('me/security/passkeys/registration-options',['password'=>$password,'name'=>'Disabled']);$assert($response->getStatusCode()===409,'Disabled feature rejects binding');
   [$response,$body]=$pk('me/security/passkeys',[],'GET');$assert($response->getStatusCode()===200 && !$body['data']['enabled'] && count($body['data']['credentials'])===1,'Disabled credentials remain manageable');
   [$response]=$call($finish,['challengeId'=>$challenge,'verificationMethod'=>'totp','verificationCode'=>Totp::code($secret,intdiv(time(),30))],$scope,'POST');$assert($response->getStatusCode()===409,'Disabled feature invalidates pending Passkey MFA');
   // A pending proof from another credential must not recreate a session after account-wide revocation.
-  config(['v2board.passkey_enable'=>1]);$secondRaw=random_bytes(32);$row=(array)DB::table('v2_passkey')->where('id',$id)->first();unset($row['id']);$row['credential_hash']=hash('sha256',$secondRaw);$row['credential_id']=$encode($secondRaw);$row['sign_count']=0;DB::table('v2_passkey')->insert($row);
+  config(['fastai.passkey_enable'=>1]);$secondRaw=random_bytes(32);$row=(array)DB::table('v2_passkey')->where('id',$id)->first();unset($row['id']);$row['credential_hash']=hash('sha256',$secondRaw);$row['credential_id']=$encode($secondRaw);$row['sign_count']=0;DB::table('v2_passkey')->insert($row);
   [, $body]=$pk('auth/passkeys/options');$payload=$assertion($body['data'],1);$payload['credentialId']=$encode($secondRaw);[$response,$body]=$pk('auth/passkeys/sessions',$payload);$assert($response->getStatusCode()===200 && $body['data']['mfaRequired'],'Another credential has a pending login proof');$otherChallenge=$body['data']['challengeId'];
-  config(['v2board.passkey_enable'=>0]);
+  config(['fastai.passkey_enable'=>0]);
   [$response]=$pk('me/security/passkeys/'.$id,['password'=>$password],'DELETE');$assert($response->getStatusCode()===204,'Owner may remove disabled credential');
-  config(['v2board.passkey_enable'=>1]);
+  config(['fastai.passkey_enable'=>1]);
   [$response]=$call($finish,['challengeId'=>$otherChallenge,'verificationMethod'=>'totp','verificationCode'=>Totp::code($secret,intdiv(time(),30))],$scope,'POST');$assert($response->getStatusCode()===409,'Deletion invalidates pending MFA using other still-bound credentials');
   [$response]=$call('v10/me',[],$scope);$assert($response->getStatusCode()===401,'Removal revokes authenticated sessions');
-  $assert(!DB::table('v2_passkey')->where('id',$id)->exists(),'Credential removed');config(['v2board.passkey_enable'=>1]);
+  $assert(!DB::table('v2_passkey')->where('id',$id)->exists(),'Credential removed');config(['fastai.passkey_enable'=>1]);
   Illuminate\Support\Facades\RateLimiter::clear('passkey:'.sha1('|192.0.2.52'));
   for($i=0;$i<10;$i++){[$response]=$call('v10/auth/passkeys/options',[],$scope,'POST');$assert($response->getStatusCode()===201,'Allowed login options within throttle');}
   [$response]=$call('v10/auth/passkeys/options',[],$scope,'POST');$assert($response->getStatusCode()===429,'Repeated Passkey challenge creation is rate limited');

@@ -196,7 +196,7 @@ class LightsailController extends \App\Http\Controllers\Controller
                 if (!in_array($row->status, ['ready', 'completed', 'restored'], true)) {
                     abort(409, '请先继续或恢复上次操作');
                 }
-                $data = ['operation' => 'rotate', 'phase' => 'idle', 'old_name' => null, 'new_name' => 'v2board-' . Str::uuid(), 'error_code' => null];
+            $data = ['operation' => 'rotate', 'phase' => 'idle', 'old_name' => null, 'new_name' => 'fastai-' . Str::uuid(), 'error_code' => null];
             } elseif ($v['action'] === 'restore') {
                 if (!$recoverable || !$row->old_name) {
                     abort(409, '没有可恢复的操作');

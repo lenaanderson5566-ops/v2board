@@ -1,7 +1,7 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
-config(['v2board.app_url'=>'https://example.com', 'cors.allowed_origins'=>[]]);
+config(['fastai.app_url'=>'https://example.com', 'cors.allowed_origins'=>[]]);
 use App\Http\Middleware\CORS;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;

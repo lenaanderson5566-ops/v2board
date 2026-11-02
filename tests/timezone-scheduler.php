@@ -12,7 +12,8 @@ Illuminate\Support\Facades\Schema::create('v2_daily_task_run',function ($t) {
 class FakeDailyTask extends App\Console\Commands\RunDailyTask {
     public static $calls=0;
     public static $result=0;
-    public function call($command,array $arguments=[]) { self::$calls++; return self::$result; }
+    public static $commands=[];
+    public function call($command,array $arguments=[]) { self::$calls++; self::$commands[]=$command; return self::$result; }
 }
 $command=new FakeDailyTask;
 $command->setLaravel($app);
@@ -29,10 +30,54 @@ $run(); $check(FakeDailyTask::$calls===3,'Failed task did not retry');
 $check($row->value('status')==='completed','Retry completion missing');
 echo "Daily scheduler: 5 isolated integration checks passed\n";
 
+// Renaming the command must not repeat an already completed business date or bypass its lock.
+$identityZone=gmdate('H:i') >= '00:10' ? 'UTC' : 'Asia/Shanghai';
+$identityConfigDirectory=sys_get_temp_dir().'/statistics-config-'.bin2hex(random_bytes(8));
+mkdir($identityConfigDirectory,0700);
+file_put_contents($identityConfigDirectory.'/fastai.php','<?php return '.var_export(['system_timezone'=>$identityZone],true).';');
+$originalConfigDirectory=$app->configPath();
+$app->useConfigPath($identityConfigDirectory);
+try {
+    $identityDate=(new DateTimeImmutable('now',new DateTimeZone($identityZone)))->format('Y-m-d');
+    $statisticsRun=function (string $task) use ($command) { return $command->run(new Symfony\Component\Console\Input\ArrayInput(['task'=>$task]),new Symfony\Component\Console\Output\BufferedOutput); };
+    $row->delete();
+    $beforeStatistics=FakeDailyTask::$calls;
+    $row->insert(['task'=>'v2board:statistics','business_date'=>$identityDate,'timezone'=>$identityZone,'status'=>'completed','updated_at'=>time()]);
+    $check($statisticsRun('fastai:statistics')===0 && $statisticsRun('v2board:statistics')===0
+        && FakeDailyTask::$calls===$beforeStatistics && $row->count()===1, 'Canonical statistics must honor a completed legacy daily identity');
+    $statusCommand=new App\Console\Commands\DailyTaskStatus;
+    $statusCommand->setLaravel($app);
+    $statusTester=new Symfony\Component\Console\Tester\CommandTester($statusCommand);
+    $statusCode=$statusTester->execute([]);
+    $statusOutput=$statusTester->getDisplay();
+    $statisticsLine=collect(explode("\n",$statusOutput))->first(fn($line)=>str_contains($line,'fastai:statistics'));
+    $check($statusCode===0 && $statisticsLine && str_contains($statisticsLine,'completed') && !str_contains($statusOutput,'v2board:statistics'),
+        'Daily status must show canonical statistics with its completed legacy record');
+    $row->delete();
+    $legacyLock=Illuminate\Support\Facades\Cache::lock('system:daily:v2board:statistics',3600);
+    $check($legacyLock->get(), 'Could not acquire the legacy statistics fixture lock');
+    try {
+        $check($statisticsRun('fastai:statistics')===0 && FakeDailyTask::$calls===$beforeStatistics && $row->count()===0,
+            'Canonical statistics must not bypass a running legacy task lock');
+    } finally { $legacyLock->release(); }
+    $check($statisticsRun('fastai:statistics')===0 && FakeDailyTask::$calls===$beforeStatistics+1
+        && end(FakeDailyTask::$commands)==='fastai:statistics', 'Daily statistics must execute the canonical command once');
+    $check(Illuminate\Support\Facades\DB::table('v2_daily_task_run')->where('task','v2board:statistics')->value('status')==='completed'
+        && Illuminate\Support\Facades\DB::table('v2_daily_task_run')->where('task','fastai:statistics')->count()===0,
+        'Daily statistics must retain its existing persistent identity');
+    $check($statisticsRun('v2board:statistics')===0 && FakeDailyTask::$calls===$beforeStatistics+1,
+        'A legacy invocation must not repeat the canonical run');
+    echo "Statistics command identity compatibility passed\n";
+} finally {
+    $app->useConfigPath($originalConfigDirectory);
+    unlink($identityConfigDirectory.'/fastai.php');
+    rmdir($identityConfigDirectory);
+}
+
 Illuminate\Support\Facades\Schema::create('v2_stat_user',function ($t) {
     $t->increments('id'); $t->integer('user_id'); $t->integer('record_at'); $t->string('record_timezone')->nullable(); $t->integer('u'); $t->integer('d'); $t->integer('server_rate');
 });
-config(['v2board.system_timezone'=>'America/New_York']);
+config(['fastai.system_timezone'=>'America/New_York']);
 date_default_timezone_set('America/New_York');
 $day=date('Y-m-d');
 foreach ([null,'America/New_York'] as $zone) {
@@ -55,7 +100,7 @@ Illuminate\Support\Facades\Schema::create('v2_daily_user_reset', function ($t) {
 });
 Illuminate\Support\Facades\DB::table('v2_plan')->insert(['id'=>1,'reset_traffic_method'=>0]);
 Illuminate\Support\Facades\DB::table('v2_daily_task_run')->delete();
-config(['v2board.system_timezone'=>'Asia/Shanghai']);
+config(['fastai.system_timezone'=>'Asia/Shanghai']);
 date_default_timezone_set('UTC');
 $zone = new DateTimeZone('Asia/Shanghai');
 $at = fn ($value) => (new DateTimeImmutable($value, $zone))->getTimestamp();

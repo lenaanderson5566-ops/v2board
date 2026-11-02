@@ -21,38 +21,38 @@ class AuthActions
 {
     public function register(AuthRegister $request)
     {
-        if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
+        if ((int)config('fastai.register_limit_by_ip_enable', 0)) {
             $registerCountByIP = Cache::get(CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip())) ?? 0;
-            if ((int)$registerCountByIP >= (int)config('v2board.register_limit_count', 3)) {
+            if ((int)$registerCountByIP >= (int)config('fastai.register_limit_count', 3)) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Register frequently, please try again after :minute minute', [
-                    'minute' => config('v2board.register_limit_expire', 60)
+                    'minute' => config('fastai.register_limit_expire', 60)
                 ]));
             }
         }
-        if ((int)config('v2board.email_whitelist_enable', 0)) {
+        if ((int)config('fastai.email_whitelist_enable', 0)) {
             if (!Helper::emailSuffixVerify(
                 $request->input('email'),
-                config('v2board.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))
+                config('fastai.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))
             ) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Email suffix is not in the Whitelist'));
             }
         }
-        if ((int)config('v2board.email_gmail_limit_enable', 0)) {
+        if ((int)config('fastai.email_gmail_limit_enable', 0)) {
             $prefix = explode('@', $request->input('email'))[0];
             if (strpos($prefix, '.') !== false || strpos($prefix, '+') !== false) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
             }
         }
-        if ((int)config('v2board.stop_register', 0)) {
+        if ((int)config('fastai.stop_register', 0)) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Registration has closed'));
         }
-        if ((int)config('v2board.invite_force', 0)) {
+        if ((int)config('fastai.invite_force', 0)) {
             if (empty($request->input('invitation'))) {
                 abort(422, __('An email invitation is required to register.'));
             }
         }
         $email = $request->input('email');
-        if ((int)config('v2board.email_verify', 0)) {
+        if ((int)config('fastai.email_verify', 0)) {
             \App\Services\RegistrationEmailVerification::verify($email, $request->input('email_code'), $request->is('api/v10/*'));
         }
         $password = $request->input('password');
@@ -69,14 +69,14 @@ class AuthActions
         if ($request->input('invite_code')) abort(410, __('Public invite codes are no longer supported. Use an email invitation.'));
 
         // try out
-        if ((int)config('v2board.try_out_plan_id', 0)) {
-            $plan = Plan::find(config('v2board.try_out_plan_id'));
+        if ((int)config('fastai.try_out_plan_id', 0)) {
+            $plan = Plan::find(config('fastai.try_out_plan_id'));
             if ($plan) {
                 $user->transfer_enable = $plan->transfer_enable * 1073741824;
                 $user->device_limit = $plan->device_limit;
                 $user->plan_id = $plan->id;
                 $user->group_id = $plan->group_id;
-                $user->expired_at = time() + (config('v2board.try_out_hour', 1) * 3600);
+                $user->expired_at = time() + (config('fastai.try_out_hour', 1) * 3600);
                 $user->speed_limit = $plan->speed_limit;
             }
         }
@@ -88,7 +88,7 @@ class AuthActions
                 return $user;
             });
         } elseif (!$user->save()) abort(request()->is('api/v10/*') ? 409 : 500, __('Register failed'));
-        if ((int)config('v2board.email_verify', 0)) {
+        if ((int)config('fastai.email_verify', 0)) {
             \App\Services\RegistrationEmailVerification::consume($email);
         }
 
@@ -96,11 +96,11 @@ class AuthActions
         $user->last_login_ip = $this->encodeIp($request->ip());
         $user->save();
 
-        if ((int)config('v2board.register_limit_by_ip_enable', 0)) {
+        if ((int)config('fastai.register_limit_by_ip_enable', 0)) {
             Cache::put(
                 CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip()),
                 (int)$registerCountByIP + 1,
-                (int)config('v2board.register_limit_expire', 60) * 60
+                (int)config('fastai.register_limit_expire', 60) * 60
             );
         }
 
@@ -123,11 +123,11 @@ class AuthActions
         $riskLogService = new RiskLogService();
         $limitEmail = strtolower(trim($email));
 
-        if ((int)config('v2board.password_limit_enable', 1)) {
+        if ((int)config('fastai.password_limit_enable', 1)) {
             $passwordErrorCount = (int)Cache::get(CacheKey::get('PASSWORD_ERROR_LIMIT', $limitEmail), 0);
-            if ($passwordErrorCount >= (int)config('v2board.password_limit_count', 5)) {
+            if ($passwordErrorCount >= (int)config('fastai.password_limit_count', 5)) {
                 abort(request()->is('api/v10/*') ? 429 : 500, __('There are too many password errors, please try again after :minute minutes.', [
-                    'minute' => config('v2board.password_limit_expire', 60)
+                    'minute' => config('fastai.password_limit_expire', 60)
                 ]));
             }
         }
@@ -147,11 +147,11 @@ class AuthActions
             $password,
             $user->password)
         ) {
-            if ((int)config('v2board.password_limit_enable', 1)) {
+            if ((int)config('fastai.password_limit_enable', 1)) {
                 Cache::put(
                     CacheKey::get('PASSWORD_ERROR_LIMIT', $limitEmail),
                     (int)$passwordErrorCount + 1,
-                    60 * (int)config('v2board.password_limit_expire', 60)
+                    60 * (int)config('fastai.password_limit_expire', 60)
                 );
             }
             $riskLogService->createLoginLog([

@@ -3,10 +3,10 @@ $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$original=config('v2board');$seed=config('fastai.entrypoint_signing_seed');
+$original=config('fastai');$seed=config('fastai.entrypoint_signing_seed');
 try {
     $catalog=[['origin'=>'https://fastdog.ws','enabled'=>true,'priority'=>2],['origin'=>'https://fastdog66.com','enabled'=>true,'priority'=>1],['origin'=>'https://fastdog.me','enabled'=>false,'priority'=>3]];
-    config(['v2board.app_url'=>'https://fastdog.ws','v2board.fastai_entrypoints'=>$catalog,'v2board.fastai_entrypoints_version'=>12,'fastai.entrypoint_signing_seed'=>base64_encode(random_bytes(32))]);
+    config(['fastai.app_url'=>'https://fastdog.ws','fastai.fastai_entrypoints'=>$catalog,'fastai.fastai_entrypoints_version'=>12,'fastai.entrypoint_signing_seed'=>base64_encode(random_bytes(32))]);
     $service=app(App\Services\FastaiEntrypoints::class);
     $envelope=$service->envelope();$bytes=base64_decode($envelope['payload']);$public=base64_decode($service->publicKey());
     $assert(sodium_crypto_sign_verify_detached(base64_decode($envelope['signature']),$bytes,$public),'Manifest signature');
@@ -35,4 +35,4 @@ try {
     $assert($service->publicKey()===null,'Missing signing key fails closed');
     try { $service->envelope(); throw new RuntimeException('Unsigned publication'); } catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===503,'No unsigned manifest'); }
     echo "FastAI entrypoints: $checks checks passed\n";
-} finally { config(['v2board'=>$original,'fastai.entrypoint_signing_seed'=>$seed]); }
+} finally { config(['fastai'=>$original,'fastai.entrypoint_signing_seed'=>$seed]); }

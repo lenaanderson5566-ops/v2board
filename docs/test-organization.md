@@ -34,7 +34,7 @@ npm run build
 
 - 后端实际执行必须使用独立、可销毁的项目副本、local/testing 环境及 `TEST_DISPOSABLE_WORKSPACE=1`。副本不携带生产 `.env`、站点配置、实例自定义模板或 bootstrap 缓存；需要模板的测试自行创建合成夹具。部分检查会改文件或迁移 schema，仅换数据库名不足以隔离。
 - MySQL 测试账号须能创建/删除随机测试库；不为测试提升线上应用账号权限。普通事务场景共享可销毁 schema，安装/迁移场景单独建库，各入口独立进程运行，结束清理本次创建的库。
-- 运行器在副本缺少 `.env` 或 `config/v2board.php` 时创建空白测试文件。控制台集成测试需提供 `storage/geoip/` 下公开 Country、City、ASN MMDB 的只读副本，不复制其他生产存储。
+- 运行器在副本缺少 `.env` 或 `config/fastai.php` 时创建空白测试文件。控制台集成测试需提供 `storage/geoip/` 下公开 Country、City、ASN MMDB 的只读副本，不复制其他生产存储。
 - Redis 使用专用实例或专用测试数据库，每个入口使用独立前缀；不得清空应用或其他任务的 Redis。邮件、支付、Telegram、AWS、Cloudflare、ACME、下载和服务管理使用测试替身或临时服务，不连接生产。
 - 生成器和前端也使用可销毁副本或可写临时目录，使用独立依赖安装和输出。浏览器夹具登记为 helper，其 setup/cleanup 及恢复要求见 [前后台验证](frontend-validation.md)。
 - 日志与报告放在忽略的 `storage/app/test-organization/`，不含凭据或生产数据。清理仅针对本次临时资源；安装包、校验文件、回滚快照、生产日志及应用数据不属于测试垃圾。
@@ -48,6 +48,12 @@ npm run build
 [Dependabot](../.github/dependabot.yml) 每周检查根 Composer、`/frontend` npm 和 Actions。Composer/npm 常规更新限同主版本 minor/patch 并分组，安全更新另组处理；各生态常规待处理 PR 上限为 3。更新需人工审阅和合并，不自动更改默认分支、安全设置或自动合并策略。
 
 依赖回归复用 `framework-upgrade`：在开发及真实 `--no-dev` 安装中核对直接依赖与锁文件、实际 Laravel 加载版本、Linfo 不可自动加载、Horizon/Carbon 包发现、邮件传输、可信代理、调度、旧任务及迁移基线。Tinker 在开发安装保留命令，生产的包、类、Provider、发现清单及命令均须消失；须覆盖开发缓存升级到生产安装。真实健康检查读取数据库、Redis、缓存和 Horizon；新隔离环境无 worker/scheduler 时不伪造整机 healthy。`console-smoke` 夹具需要开发依赖 Mockery，不能向生产安装补回开发包或把未执行计为通过。`update-script` 的模拟 Composer 只证明控制流，不替代真实安装。
+
+FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树别名、显式空值、整文件优先、新旧命令同实现及旧队列不变；`mail-install-schema` 验配置覆盖拒绝和新装 0640；`console-smoke` 验首次保存继承旧文件 0600、自定义站点名及新旧 boot 同对象。`update-script` 验旧/新/并存配置的字节、校验和与备份保护及缺失/损坏/被目标跟踪的拒绝。`timezone-scheduler` 检查新统计命令共用旧完成记录/锁，CLI 与经营报表读取旧状态但输出新命令名。前端既有模块覆盖偏好兼容、双代 revision、离线退出、裸 token 只清理，以及同意记录的两代删除/clear、最新选择和同时间拒绝优先。规则见 [名称与升级兼容](project-structure.md#fastai-名称与升级兼容)。
+
+该命名迁移的隔离验证按各入口最新结果汇总为后端 109/109 通过，包含升级脚本 33 个模拟场景；最终前端资源及修正 SQLite 查询复用夹具后的四个相关模块已定向复验，保留原业务断言。前端全量 115 文件、155 套件、1751 项测试通过，失败/跳过/todo 均为 0；独立 npm 安装、TypeScript、构建打包、十四语言、JavaScript/worker ASCII、前后台隔离及 385 个发布文件核验通过。生成器漂移检查和 13 项单元测试通过。原运行资源未被覆盖，未进行浏览器视觉、真实支付或客户端内核验收；原始结果在忽略的测试输出中查阅。
+
+同一隔离安装树实际执行含包发现脚本的 `composer install --no-dev` 后，生产兼容的 `framework-upgrade`、`console-verify` 两模块均通过；核对主配置只导出 canonical 树、旧别名仍可读及生产不含 Tinker，没有补回开发依赖。
 
 发布需核对源码、清单锁和配套 `public/console`（含 `.vite`）一致，`update.sh` 不在生产执行 Node 构建。若用 alternate work-tree 将隔离产物纳入 Git index，同时保留原本地运行资源，提交后工作区差异是有意保留的，不能自动 reset 清掉。发布排除本地 Docker/启动/种子文件、`.env`、实例配置、storage 运行产物和 pycache。
 

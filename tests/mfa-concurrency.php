@@ -16,7 +16,7 @@ if(($argv[1]??'')==='worker') {
     $input=json_decode(stream_get_contents(STDIN),true);
     try {
       if(($input['type']??'')==='passkey'){
-       config(['v2board.passkey_enable'=>1,'v2board.app_url'=>'https://concurrency.example.test']);
+       config(['fastai.passkey_enable'=>1,'fastai.app_url'=>'https://concurrency.example.test']);
        $request=$make($input['proof']);$request->headers->set('Origin','https://concurrency.example.test');$request->attributes->set('browser.session',$input['browser']);
        (new App\Services\PasskeyService())->login($request);
       } else (new MfaService())->finish($input['challenge'],$make(['verificationMethod'=>$input['method'],'verificationCode'=>$input['code']]));
@@ -43,7 +43,7 @@ try {
         $method=$case==='totp'?'totp':'recovery';$code=$case==='totp'?Totp::code($secret,intdiv(time(),30)):$recovery;
         $run([['challenge'=>$first['challengeId'],'method'=>$method,'code'=>$code],['challenge'=>$second['challengeId'],'method'=>$method,'code'=>$code]]);
     }
-    config(['v2board.passkey_enable'=>1,'v2board.app_url'=>'https://concurrency.example.test']);
+    config(['fastai.passkey_enable'=>1,'fastai.app_url'=>'https://concurrency.example.test']);
     $encode=[App\Services\PasskeyService::class,'encode'];
     foreach(['sameChallenge','sameCounter'] as $case){
       $user=User::create(['email'=>'passkey-concurrent-'.$case.'-'.bin2hex(random_bytes(4)).'@example.test','password'=>'unused','uuid'=>Illuminate\Support\Str::uuid(),'token'=>bin2hex(random_bytes(16)),'transfer_enable'=>0]);$users[]=$user->id;

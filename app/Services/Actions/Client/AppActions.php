@@ -89,8 +89,8 @@ class AppActions
         return response([
             'data' => [
                 'platform' => $platform,
-                'version' => config("v2board.{$platform}_version"),
-                'download_url' => config("v2board.{$platform}_download_url"),
+                'version' => config("fastai.{$platform}_version"),
+                'download_url' => config("fastai.{$platform}_download_url"),
             ]
         ]);
     }

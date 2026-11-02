@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Http\Request;
 
 class TelegramDeliveryService {
-    public static function botKey(): string { return hash('sha256',(string)config('v2board.telegram_bot_token')); }
+    public static function botKey(): string { return hash('sha256',(string)config('fastai.telegram_bot_token')); }
     public function receive(array $data): void {
         abort_unless(isset($data['update_id']) && is_int($data['update_id']) && $data['update_id']>=0,422,'Invalid Telegram update');
         abort_if(strlen(json_encode($data))>65536,413,'Telegram update too large');
@@ -46,11 +46,11 @@ class TelegramDeliveryService {
         $q=DB::table('v2_telegram_update')->where('id',$id);
         if (!(clone $q)->where('status','pending')->where('next_at','<=',time())->update(['status'=>'processing','next_at'=>time()+120])) return;
         $row=$q->first();
-        if ($row->bot_key!==self::botKey() || !config('v2board.telegram_bot_enable',0)) { $q->update(['status'=>'cancelled','payload'=>null]); return; }
+        if ($row->bot_key!==self::botKey() || !config('fastai.telegram_bot_enable',0)) { $q->update(['status'=>'cancelled','payload'=>null]); return; }
         try {
             $payload=json_decode(Crypt::decryptString($row->payload),true,32,JSON_THROW_ON_ERROR);
             $request=Request::create('/api/v10/webhooks/telegram','POST',$payload);
-            $request->headers->set('X-Telegram-Bot-Api-Secret-Token',md5(config('v2board.telegram_bot_token')));
+            $request->headers->set('X-Telegram-Bot-Api-Secret-Token',md5(config('fastai.telegram_bot_token')));
             (new \App\Services\Actions\Guest\TelegramActions($request))->processUpdate($payload);
             $q->update(['status'=>'done','payload'=>null,'error_code'=>null]);
         } catch (\App\Exceptions\TelegramApiException $e) {

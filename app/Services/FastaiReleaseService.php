@@ -11,7 +11,7 @@ final class FastaiReleaseService
     {
         $policy = new ClientStrategyService();
         if (!$policy->isEnabled('fastai')) return [];
-        return array_values(array_filter(config('v2board.fastai_releases', []), function ($release) use ($policy) {
+        return array_values(array_filter(config('fastai.fastai_releases', []), function ($release) use ($policy) {
             return ($release['channel'] ?? '') === 'stable'
                 && str_starts_with($release['downloadUrl'] ?? '', 'https://')
                 && $policy->isVersionAllowed('fastai', $release['latestVersion'] ?? null)
@@ -49,7 +49,7 @@ final class FastaiReleaseService
 
     public function release(string $platform, string $architecture): ?array
     {
-        $catalog = config('v2board.fastai_releases', []);
+        $catalog = config('fastai.fastai_releases', []);
         self::validateCatalog($catalog);
         foreach ($catalog as $release) {
             if ($release['platform'] === $platform && $release['architecture'] === $architecture && $release['channel'] === 'stable') {
@@ -65,7 +65,7 @@ final class FastaiReleaseService
             $release = $this->release($platform, $architecture);
             return !$release || version_compare($version, $release['minimumVersion'], '>=');
         }
-        $catalog = config('v2board.fastai_releases', []);
+        $catalog = config('fastai.fastai_releases', []);
         self::validateCatalog($catalog);
         foreach ($catalog as $release) {
             if ($release['platform'] === $platform && version_compare($version, $release['minimumVersion'], '<')) return false;

@@ -275,11 +275,11 @@ export function BannerEditor({
                             mobile_image_url: presetMobileBanner,
                             title:
                                 d.title ||
-                                "Fastdog 3.0 — Faster. Simpler. Smarter.",
+                                "FastAI 3.0 — Faster. Simpler. Smarter.",
                         }))
                     }
                 >
-                    使用 Fastdog 3.0 预置图片
+                    使用 FastAI 3.0 预置图片
                 </button>
                 {[
                     ["image_url", "主图片"],

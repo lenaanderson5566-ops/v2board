@@ -280,7 +280,7 @@ export function AdminShell({
             </a>
             {open && (
                 <div
-                    className="v2board-nav-mask"
+                    className="fastai-nav-mask"
                     style={{ display: "block" }}
                     onClick={() => setOpen(false)}
                 />
@@ -385,7 +385,7 @@ export function AdminShell({
                         </p>
                     )}
                 </div>
-                <div className="v2board-copyright">{boot.title}</div>
+                <div className="fastai-copyright">{boot.title}</div>
             </nav>
             <header id="page-header" inert={mobile && open}>
                 <div className="content-header">
@@ -406,7 +406,7 @@ export function AdminShell({
                                 {title !== rootTitle ? ` / ${rootTitle}` : ""}
                             </span>
                         )}
-                        <h1 className="v2board-container-title">{title}</h1>
+                        <h1 className="fastai-container-title">{title}</h1>
                     </div>
                     <div className="admin-header-actions">
                         <DropdownMenu.Root

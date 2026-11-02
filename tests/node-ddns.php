@@ -139,7 +139,7 @@ try {
     $assert($call($token,['ipv4'=>'8.8.8.8'])->getStatusCode()===202,'node deletion does not revoke shared physical server reporting');
     $user=App\Models\User::create(['email'=>'ddns-admin-'.bin2hex(random_bytes(5)).'@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
     $auth=(new App\Services\AuthService($user))->generateAuthData(Request::create('/'))['auth_data'];
-    $path='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key')))).'/server/ddns/credentials/save';
+    $path='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key')))).'/server/ddns/credentials/save';
     $payload=['id'=>$cid,'name'=>'HTTP test','zone_id'=>str_repeat('a',32),'token'=>'http-secret-test'];
     $unauth=$kernel->handle(Request::create($path,'POST',$payload,[],[],['HTTP_ACCEPT'=>'application/json']));
     $assert($unauth->getStatusCode()===403,'admin credential endpoint protected');
@@ -438,7 +438,7 @@ try {
     App\Services\NodeTlsTransition::reconcile(DB::table('v2_node_ddns')->find($bid));
     $domains->activate($req(['id'=>$bid,'confirm'=>true]));
     // Exercise the authenticated machine route, including explicit publication acknowledgement.
-    config(['v2board.server_token'=>'tls-transition-test']);
+    config(['fastai.server_token'=>'tls-transition-test']);
     $fetchCandidate=fn($features)=>$kernel->handle(Request::create('/api/v10/server/configuration','GET',[],[],[],['HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer tls-transition-test','HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$managed->id,'HTTP_X_NODE_CAPABILITIES'=>$features]));
     $assert($fetchCandidate('native-routing-v1')->getStatusCode()===409,'downgraded node cannot receive pending TLS configuration');
     $candidateResponse=$fetchCandidate('native-routing-v1,certificate-transition-v1');
@@ -669,8 +669,8 @@ try {
     $net->save($req(['id'=>$ingress,'name'=>'Shared ingress','family'=>'ipv4','enabled'=>false]));
     $assert($call($entryToken,['ipv4'=>'1.1.1.1'])->getStatusCode()===403,'disabled physical server rejects address reports');
     $net->save($req(['id'=>$ingress,'name'=>'Shared ingress','family'=>'ipv4','enabled'=>true]));
-    config(['v2board.server_api_url'=>'https://panel.example.test']);
-    $serverRoute='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key')))).'/server/network/enroll';
+    config(['fastai.server_api_url'=>'https://panel.example.test']);
+    $serverRoute='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key')))).'/server/network/enroll';
     $serverHttp=fn($authorization)=>$kernel->handle(Request::create($serverRoute,'POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization],json_encode(['id'=>$ingress])));
     $assert($serverHttp('')->getStatusCode()===403,'physical server enrollment is administrator-only');
     $serverResponse=$serverHttp($auth);
@@ -744,7 +744,7 @@ try {
     $reject(fn()=>$net->dropEntry($req(['id'=>$eid])),409);
     $reject(fn()=>$admin->dropAssignment($req(['id'=>$rid])),409);
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\Server\V2boxController())->drop($req(['id'=>$relay->id])),409);
-    $reject(fn()=>App\Services\NodeCredentials::authenticate((string)config('v2board.server_token'),'v2box',$lineId,false),401);
+    $reject(fn()=>App\Services\NodeCredentials::authenticate((string)config('fastai.server_token'),'v2box',$lineId,false),401);
     $liveConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());
     App\Services\NodeRuntimeService::record('v2box',$relay->id,$liveConfig,'v10');
     App\Services\NodeRuntimeService::receipt($relay->id,['hash'=>hash('sha256',json_encode($liveConfig)),'state'=>'applied']);
@@ -916,7 +916,7 @@ try {
     $lock=Illuminate\Support\Facades\Cache::lock('deployment-check:v2box:'.$checkNode->id,45);$assert($lock->get(),'check releases lock after completion');
     $reject(fn()=>$adminCheck->checkDeployment($input),429);$lock->release();
     $reject(fn()=>$adminCheck->checkDeployment($req(['type'=>'v2box','id'=>999999999])),404);
-    $adminPath='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+    $adminPath='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
     $unauth=$kernel->handle(Request::create($adminPath.'/server/manage/check-deployment','POST',['type'=>'v2box','id'=>$checkNode->id],[],[],['HTTP_ACCEPT'=>'application/json']));
     $assert($unauth->getStatusCode()===403,'anonymous cannot trigger network probes');
     app()->forgetInstance(App\Services\NodeDeploymentCheck::class);

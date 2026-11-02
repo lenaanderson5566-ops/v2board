@@ -5,7 +5,7 @@ import startupCatalogs from "virtual:startup-catalogs";
 
 import { languages } from "./language-options";
 export { languages } from "./language-options";
-export const languageKey = "v2board.language";
+export const languageKey = "fastai.language";
 function matchLanguage(value: string): string | undefined {
     if (/^zh(-|$)/i.test(value))
         return /TW|HK|MO|Hant/i.test(value) ? "zh-TW" : "zh-CN";
@@ -46,7 +46,7 @@ const localeLoaders: Record<string, () => Promise<{ default: Catalog }>> = {
 };
 const completeCatalogs = new Set<string>();
 const catalogRequests = new Map<string, Promise<Catalog>>();
-let workspaceLanguage = window.V2BOARD?.mode === "admin";
+let workspaceLanguage = window.FASTAI?.mode === "admin";
 async function loadCatalog(language: string): Promise<Catalog> {
     let pending = catalogRequests.get(language);
     if (!pending) {
@@ -86,7 +86,7 @@ i18next.use({
 });
 const saved = localPreferences.getItem(languageKey);
 const initialLanguage =
-    window.V2BOARD?.mode === "admin" ? "zh-CN"
+    window.FASTAI?.mode === "admin" ? "zh-CN"
         : saved && languages.some((l) => l.code === saved) ? saved
             : resolvePreferredLanguage([...(navigator.languages || []), navigator.language || "en-US"]);
 const initialLanguageReady = i18next.use(initReactI18next).init({
@@ -103,7 +103,7 @@ const initialLanguageReady = i18next.use(initReactI18next).init({
     initAsync: false,
 });
 export const languageReady = initialLanguageReady.then(async value => {
-    if (window.V2BOARD?.mode === "admin") await loadCatalog("zh-CN");
+    if (window.FASTAI?.mode === "admin") await loadCatalog("zh-CN");
     return value;
 });
 const changeInstanceLanguage = i18next.changeLanguage.bind(i18next);

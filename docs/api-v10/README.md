@@ -1,4 +1,4 @@
-# FastDog V10 user API
+# FastAI V10 user API
 
 The new user API is `/api/v10`. Administration, operations/risk and node communication retain their existing APIs. The unfinished `/api/v1/staff/*` API has been retired and is not migrated to V10. Staff retirement removes the legacy `is_staff` column through the approved upgrade migration; fresh installations omit it. Follow [the upgrade procedure](../update-script.md) for schema changes; staff retirement itself does not change the framework requirement. Current installations require PHP 8.4+ and the committed Laravel 13 dependencies.
 
@@ -93,7 +93,7 @@ Configuration requests are recorded as `Client configuration request` in the API
 ## FastAI browser sign-in
 
 Deploy the V10 backend and rebuilt user frontend before distributing the new client.
-`v2board.app_url` must be the canonical HTTPS website origin. No database migration
+`fastai.app_url` must be the canonical HTTPS website origin. No database migration
 is required; the existing shared cache must support atomic locks (Redis is recommended).
 After deployment, rebuild the frontend with `npm ci && npm run build`, clear stale route
 and configuration caches using the existing deployment procedure, and restart long-lived
@@ -134,4 +134,4 @@ The native Bearer contracts remain supported. Browser mode (`X-Browser-Client: u
 
 The no-op `me/invitations/retired-codes` endpoint and its shared Action have been removed; anonymous and authenticated calls return 404 and cannot create invitation codes. Registration still explicitly rejects old invite-code inputs, rather than silently ignoring them.
 
-Keep the following until their consumers or historical data have been migrated: V1 administrator authentication/profile dependencies, legacy payment callbacks and installed node/client contracts, configured custom subscriptions, theme-footer fallbacks, historical invitation cleanup, financial/traffic entitlement conversion and upgrade migrations. The no-op SendTelegramJob consumes previously serialized messages; telegram:notify supports external cron; v2board:update safely redirects operators to update.sh. A source-only audit cannot prove that deployed queues, external cron or older clients no longer need these boundaries.
+Keep the following until their consumers or historical data have been migrated: V1 administrator authentication/profile dependencies, legacy payment callbacks and installed node/client contracts, configured custom subscriptions, theme-footer fallbacks, historical invitation cleanup, financial/traffic entitlement conversion and upgrade migrations. The no-op SendTelegramJob consumes previously serialized messages; telegram:notify supports external cron; fastai:update safely redirects operators to update.sh. A source-only audit cannot prove that deployed queues, external cron or older clients no longer need these boundaries.

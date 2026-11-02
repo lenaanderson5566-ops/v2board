@@ -23,7 +23,7 @@ class ProductMail
         if (!in_array($type, self::TYPES, true)) throw new \InvalidArgumentException('Unsupported email template.');
         $language = self::language($params['language'] ?? null);
         if (!$language && !empty($params['email'])) $language = self::language(User::where('email', $params['email'])->value('language'));
-        $language = $language ?: self::language(config('v2board.email_default_language')) ?: 'zh-CN';
+        $language = $language ?: self::language(config('fastai.email_default_language')) ?: 'zh-CN';
         $document = null;
         if ($type === 'notify') {
             $document = ContentTranslation::document($params['translations'] ?? [], [
@@ -35,8 +35,7 @@ class ProductMail
         $copy = require resource_path('mail/copy.php');
         $copy = $copy[$language];
         $value = $params['template_value'] ?? [];
-        $brand = trim((string)config('v2board.app_name', 'Studio'));
-        if (!$brand || preg_match('/v2board/i', $brand)) $brand = 'Studio';
+        $brand = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')));
         $title = $copy[$type][0];
         $body = $copy[$type][1];
         $subject = $brand . ' · ' . $title;
@@ -54,9 +53,9 @@ class ProductMail
         }
         // Admin announcements retain basic formatting, never active content or remote tracking images.
         $html = $type === 'notify' ? $this->safeHtml($content) : nl2br(e($content));
-        $url = $type === 'mailLogin' ? ($value['link'] ?? '') : ($value['url'] ?? config('v2board.app_url'));
+        $url = $type === 'mailLogin' ? ($value['link'] ?? '') : ($value['url'] ?? config('fastai.app_url'));
         $routes = ['serviceActivated'=>'dashboard', 'serviceRenewed'=>'order', 'remindTraffic'=>'traffic', 'remindExpire'=>'order', 'ticketReply'=>'ticket', 'test'=>'dashboard', 'notify'=>'dashboard'];
-        if (isset($routes[$type])) $url = rtrim((string)config('v2board.app_url'), '/').'/app#/'.$routes[$type];
+        if (isset($routes[$type])) $url = rtrim((string)config('fastai.app_url'), '/').'/app#/'.$routes[$type];
         if (!preg_match('~^https?://~i', (string)$url)) $url = '';
         $actionKey = ['serviceRenewed'=>'billingAction', 'emailInvitation'=>'inviteAction', 'mailLogin'=>'loginAction', 'remindTraffic'=>'usageAction', 'remindExpire'=>'billingAction', 'ticketReply'=>'supportAction'][$type] ?? 'action';
         return ['language'=>$language, 'direction'=>$language === 'fa-IR' ? 'rtl' : 'ltr', 'brand'=>$brand,

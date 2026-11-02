@@ -139,7 +139,7 @@ body[data-console="admin"] #sidebar .nav-main-link.active {
     color: var(--admin-heading);
     background: #edf0f5;
 }
-body[data-console="admin"] #sidebar .v2board-copyright {
+body[data-console="admin"] #sidebar .fastai-copyright {
     padding: 10px 22px;
     flex-shrink: 0;
     font-size: 11px;
@@ -1233,7 +1233,7 @@ body[data-console="admin"] .admin-account-item:hover,
 body[data-console="admin"] .admin-account-item[data-highlighted] {
     background: var(--admin-canvas);
 }
-body[data-console="admin"] .v2board-nav-mask {
+body[data-console="admin"] .fastai-nav-mask {
     position: fixed;
     inset: 0;
     z-index: 998;

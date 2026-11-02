@@ -21,11 +21,11 @@ if (getenv('V2BOX_INDEPENDENT_PANEL_SEED')==='1') {
     DB::table('v2_node_ddns')->insert(['credential_id'=>0,'node_type'=>'v2box','node_id'=>3,'domain'=>'node-'.$label.'.example.test','family'=>'ipv4','managed'=>false,'enabled'=>true,'server_id'=>7]);
     $key=$label==='a'?App\Services\NodeCredentials::issue('v2box',3,(int)$admin->id):null;
     $grant=$label==='b'?App\Services\NodeDeployment::create(3,(int)$admin->id):null;
-    $data=['origin'=>config('v2board.server_api_url'),'uuid'=>$user->uuid,'userId'=>$user->id,'actorId'=>$admin->id,'nodeId'=>3,'serverId'=>7,'nodeKey'=>$key['secret']??null,'command'=>$grant['command']??null,'report'=>$report,'port'=>$port,'database'=>DB::getDatabaseName()];
+    $data=['origin'=>config('fastai.server_api_url'),'uuid'=>$user->uuid,'userId'=>$user->id,'actorId'=>$admin->id,'nodeId'=>3,'serverId'=>7,'nodeKey'=>$key['secret']??null,'command'=>$grant['command']??null,'report'=>$report,'port'=>$port,'database'=>DB::getDatabaseName()];
     file_put_contents(getenv('V2BOX_PANEL_PRIVATE'),json_encode($data));chmod(getenv('V2BOX_PANEL_PRIVATE'),0600);
     echo "Independent panel fixture prepared\n";return;
 }
-config(['v2board.server_token'=>'v2box-local-test']);
+config(['fastai.server_token'=>'v2box-local-test']);
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
@@ -46,20 +46,20 @@ try {
         $assert($node['type']===$type, 'Subscription type preserved');
         $assert(!isset($node['tls_settings']['private_key'],$node['tls_settings']['ech_key'],$node['tls_settings']['tls_key']), 'Secrets stripped');
         $assert(strpos(App\Utils\Helper::buildUri('00000000-0000-4000-8000-000000000001',$node),'vless://')===0,'Subscription URI');
-        $request=Request::create('/api/v2/server/config','GET',['token'=>config('v2board.server_token'),'node_type'=>$type,'node_id'=>$id]);
+        $request=Request::create('/api/v2/server/config','GET',['token'=>config('fastai.server_token'),'node_type'=>$type,'node_id'=>$id]);
         $controller=new App\Http\Controllers\V2\Server\ServerController($request);
         $config=json_decode($controller->config($request)->getContent(),true);
         $assert($config['protocol']==='vless','Node config');
-        $request=Request::create('/api/v1/server/UniProxy/user','GET',['token'=>config('v2board.server_token'),'node_type'=>$type,'node_id'=>$id]);
+        $request=Request::create('/api/v1/server/UniProxy/user','GET',['token'=>config('fastai.server_token'),'node_type'=>$type,'node_id'=>$id]);
         $controller=new App\Http\Controllers\V1\Server\UniProxyController($request);
         $controller->user($request);
         $key=CacheKey::get('SERVER_'.strtoupper($type).'_LAST_CHECK_AT',$id); $cacheKeys[]=$key;
         $assert(Cache::has($key),'Independent heartbeat');
     }
-    $legacy=Request::create('/api/v2/server/config','GET',['token'=>config('v2board.server_token'),'node_id'=>$id]);
+    $legacy=Request::create('/api/v2/server/config','GET',['token'=>config('fastai.server_token'),'node_id'=>$id]);
     $assert(json_decode((new App\Http\Controllers\V2\Server\ServerController($legacy))->config($legacy)->getContent(),true)['protocol']==='vless','Legacy config without node_type');
     Illuminate\Support\Facades\Queue::fake();
-    $push=Request::create('/api/v1/server/UniProxy/push?'.http_build_query(['token'=>config('v2board.server_token'),'node_type'=>'v2box','node_id'=>$id]),'POST',[],[],[],['CONTENT_TYPE'=>'application/json'],json_encode([123=>[1024,2048]]));
+    $push=Request::create('/api/v1/server/UniProxy/push?'.http_build_query(['token'=>config('fastai.server_token'),'node_type'=>'v2box','node_id'=>$id]),'POST',[],[],[],['CONTENT_TYPE'=>'application/json'],json_encode([123=>[1024,2048]]));
     (new App\Http\Controllers\V1\Server\UniProxyController($push))->push($push);
     $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\TrafficFetchJob::class)->count()===1, 'Traffic job queued');
     foreach (['ONLINE_USER','LAST_PUSH_AT'] as $suffix) $cacheKeys[]=CacheKey::get('SERVER_V2BOX_'.$suffix,$id);
@@ -284,7 +284,7 @@ if (getenv('V2BOX_INDEPENDENT_DATABASE_SMOKE')==='1') {
             foreach(['storage/app','storage/logs','storage/framework/cache/data','storage/framework/views','storage/framework/sessions','bootstrap/cache'] as $sub)mkdir($directory.'/'.$sub,0700,true);
             $origin='https://panel-'.$label.'.test:'.(9443+$offset);$port=38081+$offset;
             $config=['app_url'=>$origin,'server_api_url'=>$origin,'server_token'=>bin2hex(random_bytes(32)),'secure_path'=>'admin','server_pull_interval'=>1,'server_push_interval'=>1];
-            file_put_contents($directory.'/config/v2board.php','<?php return '.var_export($config,true).';');
+            file_put_contents($directory.'/config/fastai.php','<?php return '.var_export($config,true).';');
             $environment=array_merge(getenv(),['DB_DATABASE'=>$database,'APP_KEY'=>'base64:'.base64_encode(random_bytes(32)),'APP_CONFIG_CACHE'=>$directory.'/bootstrap/cache/independent.php','CACHE_PREFIX'=>'independent_'.$label,'REDIS_PREFIX'=>'independent_'.$label.':','REDIS_DB'=>'8','REDIS_CACHE_DB'=>'9','V2BOX_INDEPENDENT_PANEL_SEED'=>'1','V2BOX_PANEL_LABEL'=>$label,'V2BOX_PANEL_PORT'=>(string)$port,'V2BOX_PANEL_PRIVATE'=>$directory.'/private.json']);
             $p=proc_open([PHP_BINARY,'tests/support/run-script.php','tests/v2box.php'],[['file','/dev/null','r'],['pipe','w'],['redirect',1]],$pipes,$directory,$environment);$output=stream_get_contents($pipes[1]);fclose($pipes[1]);if(proc_close($p)!==0 || !is_file($directory.'/private.json'))throw new RuntimeException('Independent panel seed failed: '.explode('(Connection:',strtok($output,"\n"))[0]);
             $panels[]=array_merge(json_decode(file_get_contents($directory.'/private.json'),true),['root'=>$directory,'environment'=>$environment,'httpPort'=>8081+$offset]);

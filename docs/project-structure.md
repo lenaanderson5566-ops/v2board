@@ -1,12 +1,24 @@
 # 目录边界与契约生成
 
+## FastAI 名称与升级兼容
+
+项目展示名称和主元数据使用 FastAI，业务配置使用 `fastai.*`。`config/fastai.php` 是唯一保存目标；文件存在时整份优先，即使为空也不与旧文件逐字段合并。仅当新文件不存在时读取旧 `config/v2board.php`，避免已删除配置从旧文件重新出现。保存会写完整的新配置，不自动修改或删除旧文件；部署及备份应保留两者，不提交其中的私密内容。
+
+配置 Repository 将旧 `v2board.*` 作为同一存储的兼容别名，旧调用的读写即时反映到 `fastai.*`，显式 null、false、零和空数组不当作缺失。配置缓存只导出主命名空间，并兼容读取旧缓存。新安装与操作文档使用 `fastai:*` 主命令，已有 `v2board:*` 命令保留别名；`fastai:update` 和旧别名均只提示使用安全的 `update.sh`，不会重放历史 SQL。
+
+Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序列化载荷、Redis 计数/缓存/会话标识、DNS 所有权标记和每日任务持久 identity 保持兼容。网页以 `window.FASTAI` 输出运行配置，并以同一对象提供旧 `window.V2BOARD` 别名，供滚动升级或缓存中的旧资源使用；旧 boot 输入仍可读取。不要为清除旧名称而更换密钥、清缓存、改数据库表或重置任务状态。
+
+浏览器偏好兼容读取旧存储名，跨标签会话变更、待完成退出及统计同意撤回继续同步；原 JavaScript 可读 token 只清理，不读取或迁移为认证凭据。存储不可写时不得据此绕过撤权，统计同意按有效记录时间核对，同一时刻拒绝优先。
+
+仓库尚未改名：实际 GitHub 仓库 URL、外部协议字段、客户端构建变量及其他仓库的真实源路径保持原值。这些是升级兼容或来源引用，不是当前展示品牌；修改它们需要对应消费者迁移，不能通过文本替换虚构新地址。第三方许可和归属说明不变。
+
 ## API 契约
 
 `api/v10/openapi.json` 是 V10 契约的模块清单与全局元数据入口；唯一可编辑定义位于 `api/v10/modules/*.json`，按业务归属维护路径与 schema，公共响应、响应头、参数及基础类型集中在 `common.json`。发布文件、PHP 字段投影和前端映射/类型均由 `python scripts/generate-v10.py` 生成。`--check` 只检查漂移，不写文件。具体元数据与七项输出见 [V10 维护说明](api-v10/README.md)。路由、控制器、请求校验和业务逻辑仍显式维护，生成结果不能代替真实路由及行为测试。
 
 ## 服务与前端组件
 
-邮件投递、限流、模板、活动、退订和反馈服务集中在 `app/Services/Mail/`，命名空间为 `App\Services\Mail`。共享业务 Action 保留 `app/Services/Actions/`，队列入口保留 `app/Jobs/`；本次不改变 Job 类名、构造参数、序列化属性、队列名称或定时命令。
+邮件投递、限流、模板、活动、退订和反馈服务集中在 `app/Services/Mail/`，命名空间为 `App\Services\Mail`。共享业务 Action 保留 `app/Services/Actions/`，队列入口保留 `app/Jobs/`；Job 类名、构造参数、序列化属性和队列名称保持兼容，命令主名与旧别名的规则见上节。
 
 `frontend/src/shared/ui.tsx` 保留公共导出，实现在 `shared/ui/` 内按 `layout`、`data`、`Modal`、`Editor`、`controls` 和 `Table` 拆分。弹窗堆栈及关闭 Context 只在 Modal 模块初始化一次，避免拆分后多弹窗失去协调。管理员专用状态文案集中在现有 `admin-status.tsx`，不进入用户翻译扫描范围。
 
@@ -22,7 +34,7 @@
 
 ## 安装与升级
 
-本次保持 Laravel 启动骨架、Provider 注册、HTTP/Console Kernel、安装 SQL、迁移和 `update.sh` 不变。部署使用正常 Composer 自动加载刷新、缓存清理与 Horizon/长驻进程重启流程；已排队邮件仍以原 `App\Jobs\SendEmailJob` 消费。生产环境不需要 Python。
+Laravel 配置加载后安装统一的站点配置 Repository，HTTP/Console Kernel、业务 SQL 和迁移继续按现有边界工作。部署按 `update.sh` 刷新 Composer 自动加载、配置缓存和 Horizon/长驻进程；已排队邮件仍以原 `App\Jobs\SendEmailJob` 消费。生产环境不需要 Python。
 
 PHP 依赖按实际运行职责划分：`linfo/linfo` 已移除；`laravel/tinker` 仅在 `require-dev`，生产 `composer install --no-dev` 不提供 `artisan tinker`。Horizon 与 Carbon 的包自动发现仍需生效，不能把它们或有实际业务调用的 JWT、YAML、MessagePack、AWS、GeoIP、HTTP 与密码学库当作未使用依赖删除。Composer 的 `post-autoload-dump` 会运行包发现；更换安装配置后应重建自动加载与发现清单，避免沿用开发依赖的缓存。
 

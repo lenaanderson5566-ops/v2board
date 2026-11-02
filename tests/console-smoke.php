@@ -2,11 +2,11 @@
 // Run with: php tests/console-smoke.php (requires a configured local database).
 $app = require __DIR__.'/support/bootstrap.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
-$configPath = base_path('config/v2board.php');
+$configPath = base_path('config/fastai.php');
 $originalFile = file_get_contents($configPath);
-$originalConfig = config('v2board');
-$securePath = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
-$opsPath = config('v2board.ops_api_path', 'ops');
+$originalConfig = config('fastai');
+$securePath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+$opsPath = config('fastai.ops_api_path', 'ops');
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null, string $accept = 'application/json', ?string $method = null) use ($kernel) {
@@ -20,7 +20,7 @@ Illuminate\Support\Facades\DB::beginTransaction();
 $auth = null;
 $failure = null;
 try {
-    config(['v2board.app_url'=>'https://site.example.test']);
+    config(['fastai.app_url'=>'https://site.example.test']);
     $user = App\Models\User::create([
         'email' => 'console-smoke-' . bin2hex(random_bytes(5)) . '@example.com',
         'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
@@ -38,7 +38,9 @@ try {
     foreach (['MicroMessenger/8','Weibo/13','QQ/9','python-requests/2',''] as $browserUa) {
         $browserRequest=Illuminate\Http\Request::create('/app','GET',[],[],[],['HTTP_USER_AGENT'=>$browserUa]);
         $browserResponse=app(Illuminate\Contracts\Http\Kernel::class)->handle($browserRequest);
-        $assert($browserResponse->getStatusCode()===200 && str_contains($browserResponse->getContent(),'window.V2BOARD') && str_contains($browserResponse->getContent(),'browserPolicies'),'All browser UAs receive the real frontend boot');
+        $browserHtml=$browserResponse->getContent();
+        $assert($browserResponse->getStatusCode()===200 && str_contains($browserHtml,'window.FASTAI') && str_contains($browserHtml,'browserPolicies'),'All browser UAs receive the canonical frontend boot');
+        $assert((bool)preg_match('/window\.V2BOARD\s*=\s*window\.FASTAI\s*;/', $browserHtml), 'Cached legacy frontend bundles must receive the same runtime object');
         $assert(str_contains($browserResponse->headers->get('Cache-Control'),'no-store'),'Browser policy boot is not publicly cached');
     }
     $operationsUrl='/api/v1/'.$securePath.'/analytics/operations';
@@ -234,9 +236,54 @@ try {
         $assert($failedSave->getStatusCode()===500 && file_get_contents($configPath)===$beforeFailure,'Failed configuration replacement preserves the last valid file');
     } finally { Illuminate\Support\Facades\File::swap($writer); }
 
+    // A first canonical save must not widen a legacy-only private configuration.
+    $permissionDirectory=sys_get_temp_dir().'/fastai-private-config-'.bin2hex(random_bytes(8));
+    mkdir($permissionDirectory,0700);
+    $originalPermissionDirectory=$app->configPath();
+    $permissionSettings=config('fastai');
+    $legacyPermissionSettings=$permissionSettings;
+    $legacyPermissionSettings['legacy_only_setting']='preserved';
+    $legacyPermissionBytes='<?php return '.var_export($legacyPermissionSettings,true).';';
+    file_put_contents($permissionDirectory.'/v2board.php',$legacyPermissionBytes);
+    chmod($permissionDirectory.'/v2board.php',0600);
+    $artisan=Illuminate\Support\Facades\Artisan::getFacadeRoot();
+    try {
+        $app->useConfigPath($permissionDirectory);
+        config(['fastai'=>$legacyPermissionSettings]);
+        // Other cases exercise real config:cache; this fixture isolates the actual file write.
+        Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')->andReturn(0);
+        $permissionResponse=$call('/api/v1/'.$securePath.'/config/save',['app_name'=>'Permission fixture'],$token);
+        clearstatcache(true,$permissionDirectory.'/fastai.php');
+        $assert($permissionResponse->getStatusCode()===200 && is_file($permissionDirectory.'/fastai.php')
+            && (fileperms($permissionDirectory.'/fastai.php')&0777)===0600, 'First canonical save must preserve restrictive legacy file permissions');
+        $permissionPersisted=require $permissionDirectory.'/fastai.php';
+        $assert(($permissionPersisted['legacy_only_setting']??null)==='preserved'
+            && file_get_contents($permissionDirectory.'/v2board.php')===$legacyPermissionBytes,
+            'Canonical settings must retain existing values without modifying the legacy file');
+    } finally {
+        Illuminate\Support\Facades\Artisan::swap($artisan);
+        $app->useConfigPath($originalPermissionDirectory);
+        config(['fastai'=>$permissionSettings]);
+        foreach (['fastai.php','v2board.php'] as $file) if (is_file($permissionDirectory.'/'.$file)) unlink($permissionDirectory.'/'.$file);
+        rmdir($permissionDirectory);
+    }
+
+    $brandingSettings=config('fastai');
+    $brandingAppName=config('app.name');
+    try {
+        $withoutSiteName=$brandingSettings;
+        unset($withoutSiteName['app_name']);
+        config(['fastai'=>$withoutSiteName,'app.name'=>'Custom environment brand']);
+        $assert(App\Support\FrontendRuntime::config('user')['title']==='Custom environment brand', 'A custom environment brand must survive when site settings omit the name');
+        config(['fastai.app_name'=>'Custom site brand']);
+        $assert(App\Support\FrontendRuntime::config('user')['title']==='Custom site brand', 'An explicit custom site brand must retain precedence');
+        config(['fastai.app_name'=>'V2Board']);
+        $assert(App\Support\FrontendRuntime::config('user')['title']==='FastAI', 'A stored legacy default must render as the canonical product name');
+    } finally { config(['fastai'=>$brandingSettings,'app.name'=>$brandingAppName]); }
+
     $assert($response->getStatusCode() === 422, 'Zero subscription interval should be rejected');
     $nodeStateBeforeAddressChange = App\Models\ServerV2box::orderBy('id')->get()->toArray();
-    config(['v2board.app_url'=>'https://site.example.test']);
+    config(['fastai.app_url'=>'https://site.example.test']);
     foreach (['https://api-old.example.test/', 'https://api-new.example.test:8443/', null] as $nodeApiUrl) {
         $assert(App\Services\AuthService::decryptAuthData($token)!==false, 'Settings test administrator session remains valid before saving '.($nodeApiUrl ?? 'fallback'));
         $saved = $call('/api/v1/'.$securePath.'/config/save', ['server_api_url'=>$nodeApiUrl], $token);
@@ -253,7 +300,7 @@ try {
         $probe=proc_open([PHP_BINARY,'-r','require "tests/support/autoload.php"; $app=require "bootstrap/app.php"; $app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); echo App\\Services\\NodeDeployment::host();'], [['pipe','r'],['pipe','w'],['pipe','w']], $pipes, base_path());
         fclose($pipes[0]);$freshHost=stream_get_contents($pipes[1]);stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);
         $assert(proc_close($probe)===0 && $freshHost===$expectedHost, 'A fresh application process immediately uses the saved node API address');
-        config(['v2board.server_api_url'=>$persisted['server_api_url']]);
+        config(['fastai.server_api_url'=>$persisted['server_api_url']]);
         foreach ((new App\Services\ServerService())->getAllV2box('v2box') as $deploymentNode) {
             if (!empty($deploymentNode['service_id'])) continue;
             foreach (['install_command','upgrade_command'] as $commandField) {
@@ -479,27 +526,27 @@ try {
         $assert($reader->metadata()->databaseType === 'GeoLite2-' . $type, 'Wrong GeoIP database: ' . $type);
         $reader->close();
     }
-    $geoConfig=config('v2board');
+    $geoConfig=config('fastai');
     $readers=new ReflectionProperty(App\Services\GeoIpService::class,'readers');
     $savedReaders=$readers->getValue();
     $corrupt=storage_path('app/corrupt-geoip-'.bin2hex(random_bytes(6)).'.mmdb');
     file_put_contents($corrupt,'invalid optional geoip database');
     try {
         foreach (['country','city','asn'] as $type) {
-            config(['v2board.geoip_'.$type.'_path'=>$corrupt]);
+            config(['fastai.geoip_'.$type.'_path'=>$corrupt]);
         }
         $readers->setValue(null,[]);
         $fallback=(new App\Services\GeoIpService())->lookup('8.8.8.8');
         $assert(count(array_filter($fallback,fn($v)=>$v!==null))===0,'Corrupt optional GeoIP must return empty metadata');
         $assert((new App\Services\GeoIpService())->sessionCountry('8.8.8.8')===null,'Corrupt GeoIP must not prevent session management');
-    } finally { config(['v2board'=>$geoConfig]); $readers->setValue(null,$savedReaders); unlink($corrupt); }
+    } finally { config(['fastai'=>$geoConfig]); $readers->setValue(null,$savedReaders); unlink($corrupt); }
     $geo = (new App\Services\GeoIpService())->lookup('8.8.8.8');
     $assert($geo['country'] !== null && $geo['asn'] === 'AS15169', 'GeoIP lookup failed');
     $footer = '<div data-console-smoke="footer">Footer smoke test</div>';
-    $siteUrl=config('v2board.app_url');
-    config(['v2board.app_url'=>'http://unsafe.example.test']);
+    $siteUrl=config('fastai.app_url');
+    config(['fastai.app_url'=>'http://unsafe.example.test']);
     $assert($call('/api/v1/'.$securePath.'/config/save',['passkey_enable'=>1],$token)->getStatusCode()===503,'Passkey rejects insecure production origin');
-    config(['v2board.app_url'=>'https://passkey.example.test','v2board.recaptcha_enable'=>1,'v2board.recaptcha_key'=>'retired-test-only','v2board.frontend_theme_google_analytics'=>'retired-test-only']);
+    config(['fastai.app_url'=>'https://passkey.example.test','fastai.recaptcha_enable'=>1,'fastai.recaptcha_key'=>'retired-test-only','fastai.frontend_theme_google_analytics'=>'retired-test-only']);
     // config:cache boots a fresh container; validate with the transaction-bound user before that final save.
     $invalidPolicy=$call('/api/v1/'.$securePath.'/config/save',['browser_policy_wechat'=>'invalid'],$token);
     $assert($invalidPolicy->getStatusCode()===422,'Admin rejects invalid browser policy: '.$invalidPolicy->getStatusCode());
@@ -509,11 +556,11 @@ try {
     $assert($saved['browser_policy_wechat']==='prompt' && $saved['browser_policy_qq']==='allow' && $saved['browser_policy_weibo']==='guide','Admin API persists separate browser policy choices');
     $assert(($saved['passkey_enable']??0)==1,'Administrator can persist Passkey switch');
     $assert(!array_key_exists('recaptcha_enable',$saved) && !array_key_exists('recaptcha_key',$saved) && !array_key_exists('frontend_theme_google_analytics',$saved),'Saving settings removes legacy CAPTCHA and Google Analytics configuration');
-    config(['v2board.app_url'=>$siteUrl]);
-    $assert(config('v2board.password_limit_enable', 1) === ($originalConfig['password_limit_enable'] ?? 1), 'Partial settings update changed an unrelated switch');
-    config(['v2board.custom_footer_html' => $footer]);
+    config(['fastai.app_url'=>$siteUrl]);
+    $assert(config('fastai.password_limit_enable', 1) === ($originalConfig['password_limit_enable'] ?? 1), 'Partial settings update changed an unrelated switch');
+    config(['fastai.custom_footer_html' => $footer]);
     $assert(strpos($call('/app')->getContent(), $footer) !== false, 'Footer was not rendered in user shell');
-    $assert(strpos($call('/')->getContent(), '<title>' . e(config('v2board.app_name', 'V2Board')) . '</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
+    $assert(strpos($call('/')->getContent(), '<title>' . e(App\Support\Branding::name(config('fastai.app_name'))) . '</title>') !== false && strpos($call('/')->getContent(), $footer) === false, 'Public landing metadata or footer isolation failed');
     $assert(strpos($call('/' . $securePath)->getContent(), $footer) === false, 'User footer leaked into admin shell');
     $assert(Illuminate\Support\Facades\Artisan::call('console:verify')===0, 'Production console assets or Laravel rendering failed');
     echo "Console smoke tests: {$checks} checks passed\n";
@@ -523,7 +570,7 @@ try {
     if ($auth) $auth->removeAllSession();
     Illuminate\Support\Facades\DB::rollBack();
     file_put_contents($configPath, $originalFile);
-    config(['v2board' => $originalConfig]);
+    config(['fastai' => $originalConfig]);
     Illuminate\Support\Facades\Artisan::call('config:cache');
 }
 if ($failure) { fwrite(STDERR, $failure->getMessage() . "\n"); exit(1); }

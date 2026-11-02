@@ -64,15 +64,17 @@ export interface Boot {
 }
 declare global {
     interface Window {
-        V2BOARD: Boot;
+        FASTAI: Boot;
+        /** Compatibility input for an older server-rendered bootstrap. */
+        V2BOARD?: Boot;
     }
 }
-export const boot = window.V2BOARD;
+export const boot = window.FASTAI;
 configureTimeZone(
     boot.systemTimeZone || "Asia/Shanghai",
     boot.mode === "admin",
 );
-export const storageKey = `v2board.${boot.mode}${boot.apiBaseUrl ? "." + encodeURIComponent(boot.apiBaseUrl) : ""}.auth`;
+export const storageKey = `fastai.${boot.mode}${boot.apiBaseUrl ? "." + encodeURIComponent(boot.apiBaseUrl) : ""}.auth`;
 export const admin = (path: string) => `${boot.adminPath}/${path}`;
 export const ops = (path: string) => `${boot.opsPath}/${path}`;
 const readCache = createReadCache();
@@ -94,7 +96,7 @@ export function readRequest<T = Row>(
     if (boot.mode !== "user" || body || !cacheable.has(path))
         return request<T>(path, body);
     return readCache.read(
-        `${browserSessionKey()}\0${localPreferences.getItem(`v2board.${boot.mode}.sessionRevision`) || ""}\0${locale()}\0${path}`,
+        `${browserSessionKey()}\0${localPreferences.revision(`fastai.${boot.mode}.sessionRevision`) || ""}\0${locale()}\0${path}`,
         () => request<T>(path),
         fresh,
     );
@@ -150,12 +152,12 @@ export async function request<T = Row>(
     const token = hasBrowserSession();
     const requestMode = boot.mode;
     const identity = browserSessionKey();
-    const sessionRevision = localPreferences.getItem(`v2board.${requestMode}.sessionRevision`);
+    const sessionRevision = localPreferences.revision(`fastai.${requestMode}.sessionRevision`);
     const settingsGeneration = accountSettingsGeneration;
     const accountRead = path.split("?")[0] === "user/info" ? ++accountReadSequence : 0;
     const sameSession = () => boot.mode === requestMode && browserSessionKey() === identity &&
         hasBrowserSession() === token &&
-        localPreferences.getItem(`v2board.${requestMode}.sessionRevision`) === sessionRevision;
+        localPreferences.revision(`fastai.${requestMode}.sessionRevision`) === sessionRevision;
     const controller = new AbortController();
     let timedOut = false;
     const abort = () => controller.abort();

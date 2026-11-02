@@ -44,9 +44,9 @@ final class RequestPerformance
             else return;
         }
         if (str_contains($label,'system/observability')) return;
-        $admin=config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+        $admin=config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
         $label=str_replace('api/v1/'.$admin.'/','admin/',$label);
-        $label=str_replace('api/v1/'.config('v2board.ops_api_path','ops').'/','ops/',$label);
+        $label=str_replace('api/v1/'.config('fastai.ops_api_path','ops').'/','ops/',$label);
         $method=in_array($request->method(),['GET','POST','PATCH','PUT','DELETE','HEAD','OPTIONS'],true) ? $request->method() : 'OTHER';
         $this->record($method.' '.substr($label,0,180),$status,(microtime(true)-$this->started)*1000,$this->queries,$this->settings['slow_request_ms']);
     }

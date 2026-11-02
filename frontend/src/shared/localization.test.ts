@@ -24,7 +24,7 @@ vi.stubGlobal("sessionStorage", {
     setItem: (k: string, v: string) => pending.set(k, v),
     removeItem: (k: string) => pending.delete(k),
 });
-vi.stubGlobal("window", { V2BOARD: { mode: "user" } });
+vi.stubGlobal("window", { FASTAI: { mode: "user" } });
 vi.stubGlobal("document", { documentElement: { lang: "", dir: "" } });
 vi.stubGlobal("navigator", { language: "zh-Hant-HK" });
 vi.stubGlobal("localStorage", {

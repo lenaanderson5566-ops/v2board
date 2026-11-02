@@ -35,8 +35,19 @@ $serializedHeader=$validHeader->toString();
 $assert(str_contains($serializedHeader, 'Content-Disposition: attachment') && str_contains($serializedHeader, 'filename="audit report.txt"') && str_contains($serializedHeader, 'x-note="safe; value"'), 'Valid MIME parameter names and encoded values must remain supported');
 DB::beginTransaction();
 try {
-    config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null,'v2board.email_public_url'=>'https://api.example.test','v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_password_encrypted'=>false]);
+    config(['fastai.app_name'=>'V2Board','fastai.app_url'=>'https://product.example', 'fastai.email_provider'=>'smtp', 'fastai.email_host'=>null,'fastai.email_public_url'=>'https://api.example.test','fastai.email_announcement_separate'=>0,'fastai.email_announcements_enabled'=>1,'fastai.email_password_encrypted'=>false]);
     $renderer = new ProductMail;
+    foreach (['FastAI', 'V2Board', 'v2boad', ' V2BOARD ', ''] as $defaultBrand) {
+        config(['fastai.app_name'=>$defaultBrand]);
+        $brandData=$renderer->data(['template_name'=>'verify', 'language'=>'en-US', 'template_value'=>['code'=>'123456']]);
+        $assert($brandData['brand']==='FastAI' && str_starts_with($brandData['subject'], 'FastAI'), 'Current and legacy default mail brands must render as FastAI');
+    }
+    foreach (['Example Services', 'V2Board Community'] as $customBrand) {
+        config(['fastai.app_name'=>$customBrand]);
+        $brandData=$renderer->data(['template_name'=>'verify', 'language'=>'en-US', 'template_value'=>['code'=>'123456']]);
+        $assert($brandData['brand']===$customBrand, 'Renaming the product must preserve a deliberately configured custom mail brand');
+    }
+    config(['fastai.app_name'=>'V2Board']); // Existing installations may retain the old default in their private settings.
     $multiline = "First & second\r\nNext line\r\n\r\nLast line";
     $lineHtml = $renderer->safeHtml($multiline);
     $assert($lineHtml === 'First &amp; second<br>Next line<br><br>Last line', 'Plain mail newlines and blank paragraphs were collapsed');
@@ -102,7 +113,7 @@ try {
     $assert(validator(['purpose'=>'other','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y'],$config->rules())->fails(),'Unknown campaign purpose accepted');
     config(['mail.host'=>'isolated-'.bin2hex(random_bytes(8)), 'mail.username'=>'test','mail.from.address'=>'test@example.com']);
     $limiter=new MailRateLimiter;
-    $scope='mail-rate:'.hash('sha256',config('v2board.email_provider', 'smtp').'|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|test|test@example.com');
+    $scope='mail-rate:'.hash('sha256',config('fastai.email_provider', 'smtp').'|'.config('fastai.email_mailgun_domain').'|'.config('mail.host').'|test|test@example.com');
     $redis=Cache::store('redis');
     $assert($limiter->domain('a@qq.com')===$limiter->domain('b@foxmail.com'),'QQ grouping failed');
     $assert($limiter->domain('a@163.com')===$limiter->domain('b@126.com'),'NetEase grouping failed');
@@ -161,11 +172,11 @@ try {
     $before=$transport->sent;
     $invalid=(new SendEmailJob($unsafe))->handle();
     $assert(!empty($invalid['error']) && $invalid['permanent'] && $transport->sent===$before, 'Legacy queued unsafe address reached transport');
-    config(['v2board.email_host'=>'smtp.example.test', 'v2board.email_port'=>465, 'v2board.email_encryption'=>'ssl',
-        'v2board.email_username'=>'test-user', 'v2board.email_password'=>'test-password', 'v2board.email_from_address'=>'sender@example.test']);
+    config(['fastai.email_host'=>'smtp.example.test', 'fastai.email_port'=>465, 'fastai.email_encryption'=>'ssl',
+        'fastai.email_username'=>'test-user', 'fastai.email_password'=>'test-password', 'fastai.email_from_address'=>'sender@example.test']);
     (new SendEmailJob($base))->handle();
     $assert(config('mail.host')==='smtp.example.test' && config('mail.scheme')==='smtps' && config('mail.timeout')===15, 'Persisted SMTP settings not applied');
-    config(['v2board.email_host'=>null]);
+    config(['fastai.email_host'=>null]);
     $otp=['email'=>$user->email,'language'=>'ko-KR','template_name'=>'verify','template_value'=>['code'=>'123456']];
     $otpJob=new SendEmailJob($otp);
     $assert($otpJob->connection==='redis' && $otpJob->queue==='send_email_priority' && $otpJob->backoff()[0]===5, 'Verification lacks priority queue / fast retry');
@@ -205,7 +216,7 @@ try {
     $preview=(new App\Http\Controllers\V1\Admin\ConfigController)->previewMail(Illuminate\Http\Request::create('/', 'POST',['template'=>'verify','language'=>'fa-IR']));
     $assert($preview->getStatusCode()===200 && $before===$transport->sent,'Preview sends email');
     $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
-    $route=config('v2board.secure_path',config('v2board.frontend_admin_path','admin'));
+    $route=config('fastai.secure_path',config('fastai.frontend_admin_path','admin'));
     $request=Illuminate\Http\Request::create('/api/v1/'.$route.'/config/previewMail','POST',['template'=>'verify','language'=>'en-US']); $request->headers->set('Accept','application/json');
     $assert($kernel->handle($request)->getStatusCode()!==200,'Anonymous preview allowed');
 
@@ -219,7 +230,7 @@ try {
         $realQueue->setContainer($app);$realQueue->setConnectionName('redis');
         $savedBus=Illuminate\Support\Facades\Bus::getFacadeRoot();
         $queueBus=new Illuminate\Bus\Dispatcher($app,fn($connection)=>$realQueue);
-        $settingsPath=base_path('config/v2board.php');
+        $settingsPath=base_path('config/fastai.php');
         $savedSettings=is_file($settingsPath)?file_get_contents($settingsPath):null;
         $worker=new Illuminate\Queue\Worker(app('queue'),app('events'),app(Illuminate\Contracts\Debug\ExceptionHandler::class),fn()=>false);
         $options=new Illuminate\Queue\WorkerOptions;
@@ -231,7 +242,7 @@ try {
         };
         Mail::swap($timedTransport);
         app()->instance(MailRateLimiter::class,new MailRateLimiter);
-        config(['v2board.email_provider'=>'smtp','v2board.email_host'=>null,'v2board.email_announcement_separate'=>0,'v2board.email_send_interval'=>2,'v2board.email_bulk_interval'=>3,'v2board.email_domain_interval'=>5,'v2board.email_from_address'=>"queue-$token@example.test",'mail.from.address'=>"queue-$token@example.test",'mail.username'=>$token]);
+        config(['fastai.email_provider'=>'smtp','fastai.email_host'=>null,'fastai.email_announcement_separate'=>0,'fastai.email_send_interval'=>2,'fastai.email_bulk_interval'=>3,'fastai.email_domain_interval'=>5,'fastai.email_from_address'=>"queue-$token@example.test",'mail.from.address'=>"queue-$token@example.test",'mail.username'=>$token]);
         Illuminate\Support\Facades\Bus::swap($queueBus);
         try {
             file_put_contents($settingsPath,"<?php return ['email_send_interval'=>2,'email_bulk_interval'=>3,'email_domain_interval'=>5];");
@@ -255,7 +266,7 @@ try {
             if($savedSettings===null) unlink($settingsPath);else file_put_contents($settingsPath,$savedSettings);
             if(function_exists('opcache_invalidate')) opcache_invalidate($settingsPath,true);
             $realQueue->clear('send_email_mass'); // This Redis manager has a unique test-only prefix.
-            $rateScope='mail-rate:'.hash('sha256','smtp|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|'.$token.'|'."queue-$token@example.test");
+            $rateScope='mail-rate:'.hash('sha256','smtp|'.config('fastai.email_mailgun_domain').'|'.config('mail.host').'|'.$token.'|'."queue-$token@example.test");
             foreach([':all',':bulk',':lock',':'.hash('sha256','example.test').':bulk'] as $suffix) Cache::store('redis')->forget($rateScope.$suffix);
         }
     }

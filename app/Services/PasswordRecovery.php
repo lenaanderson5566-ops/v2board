@@ -74,9 +74,9 @@ final class PasswordRecovery
             try {
                 return app(\Illuminate\Contracts\Bus\Dispatcher::class)->dispatch(new SendEmailJob([
                     'email'=>$user->email, 'user_id'=>(int)$user->id, 'recovery_user_id'=>(int)$user->id,
-                    'subject'=>config('v2board.app_name', 'V2Board').__('Email verification code'),
+                    'subject'=>\App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))).__('Email verification code'),
                     'template_name'=>'verify', 'language'=>app()->getLocale(), 'expires_at'=>$expiresAt,
-                    'template_value'=>['name'=>config('v2board.app_name', 'V2Board'), 'code'=>$code, 'url'=>config('v2board.app_url')],
+                    'template_value'=>['name'=>\App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))), 'code'=>$code, 'url'=>config('fastai.app_url')],
                 ]));
             } catch (\Throwable $error) {
                 Cache::forget($key);

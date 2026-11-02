@@ -1,5 +1,11 @@
 import type { Boot } from "./api";
 import startupCopy from "./startup-copy.json";
+import { localPreferences } from "./browser-storage";
+
+/** Only the runtime input adapter reads the retired bootstrap name. */
+export function runtimeBoot(): Boot | undefined {
+    return window.FASTAI ?? window.V2BOARD;
+}
 
 export function normalizeApiOrigin(value: string): string {
     if (!value) return "";
@@ -19,7 +25,7 @@ export function normalizeApiOrigin(value: string): string {
 
 export function apiUrl(
     path: string,
-    origin: string = window.V2BOARD?.apiBaseUrl || "",
+    origin: string = runtimeBoot()?.apiBaseUrl || "",
 ): string {
     if (!path.startsWith("/api/") || path.startsWith("//"))
         throw new Error("Invalid API resource path");
@@ -27,7 +33,7 @@ export function apiUrl(
 }
 
 export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
-    let supplied: Partial<Boot> = window.V2BOARD;
+    let supplied: Partial<Boot> | undefined = runtimeBoot();
     if (!supplied) {
         const configUrl =
             import.meta.env.VITE_CONFIG_URL ||
@@ -59,8 +65,7 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
         (!supplied.adminPath || !/^[a-zA-Z0-9_-]+$/.test(supplied.adminPath))
     )
         throw new Error("Configure the administrative API path");
-    window.V2BOARD = {
-        title: "FastDog",
+    window.FASTAI = {
         description: "",
         adminPath: "",
         opsPath: "",
@@ -71,6 +76,8 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
         currency: "CNY",
         currencySymbol: "CNY",
         ...supplied,
+        title: typeof supplied.title === "string" && supplied.title.trim() && !/^(?:v2board|v2boad)$/i.test(supplied.title.trim())
+            ? supplied.title.trim() : "FastAI",
         mode,
         apiBaseUrl,
         landing:
@@ -79,19 +86,19 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
                 !location.pathname.replace(/\/$/, "").endsWith("/app")),
     };
     if (mode === "user") {
-        window.V2BOARD.adminPath = "";
-        window.V2BOARD.opsPath = "";
+        window.FASTAI.adminPath = "";
+        window.FASTAI.opsPath = "";
     }
     document.body.dataset.console = mode;
-    document.title = window.V2BOARD.title;
+    document.title = window.FASTAI.title;
 }
 
 // Startup recovery must work even when React, i18n or a language chunk failed to load.
 export function startupError(_error: unknown, retry = () => window.location.reload()): void {
     const root = document.getElementById("root");
     if (root) {
-        let language = window.V2BOARD?.mode === "admin" ? "zh-CN" : navigator.language;
-        try { language = localStorage.getItem("v2board.language") || language; } catch { /* Use browser language when storage is unavailable. */ }
+        let language = runtimeBoot()?.mode === "admin" ? "zh-CN" : navigator.language;
+        language = localPreferences.getItem("fastai.language") || language;
         const key = /^zh/i.test(language)
             ? /TW|HK|MO|Hant/i.test(language) ? "zh-TW" : "zh-CN"
             : language.toLowerCase().split("-")[0];

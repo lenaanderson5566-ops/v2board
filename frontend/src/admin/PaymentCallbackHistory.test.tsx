@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
-vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any; });
+vi.hoisted(() => { window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any; });
 import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
 afterEach(cleanup);
 it("labels unassociated channel events separately and links request IDs", () => {

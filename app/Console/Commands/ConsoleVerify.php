@@ -30,12 +30,12 @@ class ConsoleVerify extends Command
                     if (!isset($manifest[$key])) throw new \RuntimeException('Unresolved Vite import: ' . $key);
                 }
             }
-            $host = $this->option('host') ?: parse_url(config('v2board.app_url', ''), PHP_URL_HOST) ?: 'localhost';
+            $host = $this->option('host') ?: parse_url(config('fastai.app_url', ''), PHP_URL_HOST) ?: 'localhost';
             if (!preg_match('/^[a-zA-Z0-9.-]+$/', $host)) throw new \RuntimeException('Provide a hostname without scheme, path or port.');
-            if (config('v2board.safe_mode_enable', 0) && config('v2board.app_url') && !parse_url(config('v2board.app_url'), PHP_URL_HOST)) {
+            if (config('fastai.safe_mode_enable', 0) && config('fastai.app_url') && !parse_url(config('fastai.app_url'), PHP_URL_HOST)) {
                 throw new \RuntimeException('Safe mode app_url must be a full URL including https://.');
             }
-            $admin = config('v2board.secure_path', config('v2board.frontend_admin_path', hash('crc32b', config('app.key'))));
+            $admin = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
             foreach (['/' => 'user', '/app' => 'user', '/' . $admin => 'admin'] as $path => $mode) {
                 $request = Request::create('https://' . $host . $path, 'GET');
                 app()->instance('request', $request);
@@ -43,7 +43,7 @@ class ConsoleVerify extends Command
                 $route = Route::getRoutes()->match($request);
                 $result = $route->run();
                 $html = $result instanceof \Illuminate\Contracts\View\View ? $result->render() : response($result)->getContent();
-                if (strpos($html, 'window.V2BOARD') === false || strpos($html, '/console/' . $manifest[$mode === 'admin' ? 'admin.html' : 'index.html']['file']) === false || strpos($html, 'data-console="' . $mode . '"') === false) {
+                if (strpos($html, 'window.FASTAI') === false || strpos($html, '/console/' . $manifest[$mode === 'admin' ? 'admin.html' : 'index.html']['file']) === false || strpos($html, 'data-console="' . $mode . '"') === false) {
                     throw new \RuntimeException('Old or incorrect page at ' . $path . '; check deployed routes and route/view caches.');
                 }
                 $this->info('Verified ' . $path . ' (' . $mode . ')');

@@ -9,7 +9,7 @@ class RiskRoute
     public function map(Registrar $router)
     {
         $router->group([
-            'prefix' => config('v2board.ops_api_path', 'ops'),
+            'prefix' => config('fastai.ops_api_path', 'ops'),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
             $router->get('/risk/summary/fetch', 'V1\Risk\LogController@getSummary');

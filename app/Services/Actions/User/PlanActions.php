@@ -33,7 +33,7 @@ class PlanActions
     public function fetch(Request $request)
     {
         $user = User::find($request->user['id']);
-        $renewalOnly = !(int) config('v2board.plan_change_enable', 1)
+        $renewalOnly = !(int) config('fastai.plan_change_enable', 1)
             && $user->transfer_enable > 0 && $user->plan_id !== null
             && ($user->expired_at === null || $user->expired_at > time());
         if ($request->input('id')) {

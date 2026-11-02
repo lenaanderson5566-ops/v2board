@@ -74,7 +74,7 @@ it.each(Object.entries(catalogs))(
         const code = path.split("/").pop()!.replace(".json", "");
         document.documentElement.lang = "zh-CN";
         document.documentElement.dir = "ltr";
-        localStorage.setItem("v2board.language", "ja-JP");
+        localStorage.setItem("fastai.language", "ja-JP");
         render(
             <AdminBrowserPreview
                 values={{ browser_policy_wechat: "prompt" }}
@@ -95,7 +95,7 @@ it.each(Object.entries(catalogs))(
         expect(card.dir).toBe(code === "fa-IR" ? "rtl" : "ltr");
         expect(document.documentElement.lang).toBe("zh-CN");
         expect(document.documentElement.dir).toBe("ltr");
-        expect(localStorage.getItem("v2board.language")).toBe("ja-JP");
+        expect(localStorage.getItem("fastai.language")).toBe("ja-JP");
         fireEvent.click(screen.getByText(catalog.experience.copyAddress));
         await screen.findByText(catalog.experience.browserPreviewCopied);
         expect(screen.queryByText(catalog.translation["已复制"])).toBeNull();

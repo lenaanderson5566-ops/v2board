@@ -15,7 +15,7 @@ final class BrowserOrigins
     public function allows($request, ?string $origin): bool
     {
         if (!$origin || $origin === 'null') return false;
-        $own = self::canonical((string)config('v2board.app_url'));
+        $own = self::canonical((string)config('fastai.app_url'));
         $configured = config('cors.allowed_origins', []);
         $allowed = array_filter(array_merge([$own],$configured),fn($value)=>$value && $value!=='*');
         if (app()->environment('local')) $allowed[]=$request->getSchemeAndHttpHost();

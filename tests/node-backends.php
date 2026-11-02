@@ -9,12 +9,12 @@ $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn)use($assert){try{$fn();throw new RuntimeException('Retired type accepted');}catch(Illuminate\Validation\ValidationException $e){$assert(true,'Retired type rejected');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===422,'Retired type rejected');}};
 $legacy=['v2node','vmess','vless','shadowsocks','trojan','hysteria','tuic','anytls','v2ray','hysteria2'];
-config(['v2board.server_token'=>'local-node-retirement-test']);
+config(['fastai.server_token'=>'local-node-retirement-test']);
 $svc=new ServerService();
 foreach($legacy as $type){
     $assert($svc->getServer(1,$type)===null,'Legacy lookup removed '.$type);
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>$type])));
-    $reject(fn()=>(new App\Http\Controllers\V1\Server\UniProxyController())->user(Request::create('/','GET',['token'=>config('v2board.server_token'),'node_type'=>$type,'node_id'=>1])));
+    $reject(fn()=>(new App\Http\Controllers\V1\Server\UniProxyController())->user(Request::create('/','GET',['token'=>config('fastai.server_token'),'node_type'=>$type,'node_id'=>1])));
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\Server\ManageController())->sort(Request::create('/','POST',[$type=>[1=>1]])));
 }
 $routes=app('router')->getRoutes();

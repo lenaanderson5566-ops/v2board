@@ -79,7 +79,7 @@ class CheckCommission extends Command
         // no sale or payment. Pending/approved rows must never become payable.
         $this->internalTransfers()->whereIn('commission_status', [0, 1])
             ->update(['commission_status'=>3]);
-        if ((int)config('v2board.commission_auto_check_enable', 1)) {
+        if ((int)config('fastai.commission_auto_check_enable', 1)) {
             Order::where('commission_status', 0)
                 ->where('invite_user_id', '!=', NULL)
                 ->whereIn('status', [3, 4])
@@ -120,11 +120,11 @@ class CheckCommission extends Command
     {
         if ($this->rejectInternalTransfer($order)) return true;
         $level = 3;
-        if ((int)config('v2board.commission_distribution_enable', 0)) {
+        if ((int)config('fastai.commission_distribution_enable', 0)) {
             $commissionShareLevels = [
-                0 => (int)config('v2board.commission_distribution_l1'),
-                1 => (int)config('v2board.commission_distribution_l2'),
-                2 => (int)config('v2board.commission_distribution_l3')
+                0 => (int)config('fastai.commission_distribution_l1'),
+                1 => (int)config('fastai.commission_distribution_l2'),
+                2 => (int)config('fastai.commission_distribution_l3')
             ];
         } else {
             $commissionShareLevels = [
@@ -138,7 +138,7 @@ class CheckCommission extends Command
             $sourceCommission = (int)floor($order->commission_balance * ($commissionShareLevels[$l] / 100));
             $commissionBalance = \App\Services\ExchangeRate::convert($sourceCommission, $order->currency ?: 'CNY', $inviter->currency ?: 'CNY', $order->fx_snapshot ?? []);
             if (!$commissionBalance) continue;
-            if ((int)config('v2board.withdraw_close_enable', 0)) {
+            if ((int)config('fastai.withdraw_close_enable', 0)) {
                 $inviter->balance = $inviter->balance + $commissionBalance;
             } else {
                 $inviter->commission_balance = $inviter->commission_balance + $commissionBalance;

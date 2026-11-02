@@ -25,7 +25,7 @@ class KnowledgeActions
                 $this->formatAccessData($knowledge['body']);
             }
             $subscribeUrl = Helper::getSubscribeUrl($user['token']);
-            $knowledge['body'] = str_replace('{{siteName}}', config('v2board.app_name', 'V2Board'), $knowledge['body']);
+            $knowledge['body'] = str_replace('{{siteName}}', \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))), $knowledge['body']);
             $knowledge['body'] = str_replace('{{subscribeUrl}}', $subscribeUrl, $knowledge['body']);
             $knowledge['body'] = str_replace('{{urlEncodeSubscribeUrl}}', urlencode($subscribeUrl), $knowledge['body']);
             $knowledge['body'] = str_replace(
@@ -79,7 +79,7 @@ class KnowledgeActions
         while (strpos($body, '<!--access start-->') !== false) {
             $accessData = $this->getBetween($body, '<!--access start-->', '<!--access end-->');
             if ($accessData) {
-                $body = str_replace($accessData, '<div class="v2board-no-access">'. __('You must have a valid subscription to view content in this area') .'</div>', $body);
+            $body = str_replace($accessData, '<div class="fastai-no-access">'. __('You must have a valid subscription to view content in this area') .'</div>', $body);
             }
         }
     }

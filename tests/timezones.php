@@ -13,6 +13,8 @@ foreach (['Asia/Shanghai','UTC','Asia/Kathmandu','America/New_York','Australia/A
     $check(RunDailyTask::due('reset:traffic',new DateTimeImmutable('2026-11-01 00:00:00')), 'Midnight skipped');
     $check(!RunDailyTask::due('v2board:statistics',new DateTimeImmutable('2026-11-01 00:09:59')), 'Statistics early');
     $check(RunDailyTask::due('v2board:statistics',new DateTimeImmutable('2026-11-01 00:12:00')), 'Delayed schedule skipped');
+    $check(!RunDailyTask::due('fastai:statistics',new DateTimeImmutable('2026-11-01 00:09:59'))
+        && RunDailyTask::due('fastai:statistics',new DateTimeImmutable('2026-11-01 00:12:00')), 'Canonical statistics command must retain the same daily due time');
 }
 date_default_timezone_set('America/New_York');
 foreach (['2026-03-08','2026-11-01'] as $day) {
@@ -44,7 +46,7 @@ $insert->execute(['reset:traffic','2026-11-02','Asia/Shanghai']);
 $check($insert->rowCount()===1,'Next date blocked');
 $originalContainer = Illuminate\Container\Container::getInstance();
 $container = new Illuminate\Container\Container;
-$configuration = new Illuminate\Config\Repository(['v2board'=>['system_timezone'=>'America/New_York']]);
+$configuration = new Illuminate\Config\Repository(['fastai'=>['system_timezone'=>'America/New_York']]);
 $container->instance('config', $configuration);
 Illuminate\Container\Container::setInstance($container);
 try {
@@ -53,9 +55,9 @@ try {
         $check(App\Services\TimeZones::iso8601(strtotime('2026-11-01T05:30:37Z')) === '2026-11-01T01:30:37-04:00', 'Export lost the first DST instant');
         $check(App\Services\TimeZones::iso8601(strtotime('2026-11-01T06:30:37Z')) === '2026-11-01T01:30:37-05:00', 'Export lost the second DST instant');
     }
-    $configuration->set('v2board.system_timezone', 'Asia/Kathmandu');
+    $configuration->set('fastai.system_timezone', 'Asia/Kathmandu');
     $check(App\Services\TimeZones::iso8601(strtotime('2026-10-19T00:00:37Z')) === '2026-10-19T05:45:37+05:45', 'Export lost a fractional-hour offset');
-    $configuration->set('v2board.system_timezone', 'UTC');
+    $configuration->set('fastai.system_timezone', 'UTC');
     $check(App\Services\TimeZones::iso8601(0) === '1970-01-01T00:00:00+00:00', 'Epoch is a valid explicit instant');
     $check(App\Services\TimeZones::iso8601(null) === null, 'Missing export time must stay empty');
 } finally {

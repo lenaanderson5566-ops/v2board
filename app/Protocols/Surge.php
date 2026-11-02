@@ -20,7 +20,7 @@ class Surge
         $servers = $this->servers;
         $user = $this->user;
 
-        $appName = config('v2board.app_name', 'V2Board');
+        $appName = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')));
         header("content-disposition:attachment;filename*=UTF-8''".rawurlencode($appName).".conf");
 
         $proxies = '';

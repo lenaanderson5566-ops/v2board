@@ -33,21 +33,21 @@ class CommActions
         }
         $email_exists = User::where('email', $email)->exists();
         //检查是否在白名单内
-        if (!$isforget && (int)config('v2board.email_whitelist_enable', 0)) {
+        if (!$isforget && (int)config('fastai.email_whitelist_enable', 0)) {
             if (!Helper::emailSuffixVerify(
                 $request->input('email'),
-                config('v2board.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))
+                config('fastai.email_whitelist_suffix', Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))
             ) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Email suffix is not in the Whitelist'));
             }
         }
         if (!$isforget) {
-            if (config('v2board.stop_register', 0)) abort(422, __('Registration has closed'));
-            if (config('v2board.invite_force', 0) && !$request->filled('invitation')) abort(422, __('An email invitation is required to register.'));
+            if (config('fastai.stop_register', 0)) abort(422, __('Registration has closed'));
+            if (config('fastai.invite_force', 0) && !$request->filled('invitation')) abort(422, __('An email invitation is required to register.'));
             if ($request->filled('invitation')) (new \App\Services\EmailInvitationService())->validateRecipient((string)$request->input('invitation'), $email);
         }
         // 检查是否是gmail别名邮箱
-        if (!$isforget && (int)config('v2board.email_gmail_limit_enable', 0)) {
+        if (!$isforget && (int)config('fastai.email_gmail_limit_enable', 0)) {
             $prefix = explode('@', $request->input('email'))[0];
             if (strpos($prefix, '.') !== false || strpos($prefix, '+') !== false) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
@@ -58,7 +58,7 @@ class CommActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('Email verification code has been sent, please request again later'));
         }
         $code = (string)random_int(100000, 999999);
-        $subject = config('v2board.app_name', 'V2Board') . __('Email verification code');
+        $subject = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))) . __('Email verification code');
 
         Cache::put(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail), $code, 300);
         Cache::put(CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP', $cacheKeyEmail), time(), 60);
@@ -70,9 +70,9 @@ class CommActions
             'language' => app()->getLocale(),
             'expires_at' => time() + 300,
             'template_value' => [
-                'name' => config('v2board.app_name', 'V2Board'),
+                'name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))),
                 'code' => $code,
-                'url' => config('v2board.app_url')
+                'url' => config('fastai.app_url')
             ]
         ]));
 

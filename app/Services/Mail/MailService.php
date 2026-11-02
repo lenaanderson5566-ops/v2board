@@ -18,12 +18,12 @@ class MailService
         SendEmailJob::dispatch([
             'email' => $user->email,
             'subject' => __('The traffic usage in :app_name has reached 95%', [
-                'app_name' => config('v2board.app_name', 'V2board')
+                'app_name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')))
             ]),
             'template_name' => 'remindTraffic',
             'template_value' => [
-                'name' => config('v2board.app_name', 'V2Board'),
-                'url' => config('v2board.app_url')
+                'name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))),
+                'url' => config('fastai.app_url')
             ]
         ], 'send_email_mass');
     }
@@ -35,12 +35,12 @@ class MailService
         SendEmailJob::dispatch([
             'email' => $user->email,
             'subject' => __('The service in :app_name is about to expire', [
-               'app_name' =>  config('v2board.app_name', 'V2board')
+               'app_name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')))
             ]),
             'template_name' => 'remindExpire',
             'template_value' => [
-                'name' => config('v2board.app_name', 'V2Board'),
-                'url' => config('v2board.app_url')
+                'name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))),
+                'url' => config('fastai.app_url')
             ]
         ], 'send_email_mass');
     }

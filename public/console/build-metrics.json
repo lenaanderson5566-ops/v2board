@@ -3,34 +3,34 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 143767,
-      "startupBytes": 473778,
+      "startupGzipBytes": 144272,
+      "startupBytes": 474887,
       "startupFileCount": 16,
       "largestStartupAssets": [
         {
-          "file": "assets/render-app-CCuCrLob.js",
+          "file": "assets/render-app-DcLSd4x8.js",
           "bytes": 210023,
-          "gzipBytes": 65536
+          "gzipBytes": 65538
         },
         {
-          "file": "assets/createLucideIcon-r1rqd6_a.js",
-          "bytes": 208338,
-          "gzipBytes": 55054
+          "file": "assets/createLucideIcon-kwse-WW_.js",
+          "bytes": 207910,
+          "gzipBytes": 54888
         },
         {
-          "file": "assets/app-B-YedyUS.js",
-          "bytes": 12448,
-          "gzipBytes": 5185
+          "file": "assets/app-CYashiMf.js",
+          "bytes": 12566,
+          "gzipBytes": 5264
         },
         {
-          "file": "assets/runtime-config-CRfRjY9P.js",
-          "bytes": 7697,
-          "gzipBytes": 3521
+          "file": "assets/runtime-config-D0CtBqgj.js",
+          "bytes": 9111,
+          "gzipBytes": 4095
         },
         {
-          "file": "assets/browser-access-WPGJPZ0C.js",
-          "bytes": 8171,
-          "gzipBytes": 3398
+          "file": "assets/browser-access-Ce_8Roqp.js",
+          "bytes": 8176,
+          "gzipBytes": 3403
         }
       ],
       "budget": 163840,
@@ -38,76 +38,76 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 143767,
-          "bytes": 473778,
+          "gzipBytes": 144272,
+          "bytes": 474887,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 209090,
-          "bytes": 774099,
+          "gzipBytes": 209587,
+          "bytes": 775199,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 222102,
-          "bytes": 816883,
+          "gzipBytes": 222606,
+          "bytes": 817983,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 212375,
-          "bytes": 741051,
+          "gzipBytes": 212870,
+          "bytes": 742151,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 225387,
-          "bytes": 783835,
+          "gzipBytes": 225889,
+          "bytes": 784935,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3498680,
+      "totalBytes": 3499736,
       "fileCount": 343
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 380412,
-      "startupBytes": 1290627,
+      "startupGzipBytes": 380854,
+      "startupBytes": 1291603,
       "startupFileCount": 31,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-BP9gE8ge.js",
-          "bytes": 519178,
-          "gzipBytes": 146815
+          "file": "assets/AdminApp-B9Qe37ln.js",
+          "bytes": 519164,
+          "gzipBytes": 146800
         },
         {
-          "file": "assets/render-app-CCuCrLob.js",
+          "file": "assets/render-app-DcLSd4x8.js",
           "bytes": 210023,
-          "gzipBytes": 65536
+          "gzipBytes": 65538
         },
         {
-          "file": "assets/createLucideIcon-r1rqd6_a.js",
-          "bytes": 208338,
-          "gzipBytes": 55054
+          "file": "assets/createLucideIcon-kwse-WW_.js",
+          "bytes": 207910,
+          "gzipBytes": 54888
         },
         {
-          "file": "assets/admin-status-SVbiD6QC.js",
-          "bytes": 117505,
-          "gzipBytes": 47822
+          "file": "assets/admin-status-Cgik_gXW.js",
+          "bytes": 117518,
+          "gzipBytes": 47842
         },
         {
-          "file": "assets/AdminApp-DQRyGCuQ.css",
-          "bytes": 100649,
-          "gzipBytes": 16350
+          "file": "assets/AdminApp-Bv2qvgur.css",
+          "bytes": 100647,
+          "gzipBytes": 16351
         }
       ],
       "budget": 460800,
-      "totalBytes": 5013823,
+      "totalBytes": 5014769,
       "fileCount": 93
     }
   ],

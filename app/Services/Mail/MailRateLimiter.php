@@ -7,17 +7,15 @@ class MailRateLimiter
 {
     public static function reloadSettings(): void
     {
-        $path=base_path('config/v2board.php');
-        if (!is_file($path)) return;
-        if (function_exists('opcache_invalidate')) @opcache_invalidate($path,true);
-        $settings=require $path;
+        $settings=\App\Support\SiteConfiguration::read();
+        if ($settings === null) return;
         foreach (['email_send_interval'=>2,'email_bulk_interval'=>10,'email_domain_interval'=>30] as $key=>$default) {
-            config(['v2board.'.$key=>max(1,min(3600,(int)($settings[$key]??$default)))]);
+            config(['fastai.'.$key=>max(1,min(3600,(int)($settings[$key]??$default)))]);
         }
     }
     private function scope()
     {
-        return 'mail-rate:' . hash('sha256', config('v2board.email_provider', 'smtp').'|'.config('v2board.email_mailgun_domain').'|'.config('mail.host').'|'.config('mail.username').'|'.config('mail.from.address'));
+        return 'mail-rate:' . hash('sha256', config('fastai.email_provider', 'smtp').'|'.config('fastai.email_mailgun_domain').'|'.config('mail.host').'|'.config('mail.username').'|'.config('mail.from.address'));
     }
     public function domain($email)
     {
@@ -42,10 +40,10 @@ class MailRateLimiter
             $wait = 0;
             foreach ($gates as $gate) $wait = max($wait, (int)$cache->get($gate, 0) - $now);
             if ($wait > 0) return $wait;
-            $cache->put($key.':all', $now + max(1, (int)config('v2board.email_send_interval', 2)), 86400);
+            $cache->put($key.':all', $now + max(1, (int)config('fastai.email_send_interval', 2)), 86400);
             if ($bulk) {
-                $cache->put($key.':bulk', $now + max(1, (int)config('v2board.email_bulk_interval', 10)), 86400);
-                $cache->put($domain.':bulk', $now + max(1, (int)config('v2board.email_domain_interval', 30)), 86400);
+                $cache->put($key.':bulk', $now + max(1, (int)config('fastai.email_bulk_interval', 10)), 86400);
+                $cache->put($domain.':bulk', $now + max(1, (int)config('fastai.email_domain_interval', 30)), 86400);
             }
             return 0;
         } finally { $lock->release(); }

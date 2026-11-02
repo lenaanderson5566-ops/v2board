@@ -42,7 +42,7 @@ final class MfaService
         $row = DB::table('v2_user_mfa')->where('user_id', $userId)->first();
         return ['emailEnabled' => (bool) ($row->email_enabled ?? false), 'totpEnabled' => (bool) ($row->totp_secret ?? false),
             'recoveryCodesRemaining' => count(json_decode($row->recovery_hashes ?? '[]', true) ?: []),
-            'enrollmentEnabled' => (bool) config('v2board.mfa_enable', 0)];
+            'enrollmentEnabled' => (bool) config('fastai.mfa_enable', 0)];
     }
 
     private function row(int $userId)
@@ -127,7 +127,7 @@ final class MfaService
             $user = User::findOrFail($record['userId']);
             SendEmailJob::dispatch(['email' => $user->email, 'subject' => __('Security verification code'),
                 'template_name' => 'verify', 'language' => $user->language ?: app()->getLocale(), 'user_id' => $user->id,
-                'mfa_challenge_key' => $key, 'expires_at' => $record['expiresAt'], 'template_value' => ['name' => config('v2board.app_name', 'FastAI'), 'code' => $code, 'url' => config('v2board.app_url')]]);
+                'mfa_challenge_key' => $key, 'expires_at' => $record['expiresAt'], 'template_value' => ['name' => \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))), 'code' => $code, 'url' => config('fastai.app_url')]]);
         });
     }
 
@@ -135,7 +135,7 @@ final class MfaService
     {
         $input = $request->validate(['purpose' => 'required|in:' . implode(',', self::PURPOSES), 'password' => 'required|string|max:128',
             'verificationCode' => 'nullable|string|max:40', 'verificationMethod' => 'nullable|in:totp,recovery']);
-        abort_if(in_array($input['purpose'], ['enableEmail', 'setupTotp'], true) && !config('v2board.mfa_enable', 0), 403, __('Security settings changed. Please refresh.'));
+        abort_if(in_array($input['purpose'], ['enableEmail', 'setupTotp'], true) && !config('fastai.mfa_enable', 0), 403, __('Security settings changed. Please refresh.'));
         $this->limit('settings:' . $user->id, 5, 300);
         abort_unless(Helper::multiPasswordVerify($user->password_algo, $user->password_salt, $input['password'], $user->password), 422, __('Incorrect email or password'));
         // Return failed factor validation outside the transaction so used recovery codes cannot roll back on a later error.
@@ -157,7 +157,7 @@ final class MfaService
             'secret' => $secret ? Crypt::encryptString($secret) : null];
         $result = $this->issue($user, $request, $record);
         if ($secret) {
-            $issuer = config('v2board.app_name', 'FastAI');
+            $issuer = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')));
             $result += ['secret' => $secret, 'otpauthUri' => 'otpauth://totp/' . rawurlencode($issuer . ':' . $user->email)
                 . '?' . http_build_query(['secret' => $secret, 'issuer' => $issuer, 'algorithm' => 'SHA1', 'digits' => 6, 'period' => 30], '', '&', PHP_QUERY_RFC3986)];
         }
@@ -187,8 +187,8 @@ final class MfaService
                 $row = $this->row($user->id);
                 abort_unless((int) $row->version === $record['version'], 409, __('Security settings changed. Please start again.'));
                 $purpose = $record['purpose'];
-                abort_if(in_array($purpose, ['enableEmail', 'setupTotp'], true) && !config('v2board.mfa_enable', 0), 403, __('Security settings changed. Please refresh.'));
-                if (!empty($record['passkeyHash'])) abort_unless(config('v2board.passkey_enable',0) && DB::table('v2_passkey')->where('credential_hash',$record['passkeyHash'])->where('user_id',$user->id)->exists(),409,__('Security challenge expired. Please start again.'));
+                abort_if(in_array($purpose, ['enableEmail', 'setupTotp'], true) && !config('fastai.mfa_enable', 0), 403, __('Security settings changed. Please refresh.'));
+                if (!empty($record['passkeyHash'])) abort_unless(config('fastai.passkey_enable',0) && DB::table('v2_passkey')->where('credential_hash',$record['passkeyHash'])->where('user_id',$user->id)->exists(),409,__('Security challenge expired. Please start again.'));
                 $email = $purpose === 'login' ? ($input['verificationCode'] ?? '') : ($input['emailCode'] ?? '');
                 $validEmail = isset($record['emailHash']) && hash_equals($record['emailHash'], hash_hmac('sha256', $email, config('app.key')));
                 if ($purpose === 'login') {

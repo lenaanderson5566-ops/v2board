@@ -14,6 +14,7 @@ import {
     BookOpen,
 } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import { localPreferences } from "../shared/browser-storage";
 import { Modal } from "../shared/ui";
 import { boot } from "../shared/api";
 import { tx, locale } from "../shared/i18n";
@@ -48,8 +49,8 @@ export function SubscriptionImport({
         let saved: string | null = null;
         try {
             saved =
-                localStorage.getItem(`v2board.import-client.${target}`) ||
-                localStorage.getItem("v2board.import-client");
+                localPreferences.getItem(`fastai.import-client.${target}`) ||
+                localPreferences.getItem("fastai.import-client");
         } catch {}
         return (
             supportedClients(target).find(
@@ -110,7 +111,7 @@ export function SubscriptionImport({
         setCopied(false);
         setError("");
         try {
-            localStorage.setItem(`v2board.import-client.${device}`, id);
+            localPreferences.setItem(`fastai.import-client.${device}`, id);
         } catch {}
     }
     const policy = boot.clientPolicies?.[selected];

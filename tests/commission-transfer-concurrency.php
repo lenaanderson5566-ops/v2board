@@ -14,7 +14,7 @@ if (($argv[1]??'')==='worker') {
     exit;
 }
 $u=User::create(['email'=>uniqid('transfer-race-').'@example.com','password'=>'test','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'balance'=>0,'commission_balance'=>1000]);
-$processes=[];$rewardUsers=[];$previousConfig=config('v2board');
+$processes=[];$rewardUsers=[];$previousConfig=config('fastai');
 try {
     DB::beginTransaction();User::whereKey($u->id)->lockForUpdate()->first();
     // Simulate a wallet credit that commits while transfers are waiting.
@@ -41,8 +41,8 @@ try {
         throw new RuntimeException('Concurrent transfer results='.json_encode($results).', orders='.$count.', balance='.$u->balance.', commission='.$u->commission_balance);
     // An ordinary referrer can earn commission without buying a plan. Moving
     // that commission into a wallet is not another sale for their own inviter.
-    config(['v2board.new_user_currency'=>'CNY','v2board.invite_commission'=>10,'v2board.commission_distribution_enable'=>0,
-        'v2board.commission_auto_check_enable'=>1,'v2board.withdraw_close_enable'=>0]);
+    config(['fastai.new_user_currency'=>'CNY','fastai.invite_commission'=>10,'fastai.commission_distribution_enable'=>0,
+        'fastai.commission_auto_check_enable'=>1,'fastai.withdraw_close_enable'=>0]);
     $inviter=User::create(['email'=>uniqid('transfer-inviter-').'@example.test','password'=>'fixture','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'currency'=>'CNY','commission_type'=>1,'commission_balance'=>0,'balance'=>0]);
     $rewardUsers[]=$inviter->id;
     $referrer=User::create(['email'=>uniqid('transfer-referrer-').'@example.test','password'=>'fixture','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'currency'=>'CNY','invite_user_id'=>$inviter->id,'commission_balance'=>1000,'balance'=>0]);
@@ -105,5 +105,5 @@ try {
     Order::where('user_id',$u->id)->delete();$u->delete();
     App\Models\CommissionLog::whereIn('user_id',$rewardUsers)->delete();
     Order::whereIn('user_id',$rewardUsers)->delete();User::whereIn('id',$rewardUsers)->delete();
-    config(['v2board'=>$previousConfig]);
+    config(['fastai'=>$previousConfig]);
 }

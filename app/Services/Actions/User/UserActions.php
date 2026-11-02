@@ -127,7 +127,7 @@ class UserActions
 
     public function newPeriod(Request $request)
     {
-        if (!config('v2board.allow_new_period', 0)) {
+        if (!config('fastai.allow_new_period', 0)) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Renewal is not allowed'));
         }
         DB::beginTransaction();
@@ -412,7 +412,7 @@ class UserActions
         $user['reset_at_display'] = \App\Services\TimeZones::format($user['reset_at']??null,$displayUser);
         $user['has_subscription'] = \App\Services\TrafficCreditService::hasPeriod($user);
         $user['reset_day'] = $userService->getResetDay($user);
-        $user['allow_new_period'] = config('v2board.allow_new_period', 0);
+        $user['allow_new_period'] = config('fastai.allow_new_period', 0);
         return response([
             'data' => $user
         ]);

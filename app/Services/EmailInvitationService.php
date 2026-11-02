@@ -12,10 +12,10 @@ class EmailInvitationService
     public function send(int $userId, string $email): EmailInvitation
     {
         $email = strtolower(trim($email));
-        if (config('v2board.email_whitelist_enable', 0) && !\App\Utils\Helper::emailSuffixVerify($email, config('v2board.email_whitelist_suffix', \App\Utils\Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))) abort(422, __('Email suffix is not in the Whitelist'));
-        $url = rtrim((string)config('v2board.app_url'), '/');
+        if (config('fastai.email_whitelist_enable', 0) && !\App\Utils\Helper::emailSuffixVerify($email, config('fastai.email_whitelist_suffix', \App\Utils\Dict::EMAIL_WHITELIST_SUFFIX_DEFAULT))) abort(422, __('Email suffix is not in the Whitelist'));
+        $url = rtrim((string)config('fastai.app_url'), '/');
         if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['http','https'], true)) abort(422, __('Configure the site URL before sending invitations.'));
-        if (config('v2board.stop_register', 0)) abort(422, __('Registration has closed'));
+        if (config('fastai.stop_register', 0)) abort(422, __('Registration has closed'));
         $token = bin2hex(random_bytes(32));
         $record = DB::transaction(function () use ($userId, $email, $token) {
             $sender = User::where('id', $userId)->lockForUpdate()->firstOrFail();
@@ -29,7 +29,7 @@ class EmailInvitationService
             if (RateLimiter::tooManyAttempts($key, 20)) abort(429, __('The daily invitation limit has been reached.'));
             $pending = EmailInvitation::where('user_id',$userId)->whereNull('accepted_at')->where('expires_at','>',time());
             if ($record) $pending->where('id','!=',$record->id);
-            if ($pending->count() >= max(0, (int)config('v2board.invite_gen_limit',5))) abort(422, __('The maximum number of creations has been reached'));
+            if ($pending->count() >= max(0, (int)config('fastai.invite_gen_limit',5))) abort(422, __('The maximum number of creations has been reached'));
             $record = $record ?: new EmailInvitation(['user_id'=>$userId,'email'=>$email,'email_hash'=>hash('sha256',$email)]);
             $record->fill(['token_hash'=>hash('sha256',$token),'expires_at'=>time()+7*86400,'last_requested_at'=>time(),'sent_at'=>null,'failed_at'=>null,'mail_log_id'=>null]);
             $record->save();

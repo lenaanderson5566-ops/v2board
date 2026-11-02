@@ -14,7 +14,7 @@ $coupon=function($stock=10){return Coupon::create(['name'=>'Batch fixture','code
 $preview=function($coupon,$scope='all',$filter=[],$ids=null,$admin=1){$r=Request::create('/','POST',array_filter(['coupon_id'=>$coupon->id,'scope'=>$scope,'filter'=>$filter,'user_ids'=>$ids],fn($v)=>$v!==null));$r->user=['id'=>$admin];return CouponCampaign::preview($r);};
 DB::beginTransaction();
 try {
-    config(['v2board.new_user_currency'=>'CNY']);
+    config(['fastai.new_user_currency'=>'CNY']);
     $saveTemplate = function(array $values) {
         $request = App\Http\Requests\Admin\CouponGenerate::create('/', 'POST', $values, [], [], ['HTTP_ACCEPT'=>'application/json']);
         $validator = Illuminate\Support\Facades\Validator::make($request->all(), $request->rules());
@@ -23,7 +23,7 @@ try {
         return (new App\Http\Controllers\V1\Admin\CouponController())->generate($request);
     };
     // Exported timestamps are explicit-offset instants, retaining seconds across a DST fold.
-    $originalBusinessZone = config('v2board.system_timezone');
+    $originalBusinessZone = config('fastai.system_timezone');
     $originalPhpZone = date_default_timezone_get();
     $csvRows = function($response) {
         $stream = fopen('php://temp', 'r+');
@@ -38,7 +38,7 @@ try {
         $validator->validate(); $request->setValidator($validator); return $request;
     };
     try {
-        config(['v2board.system_timezone'=>'America/New_York']);
+        config(['fastai.system_timezone'=>'America/New_York']);
         date_default_timezone_set('UTC');
         $start = strtotime('2026-11-01T05:30:37Z'); $end = strtotime('2026-11-01T06:30:37Z');
         $couponExport = (new App\Http\Controllers\V1\Admin\CouponController)->generate($csvRequest(
@@ -66,7 +66,7 @@ try {
         ));
         foreach (array_slice($csvRows($unlimited), 1) as $row) $assert($row[3] === '' && $row[4] === '', 'Unlimited export created an epoch date');
     } finally {
-        config(['v2board.system_timezone'=>$originalBusinessZone]);
+        config(['fastai.system_timezone'=>$originalBusinessZone]);
         date_default_timezone_set($originalPhpZone);
     }
     $terms = ['name'=>'Wallet-only fixture','type'=>2,'value'=>10,'started_at'=>time()-60,'ended_at'=>time()+3600];

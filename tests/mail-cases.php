@@ -7,7 +7,7 @@ use App\Services\Mail\ResendSender;
 use Illuminate\Support\Facades\{Http, Crypt};
 
 $data=app(App\Services\Mail\ProductMail::class)->data(['template_name'=>'test','language'=>'en-US']);
-config(['v2board.email_from_address'=>'sender@example.test', 'v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST_SENTINEL')]);
+config(['fastai.email_from_address'=>'sender@example.test', 'fastai.email_resend_api_key'=>Crypt::encryptString('re_TEST_SENTINEL')]);
 $sender=new ResendSender;
 $fakeHttp(['*'=>Http::response(['id'=>'receipt-123'],200)]);
 $assert($sender->send('recipient@example.test',$data,'stable-delivery')==='receipt-123','Resend receipt missing');
@@ -27,7 +27,7 @@ foreach ([Http::failedConnection(),Http::response(['id'=>"bad\nid"],200)] as $re
     try { $sender->send('recipient@example.test',$data,'stable-delivery'); throw new RuntimeException('Expected uncertain Resend'); }
     catch (MailSendException $e) { $assert($e->uncertain && !$e->retryable,'Resend uncertain retried'); }
 }
-config(['v2board.email_provider'=>'resend']);
+config(['fastai.email_provider'=>'resend']);
 $fakeHttp(['*'=>Http::response(['id'=>'receipt-123'],200)]);
 $job=new App\Jobs\SendEmailJob(['email'=>'recipient@example.test','template_name'=>'test']);
 $copy=unserialize(serialize($job));
@@ -54,15 +54,15 @@ class TestSesSender extends SesSender {
     }
 }
 $ses=new TestSesSender;
-config(['v2board.email_ses_region'=>'ap-southeast-1','v2board.email_ses_auth'=>'role','v2board.email_ses_configuration_set'=>'delivery-events']);
+config(['fastai.email_ses_region'=>'ap-southeast-1','fastai.email_ses_auth'=>'role','fastai.email_ses_configuration_set'=>'delivery-events']);
 $ses->response=['MessageId'=>'ses-message-123'];
 $assert($ses->send('recipient@example.test',$data)==='ses-message-123','SES receipt failed');
 $assert(!isset($ses->options['credentials']) && $ses->options['retries']===0,'SES role chain/retries incorrect');
 $assert($ses->options['endpoint']==='https://email.ap-southeast-1.amazonaws.com' && $ses->options['http']['allow_redirects']===false,'SES endpoint not fixed');
 $assert($ses->command['Destination']['ToAddresses']===['recipient@example.test'] && $ses->command['ConfigurationSetName']==='delivery-events','SES payload invalid');
 $assert($ses->command['Content']['Simple']['Subject']['Charset']==='UTF-8','SES subject encoding');
-config(['v2board.email_ses_auth'=>'key','v2board.email_ses_access_key'=>Crypt::encryptString('AKIA'.str_repeat('A',16)),
-    'v2board.email_ses_secret_key'=>Crypt::encryptString('TEST_SECRET_SENTINEL')]);
+config(['fastai.email_ses_auth'=>'key','fastai.email_ses_access_key'=>Crypt::encryptString('AKIA'.str_repeat('A',16)),
+    'fastai.email_ses_secret_key'=>Crypt::encryptString('TEST_SECRET_SENTINEL')]);
 $ses->send('recipient@example.test',$data);
 $assert($ses->options['credentials']['secret']==='TEST_SECRET_SENTINEL','SES encrypted credentials failed');
 foreach ([400,403,429,500,0] as $status) {
@@ -76,15 +76,15 @@ foreach ([400,403,429,500,0] as $status) {
 }
 $ses->response=['MessageId'=>'ses-job-receipt'];
 $app->instance(SesSender::class,$ses);
-config(['v2board.email_provider'=>'ses']);
+config(['fastai.email_provider'=>'ses']);
 $result=(new App\Jobs\SendEmailJob(['email'=>'recipient@example.test','template_name'=>'test']))->handle();
 $assert(App\Models\MailLog::findOrFail($result['log_id'])->provider==='ses' && !$result['error'],'SES job routing');
 foreach (['https://evil.test','us-east-1/../../','localhost'] as $region) {
-    config(['v2board.email_ses_region'=>$region]);
+    config(['fastai.email_ses_region'=>$region]);
     try { $ses->send('recipient@example.test',$data); throw new RuntimeException('Unsafe SES region accepted'); }
     catch (MailSendException $e) { $assert($e->safeCode==='SES_CONFIG_INVALID','SES invalid region classification'); }
 }
-config(['v2board.email_provider'=>'unknown']);
+config(['fastai.email_provider'=>'unknown']);
 $result=(new App\Jobs\SendEmailJob(['email'=>'recipient@example.test','template_name'=>'test']))->handle();
 $assert($result['error']==='MAIL_PROVIDER_INVALID','Unknown provider silently fell back to SMTP');
 $rules=App\Http\Requests\Admin\ConfigSave::RULES;
@@ -96,13 +96,13 @@ $encoded=$response->getContent();
 $assert(!str_contains($encoded,'TEST_SECRET_SENTINEL') && !str_contains($encoded,'re_TEST_SENTINEL'),'Config exposed provider secrets');
 $parsed=json_decode($encoded,true)['data']['email'];
 foreach (['email_ses_access_key','email_ses_secret_key','email_resend_api_key'] as $field) {
-    $assert($parsed[$field]==='' && !str_contains($encoded,config('v2board.'.$field)),'Encrypted credential returned in config');
+    $assert($parsed[$field]==='' && !str_contains($encoded,config('fastai.'.$field)),'Encrypted credential returned in config');
 }
 $assert($parsed['email_ses_key_configured'] && $parsed['email_resend_key_configured'],'Configured flags missing');
 foreach (['email_ses_region'=>'https://example.test','email_ses_access_key'=>'ASIA'.str_repeat('A',16),'email_resend_api_key'=>"re_test\r\nX: bad"] as $field=>$value) {
     $assert(validator([$field=>$value],[$field=>$rules[$field]])->fails(),'Unsafe credential/region accepted');
 }
-config(['v2board.email_ses_region'=>'us-east-1']);
+config(['fastai.email_ses_region'=>'us-east-1']);
 $ses->response=['MessageId'=>null];
 try { $ses->send('recipient@example.test',$data); throw new RuntimeException('SES malformed response accepted'); }
 catch (MailSendException $e) { $assert($e->uncertain && !$e->retryable,'SES malformed response retried'); }
@@ -113,7 +113,7 @@ $invalidRequest=new class extends App\Http\Requests\Admin\ConfigSave {
 $invalidRequest->testData=['email_ses_access_key'=>'AKIA'.str_repeat('A',16)];
 try { (new App\Http\Controllers\V1\Admin\ConfigController)->save($invalidRequest); throw new RuntimeException('Partial credential rotation accepted'); }
 catch (Illuminate\Validation\ValidationException $e) { $checks++; }
-config(['v2board.email_resend_api_key'=>null]);
+config(['fastai.email_resend_api_key'=>null]);
 $invalidRequest->testData=['email_provider'=>'resend'];
 try { (new App\Http\Controllers\V1\Admin\ConfigController)->save($invalidRequest); throw new RuntimeException('Unconfigured Resend accepted'); }
 catch (Illuminate\Validation\ValidationException $e) { $checks++; }
@@ -126,23 +126,23 @@ foreach ([['5.1.1','address_review'],['5.7.1','policy'],['5.2.2','mailbox_full']
     $assert(App\Services\Mail\MailDiagnosis::advice('failed','SMTP_REJECTED',550,$enhanced)[0]===$category,'Unsafe recipient advice');
 }
 $assert(App\Services\Mail\MailDiagnosis::advice('failed','RESEND_AUTH_REJECTED',403,null)[0]==='configuration','API auth blamed recipient');
-config(['v2board.email_provider'=>'resend','v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST_ONLY')]);
+config(['fastai.email_provider'=>'resend','fastai.email_resend_api_key'=>Crypt::encryptString('re_TEST_ONLY')]);
 $fakeHttp(['*'=>Http::response([],429)]);
 $result=(new App\Jobs\SendEmailJob(['email'=>'one@example.test','template_name'=>'test']))->handle();
 $receipt=App\Models\MailLog::findOrFail($result['log_id']);
 $assert($receipt->transport_code===429 && $receipt->user_id==$one->id,'Response code/user association missing');
 $payload=json_decode((new App\Http\Controllers\V1\Admin\MailLogController)->fetch(Illuminate\Http\Request::create('/','GET',['transport_code'=>429]))->getContent(),true);
 $assert($payload['total']>0 && $payload['data'][0]['diagnosis']==='temporary','Response filtering/advice failed');
-config(['v2board.email_password'=>'PRIVATE_SMTP_SECRET']);
+config(['fastai.email_password'=>'PRIVATE_SMTP_SECRET']);
 $encoded=(new App\Http\Controllers\V1\Admin\ConfigController)->fetch(Illuminate\Http\Request::create('/','GET',['key'=>'email']))->getContent();
 $assert(!str_contains($encoded,'PRIVATE_SMTP_SECRET') && json_decode($encoded,true)['data']['email']['email_smtp_key_configured'],'SMTP secret leaked');
 echo "PASS transport diagnostics, recipient review and SMTP credential privacy\n";
 
 Illuminate\Support\Facades\Mail::swap(new class { public function forgetMailers() {} public function send(...$args) {} });
-config(['v2board.email_provider'=>'smtp','v2board.email_host'=>'smtp.example.test','v2board.email_password_encrypted'=>true,'v2board.email_password'=>Crypt::encryptString('SMTP_ENCRYPTED_TEST')]);
+config(['fastai.email_provider'=>'smtp','fastai.email_host'=>'smtp.example.test','fastai.email_password_encrypted'=>true,'fastai.email_password'=>Crypt::encryptString('SMTP_ENCRYPTED_TEST')]);
 $result=(new App\Jobs\SendEmailJob(['email'=>'one@example.test','template_name'=>'test']))->handle();
 $assert(!$result['error'] && config('mail.password')==='SMTP_ENCRYPTED_TEST','Encrypted SMTP password not applied');
-config(['v2board.email_password'=>'invalid-ciphertext']);
+config(['fastai.email_password'=>'invalid-ciphertext']);
 $result=(new App\Jobs\SendEmailJob(['email'=>'one@example.test','template_name'=>'test']))->handle();
 $assert($result['error']==='SMTP_KEY_INVALID' && $result['permanent'],'Invalid encrypted password retried');
 echo "PASS encrypted SMTP credentials and fail-closed decryption\n";
@@ -155,7 +155,7 @@ use App\Services\Mail\MailWebhook;
 use App\Services\Mail\MailDeliveryLog;
 use Illuminate\Support\Facades\{DB,Crypt,Http};
 
-config(['v2board.email_password_encrypted'=>false,'v2board.email_password'=>null,'v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_provider'=>'resend','v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST'),'v2board.email_public_url'=>'https://api.example.test']);
+config(['fastai.email_password_encrypted'=>false,'fastai.email_password'=>null,'fastai.email_announcement_separate'=>0,'fastai.email_announcements_enabled'=>1,'fastai.email_provider'=>'resend','fastai.email_resend_api_key'=>Crypt::encryptString('re_TEST'),'fastai.email_public_url'=>'https://api.example.test']);
 $one=App\Models\User::create(['email'=>'audience@example.test','banned'=>0,'language'=>'en-US']);
 $assert(MailAudience::blocked($one->email,'notify'),'Announcements defaulted to consent');
 $assert(!MailAudience::blocked($one->email,'verify'),'Announcement opt-out blocks verification');
@@ -176,26 +176,26 @@ $assert(str_starts_with($data['unsubscribeUrl'],'https://api.example.test/api/v1
 $fakeHttp(['*'=>Http::response(['id'=>'announcement-1'],200)]);
 (new App\Services\Mail\ResendSender)->send($one->email,$data,'announcement-test');
 Http::assertSent(fn($r)=>$r['headers']['List-Unsubscribe-Post']==='List-Unsubscribe=One-Click' && str_contains($r['text'],$data['unsubscribeUrl'])); $checks++;
-config(['v2board.email_announcement_separate'=>1,'v2board.email_announcement_provider'=>'mailgun','v2board.email_announcement_from_address'=>'news@news.example.test']);
-$before=config('v2board');
-try { MailChannel::run(true,function() use($assert) { $assert(config('v2board.email_provider')==='mailgun' && config('v2board.email_from_address')==='news@news.example.test','Announcement channel not selected'); throw new RuntimeException('test'); }); } catch (RuntimeException $e) {}
-$assert(config('v2board')===$before,'Long-lived worker retained announcement credentials');
-$called=false; MailChannel::run(false,function() use(&$called) {$called=config('v2board.email_provider')==='resend';}); $assert($called,'Transactional stream overridden');
-config(['v2board.email_announcement_separate'=>0]);
+config(['fastai.email_announcement_separate'=>1,'fastai.email_announcement_provider'=>'mailgun','fastai.email_announcement_from_address'=>'news@news.example.test']);
+$before=config('fastai');
+try { MailChannel::run(true,function() use($assert) { $assert(config('fastai.email_provider')==='mailgun' && config('fastai.email_from_address')==='news@news.example.test','Announcement channel not selected'); throw new RuntimeException('test'); }); } catch (RuntimeException $e) {}
+$assert(config('fastai')===$before,'Long-lived worker retained announcement credentials');
+$called=false; MailChannel::run(false,function() use(&$called) {$called=config('fastai.email_provider')==='resend';}); $assert($called,'Transactional stream overridden');
+config(['fastai.email_announcement_separate'=>0]);
 $job=new App\Jobs\SendEmailJob(['email'=>$one->email,'template_name'=>'notify']);
 $one->update(['announcement_email'=>0]); $assert(($job->handle()['skipped'] ?? false),'Queued announcement ignored later opt-out');
 $one->update(['announcement_email'=>1]);
 
-config(['v2board.email_announcement_separate'=>1,'v2board.email_announcement_provider'=>'mailgun','v2board.email_announcement_mailgun_domain'=>'news.example.test','v2board.email_announcement_mailgun_api_key'=>Crypt::encryptString('TEST_ONLY')]);
+config(['fastai.email_announcement_separate'=>1,'fastai.email_announcement_provider'=>'mailgun','fastai.email_announcement_mailgun_domain'=>'news.example.test','fastai.email_announcement_mailgun_api_key'=>Crypt::encryptString('TEST_ONLY')]);
 $fakeHttp(['*'=>Http::response(['id'=>'<announcement-queue>'],200)]);
-$before=config('v2board');
+$before=config('fastai');
 $result=(new App\Jobs\SendEmailJob(['email'=>$one->email,'template_name'=>'notify','template_value'=>['content'=>'Announcement']],'send_email_mass'))->handle();
-$assert(empty($result['error']) && config('v2board')===$before,'Announcement queue failed/restoration failed');
+$assert(empty($result['error']) && config('fastai')===$before,'Announcement queue failed/restoration failed');
 Http::assertSent(function($r) { $fields=array_column($r->data(),'contents','name'); return str_contains($fields['from'],'news@news.example.test') && $fields['h:List-Unsubscribe-Post']==='List-Unsubscribe=One-Click'; }); $checks++;
-config(['v2board.email_announcement_separate'=>0]);
+config(['fastai.email_announcement_separate'=>0]);
 
 // Signed Resend event, recipient/message binding, dedupe, out-of-order, suppression.
-$secret=str_repeat('x',32); config(['v2board.email_resend_webhook_key'=>Crypt::encryptString('whsec_'.base64_encode($secret))]);
+$secret=str_repeat('x',32); config(['fastai.email_resend_webhook_key'=>Crypt::encryptString('whsec_'.base64_encode($secret))]);
 $sign=function(array $body,string $id='msg_test',int $at=0) use($secret) {
     $at=$at ?: time(); $raw=json_encode($body,JSON_UNESCAPED_SLASHES);
     $r=Illuminate\Http\Request::create('/api/v10/webhooks/mail/resend','POST',[],[],[],['CONTENT_TYPE'=>'application/json'],$raw);
@@ -229,7 +229,7 @@ $assert($receipt->fresh()->delivery_status==='complained' && MailAudience::block
 $reject(fn()=>$logController->release($release),422);
 
 // Mailgun HMAC and enhanced code classification, no provider body storage.
-config(['v2board.email_mailgun_webhook_key'=>Crypt::encryptString('MAILGUN_SIGNING_TEST')]);
+config(['fastai.email_mailgun_webhook_key'=>Crypt::encryptString('MAILGUN_SIGNING_TEST')]);
 $mg=['signature'=>['timestamp'=>(string)time(),'token'=>str_repeat('a',32)],'event-data'=>['event'=>'failed','severity'=>'permanent','timestamp'=>time(),'recipient'=>'mg@example.test','message'=>['headers'=>['message-id'=>'mg-message']],'delivery-status'=>['enhanced-code'=>'5.7.1','message'=>'PRIVATE_BODY']]];
 $mg['signature']['signature']=hash_hmac('sha256',$mg['signature']['timestamp'].$mg['signature']['token'],'MAILGUN_SIGNING_TEST');
 $mgReceipt=MailDeliveryLog::begin('mg@example.test','notify','mailgun','announcement');MailDeliveryLog::finish($mgReceipt,'accepted',null,'<mg-message>',1);
@@ -240,7 +240,7 @@ $assert(!str_contains(json_encode(DB::table('v2_mail_event')->get()),'PRIVATE_BO
 $mg['signature']['signature']='bad';$reject(fn()=>$webhook->receive('mailgun',$mgRequest($mg)),403);
 
 // SNS signature verification uses locally generated cert and fake HTTPS only.
-$topic='arn:aws:sns:us-east-1:123456789012:mail-events';config(['v2board.email_ses_topic_arn'=>$topic]);
+$topic='arn:aws:sns:us-east-1:123456789012:mail-events';config(['fastai.email_ses_topic_arn'=>$topic]);
 $key=openssl_pkey_new(['private_key_bits'=>2048,'private_key_type'=>OPENSSL_KEYTYPE_RSA]);
 $csr=openssl_csr_new(['commonName'=>'sns.us-east-1.amazonaws.com'],$key);$cert=openssl_csr_sign($csr,null,$key,1);openssl_x509_export($cert,$pem);
 $certUrl='https://sns.us-east-1.amazonaws.com/SimpleNotificationService-0123456789abcdef0123456789abcdef.pem';
@@ -309,7 +309,7 @@ $assert(MailCampaign::preview($q,'service')['eligible']===1 && MailCampaign::pre
 $data=['request_key'=>(string)Illuminate\Support\Str::uuid(),'purpose'=>'service','subject'=>'Maintenance','content'=>'Service maintenance content','translations'=>[]];
 $campaign=MailCampaign::create($q,$data,1);
 $recipient=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$campaign)->first();
-config(['v2board.email_provider'=>'resend','v2board.email_from_address'=>'service@example.test','v2board.email_resend_api_key'=>Crypt::encryptString('re_TEST'),'v2board.email_announcement_separate'=>1,'v2board.email_announcements_enabled'=>0]);
+config(['fastai.email_provider'=>'resend','fastai.email_from_address'=>'service@example.test','fastai.email_resend_api_key'=>Crypt::encryptString('re_TEST'),'fastai.email_announcement_separate'=>1,'fastai.email_announcements_enabled'=>0]);
 $fakeHttp(['*'=>Http::response(['id'=>'campaign-message'],200)]);
 (new SendCampaignMailJob($recipient->id))->handle();
 $sent=DB::table('v2_mail_campaign_recipient')->find($recipient->id);
@@ -374,22 +374,22 @@ Illuminate\Support\Facades\Queue::assertPushed(SendCampaignMailJob::class,fn($jo
 $waitingQuery()->update(['status'=>'skipped']);
 app()->instance(App\Services\Mail\MailRateLimiter::class,$originalLimiter);
 // Exercise the actual worker event: saved intervals replace stale in-memory settings.
-$settingsPath=base_path('config/v2board.php');$savedSettings=is_file($settingsPath)?file_get_contents($settingsPath):null;$savedRuntime=config('v2board');
+$settingsPath=base_path('config/fastai.php');$savedSettings=is_file($settingsPath)?file_get_contents($settingsPath):null;$savedRuntime=config('fastai');
 try {
     file_put_contents($settingsPath,"<?php return ['email_send_interval'=>2,'email_bulk_interval'=>3,'email_domain_interval'=>5];");
-    config(['v2board.email_send_interval'=>60,'v2board.email_bulk_interval'=>60,'v2board.email_domain_interval'=>60]);
+    config(['fastai.email_send_interval'=>60,'fastai.email_bulk_interval'=>60,'fastai.email_domain_interval'=>60]);
     $queueJob=Mockery::mock(Illuminate\Contracts\Queue\Job::class);
     $queueJob->shouldReceive('resolveName')->andReturn(SendCampaignMailJob::class);
     $queueJob->shouldReceive('payload')->andReturn([]);
     event(new Illuminate\Queue\Events\JobProcessing('redis',$queueJob));
-    $assert(config('v2board.email_send_interval')===2 && config('v2board.email_bulk_interval')===3 && config('v2board.email_domain_interval')===5,'Running worker did not load saved intervals');
+    $assert(config('fastai.email_send_interval')===2 && config('fastai.email_bulk_interval')===3 && config('fastai.email_domain_interval')===5,'Running worker did not load saved intervals');
     file_put_contents($settingsPath,"<?php return ['email_send_interval'=>4,'email_bulk_interval'=>6,'email_domain_interval'=>8];");
     event(new Illuminate\Queue\Events\JobProcessing('redis',$queueJob));
-    $assert(config('v2board.email_bulk_interval')===6 && config('v2board.email_domain_interval')===8,'Worker missed subsequent settings change');
+    $assert(config('fastai.email_bulk_interval')===6 && config('fastai.email_domain_interval')===8,'Worker missed subsequent settings change');
 } finally {
     if($savedSettings===null) unlink($settingsPath);else file_put_contents($settingsPath,$savedSettings);
     if(function_exists('opcache_invalidate')) opcache_invalidate($settingsPath,true);
-    config(['v2board'=>$savedRuntime]);App\Services\TimeZones::apply();
+    config(['fastai'=>$savedRuntime]);App\Services\TimeZones::apply();
 }
 echo "PASS campaign seconds-based deferral, queue recovery and live worker intervals\n";
 // Private ticket replies are merged per ticket, with owner-scoped versioned read receipts.
@@ -445,7 +445,7 @@ $assert($body['total']===1 && $body['data'][0]['note']===$note && !isset($body['
 $assert($list->headers->get('Cache-Control')==='no-store, private','Sensitive list is cacheable');
 $fakeHttp();$blockedMail=new class {public int $calls=0;public function forgetMailers(){} public function send(...$args){$this->calls++;throw new RuntimeException('Unexpected SMTP send');}};Mail::swap($blockedMail);
 foreach(['smtp','mailgun','ses','resend'] as $provider){
- config(['v2board.email_provider'=>$provider,'v2board.email_announcement_separate'=>0]);
+ config(['fastai.email_provider'=>$provider,'fastai.email_announcement_separate'=>0]);
  foreach(App\Services\Mail\ProductMail::TYPES as $type){
   $result=(new App\Jobs\SendEmailJob(['email'=>$address,'template_name'=>$type]))->handle();
   $assert(!empty($result['skipped']) && $result['reason']==='manual_blocklist','Mail type bypassed block: '.$provider.'/'.$type);

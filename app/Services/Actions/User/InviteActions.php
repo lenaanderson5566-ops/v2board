@@ -49,7 +49,7 @@ class InviteActions
 
     public function fetch(Request $request)
     {
-        $commission_rate = config('v2board.invite_commission', 10);
+        $commission_rate = config('fastai.invite_commission', 10);
         $user = User::find($request->user['id']);
         if ($user->commission_rate) {
             $commission_rate = $user->commission_rate;
@@ -58,8 +58,8 @@ class InviteActions
         foreach (Order::where('status',3)->where('commission_status',0)->where('invite_user_id',$user->id)->get() as $order) {
             $uncheck_commission_balance += \App\Services\ExchangeRate::convert((int)$order->commission_balance, $order->currency ?: 'CNY', $user->currency ?: 'CNY', $order->fx_snapshot ?? []);
         }
-        if (config('v2board.commission_distribution_enable', 0)) {
-            $uncheck_commission_balance = $uncheck_commission_balance * (config('v2board.commission_distribution_l1') / 100);
+        if (config('fastai.commission_distribution_enable', 0)) {
+            $uncheck_commission_balance = $uncheck_commission_balance * (config('fastai.commission_distribution_l1') / 100);
         }
         $stat = [
             //已注册用户数

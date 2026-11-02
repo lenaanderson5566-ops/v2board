@@ -751,8 +751,8 @@ it("compares actual cycle totals in mobile choices and keeps sold-out details av
 
 it("renders built-in payment icons from the API host", () => {
     mocks.methods[0].icon = "/payment-icons/alipay.svg";
-    const previous = window.V2BOARD;
-    window.V2BOARD = { ...previous, apiBaseUrl: "https://api.example.com" };
+    const previous = window.FASTAI;
+    window.FASTAI = { ...previous, apiBaseUrl: "https://api.example.com" };
     try {
         const view = render(
             <PaymentCheckout
@@ -767,7 +767,7 @@ it("renders built-in payment icons from the API host", () => {
                 ?.getAttribute("src"),
         ).toBe("https://api.example.com/payment-icons/alipay.svg");
     } finally {
-        window.V2BOARD = previous;
+        window.FASTAI = previous;
     }
 });
 

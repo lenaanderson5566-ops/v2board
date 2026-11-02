@@ -8,7 +8,7 @@ final class SubscriptionInfo
 {
     public static function lines(User $user): array
     {
-        if (!(int)config('v2board.show_info_to_server_enable', 0)) return [];
+        if (!(int)config('fastai.show_info_to_server_enable', 0)) return [];
         $translations = require resource_path('client/copy.php');
         $copy = $translations[app()->getLocale()] ?? $translations['zh-CN'];
         $lines = [];

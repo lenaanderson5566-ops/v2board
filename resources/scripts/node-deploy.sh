@@ -23,9 +23,9 @@ fi
 install_helper() {
   install -d -m 755 /usr/local/lib/v2box
   helper_stage=$(mktemp /usr/local/lib/v2box/.panel-deploy.XXXXXXXX)
-  cat > "$helper_stage" <<'V2BOARD_DEPLOY_PY'
+  cat > "$helper_stage" <<'FASTAI_DEPLOY_PY'
 __NODE_DEPLOY_HELPER__
-V2BOARD_DEPLOY_PY
+FASTAI_DEPLOY_PY
   chmod 755 "$helper_stage"
   mv -f -- "$helper_stage" /usr/local/lib/v2box/panel-deploy.py
 }

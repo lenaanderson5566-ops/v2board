@@ -81,9 +81,9 @@ class GeoIpService
         }
 
         $map = [
-            'country' => config('v2board.geoip_country_path', storage_path('geoip/GeoLite2-Country.mmdb')),
-            'city' => config('v2board.geoip_city_path', storage_path('geoip/GeoLite2-City.mmdb')),
-            'asn' => config('v2board.geoip_asn_path', storage_path('geoip/GeoLite2-ASN.mmdb')),
+            'country' => config('fastai.geoip_country_path', storage_path('geoip/GeoLite2-Country.mmdb')),
+            'city' => config('fastai.geoip_city_path', storage_path('geoip/GeoLite2-City.mmdb')),
+            'asn' => config('fastai.geoip_asn_path', storage_path('geoip/GeoLite2-ASN.mmdb')),
         ];
 
         $path = $map[$type] ?? null;

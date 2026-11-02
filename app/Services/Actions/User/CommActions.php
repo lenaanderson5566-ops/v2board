@@ -17,17 +17,17 @@ class CommActions
                 'time_zones' => \App\Services\TimeZones::all(),
                 'system_timezone' => \App\Services\TimeZones::system(),
                 'coupons_available' => \App\Models\Coupon::where('show', 1)->where('type', 2)->where('started_at', '<=', time())->where('ended_at', '>=', time())->where(fn ($q) => $q->whereNull('limit_use')->orWhere('limit_use', '>', 0))->exists(),
-                'is_telegram' => (int)config('v2board.telegram_bot_enable', 0),
+                'is_telegram' => (int)config('fastai.telegram_bot_enable', 0),
                 'telegram_discuss_link' => null,
-                'stripe_pk' => config('v2board.stripe_pk_live'),
-                'withdraw_methods' => config('v2board.commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT),
-                'withdraw_close' => (int)config('v2board.withdraw_close_enable', 0),
+                'stripe_pk' => config('fastai.stripe_pk_live'),
+                'withdraw_methods' => config('fastai.commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT),
+                'withdraw_close' => (int)config('fastai.withdraw_close_enable', 0),
                 'currency' => (\App\Models\User::find(request()->input('user.id',0))->currency ?? 'CNY'),
                 'currency_symbol' => (\App\Models\User::find(request()->input('user.id',0))->currency ?? 'CNY'),
-                'commission_distribution_enable' => (int)config('v2board.commission_distribution_enable', 0),
-                'commission_distribution_l1' => config('v2board.commission_distribution_l1'),
-                'commission_distribution_l2' => config('v2board.commission_distribution_l2'),
-                'commission_distribution_l3' => config('v2board.commission_distribution_l3')
+                'commission_distribution_enable' => (int)config('fastai.commission_distribution_enable', 0),
+                'commission_distribution_l1' => config('fastai.commission_distribution_l1'),
+                'commission_distribution_l2' => config('fastai.commission_distribution_l2'),
+                'commission_distribution_l3' => config('fastai.commission_distribution_l3')
             ]
         ]);
     }

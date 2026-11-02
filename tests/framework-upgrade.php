@@ -5,6 +5,60 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function ($error) { fwrite(STDERR, $error->getMessage()."\n"); exit(1); });
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
+$assert(app('config') instanceof App\Support\SiteConfigurationRepository, 'Site settings aliases must be installed before application providers');
+$settings = new App\Support\SiteConfigurationRepository([
+    'fastai'=>['name'=>'current', 'disabled'=>false, 'zero'=>0, 'empty'=>[], 'nullable'=>null],
+    'v2board'=>['name'=>'legacy', 'retired'=>'must-not-return'],
+    'other'=>['name'=>'unrelated'],
+]);
+$assert($settings->get('fastai.name') === 'current' && $settings->get('v2board.name') === 'current'
+    && !$settings->has('fastai.retired'), 'Canonical settings must replace the complete legacy tree without reviving removed keys');
+foreach (['disabled'=>false, 'zero'=>0, 'empty'=>[], 'nullable'=>null] as $key=>$value) {
+    $assert($settings->has('fastai.'.$key) && $settings->has('v2board.'.$key)
+        && $settings->get('fastai.'.$key, 'missing') === $value && $settings->get('v2board.'.$key, 'missing') === $value,
+        'Explicit false-like setting must survive either namespace: '.$key);
+}
+$settings->set('v2board.name', 'updated');
+$settings->set(['fastai.zero'=>2, 'v2board.disabled'=>true]);
+$assert($settings->get('fastai.name') === 'updated' && $settings->get('v2board.zero') === 2
+    && $settings->get('fastai.disabled') === true, 'Settings aliases must share writes immediately');
+$assert($settings->getMany(['fastai.name', 'v2board.name', 'v2board.missing'=>'fallback'])
+    === ['fastai.name'=>'updated', 'v2board.name'=>'updated', 'v2board.missing'=>'fallback'], 'Alias getMany must preserve requested keys and defaults');
+$settings['v2board.array_access'] = 'shared';
+$assert($settings['fastai.array_access'] === 'shared' && isset($settings['v2board.array_access']), 'ArrayAccess must use the same settings tree');
+unset($settings['v2board.array_access']);
+$assert(!$settings->has('fastai.array_access') && !$settings->has('v2board.array_access'), 'Removing a legacy alias must remove the canonical setting');
+$assert(!array_key_exists('v2board', $settings->all()) && $settings->get('other.name') === 'unrelated', 'Configuration cache must export only canonical settings without changing unrelated namespaces');
+$legacySettings = new App\Support\SiteConfigurationRepository(['v2board'=>['name'=>'legacy-cache']]);
+$assert($legacySettings->get('fastai.name') === 'legacy-cache' && $legacySettings->get('v2board.name') === 'legacy-cache', 'An existing legacy-only config cache must remain readable');
+$emptySettings = new App\Support\SiteConfigurationRepository(['fastai'=>[], 'v2board'=>['retired'=>true]]);
+$assert($emptySettings->get('fastai') === [] && $emptySettings->get('v2board') === [], 'An explicitly empty canonical settings tree must override legacy values');
+
+// This module runs only in a disposable workspace; use a private config directory too.
+$configurationDirectory = sys_get_temp_dir().'/fastai-config-'.bin2hex(random_bytes(8));
+mkdir($configurationDirectory, 0700);
+$originalConfigurationDirectory = $app->configPath();
+try {
+    $app->useConfigPath($configurationDirectory);
+    $currentPath = $configurationDirectory.'/fastai.php';
+    $legacyPath = $configurationDirectory.'/v2board.php';
+    $assert(App\Support\SiteConfiguration::path() === $currentPath && App\Support\SiteConfiguration::read() === null, 'Missing settings must not invent values or a legacy save target');
+    $legacyFixture = '<?php return '.var_export(['app_name'=>'Legacy custom site', 'retired'=>'legacy-only'], true).';';
+    file_put_contents($legacyPath, $legacyFixture);
+    $assert(App\Support\SiteConfiguration::readPath() === $legacyPath
+        && App\Support\SiteConfiguration::read()['app_name'] === 'Legacy custom site'
+        && App\Support\SiteConfiguration::path() === $currentPath, 'Legacy files must be readable while new saves target the canonical file');
+    file_put_contents($currentPath, '<?php return [];');
+    $assert(App\Support\SiteConfiguration::readPath() === $currentPath && App\Support\SiteConfiguration::read() === [], 'An existing empty canonical file must not merge legacy settings');
+    file_put_contents($currentPath, '<?php return '.var_export(['app_name'=>'Current custom site', 'disabled'=>false, 'zero'=>0, 'nullable'=>null], true).';');
+    $currentSettings = App\Support\SiteConfiguration::read();
+    $assert($currentSettings === ['app_name'=>'Current custom site', 'disabled'=>false, 'zero'=>0, 'nullable'=>null]
+        && file_get_contents($legacyPath) === $legacyFixture, 'Canonical reads must retain explicit values without modifying the legacy file');
+} finally {
+    $app->useConfigPath($originalConfigurationDirectory);
+    foreach (['fastai.php', 'v2board.php'] as $filename) if (is_file($configurationDirectory.'/'.$filename)) unlink($configurationDirectory.'/'.$filename);
+    rmdir($configurationDirectory);
+}
 $manifest = json_decode(file_get_contents(base_path('composer.json')), true, 512, JSON_THROW_ON_ERROR);
 $lock = json_decode(file_get_contents(base_path('composer.lock')), true, 512, JSON_THROW_ON_ERROR);
 $lockedProduction = array_column($lock['packages'], null, 'name');
@@ -92,8 +146,11 @@ $assert($withDevelopment
     : (!Composer\InstalledVersions::isInstalled('laravel/tinker') && !class_exists($tinkerProvider) && !in_array($tinkerProvider, $packageProviders, true) && !isset($commands['tinker'])),
     'Tinker autodiscovery or command registration does not match the installed dependency profile');
 $assert(!isset($commands['test']) || !$commands['test'] instanceof App\Console\Commands\Test, 'Empty application test command still shadows the framework command');
-foreach (['v2board:install', 'v2board:update', 'reset:password', 'reset:user', 'clear:user', 'check:server', 'telegram:notify'] as $name) {
+foreach (['fastai:install', 'fastai:update', 'fastai:statistics', 'v2board:install', 'v2board:update', 'v2board:statistics', 'reset:password', 'reset:user', 'clear:user', 'check:server', 'telegram:notify'] as $name) {
     $assert(isset($commands[$name]), 'Installation or manual operations command missing: '.$name);
+}
+foreach (['install', 'update', 'statistics'] as $operation) {
+    $assert($commands['fastai:'.$operation] === $commands['v2board:'.$operation], 'A legacy command alias must resolve the canonical implementation: '.$operation);
 }
 foreach (App\Console\Commands\RunDailyTask::TASKS as $name => $at) {
     $assert(isset($commands[$name]), 'Daily task is not registered: '.$name);
@@ -125,7 +182,8 @@ try {
         try { $config = require __DIR__ . '/../config/horizon.php'; }
         finally { $output = ob_get_clean(); }
         $assert($output === '', 'Configuration emitted response output');
-        $assert($config['environments']['*']['V2board']['maxProcesses'] === $expected, 'Incorrect queue worker limit');
+        $assert($config['environments']['*']['FastAI']['maxProcesses'] === $expected, 'Incorrect queue worker limit');
+        $assert($config['environments']['*']['FastAI']['queue'] === ['order_handle', 'traffic_fetch', 'stat', 'send_email', 'send_telegram'], 'Renaming the supervisor must not orphan existing queued jobs');
     }
 } finally {
     try {
@@ -137,7 +195,7 @@ try {
 // Preserve upgrade-baseline and pending-migration detection.
 $queueConfig = require __DIR__.'/../config/queue.php';
 $workers = (require __DIR__.'/../config/horizon.php')['environments']['*'];
-foreach (['V2board'=>new App\Jobs\ProcessNodeTrafficBatch(1), 'mail-bulk'=>new App\Jobs\SendCampaignMailJob(1)] as $name=>$job) {
+foreach (['FastAI'=>new App\Jobs\ProcessNodeTrafficBatch(1), 'mail-bulk'=>new App\Jobs\SendCampaignMailJob(1)] as $name=>$job) {
     $worker = $workers[$name];
     $assert($job->timeout < $worker['timeout'] && $worker['timeout'] < $queueConfig['connections'][$worker['connection']]['retry_after'], 'Job, supervisor and reservation timeouts must leave termination margins: '.$name);
 }

@@ -8,7 +8,7 @@ class TelegramService {
 
     public function __construct($token = '')
     {
-        $this->api = 'https://api.telegram.org/bot' . (is_string($token) && trim($token) !== '' ? $token : config('v2board.telegram_bot_token')) . '/';
+        $this->api = 'https://api.telegram.org/bot' . (is_string($token) && trim($token) !== '' ? $token : config('fastai.telegram_bot_token')) . '/';
     }
 
     public function sendMessage(int $chatId, string $text, string $parseMode = '')
@@ -78,7 +78,7 @@ class TelegramService {
         return $this->request('setWebhook', [
             'url' => $url,
             'allowed_updates' => json_encode(['message','chat_join_request','chat_member','my_chat_member']),
-            ...(str_contains($url, '/api/v10/webhooks/telegram') ? ['secret_token'=>md5(config('v2board.telegram_bot_token'))] : [])
+            ...(str_contains($url, '/api/v10/webhooks/telegram') ? ['secret_token'=>md5(config('fastai.telegram_bot_token'))] : [])
         ]);
     }
 
@@ -109,7 +109,7 @@ class TelegramService {
 
     public function notifyPaymentAdmins(\App\Models\Order $order): void
     {
-        if (!config('v2board.telegram_bot_enable', 0)) return;
+        if (!config('fastai.telegram_bot_enable', 0)) return;
         $admins = \App\Models\User::where('is_admin', 1)->where('banned', 0)->whereNotNull('telegram_id')->get();
         foreach ($admins as $admin) {
             \Illuminate\Support\Facades\DB::table('v2_telegram_payment_notice')->insertOrIgnore([

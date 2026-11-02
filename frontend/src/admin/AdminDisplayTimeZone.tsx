@@ -1,6 +1,6 @@
 import { createContext, useContext, useLayoutEffect, useState, type ReactNode } from "react";
 import { boot, type Row } from "../shared/api";
-import { localPreferences } from "../shared/browser-storage";
+import { localPreferences, preferenceStorageEvent } from "../shared/browser-storage";
 import { businessTimeZone, displayTimeZone, setAdminDisplayTimeZone, validZone } from "../shared/timezone";
 import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { Modal } from "../shared/ui/Modal";
@@ -13,7 +13,7 @@ const normalize = (value: unknown): string => typeof value === "string" &&
 /** Non-secret UI preference; never write account preferences or system configuration. */
 export function adminDisplayTimeZoneKey(user: Row): string {
     return Number.isSafeInteger(user.id) && user.id > 0
-        ? `v2board.admin.displayTimeZone.${encodeURIComponent(boot.apiBaseUrl || "")}.${encodeURIComponent(boot.adminPath || "")}.${user.id}`
+        ? `fastai.admin.displayTimeZone.${encodeURIComponent(boot.apiBaseUrl || "")}.${encodeURIComponent(boot.adminPath || "")}.${user.id}`
         : "";
 }
 
@@ -32,10 +32,10 @@ export function AdminDisplayTimeZoneProvider({ user, children }: { user: Row; ch
             try {
                 if (event.storageArea !== window.localStorage) return;
             } catch { return; }
-            if (key && (event.key === key || event.key === null)) {
+            if (key && preferenceStorageEvent(event.key, key)) {
                 const temporary = localPreferences.isTemporary(key);
                 // Keep this tab's unsaved fallback until a successful local write replaces it.
-                const next = normalize(temporary || event.key === null ? localPreferences.getItem(key) : event.newValue);
+                const next = normalize(temporary || event.key !== key ? localPreferences.getItem(key) : event.newValue);
                 setAdminDisplayTimeZone(next);
                 setState({ key, value: next, temporary });
             }

@@ -63,7 +63,7 @@ export default function AdminApp() {
     useEffect(() => {
         document.body.classList.remove("admin-dark");
         try {
-            localStorage.removeItem("v2board.admin.dark");
+            localStorage.removeItem("fastai.admin.dark");
         } catch {
             /* Optional preference cleanup. */
         }

@@ -163,14 +163,14 @@ class ConfigSave extends FormRequest
      */
     public function withValidator($validator) {
         $validator->after(function ($validator) {
-            if ($this->input('telegram_group_policy_enable',config('v2board.telegram_group_policy_enable',0)) &&
-                (!$this->input('telegram_bot_enable',config('v2board.telegram_bot_enable',0)) || (int)$this->input('telegram_discuss_id',config('v2board.telegram_discuss_id',0))>=0)) {
+            if ($this->input('telegram_group_policy_enable',config('fastai.telegram_group_policy_enable',0)) &&
+                (!$this->input('telegram_bot_enable',config('fastai.telegram_bot_enable',0)) || (int)$this->input('telegram_discuss_id',config('fastai.telegram_discuss_id',0))>=0)) {
                 $validator->errors()->add('telegram_group_policy_enable','请先启用 Telegram 机器人，并填写有效的负数群 ID。');
             }
             if ($this->has('system_timezone') && !\App\Services\TimeZones::valid($this->input('system_timezone'))) $validator->errors()->add('system_timezone','请选择有效的 IANA 时区。');
-            $registration = $this->input('invite_registration_gb', config('v2board.invite_registration_gb', 0));
-            $usage = $this->input('invite_first_use_gb', config('v2board.invite_first_use_gb', 0));
-            $group = $this->input('credit_base_group_id', config('v2board.credit_base_group_id'));
+            $registration = $this->input('invite_registration_gb', config('fastai.invite_registration_gb', 0));
+            $usage = $this->input('invite_first_use_gb', config('fastai.invite_first_use_gb', 0));
+            $group = $this->input('credit_base_group_id', config('fastai.credit_base_group_id'));
             if (((float)$registration > 0 || (float)$usage > 0) && (!$group || !\App\Models\ServerGroup::where('id', $group)->exists()))
                 $validator->errors()->add('invite_registration_gb', '请先在订阅设置中配置有效的额度基础权限组，再启用邀请流量奖励。');
         });

@@ -26,6 +26,7 @@ try {
     $migration->up();
     $migration->up();
     $assert(Illuminate\Support\Facades\Artisan::call('v2board:update')===1,'Legacy SQL replay command disabled');
+    $assert(Illuminate\Support\Facades\Artisan::call('fastai:update')===1,'Canonical update command must not replay retired SQL');
     foreach($migration::TABLES as $table)$assert(!$schema->hasTable($table),'Retired table removed: '.$table);
     foreach($protected as $table)$assert((int)$db->table($table)->value('id')===42,'Protected table unchanged: '.$table);
     try{$migration->down();throw new RuntimeException('Rollback claims to restore deleted data');}

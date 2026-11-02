@@ -13,7 +13,7 @@ try {
     RiskSetting::where('key', 'client_access_unified')->delete();
     ClientStrategy::query()->delete();
     $service = new ClientStrategyService();
-    config(['v2board.subscription_ua_whitelist_enabled'=>1, 'v2board.subscription_ua_whitelist'=>['flclash']]);
+    config(['fastai.subscription_ua_whitelist_enabled'=>1, 'fastai.subscription_ua_whitelist'=>['flclash']]);
     $rows = $service->getStrategies()->keyBy('client_type');
     $assert(!$rows['clash-party']->is_enabled && !$rows['throne']->is_enabled && !$rows['nekobox']->is_enabled && !$rows['husi']->is_enabled, 'New clients are disabled before first policy save');
     $assert(ClientStrategy::count() === 0, 'GET does not create rows');
@@ -23,7 +23,7 @@ try {
     $assert(RiskSetting::where('key','client_access_unified')->exists(), 'First save imports legacy policy');
     $assert(ClientStrategy::where('is_enabled',1)->where('client_type','!=','fastai')->pluck('client_type')->all() === ['flclash'], 'Migration does not broaden legacy client access');
     $assert($service->isEnabled('fastai'), 'Dedicated client keeps its independent admission policy');
-    config(['v2board.subscription_ua_whitelist'=>['mihomo']]);
+    config(['fastai.subscription_ua_whitelist'=>['mihomo']]);
     $assert($service->isEnabled('flclash') && !$service->isEnabled('mihomo'), 'Retired whitelist no longer overrides saved policy');
     $service->updateStrategies([['client_type'=>'sing-box','is_enabled'=>true]]);
     $assert($service->isEnabled('sing-box'), 'One switch allows access');
@@ -38,7 +38,7 @@ try {
     try { $service->updateStrategies([['client_type'=>'sing-box','is_enabled'=>false],['client_type'=>'bogus']]); } catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {}
     $assert(ClientStrategy::where('client_type','sing-box')->value('is_enabled') === $before, 'Invalid batch leaves all rows unchanged');
     RiskSetting::where('key','client_access_unified')->delete();
-    config(['v2board.subscription_ua_whitelist_enabled'=>0]);
+    config(['fastai.subscription_ua_whitelist_enabled'=>0]);
     ClientStrategy::whereIn('client_type',['flclash','clash-verge'])->update(['is_enabled'=>1]);
     ClientStrategy::where('client_type','mihomo')->update(['is_enabled'=>0]);
     $service->updateStrategies([['client_type'=>'sing-box','sort'=>2]]);

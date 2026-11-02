@@ -16,7 +16,7 @@ $names = array_column(ClientConfigService::uniqueNames($nodes, 'name', ['DIRECT'
 $assert(count(array_unique($names)) === 3 && $names[0] !== 'DIRECT' && !str_contains(implode('', $names), "\n"));
 $template = Yaml::parseFile(resource_path('rules/default.clash.yaml'));
 $template['proxy-groups'][] = ['name' => 'Empty filter', 'type' => 'select', 'proxies' => ['/NO-MATCH/']];
-config(['v2board.app_name' => "Brand: 'quoted'\nline"]);
+config(['fastai.app_name' => "Brand: 'quoted'\nline"]);
 $config = ClientConfigService::clash($template, $nodes);
 $parsed = Yaml::parse(Yaml::dump($config, 8));
 $assert($parsed === $config && !str_contains(Yaml::dump($config), '$app_name'));

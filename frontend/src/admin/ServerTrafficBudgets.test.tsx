@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import {it,expect,vi,afterEach} from "vitest";
 import {render,screen,fireEvent,waitFor,cleanup} from "@testing-library/react";
-const api=vi.hoisted(()=>{window.V2BOARD={mode:"admin",adminPath:"test-admin"} as any;return {request:vi.fn()};});
+const api=vi.hoisted(()=>{window.FASTAI={mode:"admin",adminPath:"test-admin"} as any;return {request:vi.fn()};});
 vi.mock("../shared/api",async original=>({...await original<typeof import("../shared/api")>(),request:api.request,readRequest:api.request}));
 import {ServerTrafficBudgets} from "./ServerTrafficBudgets";
 afterEach(()=>{cleanup();vi.clearAllMocks();vi.restoreAllMocks();});

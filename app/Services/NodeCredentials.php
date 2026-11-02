@@ -35,7 +35,7 @@ final class NodeCredentials
                 ->update(['last_used_at'=>time()]);
             return;
         }
-        $global=(string)config('v2board.server_token');
+        $global=(string)config('fastai.server_token');
         abort_unless($global!=='' && hash_equals($global,$token),401);
         abort_unless(self::legacyEnabled() && !self::migrated($type,$id),401);
         if (in_array($type,['v2box'],true)) {

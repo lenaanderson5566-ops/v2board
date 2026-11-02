@@ -34,7 +34,7 @@ $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $admin = User::create(['email'=>'delete-admin-'.bin2hex(random_bytes(5)).'@example.com','password'=>password_hash('fixture-password',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
 $auth = new App\Services\AuthService($admin);
 $adminToken = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
-$securePath = config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+$securePath = config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
 $call = function ($action, $body, $credential = null) use ($kernel,$securePath,$adminToken) {
     $request = Illuminate\Http\Request::create('/api/v1/'.$securePath.'/user/'.$action,'POST',$body,[],[],['HTTP_ACCEPT'=>'application/json']);
     $request->headers->set('Authorization',$credential ?? $adminToken);

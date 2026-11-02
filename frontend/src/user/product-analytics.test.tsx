@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
-import { cleanup, render, waitFor } from "@testing-library/react";
+import { cleanup, render, waitFor, screen, fireEvent, act } from "@testing-library/react";
 const vital = vi.hoisted(() => ({ lcp: vi.fn(), inp: vi.fn(), cls: vi.fn() }));
 vi.mock("web-vitals", () => ({
     onLCP: vital.lcp,
@@ -8,10 +8,13 @@ vi.mock("web-vitals", () => ({
     onCLS: vital.cls,
 }));
 vi.mock("../shared/runtime-config", () => ({ apiUrl: (p: string) => p }));
-vi.mock("../shared/i18n", () => ({ locale: () => "zh-CN" }));
+vi.mock("../shared/i18n", () => ({ locale: () => "zh-CN", tx: (key: string) => key, default: { t: (key: string) => key } }));
+vi.mock("../shared/api", () => ({ boot: { mode: "user", tosUrl: "" } }));
+vi.mock("react-i18next", () => ({ useTranslation: () => ({}) }));
 import {
     consent,
     privacyKey,
+    privacyChoice,
     privacyRevision,
     savePrivacyChoice,
     setCollection,
@@ -19,6 +22,8 @@ import {
     useAnalyticsPage,
 } from "./product-analytics";
 import { observeApi } from "../shared/telemetry";
+import { AnalyticsPrivacy, AnalyticsPrivacySetting } from "./AnalyticsPrivacy";
+import { localPreferences } from "../shared/browser-storage";
 const fetcher = vi.fn();
 function Page() {
     useAnalyticsPage("subscribe");
@@ -30,6 +35,7 @@ beforeEach(() => {
         get: () => "0",
     });
     localStorage.clear();
+    localPreferences.removeItem(privacyKey);
     sessionStorage.clear();
     fetcher.mockReset();
     fetcher.mockResolvedValue({ ok: true });
@@ -45,6 +51,98 @@ afterEach(() => {
 });
 const events = () =>
     fetcher.mock.calls.map(([, options]) => JSON.parse(options.body));
+const legacyPrivacyKey="v2board.analytics.consent.v2.%2Fapi%2Fv10";
+
+it("retains an earlier refusal without granting analytics during the brand migration", async () => {
+    localStorage.setItem(legacyPrivacyKey,JSON.stringify({choice:"deny",version:3,chosenAt:Date.now(),retentionDays:30}));
+    render(<Page />);setCollection(true);trackAction("download");
+    await Promise.resolve();
+    expect(consent()).toBe("deny");expect(fetcher).not.toHaveBeenCalled();
+    expect(localStorage.getItem(privacyKey)).toBeNull();
+});
+
+it("takes the newest valid decision across both namespaces and lets an equal-time refusal win", () => {
+    const now=Date.now();
+    const choice=(value:"allow"|"deny",chosenAt:number)=>JSON.stringify({choice:value,chosenAt,version:privacyRevision,retentionDays:30});
+    localStorage.setItem(privacyKey,choice("allow",now));
+    localStorage.setItem(legacyPrivacyKey,choice("deny",now));
+    expect(privacyChoice()?.choice).toBe("deny");
+    localStorage.setItem(legacyPrivacyKey,choice("allow",now));
+    localStorage.setItem(privacyKey,choice("deny",now));
+    expect(consent()).toBe("deny");
+    localStorage.setItem(privacyKey,choice("allow",now));
+    localStorage.setItem(legacyPrivacyKey,choice("deny",now-1));
+    expect(consent()).toBe("allow");
+});
+
+it("publishes a new withdrawal to older tabs and stops collection when an older tab withdraws", async () => {
+    const now=Date.now();vi.spyOn(Date,"now").mockReturnValue(now);
+    fetcher.mockImplementation(async(url:string)=>url.endsWith("/configuration")
+        ? {ok:true,json:async()=>({data:{enabled:true,retentionDays:30}})} : {ok:true});
+    savePrivacyChoice("allow",30);
+    render(<><Page /><AnalyticsPrivacy /></>);
+    const reports=()=>fetcher.mock.calls.filter(([url])=>String(url).endsWith("/events"));
+    await waitFor(()=>expect(reports().length).toBeGreaterThan(0));
+    const before=reports().length;
+    await act(async()=>{
+        const denial=JSON.stringify({choice:"deny",version:privacyRevision,chosenAt:now,retentionDays:30});
+        localStorage.setItem(legacyPrivacyKey,denial);
+        window.dispatchEvent(new StorageEvent("storage",{key:legacyPrivacyKey,newValue:denial,storageArea:localStorage}));
+        trackAction("payment_open","payment");
+        await Promise.resolve();
+    });
+    expect(consent()).toBe("deny");expect(reports()).toHaveLength(before);
+    expect(savePrivacyChoice("deny",30)).toBe(true);
+    expect(JSON.parse(localStorage.getItem(legacyPrivacyKey)!).choice).toBe("deny");
+    expect(localStorage.getItem(privacyKey)).toBe(localStorage.getItem(legacyPrivacyKey));
+});
+
+it("shows the storage failure and grants no consent when the new preference cannot be persisted", async () => {
+    fetcher.mockImplementation(async(url:string)=>url.endsWith("/configuration")
+        ? {ok:true,json:async()=>({data:{enabled:true,retentionDays:30}})} : {ok:true});
+    render(<><AnalyticsPrivacy /><AnalyticsPrivacySetting /></>);
+    const toggle=screen.getByRole("switch");
+    await waitFor(()=>expect((toggle as HTMLButtonElement).disabled).toBe(false));
+    const native=Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype,"setItem").mockImplementation(function(this:Storage,key:string,value:string){
+        if(key===privacyKey)throw new DOMException("Full","QuotaExceededError");
+        native.call(this,key,value);
+    });
+    fireEvent.click(toggle);
+    expect(screen.getByRole("status").textContent).toContain("analyticsStorageError");
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(consent()).toBeNull();expect(localStorage.getItem(legacyPrivacyKey)).toBeNull();
+});
+
+it("withdraws through an existing legacy key when new-key persistence is full, while reporting the failure", async () => {
+    localStorage.setItem(legacyPrivacyKey,JSON.stringify({choice:"allow",version:privacyRevision,chosenAt:Date.now()-100,retentionDays:30}));
+    fetcher.mockImplementation(async(url:string)=>url.endsWith("/configuration")
+        ? {ok:true,json:async()=>({data:{enabled:true,retentionDays:30}})} : {ok:true});
+    render(<><AnalyticsPrivacy /><AnalyticsPrivacySetting /></>);
+    const toggle=screen.getByRole("switch");
+    await waitFor(()=>expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    const native=Storage.prototype.setItem;
+    vi.spyOn(Storage.prototype,"setItem").mockImplementation(function(this:Storage,key:string,value:string){
+        if(key===privacyKey)throw new DOMException("Full","QuotaExceededError");
+        native.call(this,key,value);
+    });
+    fireEvent.click(toggle);
+    expect(screen.getByRole("status").textContent).toContain("analyticsStorageError");
+    expect(toggle.getAttribute("aria-checked")).toBe("false");expect(consent()).toBe("deny");
+    expect(localStorage.getItem(privacyKey)).toBeNull();
+    expect(JSON.parse(localStorage.getItem(legacyPrivacyKey)!).choice).toBe("deny");
+    trackAction("payment_open","payment");await Promise.resolve();
+    expect(fetcher.mock.calls.filter(([url])=>String(url).endsWith("/events"))).toHaveLength(0);
+});
+
+it("keeps refusal effective in this tab even if neither namespace can be persisted", () => {
+    localStorage.setItem(legacyPrivacyKey,JSON.stringify({choice:"allow",version:privacyRevision,chosenAt:Date.now()-100,retentionDays:30}));
+    vi.spyOn(Storage.prototype,"setItem").mockImplementation(()=>{throw new DOMException("Full","QuotaExceededError");});
+    expect(savePrivacyChoice("deny",30)).toBe(false);
+    expect(consent()).toBe("deny");
+    expect(savePrivacyChoice("allow",30)).toBe(false);
+    expect(consent()).toBe("deny");
+});
 it("requires renewed permission for previous allows while preserving prior refusals", () => {
     localStorage.setItem(
         privacyKey,

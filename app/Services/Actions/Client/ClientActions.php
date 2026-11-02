@@ -341,7 +341,7 @@ class ClientActions
     private function setSubscribeInfoToServers(&$servers, $user)
     {
         if (!isset($servers[0])) return;
-        if (!(int)config('v2board.show_info_to_server_enable', 0)) return;
+        if (!(int)config('fastai.show_info_to_server_enable', 0)) return;
         $names = \App\Services\SubscriptionInfo::lines($user);
         $base = $servers[0];
         foreach (array_reverse($names) as $name) {

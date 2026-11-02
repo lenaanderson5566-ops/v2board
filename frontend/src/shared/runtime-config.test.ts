@@ -9,9 +9,35 @@ import {
 import startupCopy from "./startup-copy.json";
 
 beforeEach(() => {
-    delete (window as any).V2BOARD;
+    delete (window as any).FASTAI;
+    delete window.V2BOARD;
     document.body.innerHTML = '<div id="root"></div>';
     localStorage.clear();
+});
+
+it("accepts a previous bootstrap input and normalizes only exact default names", async () => {
+    window.V2BOARD={mode:"user",title:"V2Board",landing:false} as any;
+    vi.stubGlobal("fetch",vi.fn());
+    await initializeRuntime("user");
+    expect(window.FASTAI.title).toBe("FastAI");
+    expect(window.FASTAI.landing).toBe(false);
+    expect(fetch).not.toHaveBeenCalled();
+    window.FASTAI={mode:"user",title:"My V2Board service"} as any;
+    await initializeRuntime("user");
+    expect(window.FASTAI.title).toBe("My V2Board service");
+});
+
+it.each(["", "v2boad", " V2BOARD "])("uses the FastAI default for %j", async (title) => {
+    window.FASTAI={mode:"user",title} as any;
+    await initializeRuntime("user");
+    expect(window.FASTAI.title).toBe("FastAI");
+});
+
+it("preserves the old language preference during startup recovery", () => {
+    localStorage.setItem("v2board.language","fa-IR");
+    startupError("ignored");
+    expect(document.querySelector("#root section")?.getAttribute("dir")).toBe("rtl");
+    expect(localStorage.getItem("fastai.language")).toBeNull();
 });
 afterEach(() => vi.unstubAllGlobals());
 it("keeps integrated deployment relative and directs only API paths to a configured backend", () => {
@@ -31,12 +57,12 @@ it("keeps integrated deployment relative and directs only API paths to a configu
         expect(() => normalizeApiOrigin(value)).toThrow();
 });
 it("uses existing server configuration without requesting a static configuration file", async () => {
-    window.V2BOARD = { mode: "user", title: "FastDog", landing: false } as any;
+    window.FASTAI = { mode: "user", title: "FastDog", landing: false } as any;
     const fetcher = vi.fn();
     vi.stubGlobal("fetch", fetcher);
     await initializeRuntime("user");
     expect(fetcher).not.toHaveBeenCalled();
-    expect(window.V2BOARD.landing).toBe(false);
+    expect(window.FASTAI.landing).toBe(false);
 });
 it("loads standalone user configuration without credentials and strips administrative paths", async () => {
     const fetcher = vi
@@ -56,7 +82,7 @@ it("loads standalone user configuration without credentials and strips administr
     await initializeRuntime("user");
     expect(fetcher.mock.calls[0][0]).toBe("/user-config.json");
     expect(fetcher.mock.calls[0][1].credentials).toBe("omit");
-    expect(window.V2BOARD).toMatchObject({
+    expect(window.FASTAI).toMatchObject({
         mode: "user",
         adminPath: "",
         opsPath: "",
@@ -64,11 +90,11 @@ it("loads standalone user configuration without credentials and strips administr
     });
 });
 it("rejects using a user configuration to start the admin entry", async () => {
-    window.V2BOARD = { mode: "user" } as any;
+    window.FASTAI = { mode: "user" } as any;
     await expect(initializeRuntime("admin")).rejects.toThrow(/do not match/);
 });
 it("offers safe startup recovery without relying on React or showing internal error details", () => {
-    localStorage.setItem("v2board.language", "en-US");
+    localStorage.setItem("fastai.language", "en-US");
     const retry = vi.fn();
     startupError(new Error("Failed private configuration /internal/path?token=secret"), retry);
     const root = document.getElementById("root")!;
@@ -85,7 +111,7 @@ it("provides independent startup copy for all interface languages and safely fal
         expect(copy).toHaveLength(3);
         expect(copy.every((value)=>typeof value === "string" && value.length > 0)).toBe(true);
     }
-    localStorage.setItem("v2board.language", "constructor");
+    localStorage.setItem("fastai.language", "constructor");
     expect(()=>startupError("ignored")).not.toThrow();
     expect(document.querySelector("#root h1")?.textContent).toBe("This page could not load");
 });

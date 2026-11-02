@@ -63,7 +63,7 @@ class TrafficCreditService
 
     public static function baseGroupId(): ?int
     {
-        $id = (int)config('v2board.credit_base_group_id', 0);
+        $id = (int)config('fastai.credit_base_group_id', 0);
         return $id > 0 ? $id : null;
     }
 

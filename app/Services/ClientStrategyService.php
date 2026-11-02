@@ -42,7 +42,7 @@ class ClientStrategyService
         foreach ($protocols as $protocol) {
             $strategy = ClientStrategy::query()->firstOrCreate(
                 ['client_type' => $protocol['client_type']],
-                ['client_name' => $protocol['client_name'], 'is_enabled' => $protocol['client_type'] === 'fastai' ? (int) config('v2board.fastai_enabled', 1) : (!$unified && SubscriptionClientRegistry::defaultEnabled($protocol['client_type']) ? 1 : 0)]
+                ['client_name' => $protocol['client_name'], 'is_enabled' => $protocol['client_type'] === 'fastai' ? (int) config('fastai.fastai_enabled', 1) : (!$unified && SubscriptionClientRegistry::defaultEnabled($protocol['client_type']) ? 1 : 0)]
             );
 
             // Keep administrator custom name unchanged.
@@ -79,7 +79,7 @@ class ClientStrategyService
                 if ($type === 'fastai') {
                     $minimum = ClientIdentity::normalizeVersion((string) $row->min_version);
                     $targets = [];
-                    foreach (config('v2board.fastai_releases', []) as $release) {
+                    foreach (config('fastai.fastai_releases', []) as $release) {
                         $effective = ClientIdentity::allowsVersion($row->min_version, $release['minimumVersion']) ? $release['minimumVersion'] : $minimum;
                         $targets[] = [
                             'platform' => $release['platform'], 'architecture' => $release['architecture'],
@@ -112,12 +112,12 @@ class ClientStrategyService
         $rows = ClientStrategy::query()->pluck('is_enabled', 'client_type');
         // Fail closed during deployment until the authorized data migration has run.
         if ($rows->keys()->intersect(['meta','clash','clash-meta','sing','verge','nyanpasu','clashforandroid','clashforwindows','quantumult%20x','quantumult x','ssrplus','mihomo-party'])->isNotEmpty()) return array_fill_keys(array_keys(SubscriptionClientRegistry::CLIENTS), false);
-        $legacyWhitelist = !$unified && config('v2board.subscription_ua_whitelist_enabled', 0);
-        $allowed = (array) config('v2board.subscription_ua_whitelist', []);
+        $legacyWhitelist = !$unified && config('fastai.subscription_ua_whitelist_enabled', 0);
+        $allowed = (array) config('fastai.subscription_ua_whitelist', []);
         $result = [];
         foreach (array_keys(SubscriptionClientRegistry::CLIENTS) as $type) {
             if ($type === 'fastai') {
-                $result[$type] = (bool) ($rows[$type] ?? config('v2board.fastai_enabled', 1));
+                $result[$type] = (bool) ($rows[$type] ?? config('fastai.fastai_enabled', 1));
                 continue;
             }
             $enabled = (bool) ($rows[$type] ?? (!$unified && SubscriptionClientRegistry::defaultEnabled($type)));

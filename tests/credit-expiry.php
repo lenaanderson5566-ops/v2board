@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $templates=[];$auth=null;
-$originalConfig=config('v2board');
+$originalConfig=config('fastai');
 DB::beginTransaction();
 try {
  $u=User::create(['email'=>uniqid().'@example.com','password'=>'test','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'u'=>0,'d'=>0,'transfer_enable'=>0,'credit_balance'=>0]);
@@ -62,9 +62,9 @@ try {
  $template=json_decode(file_get_contents(resource_path('rules/default.sing-box.json')),true,512,JSON_THROW_ON_ERROR);
  $template['outbounds'][]=['type'=>'socks','tag'=>'Static expiry fixture','server'=>'static.expiry.example.test','server_port'=>443,'username'=>'fixture-template-credential'];
  file_put_contents($file,json_encode($template));
- config(['v2board.show_subscribe_method'=>0,'v2board.fastai_enabled'=>1,'v2board.fastai_releases'=>[],
-  'v2board.subscription_user_minute_limit'=>1000,'v2board.subscription_user_day_limit'=>1000,'v2board.subscription_ip_minute_limit'=>1000,
-  'v2board.credit_base_group_id'=>98766,'v2board.show_info_to_server_enable'=>0]);
+ config(['fastai.show_subscribe_method'=>0,'fastai.fastai_enabled'=>1,'fastai.fastai_releases'=>[],
+  'fastai.subscription_user_minute_limit'=>1000,'fastai.subscription_user_day_limit'=>1000,'fastai.subscription_ip_minute_limit'=>1000,
+  'fastai.credit_base_group_id'=>98766,'fastai.show_info_to_server_enable'=>0]);
  (new App\Services\ClientStrategyService())->updateStrategies([
   ['client_type'=>'flclash','is_enabled'=>true,'min_version'=>null],['client_type'=>'mihomo','is_enabled'=>true,'min_version'=>null],
   ['client_type'=>'sing-box','is_enabled'=>true,'min_version'=>null],['client_type'=>'fastai','is_enabled'=>true,'min_version'=>null],
@@ -265,6 +265,6 @@ try {
 } finally {
  if($auth)$auth->removeAllSession();
  foreach($templates as $file=>$content){if($content===null)unlink($file);else file_put_contents($file,$content);}
- config(['v2board'=>$originalConfig]);
+ config(['fastai'=>$originalConfig]);
  DB::rollBack();
 }

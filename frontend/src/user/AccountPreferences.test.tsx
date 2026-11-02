@@ -288,7 +288,7 @@ it("only renders an inline settings switch and collects after explicit opt-in", 
     trackAction("download", "subscribe");
     expect(fetcher).toHaveBeenCalledTimes(2);
 });
-it("revokes collection across tabs without opening a banner", async () => {
+it.each([privacyKey,"v2board.analytics.consent.v2.%2Fapi%2Fv10",null])("revokes collection across tabs after removing %s without opening a banner", async (removedKey) => {
     savePrivacyChoice("allow", 30);
     const { container } = privacyScreen();
     const toggle = screen.getByRole("switch");
@@ -296,10 +296,13 @@ it("revokes collection across tabs without opening a banner", async () => {
         expect(toggle.getAttribute("aria-checked")).toBe("true"),
     );
     act(() => {
-        localStorage.removeItem(privacyKey);
-        window.dispatchEvent(new StorageEvent("storage", { key: privacyKey }));
+        if(removedKey===null)localStorage.clear();
+        else localStorage.removeItem(removedKey);
+        window.dispatchEvent(new StorageEvent("storage", { key: removedKey, newValue: null }));
     });
     expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(localStorage.getItem(privacyKey)).toBeNull();
+    expect(localStorage.getItem("v2board.analytics.consent.v2.%2Fapi%2Fv10")).toBeNull();
     expect(container.querySelector(".analytics-privacy")).toBeNull();
 });
 it("requires renewed opt-in for a longer retention period", async () => {

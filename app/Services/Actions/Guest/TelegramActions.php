@@ -15,8 +15,8 @@ class TelegramActions
     public function __construct(Request $request)
     {
         $secret = $request->is('api/v10/*') ? $request->header('X-Telegram-Bot-Api-Secret-Token') : $request->input('access_token');
-        $token = config('v2board.telegram_bot_token');
-        if (!config('v2board.telegram_bot_enable', 0) || !is_string($token) || trim($token) === '' ||
+        $token = config('fastai.telegram_bot_token');
+        if (!config('fastai.telegram_bot_enable', 0) || !is_string($token) || trim($token) === '' ||
             !is_string($secret) || !hash_equals(md5($token), $secret)) {
             abort(401);
         }

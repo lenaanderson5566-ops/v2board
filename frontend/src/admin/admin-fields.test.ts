@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, vi } from "vitest";
-vi.hoisted(() => { window.V2BOARD = { mode: "admin", adminPath: "test-admin" } as any; });
+vi.hoisted(() => { window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any; });
 import { configField } from "./admin-fields";
 describe("configuration API contracts", () => {
     it("keeps password rate limits numeric rather than treating them as credentials", () => {

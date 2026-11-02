@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 require __DIR__.'/fixtures/V10TestPayment.php';
 Illuminate\Support\Facades\Queue::fake();
-config(['v2board.telegram_bot_enable'=>0,'v2board.ticket_status'=>0]);
+config(['fastai.telegram_bot_enable'=>0,'fastai.ticket_status'=>0]);
 $cleanupUsers=[];
 $checks=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
@@ -107,18 +107,18 @@ try {
     $assert($r->getStatusCode()===200 && $row['quotaBytes']===50*1073741824 && $row['monthlyPrice']===1000,'Plan schema and byte units');
     [$r,$j]=$call('GET','/api/v10/plans/'.$plan->id,[],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['id']===$plan->id,'Plan detail resource');
-    $originalResetSetting=config('v2board.reset_traffic_method',0);
+    $originalResetSetting=config('fastai.reset_traffic_method',0);
     $originalResetMethod=$plan->fresh()->reset_traffic_method;
     try {
         $plan->reset_traffic_method=null; $plan->save();
         foreach ([0,1,2,3,4] as $resetMethod) {
-            config(['v2board.reset_traffic_method'=>$resetMethod]);
+            config(['fastai.reset_traffic_method'=>$resetMethod]);
             $source=['reset_traffic_method'=>null,'transfer_enable'=>50];
             $projection=App\Http\Resources\V10\Resource::encode('plan',$source);
             $assert($projection['resetMethod']===null && $projection['effectiveResetMethod']===$resetMethod,'Inherited plan reset resolves the actual site policy '.$resetMethod);
             $assert($source===['reset_traffic_method'=>null,'transfer_enable'=>50],'Read-only reset projection leaves its input unchanged');
         }
-        config(['v2board.reset_traffic_method'=>3]);
+        config(['fastai.reset_traffic_method'=>3]);
         $beforePlanRead=$plan->fresh()->getAttributes();
         [$r,$j]=$call('GET','/api/v10/plans',[],$bearer);
         $resolvedPlan=collect($j['data'])->firstWhere('id',$plan->id);
@@ -131,11 +131,11 @@ try {
         $assert($beforePlanRead===$plan->fresh()->getAttributes(),'Plan detail read does not mutate stored reset policy');
         $nested=App\Http\Resources\V10\Resource::encode('order',['plan'=>['reset_traffic_method'=>null]]);
         $assert($nested['plan']['resetMethod']===null && $nested['plan']['effectiveResetMethod']===3,'Nested order plan uses the same resolved reset projection');
-        config(['v2board.reset_traffic_method'=>99]);
+        config(['fastai.reset_traffic_method'=>99]);
         $unknown=App\Http\Resources\V10\Resource::encode('plan',['reset_traffic_method'=>null]);
         $assert(array_key_exists('effectiveResetMethod',$unknown) && $unknown['effectiveResetMethod']===null,'Unsupported reset settings do not invent a known schedule');
     } finally {
-        config(['v2board.reset_traffic_method'=>$originalResetSetting]);
+        config(['fastai.reset_traffic_method'=>$originalResetSetting]);
         $plan->reset_traffic_method=$originalResetMethod; $plan->save();
     }
 
@@ -342,10 +342,10 @@ try {
     $assert($r->getStatusCode()===422,'Subscription format allowlist');
     [$r,$j]=$call('GET','/api/v10/me/subscription',[],$bearer);
     $assert($r->getStatusCode()===200 && str_contains($j['data']['subscriptionUrl'],'/api/v10/subscriptions/'),'New subscription link '.json_encode($j));
-    config(['v2board.subscribe_path'=>'/custom-subscription']);
+    config(['fastai.subscribe_path'=>'/custom-subscription']);
     [$r,$j]=$call('GET','/api/v10/me/subscription',[],$bearer);
     $assert(str_contains($j['data']['subscriptionUrl'],'/custom-subscription?token='),'Custom subscription path is preserved');
-    config(['v2board.subscribe_path'=>'/api/v1/client/subscribe']);
+    config(['fastai.subscribe_path'=>'/api/v1/client/subscribe']);
     [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box');
     $assert($r->getStatusCode()===200 && $r->headers->get('X-Subscription-Notice')==='no_plan' && str_contains($r->getContent(),'203.0.113.10') && !str_contains($r->getContent(),$user->uuid) && !str_contains($r->getContent(),$user->token),'A new public account receives only safe no-plan notice nodes');
     // Format/credential compatibility requires an entitled account. Keep this
@@ -379,7 +379,7 @@ try {
         $assert($r->getStatusCode()===200 && strlen($r->getContent())>0 && !isset($j['data']),'Native format '.$format.' status '.$r->getStatusCode().' '.substr($r->getContent(),0,300));
     }
     foreach ([1,2] as $mode) {
-        config(['v2board.show_subscribe_method'=>$mode]);
+        config(['fastai.show_subscribe_method'=>$mode]);
         [$r,$j]=$call('GET','/api/v10/me/subscription',[],$bearer);
         $link=$j['data']['subscriptionUrl'];
         $subscriptionToken=basename(parse_url($link,PHP_URL_PATH));
@@ -387,7 +387,7 @@ try {
         $assert($r->getStatusCode()===200 && isset($j['outbounds']),'Generated subscription credential mode '.$mode);
         Illuminate\Support\Facades\Cache::forget('totp_'.$subscriptionToken);
     }
-    config(['v2board.show_subscribe_method'=>0]);
+    config(['fastai.show_subscribe_method'=>0]);
     $configNode->delete();
     $user->fill($beforeConfigEntitlement)->save();
     $assert($user->fresh()->only(array_keys($beforeConfigEntitlement))===$beforeConfigEntitlement,'Configuration fixtures do not pre-activate the later purchase account');
@@ -490,7 +490,7 @@ try {
     $payment->notify_domain='https://callback.example'; $payment->save();
     $gateway=(new App\Services\PaymentService('V10TestPayment',$payment->id))->pay(['trade_no'=>$order->trade_no,'total_amount'=>1000,'user_id'=>$user->id,'stripe_token'=>null]);
     $assert($gateway['data']==='https://callback.example/api/v10/webhooks/payments/V10TestPayment/'.$payment->uuid,'Custom callback domain uses V10 path');
-    config(['v2board.app_url'=>'https://example.com','v2board.stop_register'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.invite_force'=>1,'v2board.email_verify'=>1,'v2board.try_out_plan_id'=>0]);
+    config(['fastai.app_url'=>'https://example.com','fastai.stop_register'=>0,'fastai.email_whitelist_enable'=>0,'fastai.email_gmail_limit_enable'=>0,'fastai.invite_force'=>1,'fastai.email_verify'=>1,'fastai.try_out_plan_id'=>0]);
     $email=Str::uuid().'@example.com';
     [$r,$j]=$call('POST','/api/v10/me/invitations',['email'=>$email],$bearer);
     $assert($r->getStatusCode()===202 && $j['data']['status']==='queued' && isset($j['meta']['taskId']),'Invitation queue resource '.json_encode($j));
@@ -526,10 +526,10 @@ try {
     [$r,$j]=$call('GET','/api/v10/me/subscription',[],$bearer);
     $assert($r->getStatusCode()===200 && $before===$user->fresh()->getAttributes(),'Subscription GET does not write business records');
     // Keep reset fixtures in a savepoint: reads must report scheduler state without executing it.
-    $resetConfig=config('v2board.system_timezone');
+    $resetConfig=config('fastai.system_timezone');
     DB::beginTransaction();
     try {
-        config(['v2board.system_timezone'=>'Asia/Shanghai']);
+        config(['fastai.system_timezone'=>'Asia/Shanghai']);
         App\Services\TimeZones::apply();
         $resetNow=new DateTimeImmutable('now',new DateTimeZone('Asia/Shanghai'));
         $resetDate=$resetNow->format('Y-m-d');
@@ -573,7 +573,7 @@ try {
         $assert($r->getStatusCode()===200 && array_key_exists('resetState',$j['data']) && $j['data']['resetState']===null && $j['data']['resetAt']===null,'Subscription with no applicable reset preserves explicit nullable reset fields');
     } finally {
         DB::rollBack();
-        config(['v2board.system_timezone'=>$resetConfig]);
+        config(['fastai.system_timezone'=>$resetConfig]);
         App\Services\TimeZones::apply();
     }
     $imageName=sha1((string)Str::uuid()).'.png';

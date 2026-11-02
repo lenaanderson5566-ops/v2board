@@ -10,7 +10,7 @@ final class BillingCurrencyController extends Controller
 {
     public function fetch() {
         $rate=DB::table('v2_exchange_rate')->where('id',1)->first();
-        return response(['data'=>['default_currency'=>config('v2board.new_user_currency','CNY'),'rate'=>$rate,
+        return response(['data'=>['default_currency'=>config('fastai.new_user_currency','CNY'),'rate'=>$rate,
             'plans'=>Plan::orderBy('sort')->get(['id','name','usd_prices']),
             'paid_totals'=>DB::table('v2_order')->whereIn('status',[1,3,4])->select('currency')->selectRaw('SUM(total_amount) as amount')->groupBy('currency')->get(),
         ]])->header('Cache-Control','no-store');

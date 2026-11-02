@@ -11,7 +11,7 @@ use Illuminate\Support\Str;
 use Carbon\CarbonImmutable;
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage()."\n");exit(1);});
 $checks=0;$assert = \Tests\Support\Assertions::counter($checks);
-config(['cache.default'=>'array','v2board.server_token'=>'budget-test']);Queue::fake();DB::beginTransaction();
+config(['cache.default'=>'array','fastai.server_token'=>'budget-test']);Queue::fake();DB::beginTransaction();
 try{
  $base=['name'=>'Budget node '.Str::uuid(),'group_id'=>[999997],'host'=>'example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','network'=>'tcp','tls'=>0,'rate'=>2,'show'=>1,'disable_sni'=>0,'zero_rtt_handshake'=>0];
  (new App\Http\Controllers\V1\Admin\Server\V2boxController())->save(Request::create('/','POST',$base));

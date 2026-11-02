@@ -81,7 +81,7 @@ class PaymentService
 
     private function configuredBase(): string
     {
-        $base = rtrim((string)(config('v2board.app_url') ?: config('app.url')), '/');
+        $base = rtrim((string)(config('fastai.app_url') ?: config('app.url')), '/');
         $parts = parse_url($base);
         abort_unless($parts && in_array($parts['scheme'] ?? '', ['https', 'http'], true)
             && !empty($parts['host']) && !isset($parts['user']) && !isset($parts['pass'])

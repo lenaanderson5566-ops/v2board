@@ -11,7 +11,7 @@ final class SubscriptionAccessGuard
 {
     public function checkIp(Request $request): void
     {
-        $this->consume('ip', (string) $request->ip(), 60, (int) config('v2board.subscription_ip_minute_limit', 120));
+        $this->consume('ip', (string) $request->ip(), 60, (int) config('fastai.subscription_ip_minute_limit', 120));
         $blacklist = new RiskBlacklistService();
         if ($blacklist->exists('ip', $request->ip()) || $blacklist->exists('ua_hash', hash('sha256', (string) $request->userAgent()))) {
             abort(403, 'Subscription access denied.');
@@ -20,8 +20,8 @@ final class SubscriptionAccessGuard
 
     public function checkUser(int $userId): void
     {
-        $this->consume('user-minute', (string) $userId, 60, (int) config('v2board.subscription_user_minute_limit', 30));
-        $this->consume('user-day', (string) $userId, 86400, (int) config('v2board.subscription_user_day_limit', 240));
+        $this->consume('user-minute', (string) $userId, 60, (int) config('fastai.subscription_user_minute_limit', 30));
+        $this->consume('user-day', (string) $userId, 86400, (int) config('fastai.subscription_user_day_limit', 240));
     }
 
     private function consume(string $scope, string $identity, int $seconds, int $limit): void

@@ -18,7 +18,7 @@ class DailyTaskStatus extends Command
         $records = DB::table('v2_daily_task_run')->where('business_date', $now->format('Y-m-d'))->get()->keyBy('task');
         $rows = [];
         foreach (RunDailyTask::TASKS as $task => $at) {
-            $row = $records->get($task);
+            $row = $records->get(RunDailyTask::persistentTask($task));
             $rows[] = [$task, $at, $row->status ?? (RunDailyTask::due($task, $now) ? 'pending' : 'not_due'), $row ? TimeZones::format($row->updated_at) : '—'];
         }
         $this->table(['Task', 'Local schedule', 'Today status', 'Updated'], $rows);

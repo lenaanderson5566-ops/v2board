@@ -9,7 +9,7 @@ DB::beginTransaction();
 try {
  C::query()->delete();
  DB::table('v2_risk_setting')->where('key','client_access_unified')->delete();
- config(['v2board.subscription_ua_whitelist_enabled'=>1,'v2board.subscription_ua_whitelist'=>['meta','flclash','sing']]);
+ config(['fastai.subscription_ua_whitelist_enabled'=>1,'fastai.subscription_ua_whitelist'=>['meta','flclash','sing']]);
  foreach([['meta',1,'1.19.0'],['mihomo',0,'1.20.0'],['flclash',1,null],['sing',1,null]] as [$id,$enabled,$minimum]) C::create(['client_type'=>$id,'client_name'=>$id,'is_enabled'=>$enabled,'min_version'=>$minimum]);
  $assert(!(new App\Services\ClientStrategyService())->isEnabled('flclash'),'Unmigrated state fails closed');
  $log=SubscribeLog::create(['user_id'=>1,'client_type'=>' META ','user_agent'=>'mihomo/1.20.0','status'=>'success','created_at'=>time()]);

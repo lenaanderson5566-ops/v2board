@@ -79,7 +79,7 @@ try {
     $assert(str_contains($explain[0]->possible_keys ?? '', 'log_request_id_idx'),'request lookup has usable index');
     foreach(['v2_login_log','v2_subscribe_log'] as $table){$plan=DB::select('EXPLAIN SELECT id FROM '.$table.' WHERE created_at < ? ORDER BY created_at,id LIMIT 1000',[$now]);$assert(str_contains($plan[0]->possible_keys ?? '',$table.'_created_id_idx'),'cleanup has time index');}
     $kernel=app(Illuminate\Contracts\Http\Kernel::class);
-    $path='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key')))).'/system/logRetention';
+    $path='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key')))).'/system/logRetention';
     $assert($kernel->handle(Request::create($path,'POST',['system_log_retention_days'=>10],[],[],['HTTP_ACCEPT'=>'application/json']))->getStatusCode()===403,'retention settings admin-protected');
     $user=App\Models\User::create(['email'=>'logs-admin-'.bin2hex(random_bytes(5)).'@example.test','password'=>password_hash('test-only',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
     $auth=(new App\Services\AuthService($user))->generateAuthData(Request::create('/'))['auth_data'];

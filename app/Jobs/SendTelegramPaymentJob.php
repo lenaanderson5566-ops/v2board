@@ -25,7 +25,7 @@ class SendTelegramPaymentJob implements ShouldQueue {
             $user=\App\Models\User::find($row->user_id);
             $owner=app(\App\Services\TelegramCommunityService::class)->userForTelegram((int)$row->telegram_id);
             $order=\App\Models\Order::find($row->order_id);
-            if (!config('v2board.telegram_bot_enable',0) || $row->bot_key!==TelegramDeliveryService::botKey() || !$user || !$owner || $owner->id!==$user->id || $user->banned || !$user->is_admin || (string)$user->telegram_id!==(string)$row->telegram_id || !$order || !$order->paid_at || !in_array((int)$order->status,[1,3],true)) {
+            if (!config('fastai.telegram_bot_enable',0) || $row->bot_key!==TelegramDeliveryService::botKey() || !$user || !$owner || $owner->id!==$user->id || $user->banned || !$user->is_admin || (string)$user->telegram_id!==(string)$row->telegram_id || !$order || !$order->paid_at || !in_array((int)$order->status,[1,3],true)) {
                 $q->update(['status'=>'cancelled']); return;
             }
             (new TelegramService())->sendMessage((int)$row->telegram_id,TelegramText::get('payment',TelegramText::normalize((string)$user->language),['amount'=>\App\Services\Money::format($order->total_amount, $order->currency ?: 'CNY'),'order'=>$order->trade_no]));

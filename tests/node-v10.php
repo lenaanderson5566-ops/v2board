@@ -11,7 +11,7 @@ use App\Http\Controllers\V1\Admin\Server\V2boxController;
 $checks=0;
 set_exception_handler(function($e) { fwrite(STDERR,$e->getMessage()."\n"); exit(1); });
 $assert = \Tests\Support\Assertions::counter($checks);
-config(['v2board.server_token'=>'node-v10-test-secret', 'cache.default'=>'array']);
+config(['fastai.server_token'=>'node-v10-test-secret', 'cache.default'=>'array']);
 $targetPrefix = 'target-statistics-test-'.bin2hex(random_bytes(12)).':';
 config(['cache.stores.target_statistics.prefix'=>$targetPrefix,'cache.target_statistics_budget_mb'=>64]);
 Cache::purge('target_statistics');
@@ -29,7 +29,7 @@ $call=function($method,$path,$body=[],$headers=[])use($kernel,&$nodeId){
 (require __DIR__.'/../database/migrations/2026_10_21_000002_create_node_target_daily.php')->up();
 // Explicit opt-in load fixture; never populate an ordinary application database.
 if (getenv('TARGET_STATISTICS_PERF')==='1') {
-    if(DB::getDriverName()!=='mysql' || !str_starts_with(DB::connection()->getDatabaseName(),'v2board_test_'))throw new RuntimeException('Performance fixture requires an isolated MySQL test database');
+    if(DB::getDriverName()!=='mysql' || !str_starts_with(DB::connection()->getDatabaseName(),'fastai_test_'))throw new RuntimeException('Performance fixture requires an isolated MySQL test database');
     Illuminate\Support\Facades\Schema::create('v2_risk_setting',function($t){$t->increments('id');$t->string('key')->unique();$t->text('value');$t->integer('created_at');$t->integer('updated_at');});
     $daily=app(App\Services\TargetStatisticsDaily::class);$store=app(App\Services\TargetStatisticsStore::class);
     if(DB::table($daily::TABLE)->exists())throw new RuntimeException('Performance fixture requires empty target tables');
@@ -151,7 +151,7 @@ try {
     $assert($call('POST',$root.'/online-users',['records'=>[['userId'=>42,'ips'=>['bad']]]])->getStatusCode()===422,'Invalid address rejected');
     $assert($call('GET',$root.'/online-counts')->getStatusCode()===200,'Online counts');
     // Online snapshots are independent of traffic activity and are full per-node replacements.
-    config(['v2board.server_push_interval'=>60,'v2board.device_limit_mode'=>0]);
+    config(['fastai.server_push_interval'=>60,'fastai.device_limit_mode'=>0]);
     $presence=new App\Services\OnlineDeviceService();
     $onlineUsers=[];
     foreach (['a','b'] as $suffix) $onlineUsers[]=App\Models\User::create([
@@ -188,11 +188,11 @@ try {
     $assert($call('POST',$root.'/online-users',$report)->getStatusCode()===200,'Valid node presence resumes after an empty snapshot');
     $presence->replace('v2box',$otherNode,[$onlineA->id=>['192.0.2.1']],3600);
     $assert($presence::forUser($onlineA->id)['count']===3,'Strict mode counts an IP on each node');
-    config(['v2board.device_limit_mode'=>1]);
+    config(['fastai.device_limit_mode'=>1]);
     $assert($presence::forUser($onlineA->id)['count']===2,'Relaxed mode deduplicates the same IP across nodes');
     $counts=collect(json_decode($call('GET',$root.'/online-counts')->getContent(),true)['data'])->keyBy('userId');
     $assert($counts[$onlineA->id]['count']===2,'A mode change immediately affects node reads without a cached aggregate');
-    config(['v2board.device_limit_mode'=>0]);
+    config(['fastai.device_limit_mode'=>0]);
     $assert($call('POST',$root.'/online-users',['records'=>[['userId'=>$onlineA->id,'ips'=>[]]]])->getStatusCode()===200,'Explicit empty IP list clears that node');
     $assert($presence::forUser($onlineA->id)['count']===1 && $presence::forUser($onlineB->id)['count']===0,'Omitted users clear immediately while another node survives');
     $assert($call('POST',$root.'/online-users',$report)->getStatusCode()===200,'Node can resume a nonempty snapshot');
@@ -205,12 +205,12 @@ try {
     Cache::put($onlineKey,['alive_ip'=>999,'fresh'=>['aliveips'=>['192.0.2.5_1','192.0.2.5_1'],'lastupdateAt'=>$at],
         'stale'=>['aliveips'=>['192.0.2.6'],'lastupdateAt'=>$at-100],'unstamped'=>['aliveips'=>['192.0.2.7']]],120);
     $assert($presence::forUser($onlineA->id)['count']===1,'A renewed user cache cannot revive expired or unstamped node entries');
-    config(['v2board.server_push_interval'=>300]);
+    config(['fastai.server_push_interval'=>300]);
     $assert($presence::freshWindow()===360,'Long report intervals receive a bounded jitter and network allowance');
     Cache::put($onlineKey,['fresh'=>['aliveips'=>['192.0.2.8'],'lastupdateAt'=>$at-150],
         'stale'=>['aliveips'=>['192.0.2.9'],'lastupdateAt'=>$at-361]],380);
     $assert($presence::forUser($onlineA->id)['count']===1,'A 300-second interval retains a 150-second snapshot and excludes an expired one');
-    config(['v2board.server_push_interval'=>60]);
+    config(['fastai.server_push_interval'=>60]);
     $assert($presence::forUser($onlineA->id)['count']===0,'Every reader applies the same current freshness policy');
     $presence->replace('v2box',$nodeId,[$onlineA->id=>['192.0.2.1']],3600);
     $injectOnlineFailure=true;
@@ -477,7 +477,7 @@ try {
     $newPolicy=$stats->configure(true);
     $assert($newPolicy['version']!==$policy['version'],'Reenable gets fresh generation');
     $assert(json_decode($call('POST',$root.'/target-statistics',$batch)->getContent(),true)['data']['accepted']===false,'Old generation rejected after reenable');
-    $adminPath='/api/v1/'.config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+    $adminPath='/api/v1/'.config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
     $adminCall=function($token,$enabled)use($kernel,$adminPath){$request=Request::create($adminPath.'/target-statistics/settings','POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$token],json_encode(['enabled'=>$enabled]));return $kernel->handle($request);};
     $assert($adminCall('',false)->getStatusCode()===403,'Anonymous cannot change target switch');
     $auth=new App\Services\AuthService($user);$token=$auth->generateAuthData(Request::create('/'))['auth_data'];
@@ -591,7 +591,7 @@ try {
     $credentials::disableLegacy((int)$user->id);
     $assert(!$credentials::legacyEnabled(),'All confirmed nodes allow global retirement');
     $assert($call('GET',$root.'/users',[],['HTTP_X_NODE_ID'=>'999999999'])->getStatusCode()===401,'Retired global key cannot access new identities');
-    config(['v2board.server_api_url'=>'https://panel.example.invalid']);
+    config(['fastai.server_api_url'=>'https://panel.example.invalid']);
     $deploymentCall=function($body,$authorization=null)use($kernel,$adminPath,$token){
         Illuminate\Support\Facades\RateLimiter::clear('node-deployment:'.sha1('|127.0.0.1'));
         return $kernel->handle(Request::create($adminPath.'/server/credentials/deployment','POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization??$token],json_encode($body)));
@@ -736,7 +736,7 @@ try {
     $oldHost=App\Services\NodeDeployment::host();
     $oldAddressGrant=App\Services\NodeDeployment::create((int)$addressNode->id,(int)$user->id);
     preg_match('/nd_[a-f0-9]{64}/',$oldAddressGrant['command'],$oldAddressToken);
-    config(['v2board.server_api_url'=>'https://new-node-api.example.test:8443/']);
+    config(['fastai.server_api_url'=>'https://new-node-api.example.test:8443/']);
     $addressRedeem=fn($secret)=>$call('POST',$root.'/enrollments/redeem',[],['HTTP_AUTHORIZATION'=>'Bearer '.$secret,'HTTP_X_NODE_ID'=>(string)$addressNode->id,'HTTP_X_DEPLOYMENT_CAPABILITIES'=>'runtime-ready-v1']);
     $assert($addressRedeem($oldAddressToken[0])->getStatusCode()===409,'Changing API address rejects stale deployment authorization without rotating credentials');
     $newAddressGrant=App\Services\NodeDeployment::create((int)$addressNode->id,(int)$user->id);

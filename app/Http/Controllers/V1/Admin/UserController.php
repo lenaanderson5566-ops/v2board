@@ -182,7 +182,7 @@ class UserController extends Controller
     {
         $purpose=$request->input('purpose');
         if($purpose==='marketing') {
-            abort_unless(config('v2board.email_announcements_enabled',1),422,'推广邮件已暂停。');
+            abort_unless(config('fastai.email_announcements_enabled',1),422,'推广邮件已暂停。');
             try { \App\Services\Mail\MailAudience::origin(); } catch (\Throwable $e) { abort(422,'请先配置 HTTPS 邮件回调与退订 API 地址。'); }
         }
         $builder=User::orderBy('id');

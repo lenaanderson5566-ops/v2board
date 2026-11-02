@@ -89,7 +89,7 @@ it("uses one timezone hint for the workspace and formats ISO dates without a suf
     configureTimeZone("Asia/Shanghai",true);
 });
 it("omits GMT in the shared user-management and online-user date renderer only in admin mode", async () => {
-    window.V2BOARD ??= {mode:"admin",systemTimeZone:"Asia/Shanghai"} as typeof window.V2BOARD;
+    window.FASTAI ??= {mode:"admin",systemTimeZone:"Asia/Shanghai"} as typeof window.FASTAI;
     const { boot, date }=await import("../shared/api");
     const { configureTimeZone }=await import("../shared/timezone");
     const previous=boot.mode;

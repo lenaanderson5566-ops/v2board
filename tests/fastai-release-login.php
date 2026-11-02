@@ -13,11 +13,11 @@ $call = function ($path, $body = [], $token = null, $method = 'GET') use ($app) 
 $release = ['platform'=>'windows', 'architecture'=>'x64', 'channel'=>'stable', 'latestVersion'=>'1.2.0', 'latestBuild'=>2026100602,
     'minimumVersion'=>'1.0.0', 'downloadUrl'=>'https://fastdog.ws/download/FastAI.exe', 'sha256'=>str_repeat('a',64),
     'releaseNotes'=>'Release', 'publishedAt'=>'2026-10-06T00:00:00Z'];
-$original = config('v2board');
+$original = config('fastai');
 $auth = null;
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
-    config(['v2board.fastai_releases'=>[$release], 'v2board.app_url'=>'https://fastdog.ws']);
+    config(['fastai.fastai_releases'=>[$release], 'fastai.app_url'=>'https://fastdog.ws']);
     $response = $call('public/fastai/releases/latest?platform=windows&architecture=x64');
     $assert($response->getStatusCode()===200, 'Public release endpoint');
     $data = json_decode($response->getContent(), true)['data'];
@@ -55,6 +55,6 @@ try {
     echo "FastAI releases and login: {$checks} checks passed\n";
 } finally {
     if ($auth) $auth->removeAllSession();
-    config(['v2board'=>$original]);
+    config(['fastai'=>$original]);
     Illuminate\Support\Facades\DB::rollBack();
 }

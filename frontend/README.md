@@ -1,4 +1,4 @@
-# V2Board React console
+# FastAI React console
 
 React + TypeScript + Vite provide the user workspace and unified admin console.
 Laravel retains all authentication, billing, node, risk and persistence logic.
@@ -61,7 +61,7 @@ The previous `/ops-center/*` bookmarks redirect to the matching admin hash route
 
 Theme discovery, selection and theme configuration routes have been removed.
 Custom footer HTML is available in System Settings → 页脚 HTML, persisted as
-`v2board.custom_footer_html`, and rendered only in the user shell. During upgrade,
+`fastai.custom_footer_html`, and rendered only in the user shell. During upgrade,
 the old selected theme's `custom_html` is used until the independent footer setting
 has been saved. Footer HTML is sanitized with DOMPurify before insertion; its
 optional loading does not block sign-in. Article and plan HTML is also sanitized.

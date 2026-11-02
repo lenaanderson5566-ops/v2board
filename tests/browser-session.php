@@ -5,7 +5,7 @@ $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $jar=['user'=>[],'admin'=>[]];$csrf=[];$keys=[];$auth=null;$registrationUsers=[];
 $testIp='192.0.2.'.random_int(2,254);
-$original=config('v2board.app_url');
+$original=config('fastai.app_url');
 $call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$origin='https://fastdog.ws',$bearer=null) use ($app,&$jar,&$csrf,&$keys,$testIp) {
     $request=Illuminate\Http\Request::create('https://fastdog.ws/api/'.$path,$method,$body,$scope?$jar[$scope]:[],[],['REMOTE_ADDR'=>$testIp]);
     $request->headers->set('Accept','application/json');
@@ -24,7 +24,7 @@ $call=function($path,$body=[],$scope='user',$method='GET',$csrfOverride=null,$or
 $data=fn($r)=>json_decode($r->getContent(),true)['data']??[];
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
-    config(['v2board.app_url'=>'https://fastdog.ws']);
+    config(['fastai.app_url'=>'https://fastdog.ws']);
     $email='cookie-'.bin2hex(random_bytes(5)).'@example.com';
     $user=App\Models\User::create(['email'=>$email,'password'=>password_hash('Testing!2026',PASSWORD_DEFAULT),'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'is_admin'=>1]);
     $auth=new App\Services\AuthService($user);
@@ -100,7 +100,7 @@ try {
     $assert($admin->getStatusCode()===200 && $data($admin)['authenticated'] && !isset($data($admin)['auth_data']),'Admin login uses Cookie');
     $assert($call('v1/user/info',[],'admin')->getStatusCode()===200,'Retained admin account reads use scoped Cookie');
     $assert($jar['admin']!==$jar['user'],'Admin/user Cookies isolated');
-    $path=config('v2board.secure_path',config('v2board.frontend_admin_path',hash('crc32b',config('app.key'))));
+    $path=config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
     $assert($call('v1/'.$path.'/config/fetch',[],'user')->getStatusCode()===403,'User-scoped Cookie cannot authorize administrative routes');
     $adminDenied=$call('v1/'.$path.'/config/fetch',[],'user');
     $assert(str_contains($adminDenied->headers->get('Cache-Control'),'no-store'),'Legacy admin authentication errors cannot be cached');
@@ -176,7 +176,7 @@ try {
     } finally { config(['browser.secure'=>$secure]); }
     // Registration must follow the same HttpOnly grant boundary as password login.
     Illuminate\Support\Facades\Queue::fake();
-    config(['v2board.stop_register'=>0,'v2board.invite_force'=>0,'v2board.email_verify'=>0,'v2board.email_whitelist_enable'=>0,'v2board.email_gmail_limit_enable'=>0,'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0]);
+    config(['fastai.stop_register'=>0,'fastai.invite_force'=>0,'fastai.email_verify'=>0,'fastai.email_whitelist_enable'=>0,'fastai.email_gmail_limit_enable'=>0,'fastai.register_limit_by_ip_enable'=>0,'fastai.try_out_plan_id'=>0]);
     $call('v10/auth/browser-session');
     $beforeSignup=$jar['user'];
     $signupEmail='browser-signup-'.bin2hex(random_bytes(6)).'@example.com';
@@ -198,5 +198,5 @@ try {
     if ($auth) $auth->removeAllSession();
     foreach ($registrationUsers as $registered) (new App\Services\AuthService($registered))->removeAllSession();
     foreach ($keys as $key) Illuminate\Support\Facades\Cache::forget($key);
-    Illuminate\Support\Facades\DB::rollBack(); config(['v2board.app_url'=>$original]);
+    Illuminate\Support\Facades\DB::rollBack(); config(['fastai.app_url'=>$original]);
 }

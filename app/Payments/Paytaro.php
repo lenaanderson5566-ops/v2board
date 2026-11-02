@@ -1,6 +1,6 @@
 <?php
 /**
- * Paytaro 支付接口（V2Board / Xboard）
+ * Paytaro 支付接口（FastAI / Xboard）
  * 预置。后台「支付配置」添加时接口选择 Paytaro；
  * 文档：https://v3.paytaro.com/#/docs/v2board   客服：https://t.me/smogate
  */

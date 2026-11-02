@@ -159,9 +159,10 @@ final class OperationsAnalytics
             $success=DB::table('v2_daily_task_run')->where('status','completed')->select('task')->selectRaw('MAX(updated_at) AS latest')->groupBy('task')->pluck('latest','task');
             $tasks=[];
             foreach (RunDailyTask::TASKS as $task=>$at) {
-                $row=$today->get($task);
+                $identity=RunDailyTask::persistentTask($task);
+                $row=$today->get($identity);
                 $tasks[]=['task'=>$task,'scheduledAt'=>$at,'status'=>$row->status ?? (RunDailyTask::due($task,$date) ? 'pending' : 'not_due'),
-                    'lastSuccessAt'=>isset($success[$task]) ? gmdate('c',$success[$task]) : null];
+                    'lastSuccessAt'=>isset($success[$identity]) ? gmdate('c',$success[$identity]) : null];
             }
         }
         $failedTable=config('queue.failed.table','failed_jobs');

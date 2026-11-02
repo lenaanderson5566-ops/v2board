@@ -9,9 +9,9 @@ class InvitationRewardService
         // A base group is required so an invited account can actually use standalone credits.
         $enabled = TrafficCreditService::baseGroupId() !== null;
         return [
-            'validityMonths' => max(1, (int)config('v2board.invite_credit_months', 1)),
-            'registrationBytes' => $enabled ? (int)round(max(0, (float)config('v2board.invite_registration_gb', 0)) * 1073741824) : 0,
-            'firstUseBytes' => $enabled ? (int)round(max(0, (float)config('v2board.invite_first_use_gb', 0)) * 1073741824) : 0,
+            'validityMonths' => max(1, (int)config('fastai.invite_credit_months', 1)),
+            'registrationBytes' => $enabled ? (int)round(max(0, (float)config('fastai.invite_registration_gb', 0)) * 1073741824) : 0,
+            'firstUseBytes' => $enabled ? (int)round(max(0, (float)config('fastai.invite_first_use_gb', 0)) * 1073741824) : 0,
         ];
     }
     // Called inside the invitation acceptance transaction. Snapshot both promises at registration.

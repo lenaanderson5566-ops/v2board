@@ -11,7 +11,7 @@ cd "$TMP/seed"
 git init -q
 git config user.email test@example.test
 git config user.name 'Updater Test'
-printf '.env\nconfig/v2board.php\ncomposer.lock\nvendor/\nstorage/\nbootstrap/cache/\n' > .gitignore
+printf '.env\nconfig/fastai.php\nconfig/v2board.php\ncomposer.lock\nvendor/\nstorage/\nbootstrap/cache/\n' > .gitignore
 printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0"}}\n' > composer.json
 mkdir -p config storage/framework bootstrap/cache
 touch artisan
@@ -101,6 +101,36 @@ grep -q 'Invalid jobs restart timeout' "$TMP/output"
 new_site check
 bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+new_site canonicalconfig
+mv config/v2board.php config/fastai.php
+cp config/fastai.php "$TMP/canonical-config.expected"
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+cmp config/fastai.php "$TMP/canonical-config.expected"
+[[ ! -e config/v2board.php && -e storage/framework/down ]]
+new_site bothconfigs
+printf '<?php return ["canonical"=>true,"disabled"=>false];\n' > config/fastai.php
+cp config/fastai.php "$TMP/both-current-config.expected"
+cp config/v2board.php "$TMP/both-legacy-config.expected"
+ARGS+=(--backup-dir "$TMP/both-config-backups")
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+cmp config/fastai.php "$TMP/both-current-config.expected"
+cmp config/v2board.php "$TMP/both-legacy-config.expected"
+protected=$(find "$TMP/both-config-backups" -name protected.sha256 -print -quit)
+[[ -n "$protected" ]]
+grep -q 'config/fastai.php$' "$protected"
+grep -q 'config/v2board.php$' "$protected"
+tar -xOf "${protected%/*}/site.tar.gz" ./config/fastai.php | cmp - "$TMP/both-current-config.expected"
+tar -xOf "${protected%/*}/site.tar.gz" ./config/v2board.php | cmp - "$TMP/both-legacy-config.expected"
+new_site missingconfigs
+rm config/v2board.php
+reject --check
+grep -q 'Existing site configuration required' "$TMP/output"
+[[ ! -e storage/framework/down ]]
+new_site emptycanonicalconfig
+: > config/fastai.php
+reject --check
+grep -q 'Existing settings file is empty: config/fastai.php' "$TMP/output"
+[[ ! -e storage/framework/down ]]
 new_site targetlock
 ARGS=(--project "$PWD" --php "$TMP/php" --composer "$TMP/composer.phar" --backup-dir "$TMP/backups" --web-user "$(id -un)")
 bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
@@ -150,7 +180,7 @@ grep -q 'migrate --path=database/migrations/2026_10_08_000001_add_service_notifi
 grep -q 'artisan console:verify' calls.log
 [[ $(stat -c %a public/console/.vite/manifest.json) == 644 ]]
 [[ $(stat -c %a composer.json) == 644 && $(stat -c %a composer.lock) == 644 ]]
-! grep -Eq 'v2board:update|cache:clear|optimize:clear|artisan up' calls.log
+! grep -Eq 'fastai:update|v2board:update|cache:clear|optimize:clear|artisan up' calls.log
 find "$TMP/backups" -name site.tar.gz -exec tar -tzf {} \; | grep './vendor/original' > /dev/null
 new_site failure
 export FAIL_INSTALL=1; reject --jobs-stopped; unset FAIL_INSTALL
@@ -330,4 +360,17 @@ if (isset($c["require"]["linfo/linfo"]) || isset($c["require"]["laravel/tinker"]
 grep -q 'install --no-dev' calls.log
 [[ -e storage/framework/down ]]
 
-echo 'Updater: 28 isolated scenarios passed'
+# A release must never replace private settings with a tracked canonical file.
+cd "$TMP/seed"
+git checkout -qb tracked-canonical-settings "$TARGET"
+printf '<?php return ["untrusted_release_setting"=>true];\n' > config/fastai.php
+git add -f config/fastai.php
+git commit -qm unsafe-tracked-settings-fixture
+git push -q "$TMP/origin.git" tracked-canonical-settings
+new_site trackedcanonicalconfig
+ARGS+=(--branch tracked-canonical-settings)
+reject --check
+grep -q 'Target must not track config/fastai.php' "$TMP/output"
+[[ ! -e storage/framework/down ]]
+
+echo 'Updater: 33 isolated scenarios passed'

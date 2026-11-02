@@ -19,6 +19,7 @@ JOBS_STOPPED=0
 CHECK_ONLY=0
 RESOLVE_DEPENDENCIES=0
 LOCAL_GEOIP=()
+SITE_CONFIG_FILES=()
 WORK_DIR=
 BACKUP=
 MAINTENANCE=0
@@ -150,7 +151,7 @@ snapshot_site_jobs() {
             [[ "$arg" == artisan || "$arg" == "$PROJECT/artisan" ]] && found=1
         done
         case "$command" in
-            horizon|horizon:supervisor|horizon:work|queue:work|queue:listen|schedule:run|schedule:work|coupons:campaigns|mail:campaigns|traffic:update|reset:traffic|reset:log|check:order|check:commission|check:ticket|check:renewal|send:remindMail|v2board:statistics|clients:check-releases|credits:expire)
+            horizon|horizon:supervisor|horizon:work|queue:work|queue:listen|schedule:run|schedule:work|coupons:campaigns|mail:campaigns|traffic:update|reset:traffic|reset:log|check:order|check:commission|check:ticket|check:renewal|send:remindMail|fastai:statistics|v2board:statistics|clients:check-releases|credits:expire)
                 for arg in "${args[@]}"; do [[ "$arg" != --force && "$arg" != --force=* ]] || die 'A site worker bypasses maintenance with --force; stop it manually and use --jobs-stopped'; done
                 JOB_PIDS+=("$pid")
                 JOB_STARTS+=("$(awk '{print $22}' "$proc/stat" 2>/dev/null || true)")
@@ -268,7 +269,15 @@ while IFS= read -r changed; do
         *) die "Review tracked change first: $changed";;
     esac
 done < <(git diff --name-only)
-[[ -s .env && -s config/v2board.php ]] || die 'Existing .env and config/v2board.php required'
+[[ -s .env ]] || die 'Existing .env required'
+# Keep every existing private settings file protected, including the legacy one.
+for site_config in config/fastai.php config/v2board.php; do
+    if [[ -e "$site_config" ]]; then
+        [[ -s "$site_config" ]] || die "Existing settings file is empty: $site_config"
+        SITE_CONFIG_FILES+=("$site_config")
+    fi
+done
+(( ${#SITE_CONFIG_FILES[@]} > 0 )) || die 'Existing site configuration required (config/fastai.php or a legacy settings file)'
 PHP_BIN=$(command -v "$PHP_BIN") || die 'PHP executable not found'
 if [[ -z "$COMPOSER_BIN" ]]; then
     if [[ -f composer.phar ]]; then COMPOSER_BIN="$PROJECT/composer.phar";
@@ -286,7 +295,7 @@ git fetch origin "refs/heads/$BRANCH"
 TARGET=$(git rev-parse FETCH_HEAD)
 # Run the updater from the fetched target, outside the checkout. The running Bash
 # file must not be overwritten by git merge, and an old allowlist cannot omit new migrations.
-WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/v2board-update.XXXXXXXX")
+WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/fastai-update.XXXXXXXX")
 git show "$TARGET:update.sh" > "$WORK_DIR/target-update.sh"
 if ! cmp -s -- "$SCRIPT_PATH" "$WORK_DIR/target-update.sh"; then
     printf 'Using target updater from %s (%s).\n' "$TARGET" "$BRANCH"
@@ -300,7 +309,7 @@ fi
 if git show-ref --verify --quiet "refs/heads/$BRANCH"; then
     git merge-base --is-ancestor "refs/heads/$BRANCH" "$TARGET" || die 'Local target branch diverges or is ahead; reconcile it first'
 fi
-for protected in .env config/v2board.php; do
+for protected in .env config/fastai.php config/v2board.php; do
     if git cat-file -e "$TARGET:$protected" 2>/dev/null; then die "Target must not track $protected"; fi
 done
 git cat-file -e "$TARGET:public/console/.vite/manifest.json" || die 'Target has no built frontend manifest'
@@ -447,7 +456,7 @@ if [[ -n "$DATABASE_BACKUP" ]]; then
     [[ -s "$DATABASE_BACKUP" ]] || die 'Database backup empty or missing'
     case "$DATABASE_BACKUP" in "$PROJECT"|"$PROJECT"/*) die 'Database backup must be outside the website';; esac
 fi
-BACKUP_DIR=${BACKUP_DIR:-$(dirname "$PROJECT")/v2board-private-backups}
+BACKUP_DIR=${BACKUP_DIR:-$(dirname "$PROJECT")/fastai-private-backups}
 mkdir -p -- "$BACKUP_DIR"
 BACKUP_DIR=$(realpath "$BACKUP_DIR")
 case "$BACKUP_DIR" in "$PROJECT"|"$PROJECT"/*) die 'File backups must be outside the website';; esac
@@ -464,7 +473,7 @@ cp -- "$WORK_DIR/composer.json" "$BACKUP/target-composer.json"
 cp -- "$WORK_DIR/matched-composer.json" "$BACKUP/composer-baseline.json"
 cp -- "$WORK_DIR/composer.lock" "$BACKUP/target-composer.lock"
 git diff --binary -- composer.json > "$BACKUP/composer-local.patch"
-sha256sum .env config/v2board.php > "$BACKUP/protected.sha256"
+sha256sum .env "${SITE_CONFIG_FILES[@]}" > "$BACKUP/protected.sha256"
 cat > "$BACKUP/DEPLOYMENT.txt" <<EOF
 Project: $PROJECT
 Original branch: $OLD_BRANCH

@@ -44,13 +44,13 @@ try {
     $browser=(new AuthService($recipient))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
     $auth->removeCurrentSession($source);
     $assert(AuthService::decryptAuthData($browser)!==false,'Successful destination session survives source logout');
-    $original=config('v2board.app_url');
+    $original=config('fastai.app_url');
     try {
-        config(['v2board.app_url'=>'https://user@fastdog.ws']);
+        config(['fastai.app_url'=>'https://user@fastdog.ws']);
         try { app(App\Services\BrowserLoginLink::class)->create(Illuminate\Http\Request::create('/'),$browser); throw new RuntimeException('Userinfo accepted'); }
         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode()===503,'Reject credential-bearing website origin'); }
         catch (Illuminate\Validation\ValidationException $e) { $assert(isset($e->errors()['fastai_entrypoints']),'Origin validator rejects credential-bearing website origin'); }
-    } finally { config(['v2board.app_url'=>$original]); }
+    } finally { config(['fastai.app_url'=>$original]); }
     echo "Session authorization: $checks checks passed\n";
 } finally {
     foreach ($keys as $cacheKey) Cache::forget($cacheKey);

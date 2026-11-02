@@ -229,7 +229,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                     </button>
                 )}
                 <div className="client-authorization-footer">
-                    {tx("FastDog 提供技术支持")}
+                    {tx("FastAI 提供技术支持")}
                 </div>
             </section>
         </main>

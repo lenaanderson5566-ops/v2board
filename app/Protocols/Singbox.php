@@ -17,7 +17,7 @@ class Singbox
 
     public function handle()
     {
-        $appName = config('v2board.app_name', 'V2Board');
+        $appName = \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI')));
         $this->config = $this->loadConfig();
         $proxies = $this->buildProxies();
         $outbounds = $this->addProxies($proxies);

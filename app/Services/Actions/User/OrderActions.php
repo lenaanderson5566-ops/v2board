@@ -78,7 +78,7 @@ class OrderActions
         }
         $order['plan'] = Plan::find($order->plan_id);
         if ($order['plan']) \App\Services\BillingCurrency::present($order['plan'], $order->currency ?: 'CNY');
-        $order['try_out_plan_id'] = (int)config('v2board.try_out_plan_id');
+        $order['try_out_plan_id'] = (int)config('fastai.try_out_plan_id');
         if (!$order['plan']) $order['plan'] = ['id' => $order->plan_id, 'name' => $order->credit_snapshot['name'] ?? '#'.$order->plan_id];
         if ($order->surplus_order_ids) {
             $order['surplus_orders'] = Order::whereIn('id', $order->surplus_order_ids)->get();
@@ -418,7 +418,7 @@ class OrderActions
     }
 
     private function getbounus($total_amount) {
-        $deposit_bounus = config('v2board.deposit_bounus', []);
+        $deposit_bounus = config('fastai.deposit_bounus', []);
         if (empty($deposit_bounus) || $deposit_bounus[0] === null) {
             return 0;
         }

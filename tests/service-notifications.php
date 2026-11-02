@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 
 Queue::fake();
-config(['v2board.new_order_event_id'=>0, 'v2board.renew_order_event_id'=>0, 'v2board.change_order_event_id'=>0]);
+config(['fastai.new_order_event_id'=>0, 'fastai.renew_order_event_id'=>0, 'fastai.change_order_event_id'=>0]);
 $checks=0; $users=[]; $cards=[]; $orders=[]; $plan=null;
 $assert = \Tests\Support\Assertions::counter($checks);
 $count=function () { return Queue::pushed(SendEmailJob::class)->count(); };

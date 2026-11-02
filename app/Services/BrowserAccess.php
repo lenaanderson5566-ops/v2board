@@ -22,7 +22,7 @@ final class BrowserAccess
     public static function policies(): array {
         $result=[];
         foreach (self::DEFAULTS as $key=>$default) {
-            $value=config('v2board.browser_policy_'.$key,$default);
+            $value=config('fastai.browser_policy_'.$key,$default);
             $result[$key]=in_array($value,['allow','prompt','guide'],true) ? $value : $default;
         }
         return $result;

@@ -14,7 +14,7 @@ class OnlineDeviceService
 
     public static function freshWindow(): int
     {
-        $interval = max(1, min(86400, (int) config('v2board.server_push_interval', 60)));
+        $interval = max(1, min(86400, (int) config('fastai.server_push_interval', 60)));
         return max(self::FRESH_SECONDS, intdiv($interval * 11 + 9, 10) + 30);
     }
 
@@ -55,7 +55,7 @@ class OnlineDeviceService
                 $connections[] = ['ip' => $ip, 'node' => $node, 'online_at' => (int) $at];
             }
         }
-        $mode ??= (int) config('v2board.device_limit_mode', 0);
+        $mode ??= (int) config('fastai.device_limit_mode', 0);
         return ['nodes' => $nodes, 'connections' => $connections,
             'count' => $mode === 1 ? count($unique) : count($connections)];
     }

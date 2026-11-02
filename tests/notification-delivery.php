@@ -43,10 +43,10 @@ if ($mysql) {
     config(['database.connections.notification_test'=>['driver'=>'sqlite','database'=>':memory:','prefix'=>'','foreign_key_constraints'=>true]]);
 }
 config(['database.default'=>'notification_test', 'cache.default'=>'array', 'queue.default'=>'sync', 'logging.default'=>'stderr',
-    'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null, 'v2board.app_name'=>'Test Site',
-    'v2board.app_url'=>'https://example.test', 'v2board.telegram_bot_enable'=>1, 'v2board.telegram_bot_token'=>'999999:TEST_ONLY',
-    'v2board.telegram_group_policy_enable'=>0, 'v2board.telegram_discuss_id'=>-100999,
-    'v2board.telegram_group_grace_days'=>3]);
+    'fastai.email_provider'=>'smtp', 'fastai.email_host'=>null, 'fastai.app_name'=>'Test Site',
+    'fastai.app_url'=>'https://example.test', 'fastai.telegram_bot_enable'=>1, 'fastai.telegram_bot_token'=>'999999:TEST_ONLY',
+    'fastai.telegram_group_policy_enable'=>0, 'fastai.telegram_discuss_id'=>-100999,
+    'fastai.telegram_group_grace_days'=>3]);
 DB::purge('notification_test');
 if (Schema::hasTable('v2_user')) throw new RuntimeException('Test requires an empty disposable database');
 $fakeHttp = function ($callbacks = []) {
@@ -91,12 +91,12 @@ $assert(Schema::hasColumns('v2_mail_log',['provider','status','recipient_hash','
 echo "PASS migrations and duplicate identity backfill\n";
 
 // Transport boundaries and classifications, US/EU and secrets.
-config(['v2board.email_mailgun_domain'=>'mg.example.test','v2board.email_mailgun_region'=>'us',
-    'v2board.email_mailgun_api_key'=>Crypt::encryptString('TEST_KEY_SENTINEL'), 'v2board.email_from_address'=>'sender@example.test']);
+config(['fastai.email_mailgun_domain'=>'mg.example.test','fastai.email_mailgun_region'=>'us',
+    'fastai.email_mailgun_api_key'=>Crypt::encryptString('TEST_KEY_SENTINEL'), 'fastai.email_from_address'=>'sender@example.test']);
 $data=app(App\Services\Mail\ProductMail::class)->data(['template_name'=>'test','language'=>'en-US']);
 $sender=new MailgunSender;
 foreach (['us'=>'api.mailgun.net','eu'=>'api.eu.mailgun.net'] as $region=>$host) {
-    config(['v2board.email_mailgun_region'=>$region]);
+    config(['fastai.email_mailgun_region'=>$region]);
     $fakeHttp([$host.'/*'=>Http::response(['id'=>'<test@example.test>'],200)]);
     $assert($sender->send('recipient@example.test',$data)==='<test@example.test>', 'Message ID missing');
     Http::assertSent(function ($r) use ($host) {
@@ -123,17 +123,17 @@ foreach ([fn()=>Http::failedConnection(), fn()=>Http::response(['message'=>'queu
     catch (MailgunSendException $e) { $assert($e->uncertain && !$e->retryable,'Unknown delivery automatically retryable'); }
 }
 foreach (['https://evil.test','../evil','mg.example.test/path'] as $domain) {
-    config(['v2board.email_mailgun_domain'=>$domain]); $fakeHttp();
+    config(['fastai.email_mailgun_domain'=>$domain]); $fakeHttp();
     try { $sender->send('recipient@example.test',$data); throw new RuntimeException('Unsafe domain accepted'); }
     catch (MailgunSendException $e) { $assert($e->safeCode==='MAILGUN_CONFIG_INVALID', 'Wrong config rejection'); }
     Http::assertNothingSent(); $checks++;
 }
-config(['v2board.email_mailgun_domain'=>'mg.example.test']);
+config(['fastai.email_mailgun_domain'=>'mg.example.test']);
 $app->instance(MailRateLimiter::class,new class extends MailRateLimiter {
     public function acquire($email,$bulk,$priority=false) { return 0; }
     public function cooldown($email,$priority=false) {}
 });
-config(['v2board.email_provider'=>'mailgun']);
+config(['fastai.email_provider'=>'mailgun']);
 $params=['email'=>'private-recipient@example.test','language'=>'en-US','template_name'=>'test'];
 $fakeHttp(['*'=>Http::response(['id'=>'<receipt@example.test>'],200)]);
 $result=(new SendEmailJob($params))->handle();
@@ -166,12 +166,12 @@ try { $controller->fetch(Request::create('/','GET',['page_size'=>1000])); throw 
 catch (Illuminate\Validation\ValidationException $e) { $checks++; }
 $reject(fn()=>$controller->fetch(Request::create('/','GET',['from'=>20,'to'=>10])),422);
 $conf=json_decode((new App\Http\Controllers\V1\Admin\ConfigController)->fetch(Request::create('/','GET',['key'=>'email']))->getContent(),true);
-$assert(!str_contains(json_encode($conf),'TEST_KEY_SENTINEL') && !str_contains(json_encode($conf),config('v2board.email_mailgun_api_key')), 'Config exposes API key');
+$assert(!str_contains(json_encode($conf),'TEST_KEY_SENTINEL') && !str_contains(json_encode($conf),config('fastai.email_mailgun_api_key')), 'Config exposes API key');
 echo "PASS Mailgun transport, privacy, log search and OTP expiry\n";
 
 
 // SMTP compatibility stays covered with a mocked transport and safe error output.
-config(['v2board.email_provider'=>'smtp']);
+config(['fastai.email_provider'=>'smtp']);
 $transport=new class {
     public int $sent=0; public $error;
     public function forgetMailers() {}
@@ -237,7 +237,7 @@ echo "PASS binding ownership, identity uniqueness, grace period and eight langua
 // Authenticated webhook inbox, deduplication, encrypted minimum data and processing.
 $req=Request::create('/api/v10/webhooks/telegram','POST');
 $reject(fn()=>new App\Services\Actions\Guest\TelegramActions($req),401);
-$req->headers->set('X-Telegram-Bot-Api-Secret-Token',md5(config('v2board.telegram_bot_token')));
+$req->headers->set('X-Telegram-Bot-Api-Secret-Token',md5(config('fastai.telegram_bot_token')));
 new App\Services\Actions\Guest\TelegramActions($req); $checks++;
 $delivery=new TelegramDeliveryService;
 $event=['update_id'=>1,'message'=>['message_id'=>1,'chat'=>['id'=>555,'type'=>'private'],'from'=>['id'=>555,'language_code'=>'en'],'text'=>'/start','extra'=>'PRIVATE_EXTRA']];
@@ -263,9 +263,9 @@ $assert(DB::table('v2_telegram_update')->find($id)->status==='failed','429 retri
 NotificationTestCurl::$respond=fn()=>(object)[];
 $id=$makeUpdate(11); $delivery->process($id);
 $assert(DB::table('v2_telegram_update')->find($id)->status==='uncertain','Unknown Telegram outcome retries');
-$id=$makeUpdate(12); config(['v2board.telegram_bot_token'=>'ROTATED']); $delivery->process($id);
+$id=$makeUpdate(12); config(['fastai.telegram_bot_token'=>'ROTATED']); $delivery->process($id);
 $assert(DB::table('v2_telegram_update')->find($id)->status==='cancelled','Old bot update processed');
-config(['v2board.telegram_bot_token'=>'999999:TEST_ONLY']);
+config(['fastai.telegram_bot_token'=>'999999:TEST_ONLY']);
 echo "PASS webhook auth, encrypted inbox, idempotency and retry boundaries\n";
 
 // Payment notices recheck recipient and dedupe repeated callbacks.
@@ -283,7 +283,7 @@ $tg->notifyPaymentAdmins($order2); $admin->is_admin=0; $admin->save();
 $id=DB::table('v2_telegram_payment_notice')->where('order_id',$order2->id)->value('id'); (new SendTelegramPaymentJob($id))->handle();
 $assert(DB::table('v2_telegram_payment_notice')->find($id)->status==='cancelled','Revoked administrator received notice');
 // Group maintenance must not unban manually banned users.
-config(['v2board.telegram_group_policy_enable'=>1]);
+config(['fastai.telegram_group_policy_enable'=>1]);
 NotificationTestCurl::$respond=function($method) {
     if ($method!=='getChatMember') throw new RuntimeException('Unexpected group mutation: '.$method);
     return (object)['ok'=>true,'result'=>(object)['status'=>'kicked']];

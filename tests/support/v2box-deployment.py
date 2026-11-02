@@ -20,6 +20,12 @@ class WorkflowTests(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.path = Path(self.tmp.name) / "deployment-state.json"
+        self.units = self.path.parent / "managed-units"
+        self.units.mkdir()
+        for name, value in [("STATE_DIRECTORY", self.path.parent), ("SYSTEMD_DIRECTORY", self.units)]:
+            setting = patch.object(m, name, value)
+            setting.start()
+            self.addCleanup(setting.stop)
         self.data = {
             "nodeId": 3,
             "apiHost": "https://panel.example.invalid",
@@ -54,33 +60,195 @@ class WorkflowTests(unittest.TestCase):
     def test_capability_probe_is_local_and_never_reads_deployment_state(self):
         with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--capabilities"]), patch.object(m.sys, "stdout", io.StringIO()) as output, patch.object(m, "Deployment") as deployment, patch.object(m, "read_object") as read, patch.object(m, "json_request") as request:
             self.assertEqual(m.main(), 0)
-        self.assertEqual(json.loads(output.getvalue()), {"features": ["management-lock-delegation-v1"]})
+        self.assertEqual(json.loads(output.getvalue()), {"features": ["management-lock-delegation-v1", "reboot-recovery-v1"]})
         deployment.assert_not_called()
         read.assert_not_called()
         request.assert_not_called()
         self.assertNotIn(self.data["apiKey"], output.getvalue())
 
     def test_managed_launch_uses_private_state_without_credentials_in_unit(self):
-        with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run") as run, patch.object(m.sys, "stdout", io.StringIO()) as output:
+        def result(args, **kwargs):
+            return self.managed_service_result(*args[1:])
+        with patch.object(m, "has_systemd", return_value=True), patch.object(m.subprocess, "run", side_effect=result) as run, patch.object(m.sys, "stdout", io.StringIO()) as output:
             self.assertTrue(m.launch_managed(self.path))
-        self.assertIn("systemctl stop v2box-deployment", output.getvalue())
+        self.assertIn("v2box deploy-cancel", output.getvalue())
+        self.assertIn("server reboot", output.getvalue())
         self.assertIn("Recovery state is retained", output.getvalue())
-        args = run.call_args.args[0]
-        self.assertIn("--unit=v2box-deployment", args)
-        self.assertIn("--worker", args)
-        self.assertIn(str(self.path.resolve()), args)
-        self.assertNotIn(self.data["apiKey"], " ".join(args))
-        self.assertNotIn(self.data["deployment"]["token"], " ".join(args))
+        unit = (self.units / m.MANAGED_UNIT).read_text()
+        self.assertIn("--boot-worker", unit)
+        self.assertIn(str(self.path), unit)
+        self.assertIn("WantedBy=multi-user.target", unit)
+        self.assertIn("ConditionPathExists=" + str(self.path) + "\n", unit)
+        self.assertIn("After=network-online.target", unit)
+        self.assertIn("ConditionPathExists=/usr/local/lib/v2box/v2box", unit)
+        self.assertIn("RestartPreventExitStatus=78", unit)
+        self.assertNotIn(self.data["apiKey"], unit)
+        self.assertNotIn(self.data["deployment"]["token"], unit)
+        self.assertNotIn(self.data["networkReport"]["token"], unit)
+        self.assertIn(call(["systemctl", "enable", m.MANAGED_UNIT], check=True, timeout=30, close_fds=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True), run.call_args_list)
+        self.assertEqual(run.call_args.args[0], ["systemctl", "start", m.MANAGED_UNIT])
+        self.assertNotIn(["systemctl", "stop", m.MANAGED_UNIT], [entry.args[0] for entry in run.call_args_list])
         self.assertTrue(run.call_args.kwargs["check"])
         self.assertTrue(run.call_args.kwargs["close_fds"])
-        for setting in ("RuntimeMaxSec=25h", "TimeoutStopSec=15s", "KillMode=control-group"):
-            self.assertIn("--property=" + setting, args)
+        for setting in ("RuntimeMaxSec=25h", "TimeoutStopSec=30s", "KillMode=control-group", "UMask=0077"):
+            self.assertIn(setting, unit)
+        self.assertEqual((self.units / m.MANAGED_UNIT).stat().st_mode & 0o777, 0o644)
+        self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
+        self.assertIs(json.loads(self.path.read_text())["managedRecovery"]["enabled"], True)
 
     def test_managed_launch_failure_does_not_fall_back_to_duplicate_foreground(self):
         with patch.object(m.Path, "is_dir", return_value=True), patch.object(m.shutil, "which", return_value="/usr/bin/systemd-run"), patch.object(m.subprocess, "run", side_effect=subprocess.CalledProcessError(1, "systemd-run")):
             with self.assertRaises(subprocess.CalledProcessError):
                 m.launch_managed(self.path)
         self.assertTrue(self.path.exists())
+        self.assertFalse(self.deploy.config.exists())
+
+    def enable_boot_fixture(self, deadline=None):
+        state = json.loads(self.path.read_text())
+        state["managedRecovery"] = {"enabled": True, "deadline": int(m.time.time()) + 3600 if deadline is None else deadline}
+        m.write_private(self.path, state)
+        m.write_managed_unit(self.path, m.MANAGED_UNIT)
+        return state
+
+    def managed_service_result(self, *arguments, active="inactive", load="not-found", **kwargs):
+        if arguments[:2] == ("show", "--property=LoadState,ActiveState"):
+            stdout = "LoadState=" + load + "\nActiveState=" + active + "\n"
+        elif arguments[:2] == ("show", "--property=FragmentPath,Transient"):
+            stdout = "FragmentPath=" + str(self.units / m.MANAGED_UNIT) + "\nTransient=no\n"
+        else:
+            stdout = ""
+        return subprocess.CompletedProcess([], 0, stdout, "")
+
+    def test_active_transient_or_persistent_worker_is_not_overwritten(self):
+        for active in ("active", "activating", "reloading", "deactivating"):
+            with self.subTest(active=active):
+                before = self.path.read_bytes()
+                with patch.object(m, "has_systemd", return_value=True), patch.object(m, "service_command", return_value=subprocess.CompletedProcess([], 0, "LoadState=loaded\nActiveState=" + active + "\n", "")) as service:
+                    with self.assertRaisesRegex(m.TemporaryDeploymentError, "Another managed deployment"):
+                        m.launch_managed(self.path)
+                self.assertEqual(self.path.read_bytes(), before)
+                self.assertFalse((self.units / m.MANAGED_UNIT).exists())
+                self.assertEqual(service.call_count, 1)
+
+    def test_failed_transient_can_be_replaced_without_selecting_other_saved_tasks(self):
+        other = self.path.parent / "deployment-state-other.json"
+        other.write_bytes(self.path.read_bytes())
+        before = other.read_bytes()
+        with patch.object(m, "has_systemd", return_value=True), patch.object(m, "service_command", side_effect=lambda *args, **kwargs: self.managed_service_result(*args, active="failed", load="loaded")) as service:
+            m.launch_managed(self.path)
+        self.assertIn(call("stop", m.MANAGED_UNIT), service.call_args_list)
+        self.assertIn(call("reset-failed", m.MANAGED_UNIT, check=False), service.call_args_list)
+        self.assertEqual(other.read_bytes(), before)
+        unit = (self.units / m.MANAGED_UNIT).read_text()
+        self.assertIn("# StateFile=" + str(self.path), unit)
+        self.assertNotIn(str(other), unit)
+
+    def test_fresh_process_boot_uses_same_private_state_then_disables_completed_task(self):
+        state = self.enable_boot_fixture()
+        other = self.path.parent / "deployment-state-other.json"
+        other.write_bytes(self.path.read_bytes())
+        before = other.read_bytes()
+        certificate = self.path.parent / "existing.cer"; certificate.write_text("retain-certificate")
+        program = '''import importlib.util,json,os,sys
+from pathlib import Path
+source,state,units=sys.argv[1:]
+spec=importlib.util.spec_from_file_location('deploy',source);m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+m.STATE_DIRECTORY=Path(state).parent;m.SYSTEMD_DIRECTORY=Path(units);m.os.geteuid=lambda:0
+events=[]
+def service(*args,**kwargs):
+ events.append(list(args));return m.subprocess.CompletedProcess([],0,'','')
+def progress(self,*args):
+ assert self.state['data']['apiKey']=='test-only'
+ assert self.state['data']['deployment']['token']=='dp_'+'d'*64
+ events.append(['authorize']);return {}
+def run(self):
+ events.append(['run']);self.finish()
+m.service_command=service;m.Deployment.progress=progress;m.Deployment.run=run
+sys.argv=['deploy','--boot-worker',state]
+result=m.main();Path(state).with_name('boot-events.json').write_text(json.dumps(events));sys.exit(result)
+'''
+        result = subprocess.run([sys.executable, "-c", program, sys.argv[1], str(self.path), str(self.units)], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertFalse(self.path.exists())
+        self.assertFalse((self.units / m.MANAGED_UNIT).exists())
+        events = json.loads((self.path.parent / "boot-events.json").read_text())
+        self.assertEqual(events[:2], [["authorize"], ["run"]])
+        self.assertIn(["disable", m.MANAGED_UNIT], events)
+        self.assertNotIn(["stop", m.MANAGED_UNIT], events)
+        self.assertEqual(other.read_bytes(), before)
+        self.assertEqual(certificate.read_text(), "retain-certificate")
+        self.assertNotIn(state["data"]["apiKey"], result.stdout + result.stderr)
+
+    def test_boot_revalidation_revoked_authority_disables_without_running_deployment(self):
+        self.enable_boot_fixture()
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--boot-worker", str(self.path)]), patch.object(m.Deployment, "progress", side_effect=m.DeploymentError("Deployment authorization was revoked")), patch.object(m.Deployment, "run") as run, patch.object(m, "service_command") as service:
+            self.assertEqual(m.main(), 78)
+        run.assert_not_called()
+        self.assertFalse((self.units / m.MANAGED_UNIT).exists())
+        self.assertIs(json.loads(self.path.read_text())["managedRecovery"]["enabled"], False)
+        service.assert_any_call("disable", m.MANAGED_UNIT)
+        self.assertFalse(self.deploy.config.exists())
+
+    def test_boot_network_failure_retries_without_extending_deadline_or_touching_configuration(self):
+        state = self.enable_boot_fixture()
+        before = self.path.read_bytes()
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--boot-worker", str(self.path)]), patch.object(m.Deployment, "progress", side_effect=OSError("offline")), patch.object(m.Deployment, "run") as run, patch.object(m, "service_command") as service:
+            self.assertEqual(m.main(), 1)
+        run.assert_not_called(); service.assert_not_called()
+        self.assertEqual(self.path.read_bytes(), before)
+        self.assertEqual(json.loads(self.path.read_text())["managedRecovery"]["deadline"], state["managedRecovery"]["deadline"])
+        self.assertTrue((self.units / m.MANAGED_UNIT).exists())
+
+    def test_unselected_old_task_cannot_run_or_disable_the_selected_task(self):
+        self.enable_boot_fixture()
+        other = self.path.parent / "deployment-state-other.json";other.write_bytes(self.path.read_bytes())
+        before = {path: path.read_bytes() for path in (self.path, other, self.units / m.MANAGED_UNIT)}
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--boot-worker", str(other)]), patch.object(m.Deployment, "progress") as progress, patch.object(m.Deployment, "run") as run, patch.object(m, "service_command") as service:
+            self.assertEqual(m.main(), 78)
+        progress.assert_not_called();run.assert_not_called();service.assert_not_called()
+        for path, contents in before.items():self.assertEqual(path.read_bytes(), contents)
+
+    def test_transient_unit_that_does_not_reload_never_starts_a_different_saved_task(self):
+        def service(*args, **kwargs):
+            if args[:2] == ("show", "--property=FragmentPath,Transient"):
+                return subprocess.CompletedProcess([], 0, "FragmentPath=/run/systemd/transient/v2box-deployment.service\nTransient=yes\n", "")
+            return self.managed_service_result(*args, active="failed", load="loaded")
+        with patch.object(m, "has_systemd", return_value=True), patch.object(m, "service_command", side_effect=service) as command, patch.object(m.time, "sleep"):
+            with self.assertRaisesRegex(m.DeploymentError, "still transient"):
+                m.launch_managed(self.path)
+        self.assertNotIn(call("enable", m.MANAGED_UNIT), command.call_args_list)
+        self.assertNotIn(call("start", m.MANAGED_UNIT), command.call_args_list)
+        self.assertTrue(self.path.exists());self.assertFalse(self.deploy.config.exists())
+
+    def test_expired_local_boot_budget_stops_before_any_authorization_or_service_start(self):
+        self.enable_boot_fixture(deadline=1)
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--boot-worker", str(self.path)]), patch.object(m.Deployment, "progress") as progress, patch.object(m.Deployment, "run") as run, patch.object(m, "service_command"):
+            self.assertEqual(m.main(), 78)
+        progress.assert_not_called(); run.assert_not_called()
+        self.assertFalse((self.units / m.MANAGED_UNIT).exists())
+        self.assertIs(json.loads(self.path.read_text())["managedRecovery"]["enabled"], False)
+
+    def test_cancel_disables_before_retaining_paused_state_and_never_selects_another_task(self):
+        self.enable_boot_fixture()
+        other = self.path.parent / "deployment-state-other.json";other.write_bytes(self.path.read_bytes())
+        before = other.read_bytes()
+        with patch.object(m, "service_command") as service:
+            m.cancel_managed()
+        self.assertEqual(service.call_args_list[0], call("disable", "--now", m.MANAGED_UNIT))
+        self.assertFalse((self.units / m.MANAGED_UNIT).exists())
+        self.assertIs(json.loads(self.path.read_text())["managedRecovery"]["enabled"], False)
+        self.assertEqual(other.read_bytes(), before)
+        with patch.object(m.Deployment, "progress") as progress:
+            with self.assertRaises(m.DeploymentError):m.boot_recovery(self.path)
+        progress.assert_not_called()
+
+    def test_cancel_active_legacy_transient_stops_without_trying_to_disable_it(self):
+        before = self.path.read_bytes()
+        with patch.object(m, "service_command", return_value=subprocess.CompletedProcess([], 0, "LoadState=loaded\nTransient=yes\n", "")) as service:
+            m.cancel_managed()
+        service.assert_any_call("stop", m.MANAGED_UNIT)
+        self.assertNotIn(call("disable", "--now", m.MANAGED_UNIT), service.call_args_list)
+        self.assertEqual(self.path.read_bytes(), before)
         self.assertFalse(self.deploy.config.exists())
 
     def test_no_systemd_keeps_foreground_recovery(self):

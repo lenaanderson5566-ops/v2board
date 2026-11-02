@@ -27,6 +27,14 @@ class DeploymentError(Exception):
     pass
 
 
+class TemporaryDeploymentError(DeploymentError):
+    pass
+
+
+class UnselectedDeploymentError(DeploymentError):
+    pass
+
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, *args, **kwargs):
         return None
@@ -448,23 +456,251 @@ def configure_reporting(host, report, directory, command=run_command):
         os.unlink(name)
 
 
+STATE_DIRECTORY = Path("/etc/v2box")
+SYSTEMD_DIRECTORY = Path("/etc/systemd/system")
+DEPLOYMENT_HELPER = Path("/usr/local/lib/v2box/panel-deploy.py")
+MANAGED_UNIT = "v2box-deployment.service"
+MANAGED_UNIT_MARKER = "# Managed by V2Box panel deployment; no credentials in this file.\n"
+
+
+def has_systemd():
+    return Path("/run/systemd/system").is_dir() and bool(shutil.which("systemctl"))
+
+
+def managed_identity(path):
+    path = Path(path)
+    if (
+        STATE_DIRECTORY.is_symlink() or path.parent.resolve() != STATE_DIRECTORY.resolve()
+        or not re.fullmatch(r"deployment-state(?:-[a-zA-Z0-9_-]{1,128})?\.json", path.name)
+        or path.is_symlink()
+    ):
+        raise DeploymentError("Invalid managed deployment state path; no task was changed")
+    return path, MANAGED_UNIT
+
+
+def service_command(*arguments, check=True):
+    return subprocess.run(
+        ["systemctl", *arguments], check=check, timeout=30, close_fds=True,
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        text=True,
+    )
+
+
+def unit_quote(value):
+    return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%") + '"'
+
+
+def write_managed_unit(path, unit):
+    directory = SYSTEMD_DIRECTORY
+    target = directory / unit
+    if directory.is_symlink() or not directory.is_dir() or target.is_symlink():
+        raise DeploymentError("Unsafe deployment service path; state was retained")
+    if target.exists() and (
+        not target.is_file() or not target.read_text().startswith(MANAGED_UNIT_MARKER)
+    ):
+        raise DeploymentError("Existing deployment service is not managed by this helper; retained")
+    contents = MANAGED_UNIT_MARKER + "# StateFile=" + str(path) + "\n" + (
+        "[Unit]\nDescription=V2Box resumable panel deployment\n"
+        "Wants=network-online.target\nAfter=network-online.target\n"
+        "StartLimitIntervalSec=0\nConditionPathExists=" + str(path).replace("%", "%%") + "\n"
+        "ConditionPathExists=/usr/local/lib/v2box/v2box\n\n"
+        "[Service]\nType=exec\nUMask=0077\n"
+        "ExecStart=/usr/bin/env python3 -u " + unit_quote(DEPLOYMENT_HELPER)
+        + " --boot-worker " + unit_quote(path) + "\n"
+        "Restart=on-failure\nRestartSec=60s\nRestartPreventExitStatus=78\n"
+        "TimeoutStartSec=30s\nRuntimeMaxSec=25h\nTimeoutStopSec=30s\n"
+        "KillMode=control-group\n\n[Install]\nWantedBy=multi-user.target\n"
+    )
+    fd, temporary = tempfile.mkstemp(prefix=".v2box-deployment-", dir=str(directory))
+    try:
+        os.fchmod(fd, 0o644)
+        with os.fdopen(fd, "w") as output:
+            output.write(contents)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, target)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def remove_managed_unit(path):
+    path, unit = managed_identity(path)
+    target = SYSTEMD_DIRECTORY / unit
+    if target.is_symlink() or (
+        target.exists() and (not target.is_file() or not target.read_text().startswith(MANAGED_UNIT_MARKER))
+    ):
+        raise DeploymentError("Unsafe deployment service file; retained")
+    if target.exists() and "# StateFile=" + str(path) not in target.read_text().splitlines():
+        raise DeploymentError("A different deployment task is selected; no task was changed")
+    service_command("disable", unit)
+    target.unlink(missing_ok=True)
+    service_command("daemon-reload")
+
+
+def managed_idle_state(unit):
+    active = service_command("show", "--property=LoadState,ActiveState", unit, check=False)
+    values = dict(line.split("=", 1) for line in active.stdout.splitlines() if "=" in line)
+    load = values.get("LoadState")
+    state = values.get("ActiveState")
+    if active.returncode in (0, 4) and load == "not-found" and state in (None, "inactive"):
+        return ""
+    if active.returncode != 0 or load != "loaded":
+        raise DeploymentError("Cannot verify the existing deployment service; no task was changed")
+    if state in ("active", "activating", "reloading", "deactivating"):
+        raise TemporaryDeploymentError("Another managed deployment is running. Check v2box deploy-status; the selected task and authorization were not changed.")
+    if state not in ("inactive", "failed"):
+        raise DeploymentError("Cannot verify the existing deployment service; no task was changed")
+    return state
+
+
+@contextmanager
+def managed_service_lock():
+    if STATE_DIRECTORY.is_symlink() or not STATE_DIRECTORY.is_dir():
+        raise DeploymentError("Unsafe deployment directory; state was retained")
+    fd = os.open(STATE_DIRECTORY / ".deployment-service.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    try:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            raise TemporaryDeploymentError("Another deployment service operation is running; state was retained") from None
+        yield
+    finally:
+        os.close(fd)
+
+
 def launch_managed(path):
-    Deployment(path)
-    if not Path("/run/systemd/system").is_dir() or not shutil.which("systemd-run"):
-        print("No systemd: deployment runs in foreground. Keep SSH open.", flush=True)
+    deployment = Deployment(path)
+    if not has_systemd():
+        print("No systemd: deployment runs in foreground. Keep SSH open; automatic recovery after reboot is not available on this init system.", flush=True)
         return False
-    subprocess.run([
-        "systemd-run", "--unit=v2box-deployment", "--collect",
-        "--description=V2Box panel deployment", "--property=Type=exec",
-        "--property=UMask=0077", "--property=TimeoutStartSec=30s",
-        "--property=RuntimeMaxSec=25h", "--property=TimeoutStopSec=15s",
-        "--property=KillMode=control-group",
-        sys.executable, "-u", str(Path(__file__).resolve()), "--worker", str(Path(path).resolve()),
-    ], check=True, timeout=30, close_fds=True)
-    print("Deployment continues after SSH closes. Status: systemctl status v2box-deployment --no-pager", flush=True)
-    print("Logs: journalctl -u v2box-deployment -f (Ctrl+C closes only the log view).", flush=True)
-    print("Stop this deployment: systemctl stop v2box-deployment. Recovery state is retained; resume using the original panel command.", flush=True)
+    path, unit = managed_identity(path)
+    if not deployment.flow:
+        raise DeploymentError("Automatic recovery requires current panel deployment authorization. Generate a new command in the panel.")
+    managed_idle_state(unit)
+    with managed_service_lock():
+        with bootstrap_lock(path.parent):
+            state = managed_idle_state(unit)
+            deployment = Deployment(path)
+            schedule_managed(deployment, path, unit, state)
+    print("Deployment continues after SSH closes and after a server reboot. Status: v2box deploy-status", flush=True)
+    print("Logs: v2box deploy-log (Ctrl+C closes only the log view).", flush=True)
+    print("Cancel automatic recovery: v2box deploy-cancel (older node scripts: systemctl disable --now v2box-deployment.service). Recovery state is retained, together with configuration and certificates. A plain systemctl stop pauses this boot only.", flush=True)
     return True
+
+
+def schedule_managed(deployment, path, unit, state):
+    # Old helpers used a transient --collect unit with this same name. Never
+    # replace an active worker. Stop/reset an idle transient before publishing
+    # its persistent replacement; a failed unit need not survive the transition.
+    if state:
+        service_command("stop", unit)
+        service_command("reset-failed", unit, check=False)
+    recovery = deployment.state.get("managedRecovery", {})
+    deadline = recovery.get("deadline") if isinstance(recovery, dict) else None
+    if type(deadline) is not int or deadline <= time.time():
+        deadline = int(time.time()) + 86400
+    deployment.save(managedRecovery={"enabled": True, "deadline": deadline})
+    write_managed_unit(path, unit)
+    service_command("daemon-reload")
+    for attempt in range(10):
+        loaded = service_command("show", "--property=FragmentPath,Transient", unit)
+        properties = dict(line.split("=", 1) for line in loaded.stdout.splitlines() if "=" in line)
+        if properties.get("Transient") == "no" and properties.get("FragmentPath") == str(SYSTEMD_DIRECTORY / unit):
+            break
+        if attempt < 9:
+            time.sleep(0.2)
+    else:
+        raise DeploymentError("Deployment service is still transient or points to another file. Check its status, then resume; saved state was retained")
+    service_command("enable", unit)
+    service_command("start", unit)
+
+
+def cancel_managed():
+    with managed_service_lock():
+        return cancel_selected_managed()
+
+
+def cancel_selected_managed():
+    unit = MANAGED_UNIT
+    target = SYSTEMD_DIRECTORY / unit
+    selected = None
+    if target.is_symlink() or (target.exists() and not target.is_file()):
+        raise DeploymentError("Unsafe deployment service file; retained")
+    if not target.exists():
+        result = service_command("show", "--property=LoadState,Transient", unit, check=False)
+        properties = dict(line.split("=", 1) for line in result.stdout.splitlines() if "=" in line)
+        if result.returncode in (0, 4) and properties.get("LoadState") == "not-found":
+            print("No managed deployment service is selected. Saved states and certificates retained.", flush=True)
+            return
+        if result.returncode != 0 or properties.get("Transient") != "yes":
+            raise DeploymentError("Cannot identify the deployment service safely; saved state was retained")
+        service_command("stop", unit)
+        service_command("reset-failed", unit, check=False)
+        print("Legacy transient deployment stopped. It cannot restart after reboot; saved state, configuration and certificates retained.", flush=True)
+        return
+    if target.exists():
+        contents = target.read_text()
+        if not contents.startswith(MANAGED_UNIT_MARKER):
+            raise DeploymentError("Existing deployment service is not managed by this helper; retained")
+        for line in contents.splitlines():
+            if line.startswith("# StateFile="):
+                selected, _ = managed_identity(line[len("# StateFile="):])
+                break
+        if selected is None:
+            raise DeploymentError("Managed deployment service has no valid state identity; retained")
+    # Disable before stopping: even a reboot during cancellation cannot re-enable
+    # this task. Do not take the worker's long-held deployment lock first.
+    service_command("disable", "--now", unit)
+    if selected is not None:
+        with bootstrap_lock(selected.parent):
+            pause_recovery(selected)
+    else:
+        service_command("daemon-reload")
+    print("Automatic deployment recovery cancelled. State, configuration and certificates retained; resume explicitly using the panel command.", flush=True)
+
+
+def boot_recovery(path):
+    path, unit = managed_identity(path)
+    target = SYSTEMD_DIRECTORY / unit
+    if (
+        target.is_symlink() or not target.is_file()
+        or not target.read_text().startswith(MANAGED_UNIT_MARKER)
+        or "# StateFile=" + str(path) not in target.read_text().splitlines()
+    ):
+        raise UnselectedDeploymentError("This deployment is not the selected recovery task; no task was changed")
+    deployment = Deployment(path)
+    recovery = deployment.state.get("managedRecovery")
+    if not isinstance(recovery, dict) or recovery.get("enabled") is not True:
+        raise DeploymentError("Automatic recovery is paused; resume explicitly using the panel command")
+    deadline = recovery.get("deadline")
+    if type(deadline) is not int or deadline <= time.time():
+        raise DeploymentError("Deployment authorization expired. Generate a new deployment task in the panel.")
+    if not deployment.flow:
+        raise DeploymentError("Automatic recovery requires current panel deployment authorization")
+    # Revalidate server-side authorization before reporting setup, config writes
+    # or service changes. Reboot never creates a new grant or resets ACME state.
+    deployment.progress()
+    return deployment
+
+
+def pause_recovery(path):
+    path, unit = managed_identity(path)
+    target = SYSTEMD_DIRECTORY / unit
+    if target.exists() and (
+        target.is_symlink() or not target.is_file()
+        or not target.read_text().startswith(MANAGED_UNIT_MARKER)
+        or "# StateFile=" + str(path) not in target.read_text().splitlines()
+    ):
+        raise DeploymentError("A different deployment task is selected; no task was changed")
+    try:
+        if Path(path).exists():
+            deployment = Deployment(path)
+            recovery = deployment.state.get("managedRecovery", {})
+            deadline = recovery.get("deadline") if isinstance(recovery, dict) else None
+            deployment.save(managedRecovery={"enabled": False, "deadline": deadline})
+    finally:
+        remove_managed_unit(path)
 
 
 @contextmanager
@@ -488,7 +724,7 @@ def bootstrap_lock(directory):
                 break
             except BlockingIOError:
                 if time.monotonic() >= deadline:
-                    raise DeploymentError("Another installer or deployment still holds the bootstrap lock. Check its status before resuming; saved state and configuration were retained.") from None
+                    raise TemporaryDeploymentError("Another installer or deployment still holds the bootstrap lock. Check its status before resuming; saved state and configuration were retained.") from None
                 time.sleep(0.1)
         yield
     finally:
@@ -1032,7 +1268,11 @@ class Deployment:
             "Waiting for panel synchronization and public A/AAAA propagation (up to 24 hours when managed; 15 minutes in foreground).",
             flush=True,
         )
-        deadline = time.monotonic() + (86400 if getattr(self, "managed", False) else 900)
+        budget = 86400 if getattr(self, "managed", False) else 900
+        recovery = self.state.get("managedRecovery", {})
+        if getattr(self, "persistent", False) and isinstance(recovery, dict):
+            budget = min(budget, max(0, recovery.get("deadline", 0) - time.time()))
+        deadline = time.monotonic() + budget
         last_reason = None
         polls = 0
         reason = "Waiting for panel response."
@@ -1376,11 +1616,16 @@ class Deployment:
 
 
 def main():
+    persistent = False
+    recovery_path = None
     try:
         if os.geteuid() != 0:
             raise DeploymentError("Run as root")
         if len(sys.argv) == 2 and sys.argv[1] == "--capabilities":
-            print(json.dumps({"features": ["management-lock-delegation-v1"]}))
+            print(json.dumps({"features": ["management-lock-delegation-v1", "reboot-recovery-v1"]}))
+            return 0
+        if len(sys.argv) == 2 and sys.argv[1] == "--cancel":
+            cancel_managed()
             return 0
         if len(sys.argv) == 7 and sys.argv[1] == "--completed":
             return (
@@ -1406,13 +1651,15 @@ def main():
                 panel_identity(data["apiHost"]), data["networkReport"], path.parent
             )
             return 0
-        managed = len(sys.argv) == 3 and sys.argv[1] == "--worker"
+        persistent = len(sys.argv) == 3 and sys.argv[1] == "--boot-worker"
+        managed = persistent or (len(sys.argv) == 3 and sys.argv[1] == "--worker")
         if len(sys.argv) == 2 or (len(sys.argv) == 3 and sys.argv[1] == "--managed"):
             recovery_path = sys.argv[-1]
             if launch_managed(recovery_path):
                 return 0
             sys.argv = [sys.argv[0], recovery_path]
         if managed:
+            recovery_path = sys.argv[2]
             sys.argv = [sys.argv[0], sys.argv[2]]
         if len(sys.argv) != 2:
             raise DeploymentError("Run with a deployment state file")
@@ -1422,9 +1669,20 @@ def main():
             fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
             with os.fdopen(fd, "w") as handle:
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                deployment = Deployment(path)
-                deployment.managed = managed
-                deployment.run()
+                try:
+                    deployment = boot_recovery(path) if persistent else Deployment(path)
+                    deployment.managed = managed
+                    deployment.persistent = persistent
+                    deployment.run()
+                    if persistent:
+                        remove_managed_unit(path)
+                except (DeploymentError, ValueError, KeyError, TypeError) as error:
+                    if persistent and not isinstance(error, (TemporaryDeploymentError, UnselectedDeploymentError)):
+                        try:
+                            pause_recovery(path)
+                        except (DeploymentError, OSError, ValueError, subprocess.SubprocessError):
+                            print("Automatic recovery stopped. Check and disable v2box-deployment before manual repair; state was retained.", file=sys.stderr)
+                    raise
     except (
         DeploymentError,
         OSError,
@@ -1434,6 +1692,7 @@ def main():
         subprocess.TimeoutExpired,
         subprocess.CalledProcessError,
     ) as error:
+        terminal = persistent and isinstance(error, (DeploymentError, ValueError, KeyError, TypeError)) and not isinstance(error, TemporaryDeploymentError)
         if isinstance(error, DeploymentError):
             reason = str(error)
         elif isinstance(error, BlockingIOError):
@@ -1465,7 +1724,7 @@ def main():
                 "State retained. After fixing the cause, run: sh install-v2box.sh --resume (authorization valid for 24 hours).",
                 file=sys.stderr,
             )
-        return 1
+        return 78 if terminal else 1
     return 0
 
 

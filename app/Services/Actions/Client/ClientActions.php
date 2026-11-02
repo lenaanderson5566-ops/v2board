@@ -121,6 +121,11 @@ class ClientActions
             try {
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
+                if (!$request->attributes->get('client.native')) {
+                    $servers = array_values(array_filter($servers, fn ($server) =>
+                        ($server['protocol'] ?? $server['type'] ?? null) !== 'naive'
+                        || SubscriptionClientRegistry::supportsNaive((string) $identifiedClient, $server)));
+                }
 
                 // Template-free lists cannot supply alternative static/provider nodes.
                 // Full custom templates may intentionally do so and are left intact for entitled users.
@@ -292,7 +297,7 @@ class ClientActions
     private function isNodeListFormat(string $format): bool
     {
         return in_array($format, ['v2rayn','v2rayng','v2raytun','shadowrocket','loon','quantumult-x',
-            'shadowsocks','sagernet','passwall','ssr-plus','throne','husi'], true);
+            'shadowsocks','sagernet','passwall','ssr-plus','throne','husi','nekobox'], true);
     }
 
     private function hasNodeListEntries(string $format, $content): bool

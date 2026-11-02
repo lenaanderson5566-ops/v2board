@@ -5,6 +5,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\ServerV2box;
 use App\Http\Controllers\V1\Admin\Server\V2boxController;
+use App\Services\SubscriptionClientRegistry as Clients;
 
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
@@ -29,12 +30,37 @@ try {
     $assert($config['protocol']==='naive' && $config['network']==='tcp' && $config['tls_settings']['cert_mode']==='http','Node config retains Naive TLS settings');
     $user=['uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','u'=>0,'d'=>0,'transfer_enable'=>1024,'expired_at'=>null];
     $server=$node->toArray();$server['type']='v2box';
+    $supportedClients=['sing-box','shadowrocket','v2rayn','throne','husi','nekobox','passwall','sagernet'];
+    foreach(array_keys(Clients::CLIENTS) as $client) {
+        $assert(Clients::supportsNaive($client,$server)===in_array($client,$supportedClients,true),'Only verified clients accept Naive: '.$client);
+    }
+    $assert(!Clients::supportsNaive('unknown',$server),'Unknown clients cannot inherit Naive support');
+    foreach([
+        ['Naive.Example.Test.','naive.example.test',true],
+        ['naive.example.test','NAIVE.EXAMPLE.TEST.',true],
+        ['naive.example.test','different.example.test',false],
+        ['2001:db8::1','',true],
+        ['[2001:db8::1]','',true],
+        ['[2001:db8::1]','2001:DB8::1',true],
+        ['[2001:0db8:0000::1]','2001:db8::1',true],
+        ['[2001:db8::1]','naive.example.test',false],
+    ] as [$address,$sni,$supported]) {
+        $variant=$server;$variant['host']=$address;$variant['server_name']=$sni;$variant['tls_settings']['server_name']='';
+        $assert(Clients::supportsNaive('sagernet',$variant)===$supported,'SagerNet preserves its connection address and accepts only a representable TLS identity');
+    }
     $uri=App\Utils\Helper::buildUri($user['uuid'],$server);
     $assert(str_starts_with($uri,'naive+https://'.$user['uuid'].':'.$user['uuid'].'@'),'URI credentials match panel');
     $assert(str_contains($uri,'sni=naive.example.test') && str_contains($uri,rawurlencode($base['name'])),'URI SNI and name');
     $ipv6=$server;$ipv6['host']='2001:db8::1';
     $assert(str_contains(App\Utils\Helper::buildUri($user['uuid'],$ipv6),'@[2001:db8::1]:443'),'IPv6 URI brackets');
     $assert(base64_decode((new App\Protocols\V2rayN($user,[$server]))->handle())===$uri,'Identified URI client exports Naive');
+    foreach(['v2rayn','throne','husi','nekobox','passwall','sagernet'] as $client) {
+        $renderer=Clients::handler($client);
+        $assert(base64_decode((new $renderer($user,[$server]))->handle(),true)===$uri,'Verified URI client keeps Naive credentials, endpoint and TLS name: '.$client);
+    }
+    $queryServer=$server;$queryServer['server_name']='A +~/';
+    $queryUri=App\Utils\Helper::buildNaiveUri($user['uuid'],$queryServer);
+    $assert(str_contains($queryUri,'?sni=A%20%2B~%2F#'),'Naive URI query data uses RFC3986 escaping without form-style spaces');
     $decodeShadowrocket=function($content)use($assert) {
         $decoded=base64_decode($content,true);
         $assert(is_string($decoded),'Shadowrocket subscription uses valid base64');
@@ -76,6 +102,26 @@ try {
         [, $query]=$decodeShadowrocket((new App\Protocols\Shadowrocket($upperUser,[$variant]))->handle());
         $assert($query['peer']==='2001:db8::1','Missing Naive SNI falls back to the host without IPv6 brackets');
     }
+    foreach([
+        [' published.example.test ','nested.example.test','published.example.test'],
+        ['', ' nested.example.test ','nested.example.test'],
+        [null,'nested.example.test','nested.example.test'],
+        [[], 'nested.example.test','nested.example.test'],
+        ['  ','','2001:db8::1'],
+    ] as [$published,$nested,$expected]) {
+        $variant=$server;$variant['host']='[2001:db8::1]';$variant['server_name']=$published;$variant['tls_settings']['server_name']=$nested;
+        $before=serialize([$upperUser,$variant]);
+        $assert(App\Utils\Helper::naiveServerName($variant)===$expected,'Naive identity selects a usable published value, nested value, then the unbracketed host');
+        $generic=trim(App\Utils\Helper::buildUri($upperUser['uuid'],$variant));
+        parse_str(parse_url($generic,PHP_URL_QUERY),$genericQuery);
+        $assert($genericQuery===['sni'=>$expected] && str_starts_with($generic,'naive+https://'.$upperUser['uuid'].':'.$upperUser['uuid'].'@[2001:db8::1]:443?'),'Generic Naive preserves endpoint and exact credentials while selecting TLS identity');
+        [, $rocketQuery]=$decodeShadowrocket((new App\Protocols\Shadowrocket($upperUser,[$variant]))->handle());
+        $singVariant=json_decode((new App\Protocols\Singbox($upperUser,[$variant]))->handle()->getContent(),true);
+        $naiveOut=array_values(array_filter($singVariant['outbounds'],fn($row)=>($row['type']??null)==='naive'));
+        $assert($rocketQuery['peer']===$expected && count($naiveOut)===1 && $naiveOut[0]['tls']['server_name']===$expected,'Generic, Shadowrocket and sing-box share Naive TLS identity semantics');
+        $assert($naiveOut[0]['server']==='[2001:db8::1]' && $naiveOut[0]['username']===$upperUser['uuid'] && $naiveOut[0]['password']===$upperUser['uuid'],'Selecting a TLS name never replaces the sing-box connection endpoint or credentials');
+        $assert(serialize([$upperUser,$variant])===$before,'Naive renderers leave published and nested settings unchanged');
+    }
     $vless=$server;$vless['protocol']='vless';$vless['name']='Existing VLESS';
     $anytls=$server;$anytls['protocol']='anytls';$anytls['name']='Existing AnyTLS';
     [, , , $mixed]=$decodeShadowrocket((new App\Protocols\Shadowrocket($user,[$server,$vless,$anytls]))->handle());
@@ -89,6 +135,13 @@ try {
     $assert($out[0]['server_port']===443 && $out[0]['tls']['enabled']===true && $out[0]['tls']['server_name']==='naive.example.test','sing-box endpoint and TLS');
     $assert(!isset($out[0]['tls']['utls'],$out[0]['tls']['insecure'],$out[0]['tls']['reality'],$out[0]['transport']),'No incompatible TLS or transport fields');
     foreach($sing['outbounds'] as $o) if(in_array($o['type'],['selector','urltest']) && in_array($o['tag'],['节点选择','自动选择'])) $assert(in_array($out[0]['tag'],$o['outbounds'],true),'Naive included in selector');
+    if($fixture=getenv('NAIVE_CLIENT_FIXTURE')) {
+        $fixtureNode=$node->fresh();
+        $fixtureBody=json_encode(['uuid'=>$user['uuid'],'peer'=>$fixtureNode->tls_settings['server_name'],
+            'host'=>$fixtureNode->host,'port'=>(int)$fixtureNode->port,
+            'formats'=>['uri'=>trim($uri),'shadowrocket'=>$shadowrocketUri,'singbox'=>$out[0]]],JSON_THROW_ON_ERROR);
+        $assert(file_put_contents($fixture,$fixtureBody)!==false && chmod($fixture,0600),'Synthetic Naive client formats exported privately with independent stored-model metadata');
+    }
     $admin->save(Request::create('/','POST',array_replace_recursive($base,['id'=>$node->id,'tls_settings'=>['cert_mode'=>'file','cert_file'=>'/etc/certs/fullchain.pem','key_file'=>'/etc/certs/privkey.pem']])));
     $assert($node->fresh()->tls_settings['cert_mode']==='file','Existing certificate supported');
     echo "PASS: $checks Naive checks\n";

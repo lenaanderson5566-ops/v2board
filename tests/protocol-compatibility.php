@@ -25,6 +25,15 @@ foreach(['mihomo.party/v1.8.0'=>'clash-party','Throne/1.3.2'=>'throne','Throne/A
  $assert(C::version($client,$ua)!==null,'Application version '.$client);
 }
 $assert(R::compatible('throne','v2rayn') && !R::compatible('throne','surge'),'URI format compatibility is explicit');
+$assert(R::handler('nekobox')===App\Protocols\UriSubscription::class,'NekoBox defaults to the URI renderer');
+foreach(['v2rayn','v2rayng','throne','husi','nekobox'] as $format) {
+ $assert(R::compatible('nekobox',$format) && R::compatible($format,'nekobox'),'NekoBox shares the explicit URI-format family: '.$format);
+}
+foreach(['mihomo','flclash','clash-verge','clash-party'] as $format) {
+ $assert(R::compatible('nekobox',$format) && !R::compatible($format,'nekobox'),'Only NekoBox keeps the historical Mihomo-format import direction: '.$format);
+}
+$assert(R::policyTypes('nekobox')===['nekobox','mihomo'],'NekoBox retains its historical parent access and kernel-version policy');
+$assert(!R::compatible('nekobox','sing-box') && !R::compatible('sing-box','nekobox'),'URI support does not imply full sing-box configuration compatibility');
 $assert(!R::compatible('invalid','invalid'),'Unknown names never form a compatible pair');
 $plain = array_merge($base, ['tls'=>0]);
 $assert(isset(App\Protocols\ClashVerge::buildVless($user['uuid'],$plain)['flow']), 'Verge keeps flow outside TLS branch');

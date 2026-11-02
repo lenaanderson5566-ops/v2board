@@ -17,12 +17,28 @@ V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS、
 - 管理后台选择 V2Box → Naive。首版仅 HTTPS/HTTP2：TCP + TLS；不支持 QUIC/HTTP3、Reality 或其他传输。
 - 填写证书 SNI；证书模式选 HTTP/DNS 申请或已有文件，文件模式须填写证书和私钥路径。证书须被客户端信任并匹配 SNI；不提供面板生成自签名或跳过校验。
 - 用户名与密码均使用订阅用户 UUID。支持用户热更新、账户撤销、流量计费和现有限速/设备限制；撤销时关闭该账户的 HTTP2 会话，其他账户不受影响。
-- 订阅输出为 sing-box `type=naive`（需支持 Naive 的 1.13+ 客户端构建）和通用 `naive+https://` 链接。Shadowrocket 使用独立的 HTTP2 分享格式：`http2://` 后使用 Base64 编码完整的 `用户名:密码@地址:端口`，携带 Naive `padding=1` 和证书 SNI，不复用通用 URI；IPv6 地址保留方括号。其他未适配的专用格式继续跳过，不能把通用链接支持理解为所有客户端均可用。
+- 订阅按实际识别的客户端下发 Naive，不因选择了兼容订阅格式就假定客户端支持该协议。支持范围与条件见下表；不能把通用链接支持理解为所有客户端均可用。
 - 服务端不需要 libcronet；客户端可能需要。当前实现不包含 Naive 出站和网站回落/应用前置配置。
+
+| 现有客户端 | Naive 下发与使用条件 |
+| --- | --- |
+| sing-box 格式及使用该格式的客户端 | `type=naive`，要求 sing-box 1.13+ 且构建包含 Naive 出站。按平台安装匹配的 Cronet 库；只有版本号并不能证明当前构建可用，详见 [官方 Naive 文档](https://sing-box.sagernet.org/configuration/outbound/naive/)及[构建要求](https://sing-box.sagernet.org/installation/build-from-source/#with_naive_outbound)。 |
+| Shadowrocket | 专用 `http2://`，后接完整 `用户名:密码@地址:端口` 的 Base64，附带 `peer`、`alpn=h2`、`padding=1` 和编码后的名称；不关闭证书校验。 |
+| v2rayN、Husi | 使用 `naive+https://` 列表；需客户端实际安装或包含 Naive 核心/插件，并使用支持该链接的版本。参考 [v2rayN 核心清单](https://github.com/2dust/v2rayN/wiki/List-of-supported-cores)及 [Husi 解析实现](https://github.com/xchacha20-poly1305/husi/blob/v2.3.4/composeApp/src/commonMain/kotlin/fr/husi/fmt/naive/NaiveFmt.kt)。面板不会代为下载核心，也不会把其他协议内核当作 Naive。 |
+| Throne | 使用 `naive+https://`，保留独立 SNI，参见 [1.3.2 解析器](https://github.com/throneproj/Throne/blob/1.3.2/src/configs/outbounds/naive.cpp#L70)。须使用包含 Naive/Cronet 的构建；该版本的 [Windows legacy 构建不包含 Naive 出站](https://github.com/throneproj/Throne/blob/1.3.2/script/build_go.sh#L14)。 |
+| NekoBox for Android | 默认及 `format=nekobox` 改为 URI 列表，使用 `naive+https://`；安装[官方 Naive 插件](https://matsuridayo.github.io/nb4a-plugin/)。[1.4.2 的解析器](https://github.com/MatsuriDayo/NekoBoxForAndroid/blob/1.4.2/app/src/main/java/io/nekohasekai/sagernet/fmt/naive/NaiveFmt.kt)支持该链接及 SNI，Naive 插件独立于其内置 sing-box 版本。 |
+| Passwall | 使用 `naive+https://` 列表；[26.10.29-1 的订阅解析](https://github.com/Openwrt-Passwall/openwrt-passwall/blob/26.10.29-1/luci-app-passwall/root/usr/share/passwall/subscribe.lua)和 [sing-box 配置生成](https://github.com/Openwrt-Passwall/openwrt-passwall/blob/26.10.29-1/luci-app-passwall/luasrc/passwall/util_sing-box.lua#L166)保留原地址、独立 SNI 及两项凭据，需安装具备 Naive 能力的 sing-box/Cronet 组件。 |
+| SagerNet | 需已安装 Naive 插件；[0.8.1-rc03 解析器](https://github.com/SagerNet/SagerNet/blob/0.8.1-rc03/app/src/main/java/io/nekohasekai/sagernet/fmt/naive/NaiveFmt.kt#L28)不导入独立 SNI，面板仅在有效 SNI 与连接地址一致时下发 `naive+https://`。比较忽略大小写、域名末尾的点及 IPv6 方括号；SNI 不同则跳过该节点，不把连接地址替换为 SNI。 |
+| Mihomo、Clash Verge、FlClash、Clash Nyanpasu、Clash Party、旧 CFA/CFW/ClashX 格式 | 保持过滤。Mihomo [v1.19.33 的协议解析器](https://github.com/MetaCubeX/mihomo/blob/v1.19.33/adapter/parser.go)无 Naive，普通 [HTTP 代理仍使用 HTTP/1.1 CONNECT](https://github.com/MetaCubeX/mihomo/blob/v1.19.33/adapter/outbound/http.go#L83)，不能通过加 padding 头伪装成 Naive。多内核或第三方修改版须另外核对实际构建，不由客户端名称推断。 |
+| 其余现有格式，包括 v2rayNG、SSR Plus、v2RayTun、Quantumult X、Surge、Stash、Loon、Surfboard、Shadowsocks | 尚无本项目可用的 Naive 适配或明确支持证据，保持过滤；其他已支持协议照常下发。 |
+
+SNI 优先使用发布线路上的有效名称，再回退节点 TLS 名称和连接地址。URI 参数使用 RFC3986 编码，IPv6 地址保留方括号；不改账号 UUID、原始节点地址、证书或数据库配置。客户端选择器和 UA 只决定输出格式与已有访问策略，不能检测设备上的插件、构建选项或连接结果。过滤后无节点仍返回既有安全提示。
+
+NekoBox 保留显式 Mihomo 家族格式的单向兼容，供旧订阅继续使用，但这类 YAML 不含 Naive；要获取 Naive 应更新为默认或 `format=nekobox`。Mihomo 客户端不能反向请求 NekoBox URI 格式。NekoBox 仍继承旧 Mihomo 上级策略的既有适用规则，改输出格式不会绕过管理员的启用和最低版本限制。
 
 测试：`php tests/naive.php`、前端 admin-linkage 测试、节点 `GOEXPERIMENT=jsonv2 go test -race -tags with_quic,with_utls ./core -run Naive`。协议测试使用独立 HTTP2/Naive padding 测试客户端，覆盖实际 TLS 连接、流量计数、撤销/重加和并发更新；不替代目标 Chromium 客户端部署验收。
 
-Shadowrocket 适配只改变该格式的 Naive 下发，不改用户 UUID、节点配置、证书或通用订阅。分享格式参考开源面板的 [HTTP2 导出实现](https://github.com/alireza0/s-ui/blob/db6f7abf7df93fe319161b0b44b2dc2341f84637/util/genLink.go#L239)，不是 Shadowrocket 发布的接口规范；实际导入和连接仍需在目标版本验收。自动回归应核对外层订阅与内层认证编码、SNI、IPv6、名称编码、必须的 padding，以及有节点/过滤后无节点和不可用账户的安全提示，同时保留混合订阅中的 VLESS 和 AnyTLS 输出。
+Shadowrocket 分享格式参考开源面板的 [HTTP2 导出实现](https://github.com/alireza0/s-ui/blob/db6f7abf7df93fe319161b0b44b2dc2341f84637/util/genLink.go#L239)，不是 Shadowrocket 发布的接口规范；各客户端实际导入和连接仍需在目标版本验收。自动回归应核对外层订阅与内层认证编码、SNI、IPv6、名称编码、必须的 padding，以及有节点/过滤后无节点和不可用账户的安全提示，同时保留混合订阅中的 VLESS 和 AnyTLS 输出。
 
 部署顺序：先发布包含 NodeType 支持的 V2Box Release，再升级面板并创建 V2Box 节点，最后使用后台安装命令部署。节点与面板须使用匹配的 V2Box 配置。
 

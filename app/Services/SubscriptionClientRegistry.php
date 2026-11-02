@@ -8,7 +8,7 @@ final class SubscriptionClientRegistry
         'fastai'=>['fastai', \App\Services\FastaiConfig::class, 'FastAI'],
         'clash-party'=>['clash-party', \App\Protocols\ClashMeta::class, 'Clash Party / Mihomo Party'],
         'throne'=>['throne', \App\Protocols\UriSubscription::class, 'Throne'],
-        'nekobox'=>['nekobox', \App\Protocols\ClashMeta::class, 'NekoBox for Android'],
+        'nekobox'=>['nekobox', \App\Protocols\UriSubscription::class, 'NekoBox for Android'],
         'husi'=>['husi', \App\Protocols\UriSubscription::class, 'Husi'],
         'mihomo'=>['mihomo', \App\Protocols\ClashMeta::class, 'Mihomo / Clash Meta'],
         'sing-box'=>['sing-box', \App\Protocols\Singbox::class, 'sing-box'],
@@ -32,8 +32,8 @@ final class SubscriptionClientRegistry
         'v2rayng'=>['v2rayng', \App\Protocols\V2rayNG::class, 'v2rayNG'],
         'v2raytun'=>['v2raytun', \App\Protocols\V2RayTun::class, 'v2RayTun'],
     ];
-    private const MIHOMO = ['mihomo','clash-verge','flclash','clash-nyanpasu','clash-for-android','clash-for-windows','clashx','clash-party','nekobox'];
-    private const URI = ['v2rayn', 'v2rayng', 'throne', 'husi'];
+    private const MIHOMO = ['mihomo','clash-verge','flclash','clash-nyanpasu','clash-for-android','clash-for-windows','clashx','clash-party'];
+    private const URI = ['v2rayn', 'v2rayng', 'throne', 'husi', 'nekobox'];
     public static function defaultEnabled(string $client): bool
     {
         return !in_array($client, ['clash-party', 'throne', 'nekobox', 'husi'], true);
@@ -57,11 +57,25 @@ final class SubscriptionClientRegistry
         if ($client === null || $format === null) return false;
         return $client === $format
             || (in_array($client, self::MIHOMO, true) && in_array($format, self::MIHOMO, true))
-            || (in_array($client, self::URI, true) && in_array($format, self::URI, true));
+            || (in_array($client, self::URI, true) && in_array($format, self::URI, true))
+            || ($client === 'nekobox' && in_array($format, self::MIHOMO, true));
     }
 
     public static function policyTypes(string $client): array
     {
-        return in_array($client, self::MIHOMO, true) ? array_values(array_unique([$client, 'mihomo'])) : [$client];
+        // Keep existing access/version inheritance when NekoBox changes its default format.
+        return ($client === 'nekobox' || in_array($client, self::MIHOMO, true))
+            ? array_values(array_unique([$client, 'mihomo'])) : [$client];
+    }
+
+    public static function supportsNaive(string $client, array $server): bool
+    {
+        if (!in_array($client, ['sing-box','shadowrocket','v2rayn','throne','husi','nekobox','passwall','sagernet'], true)) return false;
+        if ($client !== 'sagernet') return true;
+        // The original SagerNet plugin does not import an independent TLS server name.
+        $host = rtrim(trim((string) $server['host'], '[]'), '.');
+        $peer = rtrim(\App\Utils\Helper::naiveServerName($server), '.');
+        if (filter_var($host, FILTER_VALIDATE_IP) && filter_var($peer, FILTER_VALIDATE_IP)) return inet_pton($host) === inet_pton($peer);
+        return strcasecmp($peer, $host) === 0;
     }
 }

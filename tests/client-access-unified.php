@@ -39,10 +39,11 @@ try {
     $assert(ClientStrategy::where('client_type','sing-box')->value('is_enabled') === $before, 'Invalid batch leaves all rows unchanged');
     RiskSetting::where('key','client_access_unified')->delete();
     config(['fastai.subscription_ua_whitelist_enabled'=>0]);
-    ClientStrategy::whereIn('client_type',['flclash','clash-verge'])->update(['is_enabled'=>1]);
+    ClientStrategy::whereIn('client_type',['flclash','clash-verge','nekobox'])->update(['is_enabled'=>1]);
     ClientStrategy::where('client_type','mihomo')->update(['is_enabled'=>0]);
     $service->updateStrategies([['client_type'=>'sing-box','sort'=>2]]);
     $assert(!$service->isEnabled('flclash') && !$service->isEnabled('clash-verge'), 'Legacy parent denial preserved on import');
+    $assert(!$service->isEnabled('nekobox') && !ClientStrategy::where('client_type','nekobox')->value('is_enabled'), 'NekoBox URI migration preserves a legacy Mihomo parent denial');
     $service->updateStrategies([['client_type'=>'flclash','is_enabled'=>true]]);
     $assert($service->isEnabled('flclash'), 'After import clients have independent admission');
     SubscribeLog::where('client_type','flclash')->delete();

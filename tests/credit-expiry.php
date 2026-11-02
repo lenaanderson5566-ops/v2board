@@ -158,7 +158,10 @@ try {
   $response=App\Services\SubscriptionNotice::response($format,'Subscription expired; renew your plan','expired');
   $notice($response,'expired','Subscription expired');
   $body=$response->getContent();
-  if(in_array($format,['mihomo','clash-verge','flclash','clash-nyanpasu','clash-for-android','clash-for-windows','clashx','clash-party','nekobox','stash'],true)) {
+  if($format==='nekobox') {
+   $decoded=base64_decode($body,true);
+   $assert(is_string($decoded) && str_starts_with($decoded,'ss://') && str_contains($decoded,'203.0.113.10:61001'),'NekoBox expiry notice follows its URI default with one inert proxy');
+  } elseif(in_array($format,['mihomo','clash-verge','flclash','clash-nyanpasu','clash-for-android','clash-for-windows','clashx','clash-party','stash'],true)) {
    $parsed=Symfony\Component\Yaml\Yaml::parse($body);
    $assert(count($parsed['proxies']??[])===1 && empty($parsed['proxy-providers']) && empty($parsed['rule-providers']),'Warning YAML has one dummy node and no external providers: '.$format);
   } elseif($format==='sing-box') {

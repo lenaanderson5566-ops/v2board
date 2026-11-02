@@ -89,7 +89,9 @@ FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树�
 
 `naive` 与 `subscription-client-policy` 覆盖 Shadowrocket 专用 HTTP2 URI：完整认证/地址的内层 Base64、订阅外层 Base64、用户名/密码均为用户 UUID、IPv6/SNI/名称编码、Naive padding 和默认 TLS 校验；通用 `naive+https`、sing-box、混合订阅中的 VLESS/AnyTLS 及其他客户端过滤保持各自协议。支持 Naive 的有效节点应实际下发，不能再把该节点固定当作空列表；无权益响应和真正不支持的节点仍须保留原安全提示断言。解析/字段断言不表示已在 Shadowrocket 真机导入或完成网络连接。
 
-该适配在独立副本完成 7/7 个既有 PHP 模块；旧源配合同一新增回归，在缺少 HTTP2 代理处失败。同一安装树实际执行 `composer install --no-dev` 后，生产兼容的 `console-verify`、`framework-upgrade` 两模块 2/2 通过。真实 PHP 导出的合成分享夹具经独立核对 URI、UUID、地址、端口及 SNI，再由固定标签的 Go/sing-box Naive 消费者执行本机回环：严格校验证书 SAN、可信根及 ServerName，协商 h2，带 padding 的 HTTP2 CONNECT 回显成功，错误 UUID 返回 407。源码及既有前端产物哈希核对一致；此结果不包含 Shadowrocket 真机导入、生产网络连接或托管 CI 验收。
+其他既有客户端的 Naive 适配复用 `naive`、`subscription-client-policy` 及既有客户端识别/导入模块，按实际识别的 UA 检查能力，不能借共享格式跨越客户端支持边界。回归需覆盖 NekoBox 默认 URI/显式旧 Mihomo YAML 的单向兼容和原策略继承、未知或不支持客户端的过滤、Passwall 独立 SNI 和 SagerNet 同地址 SNI 条件、统一 SNI 优先级及 RFC3986 编码；保留全协议混合列表、不可用账户和过滤后空列表的安全断言。客户端、构建及插件条件见 [Naive 支持范围](v2box.md#naive)，不通过放宽证书校验或伪造普通 HTTP 代理实现兼容。
+
+跨项目 Naive 互通复用真实 PHP 导出的合成夹具，独立核对 URI、UUID、地址、端口及 SNI，再交给固定标签的消费者执行本机回环；严格校验证书 SAN、可信根及 ServerName，检查 h2 协商、带 padding 的 HTTP2 CONNECT 回显和错误 UUID 的 407 拒绝。质量工作流只上传固定路径的合成 JSON 夹具、保留三天，不上传实例配置或日志。开发模块、同树真实 `composer install --no-dev` 后的生产兼容模块、源码和产物哈希分别记录实际结果；未执行或失败的步骤不计通过。HTTP2 回环不替代第三方客户端真机导入、生产网络连接或托管 CI 验收。
 
 ### 节点、路由与在线统计
 

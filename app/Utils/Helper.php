@@ -192,14 +192,22 @@ class Helper
     {
         $credential = rawurlencode($uuid);
         return self::buildUriString('naive+https', "{$credential}:{$credential}", $server,
-            rawurlencode($server['name']), ['sni' => $server['tls_settings']['server_name'] ?? $server['host']]);
+            rawurlencode($server['name']), ['sni' => self::naiveServerName($server)], PHP_QUERY_RFC3986);
     }
 
-    public static function buildUriString($scheme, $auth, $server, $name, $params = [])
+    public static function naiveServerName(array $server): string
+    {
+        foreach ([$server['server_name'] ?? null, $server['tls_settings']['server_name'] ?? null] as $name) {
+            if (is_string($name) && trim($name) !== '') return trim($name);
+        }
+        return trim((string) $server['host'], '[]');
+    }
+
+    public static function buildUriString($scheme, $auth, $server, $name, $params = [], $encoding = PHP_QUERY_RFC1738)
     {
         $host = self::formatHost($server['host']);
         $port = $server['port'];
-        $query = http_build_query($params);
+        $query = http_build_query($params, '', '&', $encoding);
 
         return "{$scheme}://{$auth}@{$host}:{$port}?{$query}#{$name}\r\n";
     }

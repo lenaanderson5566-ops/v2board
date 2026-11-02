@@ -63,9 +63,7 @@ class Shadowrocket
         $credential = rawurlencode((string) $password);
         $host = Helper::formatHost($server['host']);
         $authority = base64_encode("{$credential}:{$credential}@{$host}:{$server['port']}");
-        $peer = trim((string) ($server['server_name'] ?? ''));
-        if ($peer === '') $peer = trim((string) ($server['tls_settings']['server_name'] ?? ''));
-        if ($peer === '') $peer = trim((string) $server['host'], '[]');
+        $peer = Helper::naiveServerName($server);
         $query = http_build_query(['peer' => $peer, 'alpn' => 'h2', 'padding' => 1], '', '&', PHP_QUERY_RFC3986);
         return 'http2://' . $authority . '?' . $query . '#' . rawurlencode($server['name']) . "\r\n";
     }

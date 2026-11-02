@@ -376,7 +376,7 @@ class Singbox
             'domain_resolver' => 'local',
             'tls' => [
                 'enabled' => true,
-                'server_name' => $server['tls_settings']['server_name'] ?? $server['host'],
+                'server_name' => Helper::naiveServerName($server),
             ],
         ];
     }

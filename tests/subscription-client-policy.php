@@ -6,12 +6,15 @@ use App\Models\SubscribeLog;
 $n=0;$assert = \Tests\Support\Assertions::counter($n);
 DB::beginTransaction();
 try {
+ // This module exercises many HTTP policy combinations before its explicit
+ // rate-limit case; keep those fixtures outside the ordinary request budget.
+ config(['fastai.subscription_user_minute_limit'=>1000,'fastai.subscription_user_day_limit'=>1000,'fastai.subscription_ip_minute_limit'=>1000]);
  $service=new App\Services\ClientStrategyService();$service->syncStrategies();
  $user=App\Models\User::create(['email'=>Illuminate\Support\Str::uuid().'@example.com','password'=>'unused','uuid'=>(string)Illuminate\Support\Str::uuid(),'token'=>Illuminate\Support\Str::random(32),'plan_id'=>1,'group_id'=>98765,'transfer_enable'=>1073741824,'expired_at'=>time()+86400,'credit_balance'=>1073741824]);
  App\Models\ClientStrategy::whereIn('client_type',['mihomo','flclash','general'])->update(['is_enabled'=>1,'min_version'=>null]);
  config(['fastai.subscription_ua_whitelist_enabled'=>1,'fastai.subscription_ua_whitelist'=>['flclash']]);
  $call=function($ua,$format='flclash',$suffix='',$token=null)use($app,$user){
-  $r=Illuminate\Http\Request::create('/api/v10/subscriptions/'.($token??$user->token).$suffix.'?format='.$format,'GET',[],[],[],['HTTP_USER_AGENT'=>$ua,'REMOTE_ADDR'=>'192.0.2.'.($user->id % 240 + 10),'HTTP_ACCEPT'=>'application/yaml']);
+  $r=Illuminate\Http\Request::create('/api/v10/subscriptions/'.($token??$user->token).$suffix.($format===null?'':'?format='.$format),'GET',[],[],[],['HTTP_USER_AGENT'=>$ua,'REMOTE_ADDR'=>'192.0.2.'.($user->id % 240 + 10),'HTTP_ACCEPT'=>'application/yaml']);
   $app->instance('request',$r);
   return $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($r);
  };
@@ -140,7 +143,7 @@ try {
   $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'QX negative fixture has one authorized catalog node');
   $qx=$call('Quantumult X/1.5.0','quantumult-x');$notice($qx,'no_available_nodes');
   $assert(!str_contains(base64_decode($qx->getContent(),true)?:'','grpc-only.example.test'),'A filtered gRPC node cannot survive in QX output');
-  App\Models\ServerV2box::create(['group_id'=>[98763],'name'=>'Shadowrocket Naive-only','host'=>'naive-only.example.test','port'=>'443','server_port'=>443,
+   $naiveNode=App\Models\ServerV2box::create(['group_id'=>[98763],'name'=>'Shadowrocket Naive-only','host'=>'naive-only.example.test','port'=>'443','server_port'=>443,
    'protocol'=>'naive','show'=>1,'rate'=>1,'tls'=>1,'network'=>'tcp','tls_settings'=>['cert_mode'=>'http','server_name'=>'naive-sni.example.test'],'up_mbps'=>0,'down_mbps'=>0]);
   $user->group_id=98763;$user->save();
   $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'Shadowrocket Naive-only fixture has one authorized node');
@@ -151,6 +154,69 @@ try {
   $assert(base64_decode($naiveParts[1],true)===rawurlencode($user->uuid).':'.rawurlencode($user->uuid).'@naive-only.example.test:443','Naive-only HTTP subscription retains the real user and endpoint');
   parse_str($naiveParts[2],$naiveQuery);
   $assert($naiveQuery===['peer'=>'naive-sni.example.test','alpn'=>'h2','padding'=>'1'],'Naive-only HTTP subscription carries SNI, HTTP2 and mandatory padding');
+   $nekoUa='NekoBox/Android/1.4.0 (Prefer ClashMeta Format)';
+   $notice($call($nekoUa,null),'client_disabled');
+   $service->updateStrategies(array_map(fn($client)=>['client_type'=>$client,'is_enabled'=>true,'min_version'=>null],
+    ['mihomo','nekobox','husi','throne','v2rayn','v2rayng','v2raytun','passwall','sagernet','ssr-plus','sing-box']));
+   foreach([
+    ['v2rayN/7.25.6','v2rayn'],['Throne/1.3.2','throne'],['husi/2.3.4','husi'],
+    [$nekoUa,null],[$nekoUa,'v2rayn'],['Passwall/26.10.29','passwall'],
+   ] as [$ua,$format]) {
+    $response=$call($ua,$format);$body=base64_decode($response->getContent(),true)?:'';
+    $assert($response->getStatusCode()===200 && !$response->headers->has('X-Subscription-Notice')
+     && str_contains($body,'naive+https://'.$user->uuid.':'.$user->uuid.'@naive-only.example.test:443?sni=naive-sni.example.test#'),
+     'Verified URI clients retain a real Naive node selected by their actual UA: '.$ua);
+   }
+   $assert(SubscribeLog::where('user_id',$user->id)->where('client_type','nekobox')->where('status','success')->exists(),'NekoBox URI output retains its application identity in request logs');
+   foreach([['sing-box/1.14.3','sing-box'],['Hiddify/4.1.1',null]] as [$ua,$format]) {
+    $sing=$call($ua,$format);$singBody=json_decode($sing->getContent(),true,512,JSON_THROW_ON_ERROR);
+    $singNodes=array_values(array_filter($singBody['outbounds']??[],fn($row)=>($row['type']??null)==='naive'));
+    $assert($sing->getStatusCode()===200 && !$sing->headers->has('X-Subscription-Notice') && count($singNodes)===1
+     && $singNodes[0]['server']==='naive-only.example.test' && $singNodes[0]['username']===$user->uuid
+     && $singNodes[0]['password']===$user->uuid && $singNodes[0]['tls']['server_name']==='naive-sni.example.test','The verified sing-box client retains a Naive outbound with independent SNI: '.$ua);
+   }
+   foreach([['v2rayNG/2.3.14','v2rayng'],['v2rayNG/2.3.14','v2rayn'],['v2RayTun/5.26.83','v2raytun'],['SSRPlus/198.2','ssr-plus']] as [$ua,$format]) {
+    $response=$call($ua,$format);$notice($response,'no_available_nodes');
+    $body=$response->getContent().(base64_decode($response->getContent(),true)?:'');
+    $assert(!str_contains($body,'naive-only.example.test'),'An unverified Naive importer cannot gain the real endpoint by choosing another format: '.$ua.' '.$format);
+   }
+   $filteredYaml=$call('FlClash/0.8.0','flclash');$filteredBody=$filteredYaml->getContent();
+   $filteredConfig=Symfony\Component\Yaml\Yaml::parse($filteredBody);
+   $assert($filteredYaml->getStatusCode()===200 && !str_contains($filteredBody,'naive-only.example.test') && !str_contains($filteredBody,'naive-sni.example.test')
+    && !array_filter($filteredConfig['proxies']??[],fn($row)=>($row['type']??null)==='naive'),'Filtering Naive from a full YAML template preserves its existing fallback without exposing a fake or incompatible Naive node');
+   $notice($call('SagerNet/0.8.1','sagernet'),'no_available_nodes');
+   $naiveNode->tls_settings=['cert_mode'=>'http','server_name'=>'NAIVE-ONLY.EXAMPLE.TEST.'];$naiveNode->save();
+   $sager=$call('SagerNet/0.8.1','sagernet');$sagerBody=base64_decode($sager->getContent(),true)?:'';
+   $assert($sager->getStatusCode()===200 && !$sager->headers->has('X-Subscription-Notice') && str_contains($sagerBody,'@naive-only.example.test:443?'),'SagerNet may receive Naive when the TLS identity is the same connection hostname');
+   $naiveNode->tls_settings=['cert_mode'=>'http','server_name'=>'naive-sni.example.test'];$naiveNode->save();
+   $service->updateStrategies([['client_type'=>'nekobox','min_version'=>'2.0.0']]);
+   $notice($call($nekoUa,null),'client_version_too_low');
+   $notice($call($nekoUa,'mihomo'),'client_version_too_low');
+   $service->updateStrategies([['client_type'=>'nekobox','min_version'=>null],['client_type'=>'mihomo','min_version'=>'1.20.0']]);
+   $notice($call($nekoUa,null),'client_version_too_low');
+   $notice($call($nekoUa,'mihomo'),'client_version_too_low');
+   $withKernel=$call($nekoUa.' mihomo/1.21.0',null);
+   $assert($withKernel->getStatusCode()===200 && !$withKernel->headers->has('X-Subscription-Notice'),'NekoBox URI default still accepts an explicitly recognized compatible parent kernel');
+   $service->updateStrategies([['client_type'=>'mihomo','min_version'=>null]]);
+   $assert($call('FlClash/0.8.0','nekobox')->getStatusCode()===422,'A Mihomo client cannot use NekoBox as a reverse URI-format bypass');
+   $assert($call($nekoUa,'sing-box')->getStatusCode()===422,'NekoBox URI support does not permit a full sing-box configuration');
+   App\Models\ServerV2box::create(['group_id'=>[98763],'name'=>'Mixed supported Shadowsocks','host'=>'mixed-supported.example.test','port'=>'443','server_port'=>443,
+    'protocol'=>'shadowsocks','cipher'=>'aes-128-gcm','show'=>1,'rate'=>1,'tls'=>0,'network'=>'tcp','up_mbps'=>0,'down_mbps'=>0]);
+   foreach([['v2rayNG/2.3.14','v2rayn'],['SagerNet/0.8.1','sagernet']] as [$ua,$format]) {
+    $response=$call($ua,$format);$body=base64_decode($response->getContent(),true)?:'';
+    $assert($response->getStatusCode()===200 && !$response->headers->has('X-Subscription-Notice') && str_contains($body,'mixed-supported.example.test:443')
+     && !str_contains($body,'naive-only.example.test'),'Naive capability filtering preserves other supported nodes: '.$ua);
+   }
+   $legacy=$call($nekoUa,'mihomo');$legacyBody=Symfony\Component\Yaml\Yaml::parse($legacy->getContent());
+   $assert($legacy->getStatusCode()===200 && !$legacy->headers->has('X-Subscription-Notice')
+    && count(array_filter($legacyBody['proxies']??[],fn($row)=>($row['server']??null)==='mixed-supported.example.test' && ($row['password']??null)===$user->uuid))===1,
+    'Existing NekoBox Mihomo-format links retain their supported real nodes');
+   $activeUntil=$user->expired_at;
+   try {
+    DB::table('v2_user')->where('id',$user->id)->update(['expired_at'=>time()-1,'credit_balance'=>0]);
+    $notice($call($nekoUa,null),'expired');
+    $notice($call($nekoUa,'mihomo'),'expired');
+   } finally {DB::table('v2_user')->where('id',$user->id)->update(['expired_at'=>$activeUntil,'credit_balance'=>$user->getRawOriginal('credit_balance')]);}
   // Deliberately bypass admin validation to exercise unsupported-renderer safety.
   App\Models\ServerV2box::create(['group_id'=>[98762],'name'=>'Shadowrocket unsupported future protocol','host'=>'unsupported-only.example.test','port'=>'443','server_port'=>443,
    'protocol'=>'future-protocol','show'=>1,'rate'=>1,'tls'=>0,'network'=>'tcp','up_mbps'=>0,'down_mbps'=>0]);

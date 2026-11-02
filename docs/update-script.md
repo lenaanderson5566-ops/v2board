@@ -25,6 +25,16 @@ php artisan v2board:install
 
 直接 `bash update.sh` 默认自动维护：数据库由操作者自行备份，不再强制 `--database-backup`。脚本开启维护模式，仅向当前站点 cwd 下的 Horizon/queue worker 发送优雅退出信号，等待已启动任务结束（最多 12 分钟），执行白名单迁移、构建产物及配置校验，再刷新 worker 并恢复访问。宝塔 Supervisor 需开启自动重启；计划任务使用标准 `artisan schedule:run`（会遵守维护模式）。不支持以 `--force` 绕过维护的 worker，也不接管自定义直接执行写入命令的 cron 或常驻 Web 服务。此类环境继续使用手动模式。
 
+普通更新先在站点根目录下载最新版脚本到 checkout 外，再预检。示例路径均需替换为实际值；Composer 可以使用现有 phar 或系统安装：
+
+```bash
+cd /www/wwwroot/你的站点
+curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/v2board-update.sh
+bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --check
+```
+
+预检通过并完成数据库备份后，去掉 `--check` 执行相同命令，使用默认自动维护流程。普通更新不需要 `--lock-file` 或 `--resolve-dependencies`；只有本地额外依赖或已验证覆盖锁文件的情况才按下文添加。PHP-FPM、Horizon 和调度器使用与 CLI 相同的 PHP 8.4+；成功后核对本站 PHP-FPM/OPcache 是否加载新代码。
+
 `--jobs-stopped` 保留为手动模式，并在成功后保留维护。站点原本已处于维护时也不会擅自开放；失败时保留维护且不回滚数据库。`--database-backup` 可选，提供时仍验证并复制到文件备份。`--check` 不进入维护，不迁移。首次从旧版脚本升级，先获取新版脚本（原脚本可能在 fetch 之前拒绝执行）。
 
 脚本 fetch 后会对比目标提交的 update.sh；如有更新，在站点外临时目录运行目标版本，并保留调用参数与原工作目录，避免旧脚本遗漏新迁移或运行中的文件被 Git 覆盖。首次获得这项修复仍需下载新版脚本；后续可以使用已更新的仓库脚本。
@@ -45,10 +55,10 @@ php artisan v2board:install
 
 如果三份 `GeoLite2-ASN.mmdb`、`GeoLite2-City.mmdb`、`GeoLite2-Country.mmdb` 已被跟踪但被本地更新，预检允许这些普通文件的修改。正式升级在完整站点归档校验后，还会将修改文件单独复制到 `tracked/storage/geoip`，再恢复仓库版本以完成切换。预检不恢复或移动文件；其他已跟踪文件修改仍会停止。
 
-当前 Laravel 13 分支的锁定依赖要求 PHP 8.4+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。可下载新版脚本后先预检：
+当前 Laravel 13 分支的锁定依赖要求 PHP 8.4+，先同步升级 CLI、PHP-FPM、队列和调度器使用的 PHP。update.sh 不安装系统 PHP，平台要求不满足时会在停机前阻止升级。以下示例仅适用于确有额外本地 Composer 依赖、需要重新解析合并锁的站点；普通更新不添加 `--resolve-dependencies`，直接使用仓库已验证锁文件。路径按实际环境修改：
 
 ```bash
-cd /www/wwwroot/api.adanalytics-service.com
+cd /www/wwwroot/你的站点
 curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/payment-icon-picker/update.sh -o /tmp/v2board-update.sh
 bash /tmp/v2board-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --resolve-dependencies --check
 ```
@@ -78,7 +88,6 @@ bash /tmp/v2board-update.sh \
   --project /www/wwwroot/你的站点 \
   --php /www/server/php/84/bin/php \
   --composer /实际路径/composer.phar \
-  --lock-file /www/backup/目标分支已验证的composer.lock \
   --check
 ```
 
@@ -93,7 +102,6 @@ bash /tmp/v2board-update.sh \
   --project /www/wwwroot/你的站点 \
   --php /www/server/php/84/bin/php \
   --composer /实际路径/composer.phar \
-  --lock-file /www/backup/目标分支已验证的composer.lock \
   --database-backup /www/backup/本次维护窗口数据库备份.sql.gz \
   --backup-dir /www/backup/v2board-upgrades \
   --jobs-stopped
@@ -122,7 +130,7 @@ bash /tmp/v2board-update.sh \
 
 ## 测试
 
-`bash tests/update-script.sh /绝对路径/update.sh` 创建隔离 Git 仓库并使用 PHP／Composer／Artisan 替身，覆盖 26 个场景，包括只预检、脏工作区、锁校验失败、手动额度兼容阻断、未暂停任务、备份缺失、正常升级、依赖安装失败、迁移失败后重试、已有维护模式，以及目标脚本自动切换和相对项目路径。验证备份包含原依赖、配置不变、迁移范围、新资源读取权限、失败保持维护和无缓存清空。此测试不代表真实生产依赖或数据库备份已通过验收。
+`bash tests/update-script.sh /绝对路径/update.sh` 创建隔离 Git 仓库并使用 PHP／Composer／Artisan 替身，覆盖只预检、脏工作区、锁校验失败、手动额度兼容阻断、未暂停任务、备份缺失、正常升级、依赖安装失败、迁移失败后重试、已有维护模式、目标脚本自动切换和相对项目路径，以及删除旧依赖、将工具移到开发依赖并保留本地新增包。验证备份包含原依赖、配置不变、迁移范围、新资源读取权限、失败保持维护和无缓存清空。当前入口见 [测试组织](test-organization.md)，具体场景以脚本和当次结果为准；模拟测试不代替真实生产依赖安装或数据库备份验收。
 
 ## 用量重置升级
 
@@ -157,7 +165,7 @@ V2Box 接入新增白名单迁移 `2026_10_11_000001_create_v2box_nodes.php`，�
 
 默认等待 60 秒，支持 `--jobs-restart-timeout 120`（允许 2-600 秒）。重启后的本站 Horizon、队列及调度器应在连续两次检查中保持相同进程身份；缺失或持续更换身份的进程不会被当作恢复成功。等待超时保留维护模式，输出所需服务及观察到的服务，提示检查 Supervisor 自动重启、PHP 路径、运行用户和进程错误日志。
 
-修复并启动本站服务、确认 Horizon/队列和调度器正常后，再执行 `php artisan up`。不要仅为退出 503 重复安装依赖。`bash tests/update-restart.sh` 验证稳定启动、延迟启动、反复重启及服务缺失；现有升级回归包含 26 个隔离场景。
+修复并启动本站服务、确认 Horizon/队列和调度器正常后，再执行 `php artisan up`。不要仅为退出 503 重复安装依赖。`bash tests/update-restart.sh` 验证稳定启动、延迟启动、反复重启及服务缺失；升级控制流由 `tests/update-script.sh` 验证。
 
 服务器流量额度与去重升级会依次执行 `2026_10_11_000007_create_node_traffic_batches.php`、`2026_10_11_000008_create_server_traffic_budgets.php` 和 `2026_10_11_000009_create_server_traffic_imports.php`。早期脚本遗漏这些迁移；已升级站点请重新运行完整更新脚本补齐，已完成的迁移会跳过。
 
@@ -183,17 +191,11 @@ Lightsail IP 管理新增 `2026_10_11_000010_create_lightsail_servers.php` 定�
 升级清单加入 2026_10_20_000003_create_node_credentials.php，并检查 v2_node_credential 与 v2_node_credential_state。迁移为新增表，可重复执行，不修改现有 server_token 或自动迁移节点。新安装 SQL 包含同样结构。后台手动迁移步骤见 v2box.md 的节点接入凭据章节；V2Box 的交互配置工具需要另行升级节点发行版。
 
 
-## V2Box v1.0.2 配套更新
+## 配套节点升级
 
-面板继续通过本页的 update.sh 更新 codex/payment-icon-picker，部署入口固定到已发布的 V2Box v1.0.2。此次统计时间桶/周期设置复用既有 RiskSetting 表，不新增迁移；脚本仍执行既有白名单迁移和配置缓存刷新。新增统计 Redis 连接默认沿用现有 Redis 配置，无需为了更新新增环境变量；独立实例与缓存预算可选配置见 [节点管理界面](node-management-ui.md)。
+面板通过本页的 `update.sh` 更新 `codex/payment-icon-picker`；这不会替换节点服务器上的二进制。先完成面板更新，再使用更新后后台节点页生成的升级命令。命令中的目标 Release 来自面板代码，不再从本文复制旧版本的安装 URL。完整流程见 [V2Box 节点 Release 与安装入口](v2box.md#节点-release-与安装入口)。
 
-先完成面板更新，再在节点以 root 运行：
-
-```bash
-curl -fSL https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.2/script/install.sh -o /tmp/install-v2box.sh && bash /tmp/install-v2box.sh v1.0.2
-```
-
-已有 /etc/v2box/config.json 将保留，不需再次填写密钥；升级会备份旧二进制并重启 v2box。后台四档上报周期需要新版节点才能生效，旧节点继续固定周期。统计保持默认关闭，开关不会因更新自动开启。Release 与安装验证见 [测试组织](test-organization.md)。
+按后台说明在节点执行命令，核对 `v2box version` 及相应能力上报；配置、证书与密钥保留规则和重启行为以配套安装器为准。统计仍默认关闭，不会因更新自动开启。独立统计 Redis 实例与缓存预算属于可选配置，见 [节点管理界面](node-management-ui.md)，不要为面板更新清空现有 Redis。
 
 ## V2Box 单后端升级
 

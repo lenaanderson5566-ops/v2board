@@ -43,8 +43,8 @@
     },
     "subscribe_path": {
       "label": "订阅路径",
-      "hint": "用于订阅所使用，留空则为/api/v1/client/subscribe。如需更换不同的订阅路径请设置。",
-      "placeholder": "/api/v1/client/subscribe",
+      "hint": "留空时使用默认订阅地址 /api/v10/subscriptions/{subscriptionToken}。仅在需要自定义订阅入口时填写以 / 开头的路径，不要填写默认地址或 token 占位符。",
+      "placeholder": "留空使用默认订阅地址",
       "child": false,
       "line": 5734
     },

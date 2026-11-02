@@ -1,205 +1,121 @@
 # 测试组织与执行
 
-本文维护当前测试入口、隔离要求和验证边界。逐轮测试数量、旧版发布结果和临时日志路径不再累积为操作说明；已提交的历史记录可通过 Git 查阅。当前是否通过必须以本次执行结果为准。
+本文维护执行入口、隔离要求、领域覆盖和验收边界。当前是否通过必须绑定目标提交及实际执行结果；历轮数量、旧发布结果和本机临时目录通过 Git 与原始日志查阅，不累积为操作说明。交互及人工检查详见 [前后台验证](frontend-validation.md)。
 
-[GitHub Actions 工作流](../.github/workflows/quality.yml) 在指定分支的 push/PR 上执行锁文件审计、V10 生成契约检查、前端全量测试/构建，以及 32 个既有后端关键模块。前端当次产物连同隐藏的 `.vite` 清单传给后端资源验证；后端使用临时 MySQL/Redis、随机应用密钥和既有测试隔离器，随后对同一安装树执行真实 `--no-dev` 安装，仅运行不依赖开发包的 `framework-upgrade`、`console-verify` 两模块。CI 不连接生产数据库或发送真实邮件/付款请求，也不补装 Mockery 来伪装生产配置通过。
+## 执行入口
 
-审计 job 不安装项目依赖，依次运行 Composer 和 npm 的全依赖/生产依赖四个审计步骤；后续步骤在先前失败后仍收集结果，任一步失败都会使 job 失败。每周三 UTC 03:23 的 schedule 仅运行此审计；完整契约和应用回归保留在 push/PR 及可用的手动触发中。当前默认分支 `master` 尚需收录工作流和 Dependabot 配置，本次只推送 `codex/payment-icon-picker`，不能宣称每周任务已经启用；push/PR 可先验证，远端结论以 Actions run 为准。[默认分支规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+| 类型 | 维护位置与用途 |
+| --- | --- |
+| 后端 | `tests/suites.json` 登记 unit、integration、api、security、regression；`tests/run.php` 校验清单、筛选并启动独立进程。 |
+| 辅助项 | 工作进程、浏览器夹具、配置导出和公共工具登记在 `helpers`，不作为独立测试。 |
+| PHPUnit | `tests/Unit/AssertionsTest.php` 验证公共断言工具，不启动 Laravel。 |
+| 前端 | Vitest 与 `frontend/src` 组件/模块就近存放；专题命令以 `frontend/package.json` 为准。 |
+| V10 生成器 | `scripts/test_generate_v10.py` 验证生成规则；源和发布物边界见 [项目结构](project-structure.md)。 |
+| 客户端与节点 | FlClash 的 Flutter 根测试不自动覆盖全部插件；Go 包内测试、节点脚本及构建矩阵按各自仓库说明和 CI 执行。 |
 
-[Dependabot](../.github/dependabot.yml) 分别维护根 Composer、`/frontend` npm 及 Actions，每周检查；Composer/npm 常规更新仅允许同主版本的 minor/patch 并分组，安全更新另组处理，不受常规版本级别限制。各生态常规待处理 PR 上限为 3；所有 PR 均需人工审阅和合并，不更改默认分支、仓库安全设置或自动合并策略。[配置选项](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#allow)
-
-发布资源取自已验证的隔离构建，通过 alternate work-tree 仅纳入 Git index；配套提交完整 `public/console` 与 `.vite` 清单，使生产升级可直接使用新 UI。原本地运行资源不覆盖，提交后的工作区资源差异有意保留。源码、清单锁及发布产物应一起核对，排除本地 Docker/启动/种子文件、`.env`、实例配置、storage 运行产物与 pycache。
-
-依赖精简与同主版本更新复用 `framework-upgrade`：分别在独立的开发及 `--no-dev` 安装树中核对真实已安装的直接依赖版本与锁文件、实际加载的 Laravel 版本、Linfo 不再可自动加载，以及 Horizon/Carbon 的包发现。Tinker 在开发安装保留命令，在生产安装中包、类、发现清单和命令均须不存在；原邮件传输、可信代理、调度、旧任务与迁移断言继续执行。`console-smoke`、`console-verify`、健康检查及既有业务模块验证页面和运行功能，`update-script` 的模拟 Composer 场景只验证升级控制流，不能替代真实安装。
-
-本轮开发安装的 32 个后端模块全部通过，包含升级脚本 28 个隔离场景及 PHPUnit 单元测试；新增健康检查后的最终 `framework-upgrade` 另行复验通过，共 143 项。生产副本实际执行带包发现脚本的 `composer install --no-dev`，从包含 Tinker 的开发缓存升级后确认包、类、Provider 和命令均已移除；生产可运行的两个模块均通过，分别为 `framework-upgrade` 137 项与 `console-verify` 4 项。额外尝试的生产 `console-smoke` 因测试夹具调用开发依赖 Mockery 而停止，保留失败记录且不计作通过；该模块已在开发安装中完整通过，没有向生产安装补回 Mockery。
-
-发布前的首购成熟批次 DST 修正另在原 `admin-payment-diagnostics` 模块定向复验，115 项通过，两个 PHP 文件语法检查通过；环境为 PHP 8.4.27、MySQL 8.4、Redis 7.4。新增 23 项断言覆盖七个固定时区/时刻、实际查询的起止边界及 168 小时成熟条件、纽约跨 DST 的付款秒边界；它是上述 32 模块批次之后的定向结果，不表述为全部模块在最后源码上再次执行。
-
-同一最终锁的生产及全依赖 Composer audit 均无安全公告和废弃包，开发、生产实际安装后的审计也通过；这只是本次工具结果，移除旧 `audit.ignore` 的静态断言不等于安全公告审计。后端源码、真实加载路径、包版本、安装/审计/测试日志和 JSON 位于 `storage/app/test-organization/dependency-upgrade/composer-9e63c4c72b`。后端临时数据库、测试缓存与运行副本已清理，原运行服务和共享 vendor 保持原状态。
-
-前端在独立安装树中全量验证 115 文件、155 套件、1732 项测试，失败/跳过/todo 均为 0；官方 npm 全依赖/生产依赖审计均为 0，TypeScript、Vite 和前后台打包退出码为 0。首轮只因沙箱 TEMP 缓存 rename EPERM 未执行测试，改用进程级 TEMP/TMP 后沿用原断言完整重跑；两轮结果均保留。清单 379 项、651 处引用、381 个唯一资产无缺失，拆分/worker/十四语言检查通过，实际 `public/console` 的 385 个文件散列未变。证据位于 `storage/app/test-organization/dependency-upgrade/frontend-tests`，未进行浏览器或真实支付/内核验收。
-
-面板安全复核复用 `auth-security`、`mfa-api`、`registration-policy`、`commission-transfer-concurrency` 和 `product-mail`：先在旧源隔离副本分别证明恢复后的密码被旧快照覆盖、重绑 Passkey 错登旧 owner、注册错码无限重试及内部转佣额外返佣，再对修后源码验证正常登录、MFA、改密与撤销、合法注册、正常钱包/折抵返佣和并发金额守恒。邮件依赖以独立安装的 Mime 8.1.10 覆盖隔离测试加载路径，记录反射来源与旧版本拒绝失败/新版本拒绝成功，不修改共享 vendor，也不发送邮件。按各模块最新结果合并共 20 个后端模块通过，保留 5 个未受影响的基线、14 个修后批次及 1 个历史返佣证据保留调整后的定向复验来源，不将其描述为全部在同一快照重跑。原始结果、源码摘要和依赖差异保存在 `storage/app/test-organization/security-review/backend-a7ae5c7df0`，不新增平行测试脚本。
-
-首购与外部订单确认金额复用 `tests/admin-payment-diagnostics.php` 和 `OperationsAnalytics.test.tsx`：成熟注册批次按终身首次有价周期订单去重，试用后的续费/换购可成为首购；零价、权益折抵、充值、额度包、重置分别覆盖。外部确认金额按固定快照币种统计，覆盖余额消费不重复记账、人工/缺失快照、重复回调及未知退款/净额不伪造。前端保留原业务漏斗并测试新增报表缺失、分币种和不完整金额说明。
-
-到期配置与节点提示边界复用 `credit-expiry`、`credit-access`、`subscription-client-policy`、`api-v10`、`client-import-language` 及现有订阅/原生客户端模块：在隔离副本放入含静态代理/远程提供器的模板夹具，覆盖所有公开订阅格式的 HTTP 200 安全提示、十四语言原因、固定文档地址与假凭据、无账号 UUID/token 或模板内容，以及原生 403/409 错误。继续覆盖周期和批次恰好到期、清理未运行、已耗尽、缓存账号、渲染中变更、公开/自定义/应用入口、旧 ETag 和展示字段白名单；无效或轮换凭据、删除账号、未知 UA、访问拦截及限流保持硬拒绝。过期套餐仍有有效独立额度的合法基础组访问必须保留，账户有效期与可下载配置分开检查；不使用生产配置或凭据。复用 YAML/JSON/URI/节点列表解析和安全断言，不以这些检查冒充原生客户端或代理内核验收。本次按各模块最新结果合并，16 个后端模块全部通过；保留首轮及定向复验记录，结果位于 `storage/app/test-organization/notice-only-configs`。模板无关的空列表同时覆盖协议过滤、Shadowrocket 仅有 STATUS 的输出，以及 QX、Shadowrocket、SIP008 正常节点不误报。
-
-本轮前端相关验证复用 `ConfigurationUpdates`、`OperationsAnalytics`、`localization`、`v10-api`、`AccountControls`、`QuickStart`，六文件 150 项通过，无失败或跳过；类型检查及只写忽略目录的 Vite 构建退出码为 0，379 项构建清单的 651 处资产引用无缺失。实际 `public/console` 无 Git 变化，日志及 JSON 结果保存在 `storage/app/test-organization/notice-only-configs/frontend-validation`；后端最终结果独立记录，不将前端解析断言计作浏览器或原生内核验收。
-
-新注册首购路径复用前端 `UserAuth`、`AccountEntry`、`UsageBilling` 与现有购买测试：区分刚注册但无服务、有效试用、普通登录及指定付款/客户端授权返回；总览覆盖待支付、开通中、非套餐订单、取消确认、加载/失败重试及状态恢复；账单空记录入口只在新账户且未筛选、已成功加载时显示。不新增转化工作台或埋点，浏览器验收使用合成 V10 数据及最终构建资源。
-
-邮箱身份与密码找回复用 `tests/auth-security.php`，通过真实 V10 路由和假邮件队列验证重音排序规则碰撞、IDNA 等价与不同域名、验证码用途隔离、账号状态绑定、过期/重放拒绝和正常找回后的会话撤销。`tests/api-v10.php` 从找回接口签发的邮件夹具读取验证码，不再注入共享注册验证码作为重置凭据；`tests/session-concurrency.php` 使用两个实际进程验证同一码只能成功重置一次；`tests/product-mail.php` 验证找回邮件在模拟传输中的有效投递和过期拒绝。测试只在隔离项目、独立 MySQL 与 Redis 中运行，不投递真实邮件。
-
-原生路由回归复用 `node-routes`、`console-smoke`、`Nodes.test.tsx` 与 `admin-linkage.test.ts`：覆盖原生创建、兼容规则编辑、模板隔离、引用服务数、合并后跨片段标签检查及失败回滚。面板模板来自 `resources/client/node-route-presets.json`；V2Box 的 `core/testdata/panel-routing-presets.json` 是同内容测试快照，更新模板时同步，并运行 `TestPanelRoutingPresets` 验证固定核心解析。
-
-## 测试入口
-
-路由下发与生效验证复用 `node-routes`、`node-v10`、`v2box` 和现有 Go `core/native_test.go`、`api/v2board/v10_test.go`、`node/reload_retry_test.go`。`NODE_ROUTING_FIXTURE` 可在一次性面板测试副本导出兼容/V10 配置响应，节点以 `V2BOX_ROUTING_FIXTURE` 读取并验证两个接口解码一致及条件请求；这些仅为测试数据，不能使用生产响应。核心真实连接回归覆盖八类阻断匹配、HTTP 代理及默认出口、DNS 命中/回退、受信任测试证书的 HTTPS 规则集，并与出站安全保护同时执行。测试仅连接本地回环服务。
-
-路由可视化管理复用 `Nodes.test.tsx` 与 `node-routes`、`console-smoke`，覆盖常用表单保存、代理参数保留、现有模板无损还原、非法条件拒绝、复杂 JSON 复制与转换保护、嵌套条件搜索、引用筛选和明细、删除保护及未保存修改保护。新界面继续保存原生配置，后端引用和合并校验保持生效，不增加平行验证入口。
-
-Lightsail 共用凭据继续复用 `lightsail`、`retired-node-tables`、`update-script`、`framework-upgrade`、`api-route-audit` 和 `AdminLightsail.test.tsx`。覆盖跨区域多服务器引用同一凭据、全体绑定密钥更新确认、运行状态和 worker 锁保护、绑定删除保护、旧密文合并及解密失败回滚、嵌套新建密钥后保留服务器草稿。凭据读取及轮换测试仅使用模拟 SDK 和测试凭据，不访问真实 AWS。
-
-新增节点表单的展示字段复用验证保留在 `Nodes.test.tsx`、`admin-location-select.test.tsx`、`admin-linkage.test.ts` 和共享字段上下文测试中。覆盖两种新增方式的真实搜索控件、名称预览、稳定地区/城市代码及标签提交、共享服务位置继承和手动修改保护，继续保留部署、线路发布、权限和未保存修改断言，不增加独立验证脚本。
-
-Lightsail 管理修复复用 `tests/lightsail.php` 与 `AdminLightsail.test.tsx`，覆盖失败阶段移除确认、凭据修复、明确放弃后重新关联、任务锁、执行中禁止修改、取消确认及未保存草稿不改变移除目标。后端使用模拟 AWS，并断言管理配置修改及延迟任务不操作云资源，不执行真实静态 IP 切换。
-
-- 后端：`tests/suites.json` 登记 unit、integration、api、security、regression 测试；`tests/run.php` 负责清单校验、筛选和独立进程执行。
-- 辅助项：工作进程、浏览器夹具、导出脚本和公共工具列在清单的 `helpers` 中，不作为独立测试执行。
-- PHPUnit：`tests/Unit/AssertionsTest.php` 验证公共断言工具，不启动 Laravel。
-- 前端：Vitest 用例与 `frontend/src` 中的组件和模块就近存放；专题命令以 `frontend/package.json` 为准。
-- V10 生成器：`scripts/test_generate_v10.py` 验证生成规则；维护源和发布物边界见 [项目结构](project-structure.md) 与 [V10 规范](api-v10/README.md)。
-- 客户端：FlClash 保留 Flutter 根测试、插件测试及 Go 包内测试，执行方式见该项目 `.agents/commands.md`。根 Flutter 测试不会自动覆盖所有插件。
-- 节点：v2box 保留 Go 包内测试及 `script/` 中的生命周期、网络上报和凭据测试；构建标签与执行矩阵以该项目 CI 为准。
+以下命令均在已经准备好的可销毁副本中运行，实际后端执行还须满足下一节条件：
 
 ```sh
 php tests/run.php --validate
 php tests/run.php --list
 php tests/run.php --suite=security
 php tests/run.php --only=mfa,mfa-api,mfa-concurrency
-```
-
-## 隔离与安全
-
-实际运行后端脚本必须使用独立、可销毁的项目副本、local/testing 环境及 `TEST_DISPOSABLE_WORKSPACE=1`。副本不得携带生产 `.env`、站点配置或 bootstrap 缓存。
-
-MySQL 测试账号须能创建和删除随机命名的测试库。普通事务场景共享可销毁 schema，安装和迁移场景单独建库，各脚本独立进程运行；退出后清理本次创建的测试库。部分检查会写配置，不能仅更换数据库名后在运行中的项目目录执行。
-
-运行器在隔离副本缺少 `.env` 或 `config/v2board.php` 时创建空白测试文件，避免依赖本机配置。控制台集成测试还需提供 `storage/geoip/` 下 Country、City、ASN 的公开 MMDB 数据库副本；不得复制其他生产存储。
-
-Redis 测试使用专用实例或专用测试数据库，且每个测试入口使用独立前缀；不得清空应用或其他任务的 Redis 数据库。邮件、支付、Telegram、Cloudflare、ACME、下载和服务管理均应使用模拟传输或临时夹具，不连接生产服务。
-
-```sh
 python scripts/generate-v10.py --check
 python -m unittest discover -s scripts -p test_generate_v10.py
 cd frontend
+npm ci --include=dev --ignore-scripts
 npm test
 npm run build
 ```
 
-生成器测试也应使用可销毁副本或可写临时目录。浏览器夹具的准备、清理和人工检查见 [前后台验证](frontend-validation.md)；接口检查见 [V10 审计](api-v10/audit.md)。
+`npm run build` 包含 TypeScript、Vite 和前后台资源拆分，会写副本的 `public/console`；不要在正在服务的目录运行它。生成契约只能修改模块源和映射源，再生成全部七份发布物，不能为让测试通过而直接编辑生成结果。接口清单、路由和互操作验证见 [V10 审计](api-v10/audit.md)。
 
-## 维护规则
+## 隔离与清理
 
-页面职责拆分继续复用 BillingFlow、HelpSupport、UsageBilling、Notifications、app、UXResilience 和构建隔离测试，保留付款参数、所有者边界及恢复断言；报表通用表格在原 OperationsAnalytics 测试中验证，并由 JourneyAnalytics 与 AnalyticsCollectionSettings 覆盖消费页面。翻译服务的公共映射/校验重构复用 plan-auto-translation 和 content-translations，检查错误优先级、短路时不发请求、原 HTTP 参数、数字及正文保留；仅在可销毁副本和随机测试库运行，不调用真实翻译服务。不新增平行运行器或为单纯搬迁重复建立镜像测试。
+- 后端实际执行必须使用独立、可销毁的项目副本、local/testing 环境及 `TEST_DISPOSABLE_WORKSPACE=1`。副本不携带生产 `.env`、站点配置、实例自定义模板或 bootstrap 缓存；需要模板的测试自行创建合成夹具。部分检查会改文件或迁移 schema，仅换数据库名不足以隔离。
+- MySQL 测试账号须能创建/删除随机测试库；不为测试提升线上应用账号权限。普通事务场景共享可销毁 schema，安装/迁移场景单独建库，各入口独立进程运行，结束清理本次创建的库。
+- 运行器在副本缺少 `.env` 或 `config/v2board.php` 时创建空白测试文件。控制台集成测试需提供 `storage/geoip/` 下公开 Country、City、ASN MMDB 的只读副本，不复制其他生产存储。
+- Redis 使用专用实例或专用测试数据库，每个入口使用独立前缀；不得清空应用或其他任务的 Redis。邮件、支付、Telegram、AWS、Cloudflare、ACME、下载和服务管理使用测试替身或临时服务，不连接生产。
+- 生成器和前端也使用可销毁副本或可写临时目录，使用独立依赖安装和输出。浏览器夹具登记为 helper，其 setup/cleanup 及恢复要求见 [前后台验证](frontend-validation.md)。
+- 日志与报告放在忽略的 `storage/app/test-organization/`，不含凭据或生产数据。清理仅针对本次临时资源；安装包、校验文件、回滚快照、生产日志及应用数据不属于测试垃圾。
 
-复用现有领域模块与 `tests/support` 公共工具，不为每轮开发新增平行验证脚本。新增或合并后端入口时同步更新 `tests/suites.json` 并执行 `php tests/run.php --validate`；工作进程和手动夹具始终归入辅助项。
+## CI、依赖与发布资源
 
-合并测试须保留业务、安全、迁移、并发和失败恢复断言，并更新命令、CI 和文档引用。测试由框架自动发现时，不能仅因缺少文本引用判定文件无用。退役接口的拒绝访问和历史漏洞回归仍有用途。
+[GitHub Actions](../.github/workflows/quality.yml) 对配置分支的 push/PR 执行四项锁文件审计、V10 契约生成检查、前端全量测试/构建及显式列出的后端关键模块。前端当次 `public/console` 连同隐藏 `.vite` 清单作为短期 artifact 传给后端，避免检查旧产物。后端使用 PHP 8.4、临时 MySQL/Redis、随机且掩码的应用密钥和既有运行器；随后在同一安装树实际执行 `composer install --no-dev`，只运行生产兼容的 `framework-upgrade`、`console-verify`。
 
-PHP 入口经 `tests/support/run-script.php` 执行，未捕获异常必须以非零状态返回；不能只查看 Laravel 是否正常输出。
+审计 job 不安装项目依赖，分别检查 Composer/npm 的全依赖和生产依赖；前一步失败后继续收集其余结果，任一步失败仍使 job 失败。每周三 UTC 03:23 的 schedule 只审计，完整应用回归用于 push/PR 和可用的手动触发。当前默认分支为 `master`；只推送 `codex/payment-icon-picker` 不会使计划任务或 Dependabot 在默认分支生效，须合入默认分支后再核对。[GitHub 计划任务规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 
-运行日志和临时报告保存在 `storage/app/test-organization/`，不得包含凭据。开发轮次结束后可清理历史输出；安装包、校验文件、回滚快照、生产运行日志及应用数据不属于临时测试产物。
+[Dependabot](../.github/dependabot.yml) 每周检查根 Composer、`/frontend` npm 和 Actions。Composer/npm 常规更新限同主版本 minor/patch 并分组，安全更新另组处理；各生态常规待处理 PR 上限为 3。更新需人工审阅和合并，不自动更改默认分支、安全设置或自动合并策略。
 
-## 验证边界
+依赖回归复用 `framework-upgrade`：在开发及真实 `--no-dev` 安装中核对直接依赖与锁文件、实际 Laravel 加载版本、Linfo 不可自动加载、Horizon/Carbon 包发现、邮件传输、可信代理、调度、旧任务及迁移基线。Tinker 在开发安装保留命令，生产的包、类、Provider、发现清单及命令均须消失；须覆盖开发缓存升级到生产安装。真实健康检查读取数据库、Redis、缓存和 Horizon；新隔离环境无 worker/scheduler 时不伪造整机 healthy。`console-smoke` 夹具需要开发依赖 Mockery，不能向生产安装补回开发包或把未执行计为通过。`update-script` 的模拟 Composer 只证明控制流，不替代真实安装。
 
-仪表盘沿用 `dashboard-revenue` 验证币种隔离、支付时间、缓存与排行榜；节点排行先按节点汇总再取前 15 名，相同流量按 ID 稳定排序，只批量查询榜单名称，保留缺失节点历史记录。`node-backends` 继续覆盖 V2Box 节点来源兼容性。
+发布需核对源码、清单锁和配套 `public/console`（含 `.vite`）一致，`update.sh` 不在生产执行 Node 构建。若用 alternate work-tree 将隔离产物纳入 Git index，同时保留原本地运行资源，提交后工作区差异是有意保留的，不能自动 reset 清掉。发布排除本地 Docker/启动/种子文件、`.env`、实例配置、storage 运行产物和 pycache。
 
-跨面板与节点的公共层回归：`framework-upgrade` 检查任务超时、Horizon 停止上限和队列重投间隔留有余量；`node-traffic-batches` 与 `node-traffic-concurrency` 验证重复领取不会重复计费，调度器可恢复未处理批次。前端 `api.test.ts` 覆盖 CSV 等待响应头、读取正文的超时，禁止自动重放导出操作。V2Box 的 `node/reload_retry_test.go` 用 HTTPS 夹具及真实本地核心验证在线统计失败不丢失用户撤销，以及准备失败后的缓存恢复；全量 Go 竞态与生命周期测试沿用节点仓库 CI 命令。
+## 后端领域覆盖
 
-自动测试、静态分析和构建各自说明不同结果，不能互相替代。工具链或输入不足而跳过的测试，须明确报告原因，不能记为通过。
+### 认证、权限与注册
 
-V2Box 的核心关闭回归保留远程 HTTPS 规则集的真实转发验证，并覆盖关闭时中断待处理连接、等待路由匹配结束、拒绝迟到连接，防止规则集释放与匹配并发访问。
+`auth-security`、`browser-session`、`mfa`、`mfa-api`、`session-authorization`、`session-concurrency`、`registration-policy` 与 `api-route-audit` 保留正常协议及拒绝路径。覆盖邮箱排序规则碰撞、IDNA 等价/不同域名、验证码用途及状态绑定、过期/重放、双进程单次恢复、恢复后的会话撤销、Passkey 重绑归属、改密快照与当前会话复核、注册错码预算。`product-mail` 验证找回邮件的有效发送和过期队列拒绝，使用假队列/传输，不发送邮件；`api-v10` 从真实找回签发夹具取码，不能注入注册验证码代替恢复凭据。
 
-本地模拟不证明真实邮件送达、支付结算、生产节点联网、Cloudflare 解析或公网证书签发成功。Windows TUN、Android VPN/DNS/网络切换及各平台原生构建须在对应环境验证。长时间 soak、外部 padding preset 或面板联调等可选场景，应提供所需输入和显式开关后再执行。
+真实路由回归验证 Cookie/CSRF/Origin、无效及伪造凭据、本人和他人资源、敏感字段投影、受限账户与退役 URL。拒绝后订单、工单、会话和用户状态必须不变。员工接口及角色退役仍需迁移和拒绝访问断言，不因实现删除而删除回归。四项应用问题与 Mime 拒绝测试的修前/修后证据要求见 [安全复核](security-review.md)。
 
-## 可选联调与测试归属
+### 订单、资金与业务报表
 
-- `framework-upgrade` 统一验证 Laravel 运行契约、Horizon 环境变量及配置无输出、迁移基线和待执行迁移检测；原两个独立入口的断言全部保留。
-- `v2box` 普通运行使用模拟传输。`V2BOX_BOOTSTRAP_TEST=1` 启用真实 Shell 夹具，`V2BOX_NETWORK_SCRIPT` 指向隔离复制的节点上报脚本；独立数据库联调用 `V2BOX_INDEPENDENT_DATABASE_SMOKE=1`，仅在可销毁 Linux 容器执行。多后台追加、授权重放、局部回滚、长连接和证书保留由既有模块覆盖。
-- `node-v10` 验证授权边界、配置回执和用户下发；`retired-node-tables` 验证旧数据退役迁移，不能因功能退役而删除其数据保护断言。
-- `lightsail` 与 `AdminLightsail.test.tsx` 覆盖共享凭据、失败恢复、任务锁和错误诊断；只用模拟 AWS。HTTP/cURL 状态不能单独证明真实权限、配额或资源存在性。
-- `lightsail` 同时通过 SDK 的 HTTP 处理器注入响应，验证真实错误解析、空错误码和非空未知错误码 HTTP 400 的分页列表核验、完整申请/换绑/释放和查询失败时的旧 IP 保护；畸形列表、循环分页与未知 404 不得授权资源变更。
-- Lightsail 诊断断言覆盖执行编号关联、AWS Request ID 与响应元数据、敏感内容排除，以及日志不可写时原有失败和恢复行为保持不变。
-- 用户功能开关复用 EmailInvites、HelpSupport、QuickStart 和 BillingFlow 前端用例；套餐关闭切换的目录、详情、历史套餐续费与到期边界归入现有 `commerce` 模块，在隔离数据库执行。
+`commerce`、`commerce-concurrency`、`order-replacement`、`coupon-availability`、`payment-presentation`、`api-v10`、`api-v10-inventory`、`backend-security` 验证预报价不占资产、金额/币种/所有者绑定、过期与篡改拒绝、原子替换预览、重复创建/支付幂等、未知网关结果恢复查询、取消和渠道变化。缺少请求标识不能绕过未确认付款，处理中不能通过换标识重付；合法钱包/折抵和零价订单保留。返回路径只接受可信 Origin、已归属订单及正确编码，非订阅保留原路径，不能接受任意返回地址。有效重置规则只作派生投影，不修改原计划。
 
-## 用户体验回归归属
+`commission-transfer-concurrency` 使用真实独立进程验证同一佣金只划转一次、流水和余额守恒、并发入账不被覆盖；历史内部奖励隔离保留原始审计字段，已发奖励不改，正常外部付费/钱包/折抵奖励不误伤。
 
-账户初始读取、会话元数据失败、语言资源降级、真实认证失效及同页失效后新旧登录回调隔离归入 app/UserAuth；运行配置和 React 初始化前的恢复归入 runtime-config，十四语言启动兜底独立于完整 i18n 初始化。UXResilience 验证通用冷却提示只改变可用状态、不自动发请求，并保留已加载内容；原有 useData 限流断言保留。
+`dashboard-revenue` 验证币种隔离、付款时间、缓存与排行榜；节点排行先汇总再取前 15 名，同流量按 ID 排序、批量查询名称并保留缺失节点历史。`admin-payment-diagnostics` 与前端 `OperationsAnalytics` 验证成熟注册批次的终身首次有价周期订单、试用后首购、零价/折抵/充值/额度/重置的独立分类。成熟边界按实际 168 小时计算后取业务区日期边界，覆盖 DST、起点包含/终点排除和付款秒边界。外部确认金额按可信快照分 CNY/USD，余额不重复记账，人工/缺失快照和重复回调可辨识，不伪造退款或净收入。
 
-BillingFlow/PendingOrderNotice 覆盖安全套餐/周期保留、返回与登录恢复、不同待付款套餐路由、充值/额度/重置专用路径及操作影响说明。UsageBilling 验证旧套餐与独立额度显示一致、服务端时间的临期边界、长期有效及不可续订条件。HelpSupport/HelpGuides 验证单一搜索和文档失败重试；QuickStart 验证按设备排障、完成仅导航且不虚构连接成功。Landing、JourneyAnalytics 和 build-metrics 分别覆盖公开边界说明、统计样本解释和静态成本诊断；不增加 API、跟踪字段或并行测试运行器。
+### 订阅、额度与配置记录
 
-继续复用 UserAuth、Landing、BillingFlow、QuickStart、ClientDownload、app、UXResilience、HelpSupport、AccountSessions、UsageBilling、TrafficCredits 及 localization。覆盖验证码复用和格式化粘贴、注册开关入口、手机套餐总价及空态恢复、客户端安装返回、受限复制与异步反馈失效；表单及购买窗口在后台刷新和失败后不重挂载，初始未知余额不显示为零，失败可原地重试。
+`credit-expiry`、`credit-access`、`traffic-credits`、`subscription-client-policy`、`api-v10`、`client-import-language` 和既有原生配置模块覆盖恰好到期、清理未运行、耗尽、缓存账户及渲染中状态变化。含静态代理/远程 provider 的合成模板不得进入无权益响应；所有公开格式安全提示为固定文档地址和假凭据，不含账号 UUID/token，原生保持 403/409。公开、自定义、application-config、旧 ETag、展示字段白名单及十四语言均覆盖；无效/轮换凭据、删除账号、未知 UA、访问拦截及限流继续硬拒绝。有效独立额度的合法基础组访问不能被周期套餐到期误禁。
 
-导航回归覆盖 hash 跳过不离开当前页、跨页聚焦主内容、同页付款 query 保留输入焦点、抽屉关闭与局部错误边界恢复。保留既有付款金额、幂等、报价缓存、渠道与匿名统计断言；全量前端回归与 TypeScript/生产打包通过后，使用现有忽略目录的合成夹具做布局检查，不为各次优化新增测试运行器，也不执行真实支付或修改生产数据。
+模板无关列表覆盖协议过滤后的空输出、Shadowrocket 仅 STATUS，以及 QX、Shadowrocket、SIP008 有效节点不误报。YAML/JSON/URI/列表解析和安全断言不等于代理内核或第三方客户端验证。`api-v10`、`browser-session` 及风险/日志模块验证本人配置记录、保留期读时过滤、稳定分页和最大整数页码、无套餐/过期及受限状态、原始凭据/UA/异常不外露、GET 不写订阅日志或触发风险。
 
-## 文档与测试清理
+### 节点、路由与在线统计
 
-验证文档只维护当前入口、覆盖范围及验收边界，不累积每轮测试计数、旧发布流水或本机临时路径。历史结果由 Git 和忽略的测试输出保存。前后台验收方式见 [前后台验证](frontend-validation.md)。合并测试后同步清单、命令及引用，保留原断言并在隔离副本执行受影响模块。
+`node-routes`、`node-v10`、`v2box`、`console-smoke` 和前端 `Nodes`/`admin-linkage` 验证原生与兼容路由、模板隔离、服务引用计数、跨片段标签合并、非法条件拒绝及失败回滚。可视化/高级 JSON 无损切换、复杂条件复制和搜索、引用明细、删除保护及未保存保护保留。面板 `resources/client/node-route-presets.json` 与节点 `core/testdata/panel-routing-presets.json` 同步，节点 `TestPanelRoutingPresets` 验证固定核心解析。
 
-清单校验、合并后的框架回归及本次修改文档的本地链接检查已通过；执行结果保存于忽略的 `storage/app/test-organization/docs-test-cleanup.json`。框架测试合并本身不修改生产功能或数据库迁移；前端改动仍按实际范围测试并重新构建。
+`NODE_ROUTING_FIXTURE` 可在一次性面板副本导出兼容/V10 响应，节点用 `V2BOX_ROUTING_FIXTURE` 验证解码和条件请求，不使用生产响应。真实本地核心覆盖阻断匹配、HTTP 代理/默认出口、DNS 命中/回退及测试证书 HTTPS 规则集，并与出站保护同时执行。`node-backends` 和 `retired-node-tables` 保留来源兼容、旧数据迁移及数据保护。
 
-后台样式一致性使用现有前端全量与 Lightsail、DDNS、节点等模块复查，保留提交锁、未保存保护和恢复流程断言。后台主题只修改管理员样式；桌面与窄屏通过仅本地、禁止写入的合成数据页验收。验证日志为 `storage/app/test-organization/admin-ui-consistency-*`，临时预览入口不纳入发布资源。
+`node-v10`、`risk-activity`、`admin-user-activity-columns`、`node-traffic-batches`、`node-traffic-concurrency` 及既有 worker 验证空/遗漏快照清理、非法 JSON 不清理、IPv4/IPv6 映射去重、严格/宽松模式、动态有效期、陈旧缓存、部分失败索引恢复和无近期计费的在线用户。多进程重叠上报须同时保留节点、唯一历史快照、日志节流、逐节点清空和计费守恒；重复领取不重复计费，调度能恢复未处理批次。
 
-子窗口交互复用 `UXResilience.test.tsx`、`Banners.test.tsx`、`AdminRiskReview.test.tsx`、`ContentComposer.test.tsx`、`AdminDictionary.test.tsx`、`Payments.test.tsx` 和既有后台业务模块。保留原业务断言，新增关闭保护、同步提交锁、失败草稿和焦点排除场景；共享 Modal 的草稿确认显式启用，默认关闭策略不变，公共确认文案覆盖全部语言。结果与构建日志保存在 `storage/app/test-organization/admin-subdialogs-*`。
+### Lightsail、内容与任务
 
+`lightsail`、`AdminLightsail`、`retired-node-tables`、`update-script`、`framework-upgrade` 和 `api-route-audit` 覆盖跨区域共享凭据、全体绑定轮换确认、worker 锁、运行中保护、删除引用保护、旧密文合并与失败回滚。SDK HTTP 处理器注入响应以验证真实错误解析、空/未知码 HTTP 400 的分页核验、申请/换绑/释放及失败保留旧 IP；畸形列表、循环分页和未知 404 不授权变更。诊断关联执行编号/AWS Request ID、排除秘密，日志不可写不得改变恢复行为。
 
-统一结算继续复用 `order-replacement`、`api-v10`、`api-v10-inventory`、`commerce`、`coupon-availability` 和 `payment-presentation`，不新增平行后端验证入口。覆盖预报价无资产占用、金额及所有者绑定、过期/篡改/变化拒绝、原子替换预览、重复下单与支付结果重放、网关结果不确定时恢复查询。前端 `BillingFlow.test.tsx` 保留周期、优惠金额、订单参数和支付断言，并覆盖同页结算、过时报价、未知结果原请求重试、409 后重新确认及 StrictMode 不重复发起支付；全量 Vitest、类型检查和构建按既有命令运行。浏览器合成数据仍使用忽略目录中既有预览夹具，不接入真实付款。
+`plan-auto-translation`、`content-translations`、`product-mail` 配合实际前端渲染测试，覆盖错误优先级、短路不请求、原 HTTP 参数/数字/正文保留、单回车/空行/CRLF、已有 HTML、过滤幂等和 HTML/纯文本一致。原文版本失效、字段回退、人工译文保护、并发冲突及迁移幂等保留；不用真实翻译或邮件服务。
 
+`framework-upgrade` 统一检查任务超时、Horizon 停止上限与重投间隔余量、配置无输出、迁移基线和待执行迁移。`timezones`、`timezone-scheduler`、`subscription-info`、`usage-resets` 验证业务日跨 UTC、显式时区不改进程默认区、DST/非整点偏移、缺失/运行/失败任务、本人完成覆盖全局失败、所有者隔离及 GET 无写入。`fastai-template`/`node-display` 确保状态及业务区标签不变成连接节点。
 
-生产恢复保护继续归入 `order-replacement`、`api-v10`、`payment-presentation` 与 `commerce-concurrency`：覆盖不传标识不能绕过未确认支付、处理中结果不能通过新标识重付，以及仅有预报价元数据的未支付订单展示。浏览器路由和短期确认交接复用 BillingFlow/app 用例；模拟夹具与运行输出不进入发布目录。
+## 前端回归归属
 
+详细交互和桌面/窄屏清单集中在 [前后台验证](frontend-validation.md)，以下模块继续承载现有断言，不为每轮优化新增运行器。
 
-加密货币支付排列复用 PaymentMethodPicker、BillingFlow、PaymentCheckout 与 PaymentPolling 回归；保留具体渠道选择、同网络多渠道区分、付款中禁用和图标兜底断言。BillingFlow 补充展开多网络币种后切换周期，不能被默认钱包抢回选择，只有选定具体网络并取得报价后才能确认。布局在既有合成预览中验收，不新增测试运行器或真实网关请求。
+| 领域 | 既有模块及重点 |
+| --- | --- |
+| 启动与导航 | app、UserAuth、runtime-config、UXResilience、shared/api/useData：账户/会话临时失败与认证失效区分、语言与 React 前恢复、旧响应/跨账户隔离、冷却不自动请求、焦点/路由恢复。 |
+| 新用户与账户 | AccountEntry、UsageBilling、PendingOrderNotice、AccountSessions、HelpSupport/HelpGuides、QuickStart：有效试用与指定返回、待付款/处理中优先、错误不当空数据、单一搜索、安装返回和完成不虚构连接。 |
+| 结算与优惠 | BillingFlow、CouponPicker/Center、PaymentMethodPicker、PaymentCheckout/Polling、app：安全选择意图、本人券包、缓存/重报价、单次确认、未知结果、渠道与二维码快照、冷却及 StrictMode 幂等。 |
+| 次级页面 | ClientAuthorization、Notifications、PasskeyLogin、AnnouncementCenter、AppleAccounts、TrafficCredits、ClientDownload、UsageBilling：只读恢复、未知批准不重放、字段同步、关闭重开不绕过限流、刷新期间禁止额度下单、显式选择芯片。 |
+| 后台与子窗口 | AdminApp、admin-shell、admin-workspaces、Editor、UXResilience、Banners、AdminRiskReview、AdminDictionary、Payments、AdminClients/Mirrors/MailCampaigns：搜索直达、列表/筛选、草稿、提交锁、关闭/焦点保护、429 退避及危险操作不重试。 |
+| 名称与协议 | Nodes、AdminDiagnostics、ServerTrafficBudgets、admin-user-label、AdminCouponIssue：协议中性回退、关系名优先和目录复用、未知选择保留、名称显示仍提交 ID、失败不推断删除。 |
+| 内置浏览器与懒加载 | user-experience、EmbeddedBrowserNotice、AdminBrowserPreview、admin-fields、现有构建边界与 navigation-intent：缺省/显式策略、识别不误拦、预览无副作用、安全交接、工作区和词库不进入公开初始依赖。 |
+| 记录与隐私统计 | ConfigurationUpdates、AccountControls、QuickStart、JourneyAnalytics、OperationsAnalytics、AnalyticsCollectionSettings、product-analytics：入口不预取、分页失败/迟到响应、脱敏、只读刷新、匿名字段和同意/GPC/DNT/采样，payment_open 不作为付款或新增 PV。 |
+| 时间与数量 | timezone、api、localization、UsageBilling/Chart、usage-data、NodeList、Editor、AdminLogFilters、user-filters、AdminEntrypoints/FastaiDownloads：非法/空日期、秒级往返和 DST 重复小时、统计日不移动、时区偏好隔离、数值边界与原始计费值不变。 |
 
+账单筛选由 `UsageBilling`、`v10-api` 和后端 `api-v10` 验证完整历史分页、组合条件、UTC 包含/排除和毫秒边界、所有者隔离、无效输入及只读不变性。数量格式覆盖二进制单位进位、负零、极小倍率、百分比边界、ms/s 和十四语言；帮助搜索同时保留旧 GB 与新 GiB 关键词。CSV 响应头及正文读取都计入超时，失败不自动重放生成/导出。下载账户时间解析覆盖不同 PHP 默认时区及 V10 投影，CSV 保留明确偏移、秒、无期限空单元格和列顺序，不泄露码明文。
 
-结算限流与冲突恢复继续使用 BillingFlow、CouponPicker、PaymentMethodPicker、shared/api、shared/useData 和 localization：覆盖只读 POST 报价不广播资产变化、不清除钱包读取缓存，409 后不循环重选渠道，已有订单优先恢复，Retry-After 秒数/日期解析与倒计时，输入变化、聚焦和重复点击不绕过冷却，以及优惠券失败的次要提示。保留订单、优惠金额、准确渠道和最终确认断言；完整前端回归及生产构建按现有入口运行。
+## 可选跨项目联调
 
+- `v2box` 默认模拟传输；`V2BOX_BOOTSTRAP_TEST=1` 启用真实 Shell 夹具，`V2BOX_NETWORK_SCRIPT` 指向隔离节点上报脚本，`V2BOX_INDEPENDENT_DATABASE_SMOKE=1` 仅在可销毁 Linux 容器启用。多后台追加、重放、局部回滚、长连接与证书保留复用已有模块。
+- 节点 `api/v2board`、`node`、`core` 保留用户全量快照、空/304、响应限额、大用户流式读取、伪造 MessagePack 长度、异常计数、取消保留采样及共享监听移除失败归属。执行矩阵沿用节点 CI 的 `with_quic,with_utls`、race、独立 Reality Vision、vet 与脚本测试。
+- `node/reload_retry_test.go` 用本地 HTTPS/真实核心验证统计失败不丢撤销、准备失败缓存恢复；关闭测试覆盖真实 HTTPS 规则集转发、待处理连接取消、等待匹配结束及拒绝迟到连接。节点周期任务、证书子进程取消/期限、Retry-After、回滚和进程恢复边界不得删除。
+- 长时间 soak、外部 padding preset、面板联调等需所需输入及显式开关；真实平台构建、Windows TUN/Helper、Android VPN/DNS/网络切换和设备 Passkey 在对应环境验收。测试不调用生产面板、ACME、DNS 商或服务管理器。
 
-报价缓存复用现有 BillingFlow 测试模块，覆盖相同选择即时回切、完整条件/币种/语言隔离、30 秒与服务端到期边界、复用不延长有效期、刷新与资产变化失效、迟到响应丢弃、错误与限流保护、页面/会话生命周期及容量限制；既有报价冲突用例加入缓存命中后服务端拒绝并要求再次确认的路径。其余订单和付款断言保留，按购买与支付相关测试和生产构建验证，不新增运行器。
+## 维护与结果记录
 
+复用现有领域模块与 `tests/support`。新增/合并后端入口须更新清单并运行 `--validate`，保留业务、安全、迁移、并发及失败恢复断言，更新命令、CI 和文档引用。自动发现、旧接口拒绝或历史漏洞回归不能仅因缺少文本引用而判无用；单纯搬迁不新增镜像测试。PHP 经 `tests/support/run-script.php` 执行，未捕获异常必须非零退出，不能只看 Laravel 输出。
 
-重报价布局继续复用 BillingFlow 与现有支付、多语言测试：覆盖等待响应时保留已标记的旧报价及原周期、状态和支付选项 DOM 保持挂载、响应成功后同步更新金额与周期，以及延迟/失败时强制提交表单也不能发起下单。浏览器在既有合成预览中延迟报价，比较桌面和窄屏的支付列表、明细及底部操作位置；运行输出与截图继续保存在忽略目录。
-
-
-同页付款复用 BillingFlow、PaymentCheckout、PaymentPolling、PendingOrderNotice 与 app：覆盖原表单/周期 DOM 保持挂载、确认后锁定及优惠保留、金额与二维码集中、检查结果不再次下单、创建/付款只发起一次、刷新恢复不自动付款或重新报价。保留最终服务端校验、报价失效、未知结果幂等恢复、跨币种金额、未选网络、外部标签付款同步、二维码快照变化及信用卡迟到回调保护断言。
-
-手机入口继续归入 PaymentCheckout：明确区分网关 redirect、受支持官方 QR、Native 微信扫码及危险/未知协议，覆盖嵌套地址/凭据/控制符、重复打开不重复付款、复制成功/失败及同意门控统计。购买规则归入 BillingFlow、UsageBilling 和 v10-api，覆盖全部重置策略、继承/未知配置、周期与续费说明。product-analytics、JourneyAnalytics 与 localization 验证 payment_open 只表示点击，不当作付款成功、保持匿名字段和现有同意/GPC/DNT/采样限制；不为此新增统计运行器。
-
-后端复用 payment-presentation、api-v10、api-v10-inventory、admin-payment-diagnostics、backend-security、commerce 和 order-replacement：覆盖已归属订单返回原确认页、非订阅保留订单路径、可信 Origin/编码及任意返回地址拒绝，有效重置规则仅派生而不修改计划，新增点击事件不增加 PV/漏斗且拒绝敏感额外字段。实际脚本在不含站点环境文件/配置/缓存的副本和独立 MySQL/Redis 测试实例运行，邮件及网关使用测试替身。浏览器合成验证与真实渠道/真机联调的边界见 frontend-validation.md。
-
-用户次级页面继续复用 ClientAuthorization、Notifications、PasskeyLogin、AnnouncementCenter、AppleAccounts、TrafficCredits、ClientDownload、UsageBilling 和 localization。覆盖只读授权恢复与未知批准结果、逐字段通知同步、首次失败重试、429 冷却及关闭重开、刷新期间禁止额度下单、账户币种和多芯片安装包显式选择；不增加平行运行器。账单筛选归入 UsageBilling、v10-api 和 api-v10，验证完整历史分页、组合条件、日期和毫秒边界、所有者隔离、无效输入与只读不变性；契约只修改模块源后重生成全部七份发布物。实际后端脚本仍只在独立项目副本与隔离数据库运行，输出保存在忽略的 storage/app/test-organization。
-
-优惠券跨页意图归入既有 CouponCenter、CouponPicker 和 BillingFlow：覆盖安全 ID 与登录/返回保留、本人券包重查、限制套餐/周期优先选择、手动选择优先、清除后不再补回、过期/非本人/不适用券拒绝、已有订单丢弃提示、钱包失败和冷却恢复；保留原最终金额与付款幂等断言。
-
-后台完整性优化继续使用 AdminApp、admin-shell、admin-workspaces、Payments、AnalyticsCollectionSettings、AdminClients、AdminClientMirrors、AdminMailCampaigns、UXResilience、editor-field-context 和 localization 等现有模块。覆盖具体子页搜索/标题/焦点、手机菜单边界、会话临时失败恢复、显式订单查询与筛选保留、过期支付目录、无元数据列表与空末页、错误字段及多选关联、键盘排序及并发锁、设置草稿、离页终止后续镜像任务、429 退避与群发记录恢复。只改前端交互和展示，不新增 API、数据库迁移或平行测试运行器；合成页面和截图继续保存在忽略目录。
-
-协议颜色继续归入 Nodes、AdminDiagnostics 和 ServerTrafficBudgets，核对稳定标签、未知/缺失回退及表格、拓扑的实际接入。套餐名称归入 admin-user-label、admin-workspaces、AnalyticsCollectionSettings 和 AdminCouponIssue，覆盖关系名优先、目录复用、失败不挡原列表、未知单选/多选保留，以及按名称显示但仍提交 ID。邮件受众重查失败时旧结果必须失效，邮件发送中禁止关闭，邮件与高级筛选的未保存草稿关闭保护复用 admin-workspaces；测试中的邮件请求均使用替身，不实际发送。
-
-公告与邮件换行复用 markdown、ContentComposer、AnnouncementCenter 和 product-mail 既有模块。前端预览及详情使用实际安全渲染组件验证单次回车、空行分段、Markdown 格式、安全过滤及保存原文；邮件验证 CRLF、空行、已有 HTML、块级排版空白、重复过滤幂等及 HTML/纯文本一致。后端仍在独立项目副本和临时数据库中运行，发送器使用模拟实现，不发送真实邮件。
-
-重置时区与任务状态继续使用 timezones、timezone-scheduler、subscription-info、api-v10、api-v10-inventory 及既有业务/安全模块，实际脚本仅在隔离副本、临时 MySQL/Redis 与私有内存 SQLite 中运行。覆盖业务日跨 UTC 日期、显式时区不改进程默认区、夏令时及非整点偏移、当天缺失/运行/失败状态、本人完成覆盖全局失败、所有者隔离和 GET 无写入。fastai-template 与 node-display 验证全部语言新增状态/业务区信息标签不进入客户端连接节点。前端复用 timezone、UsageBilling、BillingFlow、AnalyticsCollectionSettings、localization 与 v10-api，验证展示偏好不改变重置时刻、状态及业务区文案、无重置规则不显示提示、业务时区确认随值失效及读取失败拦截。契约从模块源生成全部七份发布物，生成器检查和既有单元测试均须通过；不新增平行验证入口。
-
-内置浏览器优化复用 user-experience、EmbeddedBrowserNotice、AdminBrowserPreview、admin-fields、PaymentCheckout、QuickStart、ClientDownload、BillingFlow、HelpSupport、app、既有构建边界测试和 localization。覆盖识别优先级及普通浏览器不误拦、缺失设备字段、四个主要应用的缺省引导与显式策略优先、完整中性入口/compact业务帮助、策略身份与业务挂载边界、跨路由复制/迟到结果/焦点恢复、桌面/未知设备、预览无真实副作用、compact 表单不误提交、付款帮助不替换订单或发起付款、经过白名单的交接与重登录恢复。工作区拆分为按需模块，验证源码及生产初始静态依赖图不含该工作区，保留原会话、语言、路由恢复和焦点断言。纯导航校验提取到 shared/navigation-intent，原用户模块兼容导出；保留原有订单、权限和隐私断言。后端 frontend-runtime、browser-session、backend-security、api-v10 在隔离副本与临时数据库/缓存验证分类/SQL口径、策略导出及会话边界，不运行真实生产操作。输出与浏览器合成夹具仍保存在忽略目录。
-
-
-在线统计继续扩展 node-v10、risk-activity、admin-user-activity-columns 与 node-traffic-concurrency，复用 node-traffic-batch-worker 的在线模式，不新增平行运行器。覆盖全量空/遗漏清理、非法 JSON 不清理、IPv6/IPv4 映射地址去重、严格/宽松模式、动态有效期、陈旧聚合缓存、部分失败后的索引恢复及没有近期计费活动的在线用户。两个进程对同一用户执行各 12 次重叠节点上报，检查两个节点都保留、历史快照唯一、日志节流、逐节点清空及原计费断言；实际验证仅使用可销毁副本、随机数据库和测试 Redis 前缀。
-
-v2box 端沿用 api/v2board、node、core 的 Go 包内回归，覆盖完整用户快照、空/304 区分、响应限额、大用户流式读取、伪造 MessagePack 长度、异常计数、取消保留采样和共享监听移除失败保留归属。执行矩阵沿用节点 CI 的 with_quic,with_utls、race、独立 Reality Vision、vet 和既有脚本测试；不调用生产面板、ACME、DNS 服务商或真实服务管理器。
-配置更新记录复用 api-v10、api-v10-inventory、browser-session、既有订阅策略/访问保护/风险与日志保留测试。覆盖本人隔离、过期与无套餐、未登录/查询凭据/受限账户、稳定分页、最大整数页码无溢出、保留期读时过滤、原始凭据/UA/异常不外露及 GET 不写订阅日志/触发风险；实际脚本仍在可销毁副本和随机数据库/缓存前缀执行。前端独立 ConfigurationUpdates 测试与 AccountControls、QuickStart、app、EmbeddedBrowserNotice、v10-api、localization 共用已有运行器，验证入口不提前拉日志、懒加载、时区、分页失败/迟到响应、未知结果、脱敏与人工刷新。新增 API 只在源模块维护，统一生成并检查七份发布物，不恢复旧用户 API。
-
-重置时间、iOS 下载账户及配置更新记录的界面精简复用 UsageBilling、AppleAccounts、ClientDownload、ConfigurationUpdates 和 localization 现有测试模块：覆盖个人时区与夏令时、异常时间戳、待确认状态、按需加载和关闭清除凭据、密码隐藏与复制、权限和限流、历史失败原因与未知字段过滤。未新增独立运行器；本轮 133 项相关回归与生产构建通过。
-
-统一个人时区显示沿用 timezone、api、app、AppleAccounts、UsageChart、usage-data 与 localization 现有模块；覆盖 Unix 秒/明确时区 ISO、非法数据、偏好即时重绘、跨日/夏令时、历史统计日及未来记录过滤。下载账户上游时间在现有 apple-accounts 模块检查三个 PHP 默认时区下的 18 类输入和 V10 投影；可销毁副本执行 1/1 通过、134 checks。前端全量 1628 项通过、1 项静态扫描因默认时限超时，最终含该项的 74 项针对性复验通过；构建和发布资源清单完整。
-
-GMT/UTC 显示统一复用 timezone、localization 和 AdminLogFilters 等现有模块；新增事件偏移格式与十四语种一致性断言，确认省略后缀的场景不受影响。相关 7 个文件共 164 项通过。
-
-数量精度复用 api、localization、UsageBilling、UsageChart、NodeList、BillingFlow、CouponCenter/Picker、admin-workspaces、JourneyAnalytics、OperationsAnalytics 等既有模块。共享格式测试覆盖二进制单位边界进位、空值/非法值、负零、小百分比/近满额、极小倍率、毫秒/秒维度及十四语言数字格式；组件断言保留原始进度值和计费输入不变。未新增独立运行器或后台计费逻辑。
-
-本轮数量显示完整回归共 1645 项；其中 1642 项首轮通过，两项 GB/GiB 关键词兼容问题在生产搜索逻辑修正后按既有 HelpGuides 模块复验通过，一项语言加载重试并行时限失败在 app 模块独立复验通过。HelpGuides 保留旧 GB 搜索断言并追加 GiB，避免仅随文案机械修改测试。最终构建与资源清单完整。
-
-简洁时间格式沿用 timezone、api、localization、UsageBilling、AccountEntry、AccountControls、ConfigurationUpdates 及后台时区模块，核对中文完整到期示例、时区后置、秒的显隐、UTC/正负偏移/四分之一小时和夏令时，不改变真实到期时刻。
-
-重置卡片补齐简短时区标记沿用 UsageBilling：验证计划、待确认/待重试、UTC 与上海跨日、夏令时以及四分之一小时偏移；保留 ISO 时间和不重复显示系统时间的断言。该模块 45 项通过。
-
-前后台时间补查继续扩展 timezone、api、app、Editor、AdminLogFilters、user-filters、Nodes、AdminEntrypoints、AdminFastaiDownloads、admin-workspaces 及既有优惠券、公告和工单测试。覆盖非法日期不规范化、空值不变为 epoch、明确时区 ISO/Unix 秒、四分之一小时与 DST、日期输入秒级往返、未改动重复小时原时刻保持、安装包选择同步发布时间及午夜标题刷新无附加读取。未新建平行测试运行器。
-
-后端复用 timezones 与 coupon-campaigns：核对 CSV 明确偏移、同一本地重复小时对应两次不同瞬间、保留秒、无期限空单元格和既有列顺序；合成导出不输出优惠码或卡号明文。两个脚本共 106 项断言通过，五个 PHP 文件语法检查通过。脚本在可销毁项目副本和随机数据库执行，测试库与临时目录已清除；使用 array 缓存或纯计算，无业务 Redis 写入。
-
-最终全量回归 115 文件、1681 项通过；最后补充的安装包选择与发布时间同步由 AdminFastaiDownloads 11 项复验通过。先前执行期间的新增测试和可见性计时断言问题已修正后重新运行，不删除或放宽业务断言。生产构建与清单完整性检查通过；最终浏览器只读合成验收记录见 frontend-validation。
-
-后台独立显示时区继续复用 timezone、admin-shell、Editor、AdminLogFilters、AdminEntrypoints、admin-workspaces、ServerTrafficBudgets、JourneyAnalytics、OperationsAnalytics 等现有模块。覆盖业务/设备/指定模式、站点和管理员隔离、非法存储、安全降级、跨标签页同步、退出恢复默认、菜单到弹窗焦点、原地重绘保留草稿、日期编辑与筛选保持原始业务时刻、统计分桶不移动及账户偏好不受影响。不增加数据库迁移、接口字段或平行测试运行器。
-
-本轮完整前端回归 115 文件、1696 项通过；最后补充的内存降级偏好重新挂载提示、成功写入恢复持久状态，以及拒绝 sessionStorage/未知来源事件，由 admin-shell 11 项复验通过。八模块输入与格式聚焦 125 项、五模块统计与事件聚焦 195 项均通过；最终类型、构建和资源清单验证通过。没有后端业务代码改动，不运行数据库脚本；浏览器只读合成验收见 frontend-validation。
+报告记录提交/锁摘要、工具版本、命令与退出码、失败/跳过及复验范围；环境故障不计通过，不混合不同快照声称全量通过。按源和产物核对 manifest 引用、前后台边界、worker 和语言完整性，实际核对结果写日志而非累积本页数字。自动测试、静态分析、构建、浏览器和真实服务联调分别说明，模拟 AWS/SMTP/支付/Cloudflare 不证明云权限、送达、结算、解析或签发。

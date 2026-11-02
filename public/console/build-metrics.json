@@ -76,14 +76,14 @@
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 380360,
-      "startupBytes": 1290454,
+      "startupGzipBytes": 380412,
+      "startupBytes": 1290627,
       "startupFileCount": 31,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-D47qcqDp.js",
-          "bytes": 519005,
-          "gzipBytes": 146764
+          "file": "assets/AdminApp-BP9gE8ge.js",
+          "bytes": 519178,
+          "gzipBytes": 146815
         },
         {
           "file": "assets/render-app-CCuCrLob.js",
@@ -107,7 +107,7 @@
         }
       ],
       "budget": 460800,
-      "totalBytes": 5013650,
+      "totalBytes": 5013823,
       "fileCount": 93
     }
   ],

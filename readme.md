@@ -5,10 +5,9 @@
 [![](https://img.shields.io/badge/TgChat-@UnOfficialV2board讨论-blue.svg)](https://t.me/unofficialV2board)
 
 ## 本分支支持的后端
- - V2Box（本工作区的节点后端）
  - [V2Box](https://github.com/lenaanderson5566-ops/v2box)
 
-后台仅保留这两类节点；底层协议在节点内选择。旧独立节点类型已退役，旧配置表将在升级时删除，升级前请迁移仍在使用的线路。参见 [节点接入与类型说明](docs/v2box.md)。
+后台仅保留 V2Box；底层协议在节点内选择。旧独立节点类型已退役，旧配置表将在升级时删除，升级前请迁移仍在使用的线路。参见 [节点接入与类型说明](docs/v2box.md)。
 
 ## 本分支安装与升级
 
@@ -21,16 +20,10 @@
 # **V2Board**
 
 - PHP 8.4+（CLI、PHP-FPM、队列使用相同版本）
-- Laravel 13.35.0（升级说明见 [Laravel 13 升级](docs/laravel13-upgrade.md)）
+- Laravel 13（具体版本以 `composer.lock` 为准，见 [Laravel 13 升级](docs/laravel13-upgrade.md)）
 - Composer 2.2+
 - MySQL 5.7+
 - Redis
-- Laravel
-
-## Demo
-[Demo_user](https://v2bdemo.v-50.me/)
-[Demo_admin](https://v2bdemo.v-50.me/admindashboard)
-邮箱和密码可随意输入
 
 ## Document
 本分支操作以 [项目文档](docs/README.md) 为准；[上游文档](https://v2board.com) 仅供历史背景参考，不能直接套用其分支、PHP 或升级命令。

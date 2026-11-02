@@ -74,6 +74,21 @@ it("explains historical subscription failures without displaying unknown reason 
     expect(screen.queryByText("private-diagnostic-reason")).toBeNull();
 });
 
+it.each([
+    ["traffic_exhausted", "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。"],
+    ["credits_expired", "此次请求时独立额度已过期，请购买有效额度后更新配置。"],
+    ["credits_exhausted", "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。"],
+    ["no_available_nodes", "此次请求时没有可用节点，请稍后重试或联系支持。"],
+    ["subscription_changed", "此次请求期间订阅状态已变化，请重新获取配置。"],
+])("explains notice outcome %s without claiming a configuration or connection succeeded", async (reason, explanation) => {
+    mocks.read.mockResolvedValue(response([{ ...first, status: "failed", reason }]));
+    render(<ConfigurationUpdates />);
+    expect(await screen.findByText(explanation)).toBeTruthy();
+    expect(screen.getByText("请求未成功")).toBeTruthy();
+    expect(screen.queryByText("请求成功")).toBeNull();
+    expect(screen.queryByText(reason)).toBeNull();
+});
+
 it("requests the selected page and never presents old rows as a failed new page", async () => {
     mocks.read.mockImplementation(async (path: string) => {
         if (path.includes("page=2")) throw new Error("Page unavailable");

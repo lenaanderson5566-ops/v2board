@@ -39,7 +39,7 @@ try {
     $svc=new ServerService();
     $assert($svc->getServer($id,'v2box') instanceof ServerV2box, 'V2Box lookup');
     $assert($svc->getServer($id,'v2node')===null, 'Retired backend lookup rejected');
-    $user=new App\Models\User(['group_id'=>999999]);
+    $user=new App\Models\User(['group_id'=>999999,'transfer_enable'=>1024,'expired_at'=>time()+3600]);
     foreach (['v2box'] as $type) {
         $nodes=$svc->getAvailableV2box($user,$type);
         $node=array_values(array_filter($nodes,fn($n)=>$n['id']==$id))[0];

@@ -1,5 +1,10 @@
 {
   "translation": {
+    "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "Lưu lượng của gói đã hết tại thời điểm yêu cầu này. Hãy kiểm tra gói hoặc mua thêm dung lượng rồi cập nhật cấu hình.",
+    "此次请求时独立额度已过期，请购买有效额度后更新配置。": "Dung lượng độc lập đã hết hạn tại thời điểm yêu cầu này. Hãy mua dung lượng còn hiệu lực rồi cập nhật cấu hình.",
+    "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "Dung lượng độc lập đã dùng hết tại thời điểm yêu cầu này. Hãy mua dung lượng hoặc gói rồi cập nhật cấu hình.",
+    "此次请求时没有可用节点，请稍后重试或联系支持。": "Không có nút khả dụng tại thời điểm yêu cầu này. Hãy thử lại sau hoặc liên hệ hỗ trợ.",
+    "此次请求期间订阅状态已变化，请重新获取配置。": "Trạng thái đăng ký đã thay đổi trong yêu cầu này. Hãy lấy lại cấu hình.",
     "您有一笔待完成的订单": "Bạn có một đơn hàng chưa hoàn tất",
     "继续完成订单即可开通服务，无需重新选择套餐。": "Tiếp tục hoàn tất đơn hàng hiện có để kích hoạt dịch vụ. Bạn không cần chọn lại gói.",
     "购买套餐可直接付款，无需先充值账户余额。": "Bạn có thể thanh toán trực tiếp cho gói. Không cần nạp tiền vào số dư tài khoản trước.",

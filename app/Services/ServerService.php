@@ -14,6 +14,9 @@ class ServerService
     {
         $servers = [];
         if (!in_array($type, ['v2box'], true)) throw new \InvalidArgumentException('Unsupported node type');
+        if (!(new UserService())->canDownloadConfig($user)) return [];
+        // One effective access group for the whole list, including credit fallback.
+        $groupId = TrafficCreditService::effectiveGroupId($user);
         $modelClass = ServerV2box::class;
         $model = $modelClass::orderBy('sort', 'ASC');
         $nodes = $model->get()->keyBy('id');
@@ -21,7 +24,7 @@ class ServerService
         foreach ($nodes as $key => $v) {
             if ($v['service_id']) {
                 $service=$nodes->get($v['service_id']);
-                if (!$service || $service->service_id || !in_array(TrafficCreditService::effectiveGroupId($user),(array)$service->group_id)) continue;
+                if (!$service || $service->service_id || !in_array($groupId,(array)$service->group_id)) continue;
                 foreach (ProxyService::FIELDS as $field) $v[$field]=$service[$field];
                 $v['updated_at']=max($v->getRawOriginal('updated_at'),$service->getRawOriginal('updated_at'));
             }
@@ -29,7 +32,7 @@ class ServerService
             if (!$v['show']) continue;
             $nodes[$key]['type'] = $type;
             $nodes[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['id']));
-            if (!in_array(TrafficCreditService::effectiveGroupId($user), $v['group_id'])) continue;
+            if (!in_array($groupId, $v['group_id'])) continue;
             if (isset($nodes[$v['service_id']])) {
                 $nodes[$key]['last_check_at'] = Cache::get(CacheKey::get('SERVER_' . strtoupper($type) . '_LAST_CHECK_AT', $v['service_id']));
                 $nodes[$key]['created_at'] = $nodes[$v['service_id']]['created_at'];

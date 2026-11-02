@@ -29,7 +29,8 @@ final class OperationsAnalytics
         $row = (clone $q)->selectRaw("COUNT(*) AS total, SUM(CASE WHEN $success THEN 1 ELSE 0 END) AS success, SUM(CASE WHEN $failure THEN 1 ELSE 0 END) AS failed, MAX(created_at) AS latest")->first();
         // Historical exception strings are intentionally reduced to a fixed category.
         $allowed = $login ? ['user_not_found','password_error','user_banned'] :
-            ['client_disabled','client_version_too_low','client_ua_not_allowed','client_format_not_allowed','banned','no_plan','expired','traffic_exhausted','user_unavailable'];
+            ['client_disabled','client_version_too_low','client_ua_not_allowed','client_format_not_allowed','banned','no_plan','expired','traffic_exhausted','user_unavailable',
+                'credits_expired','credits_exhausted','no_available_nodes','subscription_changed'];
         $expression = 'CASE WHEN reason IN ('.implode(',', array_fill(0, count($allowed), '?')).") THEN reason ELSE 'other' END";
         $reasons = DB::query()->fromSub((clone $q)->whereRaw($failure)->selectRaw("$expression AS category", $allowed),'failures')
             ->select('category')->selectRaw('COUNT(*) AS count')->groupBy('category')->orderByDesc('count')->orderBy('category')

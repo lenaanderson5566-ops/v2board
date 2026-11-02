@@ -76,6 +76,11 @@ class ClientActions
     {
         if ($request->query->has('flag') || $request->request->has('flag')) abort(422, 'The flag parameter is retired. Re-import your subscription link.');
         $this->enforceUaWhitelist($request);
+        // Never render from a caller's cached account projection.
+        $sourceUser = $request->user;
+        $user = \App\Models\User::findOrFail($sourceUser['id']);
+        if (!$request->attributes->get('client.native')) $this->assertSubscriptionIdentity($sourceUser, $user);
+        $request->merge(['user' => $user]);
         $riskLogService = new RiskLogService();
         $requestedFormat = strtolower((string) $request->input('format', ''));
         $flag = $requestedFormat ?: strtolower((string) $request->userAgent());
@@ -88,46 +93,40 @@ class ClientActions
         }
         $clientStrategyService = new ClientStrategyService();
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
-        $user = $request->user;
-        // Imported URLs pin the selected language; old client URLs use the saved preference.
-        $language = \App\Services\Mail\ProductMail::language($request->input('language'))
-            ?: \App\Services\Mail\ProductMail::language($user->language)
-            ?: \App\Services\Mail\ProductMail::language(app()->getLocale()) ?: 'zh-CN';
-        app()->setLocale($language);
+        $language = $this->useSubscriptionLanguage($request, $user);
+        if ($user->account_deleted_at) $this->rejectUnavailableConfig();
         $clientUser = \App\Services\TrafficCreditService::forClient($user);
         // account not expired and is not banned.
         $userService = new UserService();
-        if ($userService->isAvailable($user)) {
+        if (!$user->banned) {
             $denial = $request->attributes->get('client.native') ? null : $clientStrategyService->accessDenial($resolvedFormat, (string) $request->userAgent());
             if ($request->attributes->get('client.native') ? !$clientStrategyService->isEnabled('fastai') : $denial === 'client_disabled') {
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                    $request,
-                    $user,
-                    $resolvedFormat,
-                    'failed',
-                    'client_disabled'
-                ));
-                $this->rejectNativeConfig($request, 'CLIENT_DISABLED', 'This client is currently unavailable.');
-                $class = $this->resolveProtocolHandler($resolvedFormat, $user, $this->buildUnavailableServers('client_disabled'));
-                return $class->handle();
+                if ($request->attributes->get('client.native')) {
+                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, 'fastai', 'failed', 'client_disabled'));
+                    $this->rejectNativeConfig($request, 'CLIENT_DISABLED', 'This client is currently unavailable.');
+                }
+                return $this->noticeResponse($request, $resolvedFormat, 'client_disabled');
             }
 
             if ($denial === 'client_version_too_low') {
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                    $request,
-                    $user,
-                    $resolvedFormat,
-                    'failed',
-                    'client_version_too_low'
-                ));
-                $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
-                $class = $this->resolveProtocolHandler($resolvedFormat, $user, $this->buildUnavailableServers('client_version_too_low'));
-                return $class->handle();
+                if ($request->attributes->get('client.native')) {
+                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, 'fastai', 'failed', 'client_version_too_low'));
+                    $this->rejectNativeConfig($request, 'CLIENT_VERSION_TOO_LOW', 'Please update your client.', 409);
+                }
+                return $this->noticeResponse($request, $resolvedFormat, 'client_version_too_low');
             }
+        }
 
+        if ($userService->canDownloadConfig($user)) {
             try {
                 $serverService = new ServerService();
                 $servers = $serverService->getAvailableServers($user);
+
+                // Template-free lists cannot supply alternative static/provider nodes.
+                // Full custom templates may intentionally do so and are left intact for entitled users.
+                if (!$servers && !$request->attributes->get('client.native') && $this->isNodeListFormat($resolvedFormat)) {
+                    return $this->noticeResponse($request, $resolvedFormat, 'no_available_nodes');
+                }
 
                 if (!$request->attributes->get('client.native')) {
                     $servers = \App\Services\NodeDisplayService::publicServers($servers, $language);
@@ -139,57 +138,108 @@ class ClientActions
                     ? ($request->input('core') === 'sing-box' ? new \App\Services\FastaiSingboxConfig($clientUser, $servers) : new \App\Services\FastaiConfig($clientUser, $servers, $this->structuredConfig($request)))
                     : $this->resolveProtocolHandler($resolvedFormat, $clientUser, $servers);
                 $resolvedClientType = $request->attributes->get('client.native') ? 'fastai' : ($uaType ?: 'fastai');
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                    $request,
-                    $user,
-                    $resolvedClientType,
-                    'success'
-                ));
-                $content = $class->handle();
+                $content = $this->renderCurrentConfig($class, $user, $clientUser->group_id, $request, $resolvedFormat);
                 if (($class instanceof \App\Services\FastaiConfig && $this->structuredConfig($request)) || $class instanceof \App\Services\FastaiSingboxConfig) {
                     $request->attributes->set('client.nodes', $class->nodes());
                 }
+                if (!$request->attributes->has('subscription.notice')) {
+                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $resolvedClientType, 'success'));
+                }
                 return $content;
             } catch (\Throwable $e) {
-                $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-                    $request,
-                    $user,
-                    $resolvedClientType ?: $this->resolveProtocolFormat($requestedFormat ?: $flag),
-                    'failed',
-                    $e->getMessage()
-                ));
+                if (!$request->attributes->get('subscription.failure.logged')) {
+                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
+                        $request,
+                        $user,
+                        $resolvedClientType ?: $this->resolveProtocolFormat($requestedFormat ?: $flag),
+                        'failed',
+                        $e instanceof \Illuminate\Http\Exceptions\HttpResponseException ? 'subscription_unavailable' : $e->getMessage()
+                    ));
+                }
                 throw $e;
             }
         }
 
         $reason = $this->unavailableReason($user);
-        $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload(
-            $request,
-            $user,
-            $resolvedFormat,
-            'failed',
-            $reason
-        ));
-        $this->rejectNativeConfig($request, 'SUBSCRIPTION_UNAVAILABLE', 'No available subscription.');
-
-        $class = $this->resolveProtocolHandler($resolvedFormat, $user, $this->buildUnavailableServers($reason));
-        return $class->handle();
+        return $this->noticeResponse($request, $resolvedFormat, $reason);
     }
 
-    public function enforceApplicationPolicy(Request $request): void
+    public function useSubscriptionLanguage(Request $request, \App\Models\User $user): string
+    {
+        $language = \App\Services\Mail\ProductMail::language($request->input('language'))
+            ?: \App\Services\Mail\ProductMail::language($user->language)
+            ?: \App\Services\Mail\ProductMail::language(app()->getLocale()) ?: 'zh-CN';
+        app()->setLocale($language);
+        return $language;
+    }
+
+    public function assertSubscriptionIdentity($source, \App\Models\User $current): void
+    {
+        if (!$source instanceof \App\Models\User
+            || !hash_equals((string)$source->uuid, (string)$current->uuid)
+            || !hash_equals((string)$source->token, (string)$current->token)) $this->rejectUnavailableConfig();
+    }
+
+    public function noticeResponse(Request $request, string $format, string $reason)
+    {
+        (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $format, 'failed', $reason));
+        $request->attributes->set('subscription.failure.logged', true);
+        // Native applications consume stable structured errors rather than importing warning profiles.
+        if ($request->attributes->get('client.native')) $this->rejectUnavailableConfig();
+        $request->attributes->set('subscription.notice', $reason);
+        $copy = $this->subscriptionCopy();
+        return \App\Services\SubscriptionNotice::response($format, '⚠ '.($copy[$reason] ?? $copy['user_unavailable']), $reason);
+    }
+
+    private function rejectUnavailableConfig(): never
+    {
+        \App\Services\SubscriptionNotice::clearExportHeaders();
+        throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            response()->json(['code' => 'SUBSCRIPTION_UNAVAILABLE', 'message' => __('An active subscription or remaining credits are required.')], 403, ['Cache-Control'=>'private, no-store'])
+        );
+    }
+
+    private function renderCurrentConfig($handler, \App\Models\User $user, ?int $groupId, Request $request, string $format)
+    {
+        $content = $handler->handle();
+        if (!(new UserService())->isAccessSnapshotCurrent($user, $groupId)) {
+            return $this->changedConfigResponse($request, $user, $format);
+        }
+        if (!$request->attributes->get('client.native') && $this->isNodeListFormat($format)
+            && !$this->hasNodeListEntries($format, $content)) {
+            return $this->noticeResponse($request, $format, 'no_available_nodes');
+        }
+        return $content;
+    }
+
+    public function changedConfigResponse(Request $request, \App\Models\User $user, string $format)
+    {
+        \App\Services\SubscriptionNotice::clearExportHeaders();
+        $current = \App\Models\User::find($user->id);
+        if (!$current || $current->account_deleted_at
+            || !hash_equals((string)$user->uuid, (string)$current->uuid)
+            || !hash_equals((string)$user->token, (string)$current->token)) $this->rejectUnavailableConfig();
+        $request->merge(['user' => $current]);
+        return $this->noticeResponse($request, $format, (new UserService())->canDownloadConfig($current)
+            ? 'subscription_changed' : $this->unavailableReason($current));
+    }
+
+    public function enforceApplicationPolicy(Request $request): ?string
     {
         if ($request->query->has('flag') || $request->request->has('flag')) abort(422, 'The flag parameter is retired. Re-import your subscription link.');
         $this->enforceUaWhitelist($request);
         $reason = (new ClientStrategyService())->accessDenial('mihomo', (string) $request->userAgent());
         if ($reason !== null) {
+            if (in_array($reason, ['client_disabled', 'client_version_too_low'], true)) return $reason;
             (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, 'mihomo', 'failed', $reason));
             abort(403, 'Subscription client policy rejected this request.');
         }
+        return null;
     }
     public function enforceUaWhitelist(Request $request): void
     {
         $uaType = \App\Services\ClientIdentity::identify((string) $request->userAgent());
-        if (!$request->attributes->get('client.native') && (!$uaType || !(new ClientStrategyService())->isEnabled($uaType))) {
+        if (!$request->attributes->get('client.native') && !$uaType) {
             (new RiskLogService())->createSubscribeLog($this->buildSubscribeLogPayload($request, $request->user, $uaType ?: 'unknown', 'failed', 'client_ua_not_allowed'));
             abort(403, 'Subscription client is not allowed.');
         }
@@ -219,40 +269,47 @@ class ClientActions
         ];
     }
 
-    private function unavailableReason($user): string
+    public function unavailableReason($user): string
     {
         if ($user->banned) return 'banned';
-        // Keep classification aligned with original availability semantics.
-        // New users: plan is not assigned yet.
-        if (is_null($user->plan_id)) {
-            return 'no_plan';
-        }
+        if (\App\Services\TrafficCreditService::hasPeriod($user)
+            && (int)$user->u + (int)$user->d >= (int)$user->transfer_enable) return 'traffic_exhausted';
 
-        // Expired users: plan exists, and expiration timestamp is reached.
-        if (!is_null($user->expired_at) && (int) $user->expired_at > 0 && (int) $user->expired_at <= time()) {
+        // Credit-only purchases also set plan_id, but never create a base allowance.
+        if ($user->plan_id !== null && (int)$user->transfer_enable > 0
+            && !is_null($user->expired_at) && (int) $user->expired_at <= time()) {
             return 'expired';
         }
+
+        // Distinguish credit-only accounts from accounts that never received a product.
+        $lastExpiry = \Illuminate\Support\Facades\DB::table('v2_credit_batch')->where('user_id', $user->id)->max('expires_at');
+        if ($lastExpiry !== null) return (int)$lastExpiry <= time() ? 'credits_expired' : 'credits_exhausted';
+        if ($user->plan_id === null) return 'no_plan';
 
         return 'user_unavailable';
     }
 
-    private function buildUnavailableServers(string $reason): array
+    private function isNodeListFormat(string $format): bool
     {
-        $copy = $this->subscriptionCopy();
-        $tip = '⚠ '.($copy[$reason] ?? $copy['user_unavailable']);
-        $base = [
-            // Avoid localhost placeholders because some clients (e.g. Shadowrocket)
-            // may silently drop loopback/private-address subscription nodes.
-            'host' => '203.0.113.10',
-            'type' => 'vmess',
-            'network' => 'tcp',
-            'network_settings' => [],
-            'networkSettings' => [],
-            'created_at' => time(),
-            'tls' => 0,
-        ];
+        return in_array($format, ['v2rayn','v2rayng','v2raytun','shadowrocket','loon','quantumult-x',
+            'shadowsocks','sagernet','passwall','ssr-plus','throne','husi'], true);
+    }
 
-        return [array_merge($base, ['name'=>$tip, 'port'=>61001])];
+    private function hasNodeListEntries(string $format, $content): bool
+    {
+        $body = $content instanceof \Symfony\Component\HttpFoundation\Response ? $content->getContent() : $content;
+        if (!is_string($body)) return false;
+        if ($format === 'shadowsocks') {
+            $document = json_decode($body, true, 512, JSON_THROW_ON_ERROR);
+            return !empty($document['servers']);
+        }
+        if ($format === 'loon') return trim($body) !== '';
+        $decoded = base64_decode(trim($body), true);
+        if ($decoded === false) return false;
+        if ($format === 'quantumult-x') return trim($decoded) !== '';
+        // Shadowrocket may emit only STATUS metadata after filtering unsupported
+        // nodes. A URI list needs at least one actual connection entry.
+        return preg_match('~(?:^|[\r\n])[a-z][a-z0-9+.-]*://~i', $decoded) === 1;
     }
 
     private function subscriptionCopy(): array

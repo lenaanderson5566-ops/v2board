@@ -241,6 +241,14 @@ try {
     $accessAfter=App\Models\SubscribeLog::whereIn('user_id',[$accessOwner->id,$other->id])->orderBy('id')->get()->map(fn($row)=>$row->getAttributes())->all();
     $assert($accessBefore===$accessAfter && $riskHitsBefore===App\Models\RiskRuleHit::count()
         && $accessAttributes===$accessOwner->fresh()->getAttributes(),'History GETs never append or rewrite subscription logs, risk hits or account state');
+    $noticeReasons=['traffic_exhausted','credits_expired','credits_exhausted','no_available_nodes','subscription_changed'];
+    foreach($noticeReasons as $reason)App\Models\SubscribeLog::create(array_replace($accessBase,['status'=>'failed','reason'=>$reason,'created_at'=>time()-10]));
+    [$read,$history]=$call('GET',$accessPath,[],$accessBearer);
+    $noticeRecords=collect($history['data'])->whereIn('reason',$noticeReasons)->values();
+    $assert($read->getStatusCode()===200 && $noticeRecords->count()===5 && $noticeRecords->every(fn($row)=>$row['status']==='failed'),'HTTP 200 notice outcomes retain their precise failure reasons in owner history');
+    $published=json_decode(file_get_contents(base_path('api/v10/modules/account.json')),true);
+    $reasonEnum=$published['components']['schemas']['subscriptionAccessRecord']['properties']['reason']['enum'];
+    $assert(array_diff($noticeReasons,$reasonEnum)===[],'Published history schema supports every new notice reason');
     App\Models\RiskSetting::updateOrCreate(['key'=>'subscribe_log_retention_days'],['value'=>'0']);
     foreach (app('router')->getRoutes() as $machineRoute) {
         if (!str_starts_with($machineRoute->uri(),'api/v10/server/')) continue;
@@ -339,7 +347,16 @@ try {
     $assert(str_contains($j['data']['subscriptionUrl'],'/custom-subscription?token='),'Custom subscription path is preserved');
     config(['v2board.subscribe_path'=>'/api/v1/client/subscribe']);
     [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box');
+    $assert($r->getStatusCode()===200 && $r->headers->get('X-Subscription-Notice')==='no_plan' && str_contains($r->getContent(),'203.0.113.10') && !str_contains($r->getContent(),$user->uuid) && !str_contains($r->getContent(),$user->token),'A new public account receives only safe no-plan notice nodes');
+    // Format/credential compatibility requires an entitled account. Keep this
+    // fixture local to these reads; later payment tests still activate a new user.
+    $beforeConfigEntitlement=$user->fresh()->only(['plan_id','group_id','transfer_enable','expired_at']);
+    $user->fill(['plan_id'=>$plan->id,'group_id'=>$plan->group_id,'transfer_enable'=>1073741824,'expired_at'=>time()+3600])->save();
+    $configNode=App\Models\ServerV2box::create(['group_id'=>[(int)$plan->group_id],'name'=>'V10 configuration fixture','host'=>'v10-config.example.test',
+        'port'=>'443','server_port'=>443,'protocol'=>'shadowsocks','cipher'=>'aes-128-gcm','show'=>1,'sort'=>1,'rate'=>1,'tls'=>0,'network'=>'tcp','up_mbps'=>0,'down_mbps'=>0]);
+    [$r,$j]=$call('GET','/api/v10/subscriptions/'.$user->token.'?format=sing-box');
     $assert($r->getStatusCode()===200 && !isset($j['data']) && isset($j['outbounds']),'Native subscription configuration '.json_encode($j));
+    $assert(str_contains($r->getContent(),'v10-config.example.test'),'Entitled format fixture returns an actual permitted node');
     [$r,$j]=$call('GET','/api/v1/client/subscribe?token='.$user->token.'&format=sing-box');
     $assert($r->getStatusCode()===404,'Old default subscription is retired');
     app('router')->get('/custom-subscription', [App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
@@ -371,6 +388,9 @@ try {
         Illuminate\Support\Facades\Cache::forget('totp_'.$subscriptionToken);
     }
     config(['v2board.show_subscribe_method'=>0]);
+    $configNode->delete();
+    $user->fill($beforeConfigEntitlement)->save();
+    $assert($user->fresh()->only(array_keys($beforeConfigEntitlement))===$beforeConfigEntitlement,'Configuration fixtures do not pre-activate the later purchase account');
     [$r,$j]=$call('GET','/api/v10/no-such-resource');
     $assert($r->getStatusCode()===404 && !isset($j['trace']) && !isset($j['file']),'No debug internals in errors');
     [$r,$j]=$call('OPTIONS','/api/v10/me');

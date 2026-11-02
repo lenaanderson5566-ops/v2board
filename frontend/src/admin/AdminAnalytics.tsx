@@ -11,6 +11,7 @@ import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import "./analytics.css";
 import { browserLabel } from "./browser-labels";
 import { ReportTable } from "./ReportTable";
+import { FirstPurchaseReport, type FirstPurchaseData, type ReceiptData } from "./FirstPurchaseReport";
 
 type Report = {
     settings: V10AnalyticsConfiguration;
@@ -62,6 +63,8 @@ type Report = {
         paid: number;
         completed: number;
     };
+    firstPurchase?: FirstPurchaseData;
+    receipts?: ReceiptData;
 };
 
 const percent = (part: number, total: number) =>
@@ -258,6 +261,7 @@ export function AdminAnalytics() {
                     )}
                     {data && (
                         <>
+                            {tab === "conversion" && <FirstPurchaseReport firstPurchase={data.firstPurchase} receipts={data.receipts} timeZone={data.timeZone} />}
                             {tab === "overview" && (
                                 <Panel padded title="数据质量与每日趋势">
                                     <p className="muted">

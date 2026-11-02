@@ -101,14 +101,25 @@ class UserActions
         )) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('The old password is wrong'));
         }
-        $user->password = password_hash($request->input('new_password'), PASSWORD_DEFAULT);
-        $user->password_algo = NULL;
-        $user->password_salt = NULL;
-        if (!$user->save()) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Save failed'));
-        }
-        $authService = new AuthService($user);
-        $authService->removeAllSession();
+        $reference = AuthService::sessionReference((string)($request->bearerToken() ?: $request->header('Authorization', '')));
+        DB::transaction(function () use ($user, $request, $reference) {
+            $current = User::whereKey($user->id)->lockForUpdate()->first();
+            abort_unless($current && !$current->banned && !$current->account_deleted_at
+                && hash_equals($user->password, $current->password)
+                && $user->password_algo === $current->password_algo
+                && $user->password_salt === $current->password_salt
+                && hash_equals($user->email, $current->email),
+                $request->is('api/v10/*') ? 409 : 500, __('Security settings changed. Please start again.'));
+            abort_unless($reference && (int)$reference['userId'] === (int)$current->id && AuthService::sessionUser($reference),
+                $request->is('api/v10/*') ? 401 : 403, __('Unauthenticated.'));
+            $current->password = password_hash($request->input('new_password'), PASSWORD_DEFAULT);
+            $current->password_algo = null;
+            $current->password_salt = null;
+            if (!$current->save()) {
+                abort($request->is('api/v10/*') ? 409 : 500, __('Save failed'));
+            }
+            (new AuthService($current))->removeAllSession();
+        }, 3);
         return response([
             'data' => true
         ]);
@@ -481,8 +492,9 @@ class UserActions
             $order->total_amount = $request->input('transfer_amount');
 
             $orderService->setOrderType($user);
-            $orderService->setInvite($user);
-
+            // Moving existing commission into a wallet is not a new referral sale.
+            $order->invite_user_id = null;
+            $order->commission_balance = 0;
             $user->commission_balance = $user->commission_balance - $request->input('transfer_amount');
             $user->balance = $user->balance + $request->input('transfer_amount');
             $order->status = 3;

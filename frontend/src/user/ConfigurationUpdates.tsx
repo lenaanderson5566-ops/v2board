@@ -20,6 +20,11 @@ const failureExplanations = new Map([
     ["client_disabled", "此次请求使用的客户端暂不可用，请在配置中心选择其他客户端。"],
     ["client_ua_not_allowed", "此次请求的客户端不受支持，请在配置中心选择受支持的客户端。"],
     ["client_format_not_allowed", "此次请求的配置类型不受支持，请在配置中心重新选择客户端并导入。"],
+    ["traffic_exhausted", "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。"],
+    ["credits_expired", "此次请求时独立额度已过期，请购买有效额度后更新配置。"],
+    ["credits_exhausted", "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。"],
+    ["no_available_nodes", "此次请求时没有可用节点，请稍后重试或联系支持。"],
+    ["subscription_changed", "此次请求期间订阅状态已变化，请重新获取配置。"],
 ]);
 
 function RequestResult({ record }: { record: V10SubscriptionAccessRecord }) {

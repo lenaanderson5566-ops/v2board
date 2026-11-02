@@ -35,7 +35,7 @@ try{
     $base=['group_id'=>[$group->id],'name'=>'Active test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','network'=>'tcp','tls'=>0,'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1,'up_mbps'=>0,'down_mbps'=>0];
     $node=App\Models\ServerV2box::create($base);
     $box=App\Models\ServerV2box::create($base);
-    $user=new App\Models\User(['group_id'=>$group->id]);
+    $user=new App\Models\User(['group_id'=>$group->id,'transfer_enable'=>1024,'expired_at'=>time()+3600]);
     $available=$svc->getAvailableServers($user);
     $assert(count($available)===2,'Subscriptions contain only V2Box services');
     $assert(!array_diff(array_column($svc->getAllServers(),'type'),['v2box']),'Admin listing excludes legacy');

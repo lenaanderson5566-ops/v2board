@@ -155,6 +155,32 @@ try {
   $jar[$scope]=[];unset($csrf[$scope]);$call('v10/auth/browser-session',[],$scope);
   [, $body]=$pk('auth/passkeys/options');$expired=$body['data'];$challengeKey='PASSKEY_CHALLENGE:'.hash('sha256',$expired['challengeId']);$record=Cache::get($challengeKey);$record['expiresAt']=time()-1;Cache::put($challengeKey,$record,300);
   [$response]=$pk('auth/passkeys/sessions',$assertion($expired));$assert($response->getStatusCode()===409,'Expired challenge rejected');
+  // Model a completed removal and re-binding after the unlocked owner lookup,
+  // before the login transaction reads the credential again. The real ES256
+  // proof is valid for the re-bound credential, never for its previous owner.
+  $originalCredential=(array)DB::table('v2_passkey')->where('id',$id)->first();
+  $reboundHandle=$encode(hash_hmac('sha256','passkey:'.$other->id.':mfa.example.test',config('app.key'),true));
+  $rebindDuringLookup=(object)['active'=>true,'fired'=>false];
+  DB::listen(function($query)use($rebindDuringLookup,$originalCredential,$other,$reboundHandle,$user){
+   if(!$rebindDuringLookup->active || !preg_match('/^select [`"]?user_id[`"]? from [`"]?v2_passkey[`"]?/i',$query->sql))return;
+   $rebindDuringLookup->active=false;$rebindDuringLookup->fired=true;
+   DB::table('v2_passkey')->where('id',$originalCredential['id'])->delete();
+   DB::table('v2_user_mfa')->insertOrIgnore(['user_id'=>$user->id]);
+   DB::table('v2_user_mfa')->where('user_id',$user->id)->increment('version');
+   (new AuthService($user))->removeAllSession();
+   $replacement=$originalCredential;unset($replacement['id']);
+   $replacement['user_id']=$other->id;$replacement['user_handle']=$reboundHandle;
+   DB::table('v2_passkey')->insert($replacement);
+  });
+  [, $body]=$pk('auth/passkeys/options');$reboundProof=$assertion($body['data']);$reboundProof['userHandle']=$reboundHandle;
+  [$response,$body]=$pk('auth/passkeys/sessions',$reboundProof);
+  $rebindDuringLookup->active=false;
+  $assert($rebindDuringLookup->fired,'Passkey fixture re-binds after the first owner lookup');
+  $assert($response->getStatusCode()===401 && !($body['data']['authenticated'] ?? false),'Re-bound Passkey cannot authenticate its former owner: HTTP '.$response->getStatusCode().' account '.($body['data']['accountId'] ?? 'none'));
+  DB::table('v2_passkey')->where('credential_hash',$originalCredential['credential_hash'])->delete();
+  DB::table('v2_passkey')->insert($originalCredential);
+  DB::table('v2_user_mfa')->where('user_id',$user->id)->delete();
+  $jar[$scope]=[];unset($csrf[$scope]);$call('v10/auth/browser-session',[],$scope);
   foreach(['signature','uv','origin','rp','handle','unknown','challengeArray','truncatedAuth','backupFlags'] as $invalid){
    [, $body]=$pk('auth/passkeys/options');$payload=$assertion($body['data'],1,$invalid==='uv'?1:5,$invalid==='origin'?'https://evil.example':'https://mfa.example.test',$invalid==='rp'?'evil.example':'mfa.example.test');
    if($invalid==='signature')$payload['signature']=$encode(random_bytes(64));

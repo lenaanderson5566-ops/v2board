@@ -11597,6 +11597,11 @@
               "client_version_too_low",
               "client_ua_not_allowed",
               "client_format_not_allowed",
+              "traffic_exhausted",
+              "credits_expired",
+              "credits_exhausted",
+              "no_available_nodes",
+              "subscription_changed",
               null
             ]
           },

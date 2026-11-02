@@ -302,4 +302,32 @@ reject --check
 grep -q 'Target lacks the plan translation source migration' "$TMP/output"
 [[ ! -e storage/framework/down ]]
 
-echo 'Updater: 27 isolated scenarios passed'
+# A target can remove an old production package and move a tool to require-dev
+# while carrying an unrelated local dependency forward from the committed base.
+cd "$TMP/seed"
+git checkout -qb dependencies-before "$TARGET"
+"$REAL_PHP" -r '$c=json_decode(file_get_contents("composer.json"),true); $c["require"]["linfo/linfo"]="^4.0"; $c["require"]["laravel/tinker"]="^3.0"; file_put_contents("composer.json",json_encode($c,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");'
+git add composer.json; git commit -qm production-dependency-baseline
+git checkout -qb dependencies-after
+"$REAL_PHP" -r '$c=json_decode(file_get_contents("composer.json"),true); unset($c["require"]["linfo/linfo"],$c["require"]["laravel/tinker"]); $c["require-dev"]["laravel/tinker"]="^3.0"; file_put_contents("composer.json",json_encode($c,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");'
+git add composer.json; git commit -qm production-dependency-cleanup
+git push -q "$TMP/origin.git" dependencies-before dependencies-after
+new_site dependencycleanup
+git checkout -q dependencies-before
+"$REAL_PHP" -r '$c=json_decode(file_get_contents("composer.json"),true); $c["require"]["joanhey/adapterman"]="^0.7.1"; file_put_contents("composer.json",json_encode($c,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES)."\n");'
+cp composer.json "$TMP/dependencies-local.json"
+ARGS+=(--branch dependencies-after)
+bash "$SOURCE" "${ARGS[@]}" --check --resolve-dependencies > "$TMP/output" 2>&1
+cmp composer.json "$TMP/dependencies-local.json"
+[[ ! -e storage/framework/down ]]
+bash "$SOURCE" "${ARGS[@]}" --jobs-stopped --resolve-dependencies > "$TMP/output" 2>&1
+"$REAL_PHP" -r '
+$c=json_decode(file_get_contents("composer.json"),true);
+if (isset($c["require"]["linfo/linfo"]) || isset($c["require"]["laravel/tinker"])
+    || isset($c["require-dev"]["linfo/linfo"]) || ($c["require-dev"]["laravel/tinker"]??null)!=="^3.0"
+    || ($c["require"]["joanhey/adapterman"]??null)!=="^0.7.1") exit(1);
+'
+grep -q 'install --no-dev' calls.log
+[[ -e storage/framework/down ]]
+
+echo 'Updater: 28 isolated scenarios passed'

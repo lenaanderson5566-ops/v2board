@@ -175,7 +175,28 @@ class UserService
 
     public function isAvailable(User $user)
     {
-        return !$user->banned && (TrafficCreditService::hasPeriod($user) || $user->credit_balance > 0);
+        return !$user->banned && !$user->account_deleted_at
+            && (TrafficCreditService::hasPeriod($user) || $user->credit_balance > 0);
+    }
+
+    /** An active term may have used all of its allowance. Account UI and proxy access differ. */
+    public function canDownloadConfig(User $user): bool
+    {
+        return !$user->banned && !$user->account_deleted_at && (
+            (TrafficCreditService::hasPeriod($user) && (int)$user->u + (int)$user->d < (int)$user->transfer_enable)
+            || $user->credit_balance > 0
+        );
+    }
+
+    // Config rendering may cross an expiry or concurrent account change. Recheck
+    // the current record before returning a snapshot containing credentials.
+    public function isAccessSnapshotCurrent(User $user, ?int $groupId): bool
+    {
+        $current = User::find($user->id);
+        return $current && $this->canDownloadConfig($current)
+            && hash_equals((string)$user->uuid, (string)$current->uuid)
+            && hash_equals((string)$user->token, (string)$current->token)
+            && TrafficCreditService::effectiveGroupId($current) === $groupId;
     }
 
     public function getAvailableUsers()

@@ -22,8 +22,10 @@ try {
     $has = function ($group,$user) use ($server) { return $server->getAvailableUsers([$group])->contains('id',$user->id); };
     $active = $make();
     $assert(Credits::effectiveGroupId($active)===$premium && $has($premium,$active) && !$has($basic,$active), 'Exhausted active subscription lost premium access');
+    $premiumSnapshot = $active->fresh();
     $active->expired_at = time(); $active->save();
     $assert(Credits::effectiveGroupId($active)===$basic && $has($basic,$active) && !$has($premium,$active), 'Expired credits retained premium access');
+    $assert(!(new App\Services\UserService())->isAccessSnapshotCurrent($premiumSnapshot,$premium),'Credits keep access but cannot preserve a rendered premium-group snapshot across period expiry');
     $copy = Credits::forClient($active);
     $assert($copy->group_id===$basic && $copy->expired_at===null && $active->group_id===$premium, 'Client effective access mutated stored profile');
     $active->expired_at = time()+3600; $active->save();
@@ -41,6 +43,9 @@ try {
     $assert(in_array($premiumNode->id,$visible) && !in_array($basicNode->id,$visible),'Active subscriber node list lost premium');
     $banned=$make(['banned'=>1,'expired_at'=>time()-1]);
     $assert(!$has($basic,$banned) && !$has($premium,$banned),'Banned user authorized');
+    $assert($server->getAvailableServers($banned)===[],'Direct node rendering bypassed the account ban');
+    $deleted=$make(['account_deleted_at'=>time(),'banned'=>0]);
+    $assert(!(new App\Services\UserService())->isAvailable($deleted) && $server->getAvailableV2box($deleted)===[],'Deleted account retained a renderable access profile');
     $empty=$make(['credit_balance'=>0,'expired_at'=>time()-1]);
     $assert(!$has($basic,$empty) && !$has($premium,$empty),'Empty expired account authorized');
     $ordinary=$make(['credit_balance'=>0,'u'=>0]);
@@ -48,11 +53,19 @@ try {
     // Expiry must deny access even while the original unused allowance is retained.
     $ordinary->expired_at=time();$ordinary->save();
     $assert(!$has($premium,$ordinary) && !(new App\Services\UserService())->isAvailable($ordinary->fresh()),'Expiry boundary authorizes retained plan allowance');
+    $assert($server->getAvailableServers($ordinary)===[],'Direct node rendering exposed expired plan credentials');
     $assert((int)$ordinary->fresh()->transfer_enable===1000,'Expiry checks should not erase historical allowance');
     $ordinary->expired_at=time()-3600;$ordinary->save();
     $assert(!User::whereKey($ordinary->id)->withUsableTraffic()->exists(),'Expired unused plan allowance authorized');
     $ordinary->expired_at=time()+3600;$ordinary->save();
     $assert($has($premium,$ordinary),'Renewed plan access was not restored');
+    $quotaSnapshot=$ordinary->fresh();
+    $ordinary->u=1000;$ordinary->d=0;$ordinary->save();
+    $userService=new App\Services\UserService();
+    $assert($userService->isAvailable($ordinary->fresh()) && !$userService->canDownloadConfig($ordinary->fresh()),'A current term remains an active account while its exhausted quota cannot download credentials');
+    $assert(!$has($premium,$ordinary) && $server->getAvailableServers($ordinary)===[],'An exhausted base plan without independent credit authorizes neither node users nor renderable servers');
+    $assert(!$userService->isAccessSnapshotCurrent($quotaSnapshot,$premium),'Consuming the last quota invalidates an earlier configuration snapshot');
+    $ordinary->u=0;$ordinary->save();
     $assert($server->getAvailableUsers([$basic,$premium])->where('id',$active->id)->count()===1,'Shared node duplicated user');
     $assert($server->getAvailableUsers([])->isEmpty(),'Empty group authorized users');
     config(['v2board.credit_base_group_id'=>null]);

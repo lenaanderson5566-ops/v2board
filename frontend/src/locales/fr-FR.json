@@ -1,5 +1,10 @@
 {
   "translation": {
+    "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "Le quota du forfait était épuisé lors de cette requête. Vérifiez votre forfait ou ajoutez des données, puis actualisez la configuration.",
+    "此次请求时独立额度已过期，请购买有效额度后更新配置。": "Les données indépendantes avaient expiré lors de cette requête. Achetez des données valides, puis actualisez la configuration.",
+    "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "Les données indépendantes étaient épuisées lors de cette requête. Achetez des données ou un forfait, puis actualisez la configuration.",
+    "此次请求时没有可用节点，请稍后重试或联系支持。": "Aucun nœud n’était disponible lors de cette requête. Réessayez plus tard ou contactez l’assistance.",
+    "此次请求期间订阅状态已变化，请重新获取配置。": "L’état de l’abonnement a changé pendant cette requête. Récupérez à nouveau la configuration.",
     "您有一笔待完成的订单": "Vous avez une commande en cours",
     "继续完成订单即可开通服务，无需重新选择套餐。": "Terminez votre commande actuelle pour activer le service. Il n’est pas nécessaire de choisir à nouveau une offre.",
     "购买套餐可直接付款，无需先充值账户余额。": "Vous pouvez payer une offre directement, sans recharger au préalable le solde de votre compte.",

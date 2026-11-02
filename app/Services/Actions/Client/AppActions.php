@@ -13,14 +13,22 @@ class AppActions
 {
     public function getConfig(Request $request)
     {
-        (new ClientActions())->enforceApplicationPolicy($request);
+        $client = new ClientActions();
+        $policy = $client->enforceApplicationPolicy($request);
         $servers = [];
-        $user = $request->user;
+        $sourceUser = $request->user;
+        $user = \App\Models\User::findOrFail($sourceUser['id']);
+        $client->assertSubscriptionIdentity($sourceUser, $user);
+        $request->merge(['user' => $user]);
         $userService = new UserService();
-        if ($userService->isAvailable($user)) {
-            $serverService = new ServerService();
-            $servers = $serverService->getAvailableServers($user);
-        }
+        $client->useSubscriptionLanguage($request, $user);
+        $this->requireAvailable(!$user->account_deleted_at);
+        if ($user->banned) return $client->noticeResponse($request, 'mihomo', 'banned');
+        if ($policy !== null) return $client->noticeResponse($request, 'mihomo', $policy);
+        if (!$userService->canDownloadConfig($user)) return $client->noticeResponse($request, 'mihomo', $client->unavailableReason($user));
+        $groupId = \App\Services\TrafficCreditService::effectiveGroupId($user);
+        $serverService = new ServerService();
+        $servers = $serverService->getAvailableServers($user);
         $defaultConfig = base_path() . '/resources/rules/app.clash.yaml';
         $customConfig = base_path() . '/resources/rules/custom.app.clash.yaml';
         if (File::exists($customConfig)) {
@@ -58,8 +66,17 @@ class AppActions
             $config['proxy-groups'][$k]['proxies'] = array_merge($config['proxy-groups'][$k]['proxies'], $proxies);
         }
         $yamlContent = Yaml::dump($config);
+        if (!$userService->isAccessSnapshotCurrent($user, $groupId)) return $client->changedConfigResponse($request, $user, 'mihomo');
         return response($yamlContent, 200)
+            ->header('Cache-Control', 'private, no-store')
             ->header('Content-Type', 'text/yaml');
+    }
+
+    private function requireAvailable(bool $available): void
+    {
+        if (!$available) throw new \Illuminate\Http\Exceptions\HttpResponseException(
+            response()->json(['code' => 'SUBSCRIPTION_UNAVAILABLE', 'message' => __('An active subscription or remaining credits are required.')], 403, ['Cache-Control'=>'private, no-store'])
+        );
     }
 
     public function getVersion(Request $request)

@@ -10,10 +10,17 @@ try {
  $user=App\Models\User::create(['email'=>Illuminate\Support\Str::uuid().'@example.com','password'=>'unused','uuid'=>(string)Illuminate\Support\Str::uuid(),'token'=>Illuminate\Support\Str::random(32),'plan_id'=>1,'group_id'=>98765,'transfer_enable'=>1073741824,'expired_at'=>time()+86400,'credit_balance'=>1073741824]);
  App\Models\ClientStrategy::whereIn('client_type',['mihomo','flclash','general'])->update(['is_enabled'=>1,'min_version'=>null]);
  config(['v2board.subscription_ua_whitelist_enabled'=>1,'v2board.subscription_ua_whitelist'=>['flclash']]);
- $call=function($ua,$format='flclash',$suffix='')use($app,$user){
-  $r=Illuminate\Http\Request::create('/api/v10/subscriptions/'.$user->token.$suffix.'?format='.$format,'GET',[],[],[],['HTTP_USER_AGENT'=>$ua,'REMOTE_ADDR'=>'192.0.2.'.($user->id % 240 + 10),'HTTP_ACCEPT'=>'application/yaml']);
+ $call=function($ua,$format='flclash',$suffix='',$token=null)use($app,$user){
+  $r=Illuminate\Http\Request::create('/api/v10/subscriptions/'.($token??$user->token).$suffix.'?format='.$format,'GET',[],[],[],['HTTP_USER_AGENT'=>$ua,'REMOTE_ADDR'=>'192.0.2.'.($user->id % 240 + 10),'HTTP_ACCEPT'=>'application/yaml']);
   $app->instance('request',$r);
   return $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($r);
+ };
+ $notice=function($response,string $reason)use($assert,$user) {
+  $content=$response->getContent();$decoded=base64_decode(trim($content),true);if($decoded!==false)$content.="\n".$decoded;
+  $assert($response->getStatusCode()===200 && $response->headers->get('X-Subscription-Notice')===$reason,'Known client policy failure returns an isolated warning: '.$reason);
+  $assert(str_contains($content,'203.0.113.10'),'Policy notice uses a reserved dummy host');
+  foreach([$user->uuid,$user->token,'node.example.test'] as $secret)$assert(!str_contains($content,$secret),'Policy notice excludes real subscription credentials');
+  $assert(str_contains($response->headers->get('Cache-Control'),'no-store'),'Policy notice is private and non-cacheable');
  };
  $assert($call('FlClash/0.8.0','flclash&flag=meta')->getStatusCode()===422,'Old flag cannot coexist with format');
  $assert($call('FlClash/0.8.0','meta')->getStatusCode()===422,'Old format alias is retired');
@@ -44,14 +51,19 @@ try {
  $assert($call('Mozilla/5.0','flclash','/application-config')->getStatusCode()===403,'Legacy config cannot bypass whitelist');
  config(['v2board.subscription_ua_whitelist_enabled'=>0]);
  $assert($call('curl/8.0')->getStatusCode()===403,'Unknown UA remains blocked without whitelist');
+ $invalid=$call('FlClash/0.8.0','flclash','',str_repeat('0',32));
+ $assert(in_array($invalid->getStatusCode(),[401,403],true) && !$invalid->headers->has('X-Subscription-Notice'),'Invalid credentials remain an authentication failure, not a warning subscription');
  App\Models\ClientStrategy::where('client_type','flclash')->update(['min_version'=>'0.9.0']);
- $call('FlClash/0.8.0');
+ $notice($call('FlClash/0.8.0'),'client_version_too_low');
  $assert(SubscribeLog::where('user_id',$user->id)->where('reason','client_version_too_low')->exists(),'Format cannot bypass app minimum');
  try{$service->updateStrategies([['client_type'=>'flclash','min_version'=>'garbage 1.0']]);$assert(false,'Invalid minimum accepted');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===422,'Invalid minimum rejected');}
- $assert($call('FlClash/0.8.0','flclash','/application-config')->getStatusCode()===403,'Legacy config respects app minimum');
+ $notice($call('FlClash/0.8.0','flclash','/application-config'),'client_version_too_low');
  App\Models\ClientStrategy::where('client_type','flclash')->update(['min_version'=>null,'is_enabled'=>0]);
  $assert($service->accessDenial('mihomo','FlClash/0.8.0')==='client_disabled','Disabled app cannot bypass via general format');
- $assert($call('FlClash/0.8.0')->getStatusCode()===403,'Disabled client gets HTTP 403');
+ $notice($call('FlClash/0.8.0'),'client_disabled');
+ $notice($call('FlClash/0.8.0','flclash','/application-config'),'client_disabled');
+ $disabledMismatch=$call('FlClash/0.8.0','sing-box');
+ $assert($disabledMismatch->getStatusCode()===422 && !$disabledMismatch->headers->has('X-Subscription-Notice'),'Disabled client cannot use a notice to bypass format compatibility');
  App\Models\ClientStrategy::where('client_type','flclash')->update(['is_enabled'=>1]);
  App\Models\ClientStrategy::where('client_type','mihomo')->update(['min_version'=>'1.19.0']);
  $assert($service->accessDenial('mihomo','FlClash/0.8.0 mihomo/1.18.0')==='client_version_too_low','Parent kernel policy applies');
@@ -80,7 +92,6 @@ try {
  $assert($edge['subscribe_ua_unique_count_24h']===1 && $edge['subscribe_ua_unique_count_30d']===2,'Unique UA windows exclude missing values and preserve distinct grouping');
  $assert($edge['top_raw_ua']==='First/1.0' && $edge['top_raw_ua_count']===3 && $edge['raw_ua_list']===['First/1.0','Second/2.0'],'Raw UA ranking and ordering are unchanged');
  $assert($edge['raw_ua_stats'][1]['count_24h']===0 && $edge['raw_ua_stats'][1]['count_30d']===1,'Older observations do not count as current requests');
- echo "Client statistics queries: $statsReads\n";
  // SQL collation, empty input and unobserved strategies must retain the old statistics semantics.
  $caseType='case-'.bin2hex(random_bytes(4));
  foreach ([['Example/1.0',-2*86400],['example/1.0',-100]] as [$ua,$offset]) {
@@ -99,15 +110,51 @@ try {
 
  $assert($call('FastAI/1.0.0','fastai')->getStatusCode()===422,'FastAI format cannot bypass native session authentication');
  $assert($call('FlClash/0.8.0','FlClash/0.8.0')->getStatusCode()===422,'Explicit format is not a UA');
- $assert($call('Throne/1.3.2','throne')->getStatusCode()===403,'New client is denied before opt-in');
+ $notice($call('Throne/1.3.2','throne'),'client_disabled');
  $service->updateStrategies([['client_type'=>'throne','is_enabled'=>true]]);
  $assert($call('Throne/1.3.2','v2rayn')->getStatusCode()===200,'Enabled new client uses shared URI renderer');
  $assert(SubscribeLog::where('user_id',$user->id)->where('client_type','throne')->where('status','success')->exists(),'Shared renderer retains actual UA identity in logs');
+ // A nonempty server catalog may still contain no node supported by a list
+ // renderer. STATUS lines are metadata, not proof of an importable proxy.
+ $service->updateStrategies([
+  ['client_type'=>'quantumult-x','is_enabled'=>true,'min_version'=>null],
+  ['client_type'=>'shadowrocket','is_enabled'=>true,'min_version'=>null],
+  ['client_type'=>'shadowsocks','is_enabled'=>true,'min_version'=>null],
+ ]);
+ config(['v2board.show_info_to_server_enable'=>0]);
+ $qx=$call('Quantumult X/1.5.0','quantumult-x');
+ $qxBody=base64_decode($qx->getContent(),true);
+ $assert($qx->getStatusCode()===200 && !$qx->headers->has('X-Subscription-Notice') && str_contains($qxBody?:'','node.example.test') && str_contains($qxBody?:'',$user->uuid),'Supported QX nodes remain real output rather than an empty-list warning');
+ $rocket=$call('Shadowrocket/2.2.0','shadowrocket');
+ $rocketBody=base64_decode($rocket->getContent(),true);
+ $assert($rocket->getStatusCode()===200 && !$rocket->headers->has('X-Subscription-Notice') && str_contains($rocketBody?:'','node.example.test'),'Shadowrocket with a supported node remains a real subscription despite its STATUS metadata');
+ $sip=$call('Shadowsocks/1.0.0','shadowsocks');
+ $sipBody=json_decode($sip->getContent(),true,512,JSON_THROW_ON_ERROR);
+ $assert($sip->getStatusCode()===200 && !$sip->headers->has('X-Subscription-Notice') && count($sipBody['servers']??[])===1
+  && $sipBody['servers'][0]['server']==='node.example.test' && $sipBody['servers'][0]['password']===$user->uuid,'SIP008 unwraps V2Box Shadowsocks nodes and exports the correct real proxy UUID');
+ $oldGroup=$user->group_id;
+ try {
+  App\Models\ServerV2box::create(['group_id'=>[98764],'name'=>'QX unsupported transport','host'=>'grpc-only.example.test','port'=>'443','server_port'=>443,
+   'protocol'=>'vmess','show'=>1,'rate'=>1,'tls'=>1,'network'=>'grpc','network_settings'=>['serviceName'=>'policy-fixture'],'up_mbps'=>0,'down_mbps'=>0]);
+  $user->group_id=98764;$user->save();
+  $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'QX negative fixture has one authorized catalog node');
+  $qx=$call('Quantumult X/1.5.0','quantumult-x');$notice($qx,'no_available_nodes');
+  $assert(!str_contains(base64_decode($qx->getContent(),true)?:'','grpc-only.example.test'),'A filtered gRPC node cannot survive in QX output');
+  App\Models\ServerV2box::create(['group_id'=>[98763],'name'=>'Shadowrocket unsupported Naive','host'=>'naive-only.example.test','port'=>'443','server_port'=>443,
+   'protocol'=>'naive','show'=>1,'rate'=>1,'tls'=>1,'network'=>'tcp','up_mbps'=>0,'down_mbps'=>0]);
+  $user->group_id=98763;$user->save();
+  $assert(count((new App\Services\ServerService())->getAvailableServers($user->fresh()))===1,'Shadowrocket negative fixture has one authorized Naive node');
+  $rocket=$call('Shadowrocket/2.2.0','shadowrocket');$notice($rocket,'no_available_nodes');
+  $rocketBody=base64_decode($rocket->getContent(),true)?:'';
+  $assert(!str_contains($rocketBody,'STATUS=') && !str_contains($rocketBody,'naive-only.example.test'),'STATUS-only Shadowrocket content is replaced by a safe warning node');
+ } finally {$user->group_id=$oldGroup;$user->save();}
  config(['v2board.subscription_user_minute_limit'=>1]);
  $limited=$call('FlClash/0.8.0');
  $assert($limited->getStatusCode()===429 && (int)$limited->headers->get('Retry-After')>0,'HTTP rate limit and retry header');
+ $assert(!$limited->headers->has('X-Subscription-Notice'),'Rate limits cannot become HTTP 200 notice subscriptions');
  $assert(json_decode($limited->getContent(),true)['code']==='RATE_LIMITED','Rate limit problem schema');
  $assert($call('FlClash/0.8.0','flclash','/application-version')->getStatusCode()===429,'Account rate shared by version endpoint');
  $assert($statsReads<=2,'Client statistics use at most two log scans');
+ echo "Client statistics queries: $statsReads\n";
  echo "Subscription policy integration: {$n} checks passed\n";
 } finally {DB::rollBack();}

@@ -42,7 +42,56 @@ try{
  $assert(Queue::pushed(App\Jobs\SendEmailJob::class)->count()===2,'Boolean recovery purpose bypassed registration policy for an unknown account');
  $guest=(new App\Services\Actions\Guest\CommActions)->config()->getOriginalContent()['data'];
  $assert($guest['email_whitelist_suffix']===['example.test']&&$guest['is_invite_force']===1,'Guest configuration differs from policy');
+ // Registration OTP guesses must share an email-bound budget across spelling
+ // and IP changes. A new code or another purpose cannot reset that budget.
+ config(['v2board.invite_force'=>0,'v2board.email_whitelist_enable'=>0,'v2board.stop_register'=>0,'v2board.email_verify'=>1,
+  'v2board.register_limit_by_ip_enable'=>0,'v2board.try_out_plan_id'=>0,'v2board.mfa_enable'=>0]);
+ $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);$attemptIp=40;
+ $invoke=function(string $path,array $body)use($app,$kernel,&$attemptIp){
+  $r=Illuminate\Http\Request::create('/api/v10/auth/'.$path,'POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>'203.0.113.'.(++$attemptIp)],json_encode($body));
+  $app->instance('request',$r);return $kernel->handle($r);
+ };
+ $lastCode=function(){
+  $job=Queue::pushed(App\Jobs\SendEmailJob::class)->last();
+  return (new ReflectionProperty($job,'params'))->getValue($job)['template_value']['code'];
+ };
+ $guessed='registration-budget-'.bin2hex(random_bytes(6)).'@example.test';$emails[]=$guessed;
+ $assert($invoke('email-verifications',['email'=>$guessed,'resetPassword'=>false])->getStatusCode()===202,'Open registration queues a real verification code');
+ $correct=$lastCode();$statuses=[];
+ for($guess=0;$guess<6;$guess++) {
+  $failedRegistration=$invoke('registrations',['email'=>$guess%2?strtoupper($guessed):$guessed,'password'=>'RegistrationBudget!2026','emailCode'=>'000000']);
+  $statuses[]=$failedRegistration->getStatusCode();
+ }
+ $afterLimit=$invoke('registrations',['email'=>strtoupper($guessed),'password'=>'RegistrationBudget!2026','emailCode'=>$correct]);
+ $created=User::where('email',$guessed)->exists();
+ $assert(array_slice($statuses,0,5)===[409,409,409,409,409] && $statuses[5]===429 && $afterLimit->getStatusCode()===429 && !$created,
+  'Registration guessing lock missing: sixth='.$statuses[5].', correct='.$afterLimit->getStatusCode().', created='.($created?'yes':'no'));
+ $assert((int)$failedRegistration->headers->get('Retry-After')>0 && (int)$afterLimit->headers->get('Retry-After')>0,'Exhausted registration challenges include a positive retry delay for client recovery');
+ Cache::forget(App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP',$guessed));
+ $resend=$invoke('email-verifications',['email'=>strtoupper($guessed),'resetPassword'=>false]);
+ $assert(in_array($resend->getStatusCode(),[202,429],true),'Resending an exhausted challenge remains a defined queued or throttled response');
+ $resentCode=$resend->getStatusCode()===202?$lastCode():$correct;
+ $afterResend=$invoke('registrations',['email'=>$guessed,'password'=>'RegistrationBudget!2026','emailCode'=>$resentCode]);
+ $assert($afterResend->getStatusCode()===429 && (int)$afterResend->headers->get('Retry-After')>0
+  && !User::where('email',$guessed)->exists(),'Resending a code cannot erase the email guess budget or its retry guidance');
+ $ordinary='registration-valid-'.bin2hex(random_bytes(6)).'@example.test';$emails[]=$ordinary;
+ $assert($invoke('email-verifications',['email'=>$ordinary,'resetPassword'=>false])->getStatusCode()===202,'Another email keeps an independent verification budget');
+ $ordinaryCode=$lastCode();
+ $normal=$invoke('registrations',['email'=>$ordinary,'password'=>'RegistrationBudget!2026','emailCode'=>$ordinaryCode]);
+ $assert($normal->getStatusCode()===201 && User::where('email',$ordinary)->exists(),'A fresh email can still register normally with the correct code');
+ $recoveryUser=User::create(['email'=>$guessed,'password'=>password_hash('BeforeRecovery!2026',PASSWORD_DEFAULT),'uuid'=>Helper::guid(true),'token'=>Helper::guid()]);
+ $assert($invoke('email-verifications',['email'=>$guessed,'resetPassword'=>true])->getStatusCode()===202,'Registration guess exhaustion does not lock the separate recovery purpose');
+ $recoveryCode=$lastCode();
+ $assert($invoke('password-resets',['email'=>$guessed,'password'=>'AfterRecovery!2026','emailCode'=>$recoveryCode])->getStatusCode()===204
+  && password_verify('AfterRecovery!2026',$recoveryUser->fresh()->password),'Purpose-bound account recovery still consumes its own valid challenge');
 }finally{
- DB::rollBack();config(['v2board'=>$original]);RateLimiter::clear('127.0.0.1');foreach($emails as $email){Cache::forget(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$email));Cache::forget(App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP',$email));}
+ foreach(User::whereIn('email',$emails)->get() as $account){
+  (new App\Services\AuthService($account))->removeAllSession();
+  $key=App\Services\PasswordRecovery::challengeKey((int)$account->id);foreach([$key,$key.':sent',$key.':attempts'] as $cacheKey)Cache::forget($cacheKey);
+ }
+ DB::rollBack();config(['v2board'=>$original]);RateLimiter::clear('127.0.0.1');foreach($emails as $email){
+  Cache::forget(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$email));Cache::forget(App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP',$email));
+  if(class_exists(App\Services\RegistrationEmailVerification::class))RateLimiter::clear(App\Services\RegistrationEmailVerification::attemptKey($email));
+ }
 }
 echo "PASS: $checks registration policy checks\n";

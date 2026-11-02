@@ -148,6 +148,10 @@ const reasons: Record<string, string> = {
     no_plan: "未购买套餐",
     expired: "账户已到期",
     traffic_exhausted: "流量已耗尽",
+    credits_expired: "独立额度已过期",
+    credits_exhausted: "独立额度已用尽",
+    no_available_nodes: "暂无可用节点",
+    subscription_changed: "订阅状态已变化",
     other: "其他／历史原因",
 };
 const states: Record<string, string> = {

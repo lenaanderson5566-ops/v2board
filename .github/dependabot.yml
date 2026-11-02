@@ -1,0 +1,58 @@
+# GitHub reads this configuration from the repository's default branch.
+version: 2
+updates:
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: '03:45'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: all
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+    groups:
+      compatible-php:
+        applies-to: version-updates
+        patterns: ['*']
+        update-types: [minor, patch]
+      php-security:
+        applies-to: security-updates
+        patterns: ['*']
+    commit-message:
+      prefix: chore(deps)
+  - package-ecosystem: npm
+    directory: /frontend
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: '04:00'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    allow:
+      - dependency-type: all
+        update-types: [version-update:semver-minor, version-update:semver-patch]
+    groups:
+      compatible-frontend:
+        applies-to: version-updates
+        patterns: ['*']
+        update-types: [minor, patch]
+      frontend-security:
+        applies-to: security-updates
+        patterns: ['*']
+    commit-message:
+      prefix: chore(deps)
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: wednesday
+      time: '04:15'
+      timezone: Etc/UTC
+    open-pull-requests-limit: 3
+    groups:
+      actions:
+        patterns: ['*']
+    commit-message:
+      prefix: chore(ci)

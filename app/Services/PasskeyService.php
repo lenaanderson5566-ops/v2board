@@ -130,7 +130,8 @@ final class PasskeyService
                 $user=User::whereKey($owner)->lockForUpdate()->first();
                 $credential=DB::table('v2_passkey')->where('credential_hash',$hash)->lockForUpdate()->first();
                 $admin=$request->attributes->get('browser.session')['scope']==='admin';
-                abort_unless($user && !$user->banned && (!$admin || $user->is_admin) && $credential && $credential->rp_id===$record['rp'],401,'Passkey 登录失败。');
+                abort_unless($user && !$user->banned && (!$admin || $user->is_admin) && $credential
+                    && (int)$credential->user_id===(int)$user->id && $credential->rp_id===$record['rp'],401,'Passkey 登录失败。');
                 abort_unless(hash_equals($credential->user_handle,$request->input('userHandle')),422,'Invalid Passkey response.');
                 $authenticator=self::decode($request->input('authenticatorData'));
                 abort_unless(strlen($authenticator)>=37,422,'Invalid Passkey response.');

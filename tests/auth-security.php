@@ -339,6 +339,43 @@ try {
         $assert($resetRecovery($normal,$code)->getStatusCode()===409,'Consumed recovery code cannot replay');
         $assert(!App\Services\PasswordRecovery::deliveryIsCurrent($mail),'Consumed recovery email job is suppressed');
 
+        // Complete real password recovery after the change-password action has
+        // read its credential snapshot. Its stale old password/session must not
+        // authorize overwriting the newly recovered password.
+        $racing=$recoveryFixture();$raceMail=$sendRecovery($racing);
+        $raceToken=(new App\Services\AuthService($racing))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $recoverDuringChange=(object)['active'=>true,'fired'=>false];
+        App\Models\User::retrieved(function($snapshot)use($recoverDuringChange,$racing,$raceMail){
+            if(!$recoverDuringChange->active || (int)$snapshot->id!==(int)$racing->id || !$snapshot->password)return;
+            $recoverDuringChange->active=false;$recoverDuringChange->fired=true;
+            app(App\Services\PasswordRecovery::class)->recover($racing->email,$raceMail['template_value']['code'],'RecoveredDuringChange!2026');
+        });
+        $changeRequest=Illuminate\Http\Request::create('/api/v10/me/password','PATCH',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer '.$raceToken],json_encode(['oldPassword'=>'RecoveryOriginal!2026','newPassword'=>'AttackerOverwrite!2026']));
+        app()->instance('request',$changeRequest);$changeResponse=$kernel->handle($changeRequest);
+        $recoverDuringChange->active=false;
+        $assert($recoverDuringChange->fired,'Recovery fixture completes after the old credential snapshot is read');
+        $assert(in_array($changeResponse->getStatusCode(),[401,409],true) && password_verify('RecoveredDuringChange!2026',$racing->fresh()->password),'Stale password change cannot overwrite completed recovery: HTTP '.$changeResponse->getStatusCode().' attackerPasswordAccepted='.(password_verify('AttackerOverwrite!2026',$racing->fresh()->password)?'yes':'no'));
+        $assert(App\Services\AuthService::decryptAuthData($raceToken)===false,'Password recovery keeps the racing old session revoked');
+        $racing->refresh();
+        $freshChangeToken=(new App\Services\AuthService($racing))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $otherChangeToken=(new App\Services\AuthService($racing))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $changeRequest=Illuminate\Http\Request::create('/api/v10/me/password','PATCH',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer '.$freshChangeToken],json_encode(['oldPassword'=>'RecoveredDuringChange!2026','newPassword'=>'NormalPasswordChange!2026']));
+        app()->instance('request',$changeRequest);$changeResponse=$kernel->handle($changeRequest);
+        $assert($changeResponse->getStatusCode()===204 && password_verify('NormalPasswordChange!2026',$racing->fresh()->password),'Fresh current password and session still change the password normally');
+        $assert(App\Services\AuthService::decryptAuthData($freshChangeToken)===false && App\Services\AuthService::decryptAuthData($otherChangeToken)===false,'Normal password change revokes every old session');
+        $racing->refresh();$beforeRevokedChange=$racing->password;
+        $revokedChangeToken=(new App\Services\AuthService($racing))->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $revokeDuringChange=(object)['active'=>true,'fired'=>false];
+        App\Models\User::retrieved(function($snapshot)use($revokeDuringChange,$racing){
+            if(!$revokeDuringChange->active || (int)$snapshot->id!==(int)$racing->id || !$snapshot->password)return;
+            $revokeDuringChange->active=false;$revokeDuringChange->fired=true;
+            (new App\Services\AuthService($racing))->removeAllSession();
+        });
+        $changeRequest=Illuminate\Http\Request::create('/api/v10/me/password','PATCH',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>'Bearer '.$revokedChangeToken],json_encode(['oldPassword'=>'NormalPasswordChange!2026','newPassword'=>'AfterSessionRevocation!2026']));
+        app()->instance('request',$changeRequest);$changeResponse=$kernel->handle($changeRequest);
+        $revokeDuringChange->active=false;
+        $assert($revokeDuringChange->fired && $changeResponse->getStatusCode()===401 && $racing->fresh()->password===$beforeRevokedChange,'Password change rechecks an independently revoked session before writing credentials');
+
         $limited=$recoveryFixture(); $mail=$sendRecovery($limited); $limitedHash=$limited->password;
         for ($attempt=0;$attempt<3;$attempt++) $assert($resetRecovery($limited,'000000')->getStatusCode()===409,'Recovery wrong-attempt limit counts each failed proof');
         $assert($resetRecovery($limited,$mail['template_value']['code'])->getStatusCode()===409 && $limited->fresh()->password===$limitedHash,'Exhausted recovery challenge rejects even the correct code');

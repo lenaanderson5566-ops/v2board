@@ -11,7 +11,8 @@ use Illuminate\Http\Request;
 final class SubscriptionAccessActions
 {
     private const REASONS = ['banned', 'no_plan', 'expired', 'user_unavailable', 'client_disabled',
-        'client_version_too_low', 'client_ua_not_allowed', 'client_format_not_allowed'];
+        'client_version_too_low', 'client_ua_not_allowed', 'client_format_not_allowed', 'traffic_exhausted',
+        'credits_expired', 'credits_exhausted', 'no_available_nodes', 'subscription_changed'];
 
     public function index(Request $request)
     {

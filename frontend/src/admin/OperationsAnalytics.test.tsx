@@ -24,11 +24,58 @@ import {
 } from "./OperationsAnalytics";
 import { ReportTable } from "./ReportTable";
 import { AdminAnalytics } from "./AdminAnalytics";
+import { FirstPurchaseReport, type FirstPurchaseData, type ReceiptData } from "./FirstPurchaseReport";
+import { money } from "../shared/api";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
 });
 const at = "2026-10-19T02:00:00Z";
+function firstPurchaseFixture(): Extract<FirstPurchaseData, { available: true }> {
+    return { available: true, from: at, to: at, windowDays: 7, registered: 10,
+        paidRecurringAccounts: 5, paidRecurringRate: 0.5,
+        funding: { externalOnly: 1, mixed: 1, walletOnly: 2, manual: 1, unclassified: 0 },
+        zeroValueRecurringAccounts: 3, creditOnlyRecurringAccounts: 1,
+        otherPurchases: { depositAccounts: 6, independentCreditAccounts: 2, resetAccounts: 1, legacyOneTimeAccounts: 0 } };
+}
+function receiptsFixture(): Extract<ReceiptData, { available: true }> {
+    return { available: true, from: at, to: at, complete: true,
+        byCurrency: [
+            { currency: "CNY", grossAmount: 12345, orders: 2, kinds: [{ kind: "deposit", grossAmount: 10000, orders: 1 }, { kind: "recurring", grossAmount: 2345, orders: 1 }] },
+            { currency: "USD", grossAmount: 5000, orders: 1, kinds: [{ kind: "recurring", grossAmount: 5000, orders: 1 }] },
+        ], unresolvedExternalOrders: 0, manualOrders: 1, walletOnlyOrders: 2, zeroExternalOrders: 3,
+        refundAmount: null, providerFeeAmount: null, netAmount: null, settlementAmount: null };
+}
+it("distinguishes valued recurring first purchases from zero-price grants and other purchases", () => {
+    render(<FirstPurchaseReport firstPurchase={firstPurchaseFixture()} receipts={receiptsFixture()} timeZone="Asia/Shanghai" />);
+    const panel = screen.getByRole("heading", { name: "周期套餐首购 · 7 天观察窗" }).closest("section")!;
+    expect(within(panel).getByText("有价首购确认率").parentElement?.textContent).toContain("50%");
+    expect(within(panel).getByText("7 天内有价周期套餐首购").parentElement?.textContent).toContain("5");
+    expect(within(panel).getByRole("row", { name: /仅余额支付/ }).textContent).toContain("2");
+    expect(within(panel).getByRole("row", { name: /人工确认/ }).textContent).toContain("1");
+    expect(within(panel).getByText(/不能直接视为现金首购率/)).toBeTruthy();
+    expect(within(panel).getByText(/独立诊断人数，可与首购用户重叠/)).toBeTruthy();
+});
+it("keeps payment currencies separate and never fabricates refund fees net income or settlement", () => {
+    render(<FirstPurchaseReport firstPurchase={firstPurchaseFixture()} receipts={receiptsFixture()} timeZone="Asia/Shanghai" />);
+    const panel = screen.getByRole("heading", { name: "外部订单回调确认金额" }).closest("section")!;
+    const summary = panel.querySelector("table")!;
+    expect(within(summary).getByRole("row", { name: /CNY/ }).textContent).toContain(money(12345, "CNY"));
+    expect(within(summary).getByRole("row", { name: /USD/ }).textContent).toContain(money(5000, "USD"));
+    expect(within(panel).getByText(/退款、服务商手续费、净收入与服务商结算金额：不可计算/)).toBeTruthy();
+    expect(within(panel).getByText(/后续余额消费不重复计入/)).toBeTruthy();
+});
+it("labels incomplete receipts and distinguishes missing reports from empty cohorts", () => {
+    const first = firstPurchaseFixture();
+    const receipts = receiptsFixture();
+    const view = render(<FirstPurchaseReport timeZone="UTC" />);
+    expect(screen.getByText(/首购统计暂不可用/)).toBeTruthy();
+    expect(screen.getByText(/外部收款记录暂不可用/)).toBeTruthy();
+    view.rerender(<FirstPurchaseReport firstPurchase={{ ...first, registered: 0, paidRecurringAccounts: 0, paidRecurringRate: null }} receipts={{ ...receipts, complete: false, unresolvedExternalOrders: 2 }} timeZone="UTC" />);
+    expect(screen.getByText("有价首购确认率").parentElement?.textContent).toContain("—");
+    expect(screen.getByText(/2 笔外部订单缺少可核实的收款快照/).getAttribute("role")).toBe("status");
+    expect(screen.queryByText(/首购统计暂不可用/)).toBeNull();
+});
 function fixture(): OperationsReport {
     const access = {
         available: true,
@@ -157,6 +204,25 @@ function fixture(): OperationsReport {
 function setup(data = fixture()) {
     api.request.mockResolvedValue({ data });
 }
+it("keeps subscription notice categories distinct in the administrative failure report", async () => {
+    const data = fixture();
+    const outcomes = [
+        ["traffic_exhausted", "流量已耗尽"],
+        ["credits_expired", "独立额度已过期"],
+        ["credits_exhausted", "独立额度已用尽"],
+        ["no_available_nodes", "暂无可用节点"],
+        ["subscription_changed", "订阅状态已变化"],
+    ];
+    data.subscription = { ...data.subscription, reasons: outcomes.map(([reason]) => ({ reason, count: 1 })) };
+    setup(data);
+    render(<OperationsAnalytics days={7} section="security" />);
+    const report = (await screen.findByRole("heading", { name: "订阅获取质量" })).closest("section")!;
+    for (const [reason, label] of outcomes) {
+        expect(within(report).getByText(label)).toBeTruthy();
+        expect(within(report).queryByText(reason)).toBeNull();
+    }
+    expect(within(report).queryByText("其他／历史原因")).toBeNull();
+});
 it("keeps report bounds and daily schedules in the business zone while generation uses the admin display zone", async () => {
     const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
     configureTimeZone("Asia/Shanghai", true);

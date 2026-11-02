@@ -5,7 +5,42 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 set_exception_handler(function ($error) { fwrite(STDERR, $error->getMessage()."\n"); exit(1); });
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$assert(str_starts_with($app->version(), '13.'), 'Unexpected framework version');
+$manifest = json_decode(file_get_contents(base_path('composer.json')), true, 512, JSON_THROW_ON_ERROR);
+$lock = json_decode(file_get_contents(base_path('composer.lock')), true, 512, JSON_THROW_ON_ERROR);
+$lockedProduction = array_column($lock['packages'], null, 'name');
+$lockedDevelopment = array_column($lock['packages-dev'], null, 'name');
+$assert(str_starts_with($app->version(), '13.') && version_compare($app->version(), '13.39.0', '>='), 'Unexpected framework version');
+$assert(!isset($manifest['require']['linfo/linfo']) && !isset($manifest['require-dev']['linfo/linfo'])
+    && !isset($lockedProduction['linfo/linfo']) && !isset($lockedDevelopment['linfo/linfo'])
+    && !Composer\InstalledVersions::isInstalled('linfo/linfo') && !class_exists('Linfo\\Linfo'), 'Removed system-info dependency remains installed or autoloadable');
+$assert(!isset($manifest['require']['laravel/tinker']) && isset($manifest['require-dev']['laravel/tinker'])
+    && !isset($lockedProduction['laravel/tinker']) && isset($lockedDevelopment['laravel/tinker'])
+    && !Composer\InstalledVersions::isInstalled('laravel/tinker', false), 'Tinker must remain a development-only dependency');
+$auditIgnore = (array)($manifest['config']['audit']['ignore'] ?? []);
+$assert(!array_key_exists('PKSA-y2cr-5h3j-g3ys', $auditIgnore) && !in_array('PKSA-y2cr-5h3j-g3ys', $auditIgnore, true), 'Obsolete Composer audit exception remains configured');
+$withDevelopment = Composer\InstalledVersions::getRootPackage()['dev'];
+foreach (array_merge(array_keys($manifest['require']), $withDevelopment ? array_keys($manifest['require-dev']) : []) as $package) {
+    if (!str_contains($package, '/')) continue; // PHP and extension platform requirements are checked by Composer.
+    $locked = $lockedProduction[$package] ?? $lockedDevelopment[$package] ?? null;
+    $assert($locked && Composer\InstalledVersions::isInstalled($package)
+        && ltrim((string)Composer\InstalledVersions::getPrettyVersion($package), 'v') === ltrim($locked['version'], 'v'), 'Installed dependency differs from the tested lock: '.$package);
+}
+$assert($app->version() === ltrim(Composer\InstalledVersions::getPrettyVersion('laravel/framework'), 'v'), 'Loaded framework differs from the installed package');
+$packageProviders = app(Illuminate\Foundation\PackageManifest::class)->providers();
+foreach ([Laravel\Horizon\HorizonServiceProvider::class, Carbon\Laravel\ServiceProvider::class] as $provider) {
+    $assert(in_array($provider, $packageProviders, true) && $app->getProvider($provider), 'Required package autodiscovery is missing: '.$provider);
+}
+// Use the isolated database/Redis and real Horizon bindings in both vendor profiles.
+// No worker or scheduler is expected to be running in this disposable environment.
+$masters = app(Laravel\Horizon\Contracts\MasterSupervisorRepository::class)->all();
+$assert(is_iterable($masters), 'Horizon supervisor repository cannot read the isolated Redis connection');
+$health = (new App\Services\SystemHealthService())->inspect();
+$healthChecks = array_column($health['checks'], null, 'key');
+$assert($health['frameworkVersion'] === $app->version() && $health['phpVersion'] === PHP_VERSION, 'Health report does not expose the actual runtime versions');
+foreach (['database', 'redis', 'cache'] as $key) {
+    $assert(($healthChecks[$key]['status'] ?? null) === 'healthy', 'Real dependency health probe failed: '.$key);
+}
+$assert(in_array($healthChecks['queue']['status'] ?? null, ['healthy', 'error'], true), 'Horizon health probe did not report a supported worker state');
 foreach (["a@example.com\r\nBcc:b@example.com", "a@example.com\n", "a@example.com\0", 'a @example.com'] as $email) {
     $assert(validator(['email'=>$email], ['email'=>'email'])->fails(), 'Unsafe email accepted');
 }
@@ -51,6 +86,11 @@ foreach(['user','push','alive','alivelist'] as $method){try{$legacy->$method(Req
 $invalid=$configController->config(Request::create('/','GET',['node_id'=>1,'node_type'=>'v2box']));$assert($invalid->getStatusCode()===200 && $invalid->getData(true)['message']==='token is null','V2 failure response contract preserved without process exit');
 // Resolve registration without running scheduled business commands.
 $commands = app(Illuminate\Contracts\Console\Kernel::class)->all();
+$tinkerProvider = 'Laravel\\Tinker\\TinkerServiceProvider';
+$assert($withDevelopment
+    ? (Composer\InstalledVersions::isInstalled('laravel/tinker') && in_array($tinkerProvider, $packageProviders, true) && isset($commands['tinker']))
+    : (!Composer\InstalledVersions::isInstalled('laravel/tinker') && !class_exists($tinkerProvider) && !in_array($tinkerProvider, $packageProviders, true) && !isset($commands['tinker'])),
+    'Tinker autodiscovery or command registration does not match the installed dependency profile');
 $assert(!isset($commands['test']) || !$commands['test'] instanceof App\Console\Commands\Test, 'Empty application test command still shadows the framework command');
 foreach (['v2board:install', 'v2board:update', 'reset:password', 'reset:user', 'clear:user', 'check:server', 'telegram:notify'] as $name) {
     $assert(isset($commands[$name]), 'Installation or manual operations command missing: '.$name);

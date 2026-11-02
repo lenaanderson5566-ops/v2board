@@ -751,7 +751,7 @@ try {
     $publishLine($lineId,1,$firstPlan['plan']['proof']);
     $assert($line->fresh()->host==='entry.example.test' && (int)$line->fresh()->port===10443 && $line->fresh()->show,'publishing updates only the connection endpoint');
     $assert($relay->fresh()->tls_settings['server_name']==='old-cert.example.test' && (int)$relay->fresh()->server_port===9443,'publishing another ingress never changes service certificate or listener');
-    $viewer=new App\Models\User(['group_id'=>999999]);
+    $viewer=new App\Models\User(['group_id'=>999999,'transfer_enable'=>1024,'expired_at'=>time()+3600]);
     $sub=collect((new App\Services\ServerService())->getAvailableV2box($viewer,'v2box'))->firstWhere('id',$lineId);
     $assert($sub && $sub['host']==='entry.example.test' && $sub['tls_settings']['server_name']==='old-cert.example.test' && !isset($sub['tls_settings']['dns_env']),'subscription uses shared identity without leaking DNS credentials');
     $clash=App\Protocols\ClashMeta::buildAnyTLS('test-password',$sub);

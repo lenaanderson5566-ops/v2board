@@ -790,6 +790,11 @@ export const resources: Record<string, Resource> = {
                         client_format_not_allowed: "客户端与配置格式不兼容",
                         client_disabled: "客户端已禁用",
                         client_version_too_low: "客户端版本过低",
+                        traffic_exhausted: "套餐流量已用尽",
+                        credits_expired: "独立额度已过期",
+                        credits_exhausted: "独立额度已用尽",
+                        no_available_nodes: "暂无可用节点",
+                        subscription_changed: "订阅状态已变化",
                     };
                     return labels[r.reason] ? (
                         <span>

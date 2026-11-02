@@ -24,6 +24,20 @@
 
 本次保持 Laravel 启动骨架、Provider 注册、HTTP/Console Kernel、安装 SQL、迁移和 `update.sh` 不变。部署使用正常 Composer 自动加载刷新、缓存清理与 Horizon/长驻进程重启流程；已排队邮件仍以原 `App\Jobs\SendEmailJob` 消费。生产环境不需要 Python。
 
+PHP 依赖按实际运行职责划分：`linfo/linfo` 已移除；`laravel/tinker` 仅在 `require-dev`，生产 `composer install --no-dev` 不提供 `artisan tinker`。Horizon 与 Carbon 的包自动发现仍需生效，不能把它们或有实际业务调用的 JWT、YAML、MessagePack、AWS、GeoIP、HTTP 与密码学库当作未使用依赖删除。Composer 的 `post-autoload-dump` 会运行包发现；更换安装配置后应重建自动加载与发现清单，避免沿用开发依赖的缓存。
+
+依赖更新保留既有主版本和 PHP 8.4 平台要求，以提交的 `composer.lock` 安装；不在生产服务器直接解析最新依赖。旧安全例外 `PKSA-y2cr-5h3j-g3ys` 已移除，最终安全审计须使用对应锁文件重新执行，不能只以配置检查代替审计。
+
+本轮后端直接依赖锁定为 Laravel 13.39.0、Horizon 5.50.1、AWS SDK 3.402.5、Guzzle 7.16.1、Carbon 3.15.1、Stripe PHP 14.10.1、YAML 6.4.49，以及开发用 PHPUnit 12.5.42、Ignition 2.12.1；Mime 8.1.10 安全修复保留。移除 Linfo，Tinker 3.0.2 及其专属依赖移到开发安装。`php-curl-class` 的 Telegram/支付调用和 `sodium_compat` 的 Reality 密钥及兼容函数仍在，移除它们需要先改写对应功能并验证平台扩展。
+
+前端锁定 React/React DOM 19.3.1、i18next 26.7.1、react-i18next 17.1.11、Ace 1.45.2 与 Prettier 3.9.10，移除旧 `@types/markdown-it` 及其专属类型依赖；Markdown 编辑器的 Nano ID 5.1.16 安全覆盖保持不变。Vite 6、TypeScript 5、Stripe PHP 14/Stripe.js 9 等既有主版本继续保留，跨主版本迁移另行设计和验证。
+
+本轮清单与锁文件已应用；运行验证使用独立的开发/生产 vendor 与前端安装树。经验证的隔离 `public/console` 产物配套纳入发布提交，供不执行 Node 构建的 `update.sh` 部署，不能只提交源码而继续发布旧 UI。资源通过 alternate work-tree 暂存到 Git index，原共享 vendor 和本地运行中的 `public/console` 文件保持原样；提交后本地资源与新 HEAD 的差异是有意保留的运行版本，不能用 reset/checkout 自动清掉。可销毁后端环境已清理，验证日志和隔离产物保留在忽略目录；实际站点升级仍按既有部署流程执行。
+
+自动验证配置位于 [quality.yml](../.github/workflows/quality.yml)，依赖维护配置位于 [dependabot.yml](../.github/dependabot.yml)。推送到 `master`、`main`、`codex/payment-icon-picker` 或面向这些分支的 PR 会运行检查；依赖审计、V10 契约、前端及后端沿用已有入口。Actions 固定完整提交 SHA，工作流只有仓库内容读取权限，不自动部署、合并或更改仓库设置。
+
+当前仓库默认分支为 `master`；本次只推送 `codex/payment-icon-picker`，因此推送/PR 检查可先运行，定时审计与 Dependabot 配置须合入默认分支后才生效。GitHub 手动运行入口也依赖默认分支已有工作流；以 [GitHub 事件规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows) 和实际 Actions 记录为准，不把本地通过记录当作远端 CI 已完成。
+
 验证包括发布契约一致性、真实路由清单、邮件模拟投递和旧任务载荷、全新安装、旧表迁移与升级脚本；前端运行全量 Vitest、类型检查及构建。验证结果记录于 [测试组织](test-organization.md) 和 [前端验证](frontend-validation.md)。
 
 

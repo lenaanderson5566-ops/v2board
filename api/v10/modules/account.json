@@ -1556,7 +1556,7 @@
           "clientName": { "type": "string", "nullable": true, "maxLength": 80, "description": "Recognized product name from the server allowlist." },
           "clientVersion": { "type": "string", "nullable": true, "maxLength": 32 },
           "status": { "type": "string", "enum": ["success", "failed", "unknown"], "description": "Success means the configuration request succeeded; it does not confirm import or connection." },
-          "reason": { "type": "string", "nullable": true, "enum": ["banned", "no_plan", "expired", "user_unavailable", "client_disabled", "client_version_too_low", "client_ua_not_allowed", "client_format_not_allowed", null] },
+          "reason": { "type": "string", "nullable": true, "enum": ["banned", "no_plan", "expired", "user_unavailable", "client_disabled", "client_version_too_low", "client_ua_not_allowed", "client_format_not_allowed", "traffic_exhausted", "credits_expired", "credits_exhausted", "no_available_nodes", "subscription_changed", null] },
           "ip": { "type": "string", "nullable": true, "maxLength": 64, "description": "IP address masked using the same policy as account sessions." },
           "location": { "type": "string", "nullable": true, "maxLength": 160, "description": "Sanitized historical region labels, not a new IP lookup or precise location." }
         },

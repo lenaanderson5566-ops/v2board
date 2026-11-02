@@ -52,16 +52,8 @@ class AuthActions
             }
         }
         $email = $request->input('email');
-        $cacheKeyEmail = is_string($email) ? strtolower(trim($email)) : '';
         if ((int)config('v2board.email_verify', 0)) {
-            $inputCode = $request->input('email_code');
-            if (!is_string($inputCode) || !preg_match('/^\d{6}$/', $inputCode)) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Incorrect email verification code'));
-            }
-            $cachedCode = Cache::get(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
-            if ($cachedCode === null || $cachedCode === '' || !hash_equals((string)$cachedCode, $inputCode)) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Incorrect email verification code'));
-            }
+            \App\Services\RegistrationEmailVerification::verify($email, $request->input('email_code'), $request->is('api/v10/*'));
         }
         $password = $request->input('password');
         $exist = User::where('email', $email)->first();
@@ -97,7 +89,7 @@ class AuthActions
             });
         } elseif (!$user->save()) abort(request()->is('api/v10/*') ? 409 : 500, __('Register failed'));
         if ((int)config('v2board.email_verify', 0)) {
-            Cache::forget(CacheKey::get('EMAIL_VERIFY_CODE', $cacheKeyEmail));
+            \App\Services\RegistrationEmailVerification::consume($email);
         }
 
         $user->last_login_at = time();

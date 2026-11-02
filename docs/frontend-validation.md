@@ -2,6 +2,18 @@
 
 本文维护当前验证方式和人工验收清单。旧日期章节、逐轮测试计数、过时界面方案及发布记录通过 Git 查阅；历史通过结果不代表当前版本已验证。功能行为分别以对应文档和当前代码为准。
 
+依赖更新在独立前端副本通过官方 registry 执行 `npm ci`，使用本轮锁文件完成全量 Vitest：115 个文件、155 个测试套件、1732 项测试通过，失败、跳过和 todo 均为 0。完整构建包含 TypeScript `--noEmit`、Vite 与前后台资源拆分，退出码为 0；全依赖及生产依赖 npm audit 均为 0。
+
+首轮 Vitest 在测试收集阶段因 Windows 沙箱临时目录的缓存文件 rename 报 EPERM，中断时没有执行测试。随后仅将当前进程的 TEMP/TMP 指向忽略目录，沿用原源码、断言和超时配置完整重跑通过；首轮错误 JSON 与重跑结果均保留。
+
+构建只写 `storage/app/test-organization/dependency-upgrade/frontend-tests` 的隔离输出。清单 379 项、651 处引用及 381 个唯一资产完整，缺失为 0；用户/后台可达文件分别为 344/94 个，拆分复制逐字节一致，用户图不含后台源码。111 个 JavaScript 文件及 JSON worker 通过 ASCII 检查，worker 可达，十四语言完整；实际 `public/console` 的 385 个文件散列保持不变。结果见该目录的 `test-audit-summary.json`、`artifact-verification.json` 和 `applied-files.json`。本轮未进行浏览器视觉验收、真实 Stripe 支付或代理内核验证。
+
+发布提交同时包含上述隔离构建的 `public/console`；当前运行目录没有被这些产物覆盖。通过 alternate work-tree 仅暂存发布资源后，本地旧资源会与发布 HEAD 不同，这是保留运行版本的预期状态，不能把它当作待清理文件自动还原。`update.sh` 使用已提交静态资源，不在生产服务器运行 Node 构建；发布核对应包含新资源及其 `.vite` 清单。
+
+购买转化报表复用 `OperationsAnalytics.test.tsx` 覆盖有价周期首购、付款来源、独立订单类型、人民币/美元分表、缺失报表和未解析金额，以及净收入不可计算的展示；沿用现有 Panel、指标卡和表格布局。服务端统计回归在 `admin-payment-diagnostics` 的可销毁数据库中验证，生产构建保存在隔离验证目录，不自动替换正在运行的前端。此轮不包含浏览器逐屏视觉验收或真实支付测试。
+
+配置提示原因与本轮报表的前端验证在独立副本完成：`ConfigurationUpdates`、`OperationsAnalytics`、`localization`、`v10-api`、`AccountControls`、`QuickStart` 六个既有文件共 150 项通过，失败和跳过均为 0；TypeScript `--noEmit` 与 Vite 构建退出码均为 0。构建只写 `storage/app/test-organization/notice-only-configs/public/console`，未运行会替换实际前端的 `npm run build`；清单 379 项、651 处资产引用检查，缺失数为 0，实际 `public/console` 的 Git 状态无变化。测试 JSON、类型/构建日志和汇总保存在该忽略目录下的 `frontend-validation/frontend-*.json|log`。这些检查验证原因映射、多语言、既有入口与生成资源完整性，不代表完成浏览器视觉验收、第三方客户端导入或原生代理内核验证。
+
 新注册首购改进的自动验证复用 `UserAuth`、`AccountEntry`、`UsageBilling`、`PendingOrderNotice`、`BillingFlow`、`PaymentCheckout`、App 与客户端授权测试，并执行多语言覆盖、用户端构建隔离、TypeScript 和生产打包。注册跳转区分有效试用和明确返回路径，待支付订单复用既有继续/取消控件；使用真实组件和合成数据，不操作生产账号或真实付款。
 
 本地静态合成预览已准备新账户、待支付、开通中、查询失败重试及空账单场景，并提供 390/320px iframe。此轮浏览器视觉验收未完成：现有窗口读取被自动审批拒绝；用户批准独立 Edge 本地预览后，Computer Use 仍因无法可靠识别当前 URL 而停止。不得将预览准备或组件测试记作桌面、窄屏及 RTL 的实际视觉通过记录；后续应补验相应场景。验证输出保存在忽略目录 `storage/app/test-organization/new-user-conversion`。
@@ -9,6 +21,8 @@
 ## 自动检查
 
 在可销毁副本中执行；数据库、缓存和外部服务隔离要求见 [测试组织](test-organization.md)。
+
+CI 的前端 job 使用 Node 24 与锁文件执行 `npm ci --include=dev --ignore-scripts`，运行完整 Vitest，再执行包含 TypeScript、Vite 与资源拆分的 `npm run build`。当次 `public/console`（包括 `.vite` 清单）作为短期 artifact 交给后端验证，不自动发布到站点；后端从该产物运行页面/资源检查，避免检查旧构建。此流程不包含浏览器逐屏视觉验收、真实 Stripe 付款或客户端内核测试，远端是否通过以对应 Actions run 为准。
 
 ```sh
 php tests/run.php --validate

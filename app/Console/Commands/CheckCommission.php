@@ -10,6 +10,34 @@ use Illuminate\Support\Facades\DB;
 
 class CheckCommission extends Command
 {
+    private const INTERNAL_TRANSFER_CALLBACK = '佣金划转 Commission transfer';
+
+    private function isInternalTransfer(Order $order): bool
+    {
+        return $order->callback_no === self::INTERNAL_TRANSFER_CALLBACK
+            && (int)$order->type === 9 && $order->period === 'deposit'
+            && (int)$order->total_amount === 0
+            && ($order->paid_at === null || (int)$order->paid_at === 0);
+    }
+
+    private function internalTransfers()
+    {
+        return Order::where('callback_no', self::INTERNAL_TRANSFER_CALLBACK)->where('type', 9)
+            ->where('period', 'deposit')->where('total_amount', 0)
+            ->where(function ($query) { $query->whereNull('paid_at')->orWhere('paid_at', 0); });
+    }
+
+    /** Quarantine unpaid legacy rewards while retaining their audit evidence. */
+    private function rejectInternalTransfer(Order $order): bool
+    {
+        if (!$this->isInternalTransfer($order)) return false;
+        // A direct caller can hold an old model. The database predicate protects
+        // already-issued rows even when that model still says pending/approved.
+        $this->internalTransfers()->whereKey($order->id)->whereIn('commission_status', [0, 1])
+            ->update(['commission_status'=>3]);
+        $order->refresh();
+        return true;
+    }
     /**
      * The name and signature of the console command.
      *
@@ -47,6 +75,10 @@ class CheckCommission extends Command
 
     public function autoCheck()
     {
+        // Old commission transfers could carry a referral reward despite having
+        // no sale or payment. Pending/approved rows must never become payable.
+        $this->internalTransfers()->whereIn('commission_status', [0, 1])
+            ->update(['commission_status'=>3]);
         if ((int)config('v2board.commission_auto_check_enable', 1)) {
             Order::where('commission_status', 0)
                 ->where('invite_user_id', '!=', NULL)
@@ -68,6 +100,7 @@ class CheckCommission extends Command
                 DB::transaction(function () use ($order) {
                     $locked = Order::whereKey($order->id)->lockForUpdate()->first();
                     if (!$locked || (int)$locked->commission_status !== 1) return;
+                    if ($this->rejectInternalTransfer($locked)) return;
                     if (!$this->payHandle($locked->invite_user_id, $locked)) {
                         throw new \RuntimeException('Commission settlement failed');
                     }
@@ -85,6 +118,7 @@ class CheckCommission extends Command
 
     public function payHandle($inviteUserId, Order $order)
     {
+        if ($this->rejectInternalTransfer($order)) return true;
         $level = 3;
         if ((int)config('v2board.commission_distribution_enable', 0)) {
             $commissionShareLevels = [

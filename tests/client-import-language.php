@@ -2,7 +2,7 @@
 $app = require __DIR__.'/support/bootstrap.php';
 set_exception_handler(function(Throwable $e){fwrite(STDERR,(string)$e);exit(1);});
 $controller=new App\Services\Actions\Client\ClientActions;
-$method=new ReflectionMethod($controller,'buildUnavailableServers'); $method->setAccessible(true);
+$method=new ReflectionMethod($controller,'subscriptionCopy'); $method->setAccessible(true);
 $copy=require resource_path('client/copy.php');
 $checks=0;
 $serverCatalogs=[];
@@ -57,9 +57,10 @@ foreach (['client/copy.php', 'lang/telegram.php', 'lang/mfa.php'] as $resource) 
 }
 foreach ($copy as $locale=>$words) {
     app()->setLocale($locale);
-    foreach (['no_plan','expired','user_unavailable','banned','client_disabled','client_version_too_low'] as $reason) {
-        $nodes=$method->invoke($controller,$reason);
-        if (count($nodes)!==1 || $nodes[0]['name']!=='⚠ '.$words[$reason]) throw new RuntimeException('Wrong client language '.$locale.' '.$reason);
+    $selected=$method->invoke($controller);
+    foreach (['no_plan','expired','user_unavailable','banned','client_disabled','client_version_too_low',
+        'traffic_exhausted','credits_expired','credits_exhausted','no_available_nodes','subscription_changed'] as $reason) {
+        if (($selected[$reason] ?? null) !== $words[$reason]) throw new RuntimeException('Wrong client language '.$locale.' '.$reason);
         $checks++;
     }
 }

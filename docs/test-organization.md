@@ -2,6 +2,32 @@
 
 本文维护当前测试入口、隔离要求和验证边界。逐轮测试数量、旧版发布结果和临时日志路径不再累积为操作说明；已提交的历史记录可通过 Git 查阅。当前是否通过必须以本次执行结果为准。
 
+[GitHub Actions 工作流](../.github/workflows/quality.yml) 在指定分支的 push/PR 上执行锁文件审计、V10 生成契约检查、前端全量测试/构建，以及 32 个既有后端关键模块。前端当次产物连同隐藏的 `.vite` 清单传给后端资源验证；后端使用临时 MySQL/Redis、随机应用密钥和既有测试隔离器，随后对同一安装树执行真实 `--no-dev` 安装，仅运行不依赖开发包的 `framework-upgrade`、`console-verify` 两模块。CI 不连接生产数据库或发送真实邮件/付款请求，也不补装 Mockery 来伪装生产配置通过。
+
+审计 job 不安装项目依赖，依次运行 Composer 和 npm 的全依赖/生产依赖四个审计步骤；后续步骤在先前失败后仍收集结果，任一步失败都会使 job 失败。每周三 UTC 03:23 的 schedule 仅运行此审计；完整契约和应用回归保留在 push/PR 及可用的手动触发中。当前默认分支 `master` 尚需收录工作流和 Dependabot 配置，本次只推送 `codex/payment-icon-picker`，不能宣称每周任务已经启用；push/PR 可先验证，远端结论以 Actions run 为准。[默认分支规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+
+[Dependabot](../.github/dependabot.yml) 分别维护根 Composer、`/frontend` npm 及 Actions，每周检查；Composer/npm 常规更新仅允许同主版本的 minor/patch 并分组，安全更新另组处理，不受常规版本级别限制。各生态常规待处理 PR 上限为 3；所有 PR 均需人工审阅和合并，不更改默认分支、仓库安全设置或自动合并策略。[配置选项](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference#allow)
+
+发布资源取自已验证的隔离构建，通过 alternate work-tree 仅纳入 Git index；配套提交完整 `public/console` 与 `.vite` 清单，使生产升级可直接使用新 UI。原本地运行资源不覆盖，提交后的工作区资源差异有意保留。源码、清单锁及发布产物应一起核对，排除本地 Docker/启动/种子文件、`.env`、实例配置、storage 运行产物与 pycache。
+
+依赖精简与同主版本更新复用 `framework-upgrade`：分别在独立的开发及 `--no-dev` 安装树中核对真实已安装的直接依赖版本与锁文件、实际加载的 Laravel 版本、Linfo 不再可自动加载，以及 Horizon/Carbon 的包发现。Tinker 在开发安装保留命令，在生产安装中包、类、发现清单和命令均须不存在；原邮件传输、可信代理、调度、旧任务与迁移断言继续执行。`console-smoke`、`console-verify`、健康检查及既有业务模块验证页面和运行功能，`update-script` 的模拟 Composer 场景只验证升级控制流，不能替代真实安装。
+
+本轮开发安装的 32 个后端模块全部通过，包含升级脚本 28 个隔离场景及 PHPUnit 单元测试；新增健康检查后的最终 `framework-upgrade` 另行复验通过，共 143 项。生产副本实际执行带包发现脚本的 `composer install --no-dev`，从包含 Tinker 的开发缓存升级后确认包、类、Provider 和命令均已移除；生产可运行的两个模块均通过，分别为 `framework-upgrade` 137 项与 `console-verify` 4 项。额外尝试的生产 `console-smoke` 因测试夹具调用开发依赖 Mockery 而停止，保留失败记录且不计作通过；该模块已在开发安装中完整通过，没有向生产安装补回 Mockery。
+
+发布前的首购成熟批次 DST 修正另在原 `admin-payment-diagnostics` 模块定向复验，115 项通过，两个 PHP 文件语法检查通过；环境为 PHP 8.4.27、MySQL 8.4、Redis 7.4。新增 23 项断言覆盖七个固定时区/时刻、实际查询的起止边界及 168 小时成熟条件、纽约跨 DST 的付款秒边界；它是上述 32 模块批次之后的定向结果，不表述为全部模块在最后源码上再次执行。
+
+同一最终锁的生产及全依赖 Composer audit 均无安全公告和废弃包，开发、生产实际安装后的审计也通过；这只是本次工具结果，移除旧 `audit.ignore` 的静态断言不等于安全公告审计。后端源码、真实加载路径、包版本、安装/审计/测试日志和 JSON 位于 `storage/app/test-organization/dependency-upgrade/composer-9e63c4c72b`。后端临时数据库、测试缓存与运行副本已清理，原运行服务和共享 vendor 保持原状态。
+
+前端在独立安装树中全量验证 115 文件、155 套件、1732 项测试，失败/跳过/todo 均为 0；官方 npm 全依赖/生产依赖审计均为 0，TypeScript、Vite 和前后台打包退出码为 0。首轮只因沙箱 TEMP 缓存 rename EPERM 未执行测试，改用进程级 TEMP/TMP 后沿用原断言完整重跑；两轮结果均保留。清单 379 项、651 处引用、381 个唯一资产无缺失，拆分/worker/十四语言检查通过，实际 `public/console` 的 385 个文件散列未变。证据位于 `storage/app/test-organization/dependency-upgrade/frontend-tests`，未进行浏览器或真实支付/内核验收。
+
+面板安全复核复用 `auth-security`、`mfa-api`、`registration-policy`、`commission-transfer-concurrency` 和 `product-mail`：先在旧源隔离副本分别证明恢复后的密码被旧快照覆盖、重绑 Passkey 错登旧 owner、注册错码无限重试及内部转佣额外返佣，再对修后源码验证正常登录、MFA、改密与撤销、合法注册、正常钱包/折抵返佣和并发金额守恒。邮件依赖以独立安装的 Mime 8.1.10 覆盖隔离测试加载路径，记录反射来源与旧版本拒绝失败/新版本拒绝成功，不修改共享 vendor，也不发送邮件。按各模块最新结果合并共 20 个后端模块通过，保留 5 个未受影响的基线、14 个修后批次及 1 个历史返佣证据保留调整后的定向复验来源，不将其描述为全部在同一快照重跑。原始结果、源码摘要和依赖差异保存在 `storage/app/test-organization/security-review/backend-a7ae5c7df0`，不新增平行测试脚本。
+
+首购与外部订单确认金额复用 `tests/admin-payment-diagnostics.php` 和 `OperationsAnalytics.test.tsx`：成熟注册批次按终身首次有价周期订单去重，试用后的续费/换购可成为首购；零价、权益折抵、充值、额度包、重置分别覆盖。外部确认金额按固定快照币种统计，覆盖余额消费不重复记账、人工/缺失快照、重复回调及未知退款/净额不伪造。前端保留原业务漏斗并测试新增报表缺失、分币种和不完整金额说明。
+
+到期配置与节点提示边界复用 `credit-expiry`、`credit-access`、`subscription-client-policy`、`api-v10`、`client-import-language` 及现有订阅/原生客户端模块：在隔离副本放入含静态代理/远程提供器的模板夹具，覆盖所有公开订阅格式的 HTTP 200 安全提示、十四语言原因、固定文档地址与假凭据、无账号 UUID/token 或模板内容，以及原生 403/409 错误。继续覆盖周期和批次恰好到期、清理未运行、已耗尽、缓存账号、渲染中变更、公开/自定义/应用入口、旧 ETag 和展示字段白名单；无效或轮换凭据、删除账号、未知 UA、访问拦截及限流保持硬拒绝。过期套餐仍有有效独立额度的合法基础组访问必须保留，账户有效期与可下载配置分开检查；不使用生产配置或凭据。复用 YAML/JSON/URI/节点列表解析和安全断言，不以这些检查冒充原生客户端或代理内核验收。本次按各模块最新结果合并，16 个后端模块全部通过；保留首轮及定向复验记录，结果位于 `storage/app/test-organization/notice-only-configs`。模板无关的空列表同时覆盖协议过滤、Shadowrocket 仅有 STATUS 的输出，以及 QX、Shadowrocket、SIP008 正常节点不误报。
+
+本轮前端相关验证复用 `ConfigurationUpdates`、`OperationsAnalytics`、`localization`、`v10-api`、`AccountControls`、`QuickStart`，六文件 150 项通过，无失败或跳过；类型检查及只写忽略目录的 Vite 构建退出码为 0，379 项构建清单的 651 处资产引用无缺失。实际 `public/console` 无 Git 变化，日志及 JSON 结果保存在 `storage/app/test-organization/notice-only-configs/frontend-validation`；后端最终结果独立记录，不将前端解析断言计作浏览器或原生内核验收。
+
 新注册首购路径复用前端 `UserAuth`、`AccountEntry`、`UsageBilling` 与现有购买测试：区分刚注册但无服务、有效试用、普通登录及指定付款/客户端授权返回；总览覆盖待支付、开通中、非套餐订单、取消确认、加载/失败重试及状态恢复；账单空记录入口只在新账户且未筛选、已成功加载时显示。不新增转化工作台或埋点，浏览器验收使用合成 V10 数据及最终构建资源。
 
 邮箱身份与密码找回复用 `tests/auth-security.php`，通过真实 V10 路由和假邮件队列验证重音排序规则碰撞、IDNA 等价与不同域名、验证码用途隔离、账号状态绑定、过期/重放拒绝和正常找回后的会话撤销。`tests/api-v10.php` 从找回接口签发的邮件夹具读取验证码，不再注入共享注册验证码作为重置凭据；`tests/session-concurrency.php` 使用两个实际进程验证同一码只能成功重置一次；`tests/product-mail.php` 验证找回邮件在模拟传输中的有效投递和过期拒绝。测试只在隔离项目、独立 MySQL 与 Redis 中运行，不投递真实邮件。

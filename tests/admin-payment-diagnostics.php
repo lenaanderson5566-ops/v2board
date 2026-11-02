@@ -195,5 +195,149 @@ try {
     $analytics->prune();
     $assert(DB::table('v2_analytics_measurement')->count()===0,'Existing privacy retention removes measurement buckets with sessions');
     $analytics->save(['enabled'=>false,'retentionDays'=>7]);
+    // Purchase identity is lifetime history, not Order.type or browser events.
+    // Keep this regression in the existing disposable analytics fixture.
+    DB::table('v2_order')->delete(); DB::table('v2_user')->delete();
+    $registrationCohort=new ReflectionMethod($analytics,'registrationCohort');
+    $purchaseWindow=new ReflectionMethod($analytics,'firstPurchase');
+    $cohortCases=[
+        ['America/New_York','2026-03-09 00:30:00','2026-03-01T00:00:00-05:00'],
+        ['America/New_York','2026-03-09 01:00:00','2026-03-02T00:00:00-05:00'],
+        ['America/New_York','2026-11-02 00:30:00','2026-10-26T00:00:00-04:00'],
+        ['America/New_York','2026-11-02 23:00:00','2026-10-27T00:00:00-04:00'],
+        ['UTC','2026-03-09 00:30:00','2026-03-02T00:00:00+00:00'],
+        ['Asia/Shanghai','2026-03-09 00:30:00','2026-03-02T00:00:00+08:00'],
+        ['Asia/Kathmandu','2026-03-09 00:30:00','2026-03-02T00:00:00+05:45'],
+    ];
+    foreach($cohortCases as $case=>[$zoneName,$localNow,$expectedEnd]) {
+        DB::table('v2_order')->delete(); DB::table('v2_user')->delete();
+        $fixedZone=new DateTimeZone($zoneName);$fixedNow=(new DateTimeImmutable($localNow,$fixedZone))->getTimestamp();
+        [$fixedCohort,$fixedStart,$fixedEnd]=$registrationCohort->invoke($analytics,7,$fixedNow,$fixedZone);
+        $endDate=(new DateTimeImmutable('@'.$fixedEnd))->setTimezone($fixedZone);
+        $assert($endDate->format('c')===$expectedEnd && $fixedStart===$endDate->modify('-7 days')->getTimestamp(),
+            'Registration cohorts retain complete local dates after an elapsed 168-hour cutoff: '.$zoneName.' '.$localNow);
+        $assert($fixedEnd<=$fixedNow-604800 && $endDate->modify('+1 day')->getTimestamp()>$fixedNow-604800,
+            'The cohort ends at the latest whole registration date whose entire observation window is mature');
+        $accounts=[];
+        foreach(['before_start'=>$fixedStart-1,'at_start'=>$fixedStart,'last_complete'=>$fixedEnd-1,'at_end'=>$fixedEnd,'immature'=>$fixedNow-604800+1] as $label=>$created) {
+            $accounts[$label]=App\Models\User::create(['email'=>'cohort-boundary-'.$case.'-'.$label.'@example.test','password'=>'fixture',
+                'token'=>App\Utils\Helper::guid(),'uuid'=>App\Utils\Helper::guid(true),'is_admin'=>0,'created_at'=>$created,'updated_at'=>$created]);
+        }
+        $selected=(clone $fixedCohort)->orderBy('u.created_at')->pluck('u.id')->map(fn($id)=>(int)$id)->all();
+        $assert($selected===[(int)$accounts['at_start']->id,(int)$accounts['last_complete']->id]
+            && $fixedNow-(int)$accounts['last_complete']->getRawOriginal('created_at')>=604800,
+            'The actual cohort query includes its start, excludes its end and never selects an incomplete observation window');
+        if($case===1) $assert($fixedNow-$fixedEnd===604800 && !in_array((int)$accounts['at_end']->id,$selected,true),
+            'An exactly mature midnight starts the next excluded calendar date');
+        if($case===1) {
+            $makeOrder($accounts['at_start'],(int)$accounts['at_start']->getRawOriginal('created_at')+604799);
+            $makeOrder($accounts['last_complete'],(int)$accounts['last_complete']->getRawOriginal('created_at')+604800);
+            $fixedPurchases=$purchaseWindow->invoke($analytics,$fixedCohort,2,$fixedStart,$fixedEnd);
+            $assert($fixedPurchases['registered']===2 && $fixedPurchases['paidRecurringAccounts']===1,
+                'First purchase includes payment at 604799 elapsed seconds and excludes the exact 604800-second boundary across DST');
+        }
+    }
+    DB::table('v2_order')->delete(); DB::table('v2_user')->delete();
+    $purchaseToday=new DateTimeImmutable('today',new DateTimeZone(App\Services\TimeZones::system()));
+    $purchaseUser=function(string $name,int $age=10,bool $admin=false) use($purchaseToday) {
+        $created=$purchaseToday->modify('-'.$age.' days')->getTimestamp()+3600;
+        return App\Models\User::create(['email'=>'purchase-'.$name.'@example.test','password'=>'fixture','token'=>App\Utils\Helper::guid(),'uuid'=>App\Utils\Helper::guid(true),'is_admin'=>$admin,'created_at'=>$created,'updated_at'=>$created]);
+    };
+    $purchaseOrder=function($account,int $amount,array $overrides=[]) {
+        $at=(int)$account->getRawOriginal('created_at')+100;
+        return Order::create(array_replace(['user_id'=>$account->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>$amount,'balance_amount'=>0,'status'=>3,'paid_at'=>$at,'created_at'=>$at-5,'updated_at'=>$at],$overrides));
+    };
+    $external=$purchaseUser('external');
+    $purchaseOrder($external,1000,['type'=>2,'payment_id'=>$payment->id,'callback_no'=>'paid-first']);
+    $purchaseOrder($external,2000,['payment_id'=>$payment->id,'callback_no'=>'paid-again','paid_at'=>(int)$external->getRawOriginal('created_at')+200]);
+    $mixed=$purchaseUser('mixed');
+    $purchaseOrder($mixed,0,['paid_at'=>(int)$mixed->getRawOriginal('created_at')+50]);
+    $purchaseOrder($mixed,400,['type'=>3,'balance_amount'=>600,'payment_id'=>$payment->id,'callback_no'=>'paid-mixed']);
+    $wallet=$purchaseUser('wallet');
+    $purchaseOrder($wallet,2000,['plan_id'=>0,'period'=>'deposit','type'=>9,'paid_at'=>(int)$wallet->getRawOriginal('created_at')+20]);
+    $purchaseOrder($wallet,0,['balance_amount'=>1000]);
+    $manual=$purchaseUser('manual'); $purchaseOrder($manual,1000,['callback_no'=>'manual_operation','payment_id'=>$payment->id]);
+    $unknown=$purchaseUser('unknown'); $purchaseOrder($unknown,1000);
+    $free=$purchaseUser('free'); $purchaseOrder($free,0);
+    $exchange=$purchaseUser('exchange'); $purchaseOrder($exchange,0,['surplus_amount'=>1500,'refund_amount'=>500]);
+    $credits=$purchaseUser('credits'); $purchaseOrder($credits,400,['period'=>'onetime_price','type'=>5,'credit_bytes'=>1073741824]);
+    $reset=$purchaseUser('reset'); $purchaseOrder($reset,300,['period'=>'reset_price','type'=>4]);
+    $legacy=$purchaseUser('legacy'); $purchaseOrder($legacy,600,['period'=>'onetime_price']);
+    $late=$purchaseUser('late'); $purchaseOrder($late,1000,['paid_at'=>(int)$late->getRawOriginal('created_at')+604800]);
+    $cancelled=$purchaseUser('cancelled'); $purchaseOrder($cancelled,1000,['status'=>2]);
+    $prior=$purchaseUser('prior');
+    $purchaseOrder($prior,1000,['paid_at'=>(int)$prior->getRawOriginal('created_at')-100]);
+    $purchaseOrder($prior,1000);
+    $tied=$purchaseUser('tied');
+    $purchaseOrder($tied,100,['balance_amount'=>900,'payment_id'=>$payment->id,'callback_no'=>'tied-first']);
+    $purchaseOrder($tied,0,['balance_amount'=>1000]);
+    $placeholder=$purchaseUser('placeholder'); $purchaseOrder($placeholder,0,['balance_amount'=>1000,'credit_bytes'=>0]);
+    $negative=$purchaseUser('negative');
+    try { $purchaseOrder($negative,1000,['credit_bytes'=>-1]); throw new RuntimeException('Unsigned credit-byte metadata accepted a negative entitlement'); }
+    catch (Illuminate\Database\QueryException $error) { $assert(true,'The persisted entitlement schema rejects negative credit bytes'); }
+    $immature=$purchaseUser('immature',2); $purchaseOrder($immature,1000);
+    $admin=$purchaseUser('admin',10,true); $purchaseOrder($admin,1000);
+    $purchaseReport=$analytics->report(7,'mobile'); $first=$purchaseReport['firstPurchase'];
+    $assert($first['registered']===16 && $first['paidRecurringAccounts']===7 && $first['paidRecurringRate']===0.4375,'First purchase uses mature registrations and the earliest lifetime valued recurring purchase');
+    $assert($first['funding']===['externalOnly'=>1,'mixed'=>2,'walletOnly'=>2,'manual'=>1,'unclassified'=>1],'First-purchase funding includes zero credit-byte placeholders but excludes invalid negative entitlements');
+    $assert($first['zeroValueRecurringAccounts']===2 && $first['creditOnlyRecurringAccounts']===1,'Free grants and entitlement-only exchanges never inflate valued first purchases');
+    $assert($first['otherPurchases']===['depositAccounts'=>1,'independentCreditAccounts'=>1,'resetAccounts'=>1,'legacyOneTimeAccounts'=>1],'Deposits, independent credits, resets and legacy one-time products remain separate');
+    $assert($first===$analytics->report(7,'desktop')['firstPurchase'],'Business purchases do not depend on consent, collection enablement or browser device');
+    $assert(isset($purchaseReport['cohort']['ordered'],$purchaseReport['cohort']['paid'],$purchaseReport['cohort']['completed']) && !str_contains(json_encode($first),'@example.test'),'Legacy cohort remains compatible and purchase report exposes no identity');
+
+    // External receipts are counted once at paid_at in their captured payment
+    // currency. Spending prepaid wallet balance creates no second cash receipt.
+    DB::table('v2_order')->delete(); DB::table('v2_user')->delete();
+    $cashAccount=$purchaseUser('cash',1); $receiptAt=time()-60;
+    $snapshot=fn(int $amount,string $currency='CNY')=>['provider'=>'PaytaroQR','uuid'=>$payment->uuid,'payment_amount'=>$amount,'payment_currency'=>$currency,'handling_amount'=>10];
+    $receipt=function(int $amount,int $captured,array $extra=[]) use($purchaseOrder,$cashAccount,$payment,$receiptAt,$snapshot) {
+        return $purchaseOrder($cashAccount,$amount,array_replace(['paid_at'=>$receiptAt,'created_at'=>$receiptAt-30,'payment_id'=>$payment->id,'callback_no'=>'callback-'.bin2hex(random_bytes(5)),'payment_snapshot'=>$snapshot($captured)],$extra));
+    };
+    $receipt(2000,2040,['plan_id'=>0,'period'=>'deposit','type'=>9]);
+    $receipt(0,0,['balance_amount'=>1500,'payment_id'=>null,'callback_no'=>null,'payment_snapshot'=>null]);
+    $receipt(0,0,['payment_id'=>null,'callback_no'=>null,'payment_snapshot'=>null]);
+    $receipt(1000,1010);
+    $receipt(400,405,['balance_amount'=>600]);
+    $receipt(1000,7250,['currency'=>'USD']);
+    $receipt(400,400,['period'=>'onetime_price','credit_bytes'=>1073741824,'type'=>5]);
+    $receipt(300,303,['period'=>'reset_price','type'=>4]);
+    $receipt(600,600,['period'=>'onetime_price']);
+    $receipt(700,700,['period'=>'custom','currency'=>'USD','payment_snapshot'=>$snapshot(700,'USD')]);
+    $receipt(500,505,['currency'=>'USD','payment_snapshot'=>$snapshot(505,'USD')]);
+    $receipt(500,500,['plan_id'=>0,'credit_bytes'=>1073741824]);
+    $receipt(700,700,['plan_id'=>0]);
+    $receipt(800,808,['credit_bytes'=>0]);
+    $receipt(900,909,['plan_id'=>-1]);
+    $receipt(2000,2000,['callback_no'=>'manual_operation']);
+    $receipt(500,500,['payment_snapshot'=>null]);
+    $receipt(500,500,['payment_snapshot'=>array_replace($snapshot(500),['payment_amount'=>'500'])]);
+    $receipt(500,500,['payment_snapshot'=>$snapshot(500)+['channels'=>[(string)$payment->id=>$snapshot(500)]]]);
+    $receipt(500,500,['payment_snapshot'=>$snapshot(500,'EUR')]);
+    $receipt(999,999,['status'=>2]); $receipt(999,999,['status'=>0]);
+    $receipt(999,999,['paid_at'=>time()+3600]);
+    foreach ([1,2,3] as $duplicate) DB::table('v2_payment_callback_event')->insert(['payment_id'=>$payment->id,'provider'=>'PaytaroQR','stage'=>'settlement','result'=>'handled','created_at'=>time()-10]);
+    $sourceCount=Order::count();
+    $receipts=$analytics->report(7,'all')['receipts'];
+    $cashRows=collect($receipts['byCurrency'])->keyBy('currency');
+    $assert($receipts['available'] && !$receipts['complete'] && $receipts['unresolvedExternalOrders']===4,'Legacy, malformed, unsettled and unsupported snapshots are explicitly unresolved');
+    $assert($cashRows['CNY']['grossAmount']===14925 && $cashRows['CNY']['orders']===11 && $cashRows['USD']['grossAmount']===1205 && $cashRows['USD']['orders']===2,'Receipt amounts use captured payment currencies without reconverting or mixing CNY and USD');
+    $cashKinds=collect($cashRows['CNY']['kinds'])->keyBy('kind');
+    $assert($cashKinds['deposit']['grossAmount']===2040 && $cashKinds['recurring']['grossAmount']===9473 && $cashKinds['independentCredits']['grossAmount']===900 && $cashKinds['reset']['grossAmount']===303 && $cashKinds['legacyOneTime']['grossAmount']===600,'Explicit product kinds retain deposits, zero-byte recurring placeholders and independent credits without double-counting wallet spending');
+    $assert($cashKinds['other']['grossAmount']===1609 && $cashKinds['other']['orders']===2,'Missing and invalid plan IDs never manufacture deposits or recurring purchases');
+    $assert($receipts['manualOrders']===1 && $receipts['walletOnlyOrders']===1 && $receipts['zeroExternalOrders']===1,'Manual confirmations, wallet-only purchases and free grants are not external callback cash');
+    foreach (['refundAmount','providerFeeAmount','netAmount','settlementAmount'] as $unknownField) $assert(array_key_exists($unknownField,$receipts) && $receipts[$unknownField]===null,'Unavailable accounting ledger never fabricates '.$unknownField);
+    $assert(Order::count()===$sourceCount && !str_contains(json_encode($receipts),$payment->uuid),'Receipt report is read-only and exposes no payment identifiers');
+    $assert($analytics->report(7,'all')['firstPurchase']['paidRecurringRate']===null,'No mature registration cohort has an unavailable conversion denominator');
+    $schemaRoot=Illuminate\Support\Facades\Schema::getFacadeRoot();
+    Illuminate\Support\Facades\Schema::partialMock()->shouldReceive('hasColumn')->with('v2_order','payment_snapshot')->andReturn(false);
+    try {
+        $method=new ReflectionMethod($analytics,'receipts');
+        $unavailable=$method->invoke($analytics,$receiptAt-3600,time());
+        $assert(!$unavailable['available'] && !$unavailable['complete'] && $unavailable['byCurrency']===[] && $unavailable['unresolvedExternalOrders']===17,'Missing immutable snapshot schema marks external receipt amounts unavailable');
+    } finally { Illuminate\Support\Facades\Schema::swap($schemaRoot); }
+    $noticeReasons=['traffic_exhausted','credits_expired','credits_exhausted','no_available_nodes','subscription_changed'];
+    foreach($noticeReasons as $reason)DB::table('v2_subscribe_log')->insert(['user_id'=>$cashAccount->id,'status'=>'failed','reason'=>$reason,'created_at'=>time()-10]);
+    $noticeCounts=array_column($service->report(7)['subscription']['reasons'],'count','reason');
+    foreach($noticeReasons as $reason)$assert(($noticeCounts[$reason]??0)===1,'Operational reports preserve a distinct safe notice reason: '.$reason);
     echo "PASS {$n} admin payment/version/operations/journey checks\n";
 } finally { DB::rollBack(); }

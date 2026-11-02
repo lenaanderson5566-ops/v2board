@@ -18,6 +18,21 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
+// CVE-2026-45070: parameter names must be validated before an email is serialized.
+// This exercises the actual installed MIME component without sending a message.
+foreach (['whitespace'=>'file name', 'header break'=>"filename\r\nX-Audit-Injected", 'separator'=>'filename:extra'] as $case=>$parameter) {
+    $rejected=false;
+    try {
+        $header=new \Symfony\Component\Mime\Header\ParameterizedHeader('Content-Disposition', 'attachment', [$parameter=>'audit.txt']);
+        $header->toString();
+    } catch (\InvalidArgumentException $exception) {
+        $rejected=true;
+    }
+    $assert($rejected, 'MIME parameter names must reject '.$case.' (CVE-2026-45070)');
+}
+$validHeader=new \Symfony\Component\Mime\Header\ParameterizedHeader('Content-Disposition', 'attachment', ['filename'=>'audit report.txt', 'x-note'=>'safe; value']);
+$serializedHeader=$validHeader->toString();
+$assert(str_contains($serializedHeader, 'Content-Disposition: attachment') && str_contains($serializedHeader, 'filename="audit report.txt"') && str_contains($serializedHeader, 'x-note="safe; value"'), 'Valid MIME parameter names and encoded values must remain supported');
 DB::beginTransaction();
 try {
     config(['v2board.app_name'=>'V2Board','v2board.app_url'=>'https://product.example', 'v2board.email_provider'=>'smtp', 'v2board.email_host'=>null,'v2board.email_public_url'=>'https://api.example.test','v2board.email_announcement_separate'=>0,'v2board.email_announcements_enabled'=>1,'v2board.email_password_encrypted'=>false]);

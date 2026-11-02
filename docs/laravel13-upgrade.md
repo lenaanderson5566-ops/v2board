@@ -1,13 +1,13 @@
 # Laravel 13 升级
 
-本分支从 Laravel 12 升级至 13.35.0。项目要求 PHP 8.4+、Composer 2.2+、MySQL 5.7+（本地验证使用 MySQL 8）；依赖锁定在提交的 composer.lock，生产部署使用 install，不在服务器直接 update。CLI、PHP-FPM、Horizon、调度器应使用同一 PHP 版本。保留现有 .env、APP_KEY、config/v2board.php、数据库、上传目录与 GeoIP 数据，不重新安装面板。
+本分支从 Laravel 12 升级至 13，并在同主版本内继续更新依赖；具体版本以提交的 composer.lock 为准。项目要求 PHP 8.4+、Composer 2.2+、MySQL 5.7+（本地验证使用 MySQL 8）；生产部署使用 install，不在服务器直接 update。CLI、PHP-FPM、Horizon、调度器应使用同一 PHP 版本。保留现有 .env、APP_KEY、config/v2board.php、数据库、上传目录与 GeoIP 数据，不重新安装面板。
 
 ## 上线步骤
 
 1. 在测试环境复制数据库和配置，备份生产数据库、代码、vendor、配置及上传文件。先确认 CLI 与 FPM 均满足 `composer check-platform-reqs --lock --no-dev`，PHP 扩展满足锁文件要求。
 2. 使用本分支的 update.sh，从网站目录外执行。先 `bash /private/update.sh --project /path/to/site --branch codex/payment-icon-picker --php /path/to/php --composer /path/to/composer.phar --check`。脚本默认读取目标提交的 composer.lock；有额外本地 Composer 包时，应在隔离环境生成并测试合并锁，再用 `--lock-file /private/tested-composer.lock`。不要关闭安全检查来在线解析依赖。
 3. 预检通过后执行相同命令去掉 `--check`。默认自动模式备份文件、维护停机、排空本网站队列、安装锁定依赖、执行批准的迁移、验证前端，确认后台进程稳定后恢复原本开放的站点；`--jobs-stopped` 或升级前已维护时成功后也保留维护。数据库备份可通过 `--database-backup` 一并归档。外部进程管理器应使用自己的停止/启动流程，避免自动拉起旧队列。
-4. 验证 `php artisan --version` 显示 13.35.0，检查登录、注册验证码、后台编辑、支付回调、节点配置与流量上报、DDNS和日志清理；用受控邮箱确认真实 SMTP 发送。
+4. 验证 `php artisan --version` 与目标锁文件中的 Laravel 版本一致，检查登录、注册验证码、后台编辑、支付回调、节点配置与流量上报、DDNS和日志清理；用受控邮箱确认真实 SMTP 发送。
 5. 失败时保持维护模式。框架依赖回退应同时恢复旧代码与对应 vendor/lock；已经执行的数据库迁移（尤其旧节点表删除）不可盲目回滚，应根据备份和迁移内容人工恢复。
 
 ## 兼容性变化
@@ -19,7 +19,8 @@
 - Banner 上传原本就不允许 SVG，继续只允许指定的位图格式。
 - 测试依赖更新至 PHPUnit 12（开发环境 PHP 8.4+）、Collision 8.9，当前 PHPUnit 仅运行纯单元测试；框架及 HTTP 集成检查归入 tests/suites.json 的独立测试脚本。
 - 本次不新增数据库迁移。
-- Tinker 升级至 3；本次锁文件使用 Symfony 8，生产 PHP 最低要求为 8.4，实际在 PHP 8.4.26 下验证。
+- Tinker 3 仅作为开发依赖保留；生产 `--no-dev` 安装不提供 `artisan tinker`，部署和健康检查不依赖该命令。未使用的 Linfo 已移除；Horizon/Carbon 的包发现及既有业务依赖保留。
+- 框架使用的主要 Symfony 组件为 8，YAML 等独立库保留既有主版本；生产 PHP 最低要求为 8.4。更换开发/生产安装配置后须重新生成自动加载与包发现清单，不能复用残留开发 Provider。
 - cache.serializable_classes=false：缓存只恢复数组和标量，不恢复任意 PHP 对象；节点在线状态、登录会话和验证码继续使用原有数据格式。
 - 框架会话显式保留 PHP 序列化格式，避免此次升级强制失效旧会话；V10 自定义浏览器会话的 CSRF、Origin 和 HttpOnly 规则继续执行。
 - 应用 CSRF 包装类改为继承 PreventRequestForgery，保留原有中间件注册范围，支付回调和节点 API 不启用额外浏览器校验。
@@ -37,7 +38,9 @@
 
 官方升级指南：https://laravel.com/framework/docs/13.x/upgrade
 
-此前该锁文件的 Composer audit 验证未报告有效安全公告或废弃包；这是当次工具输出，不是持续安全保证。composer.json 仍有既存 `audit.ignore` 项 `PKSA-y2cr-5h3j-g3ys`，不能将结果表述为“未配置忽略项”。发布前需结合当时锁文件和审计配置重新检查。
+旧 `audit.ignore` 项 `PKSA-y2cr-5h3j-g3ys` 已移除。发布前须对最终锁文件分别执行生产和全依赖的 Composer audit，并记录实际结果；历史审计无公告或废弃包的输出不代表当前锁文件已验证，也不是持续安全保证。静态测试只检查旧例外不再存在，不能替代公告审计。
+
+`framework-upgrade` 同时支持独立的开发/生产安装树：校验实际直接依赖版本与锁一致、加载的 Laravel 至少为 13.39 且与已安装版本一致，验证生产树无 Tinker/Linfo、开发树保留 Tinker，并保留邮件、代理、调度、旧任务及迁移检查。本轮开发安装 32 个模块通过，最终框架专项复验 143 项；生产安装及发现缓存更新成功，生产框架专项 137 项与部署验证 4 项通过。生产额外尝试的 `console-smoke` 因其夹具依赖开发用 Mockery 而停止，未计入通过；同一模块在开发安装通过，不向生产补装开发依赖。审计与详细执行来源见 [测试组织](test-organization.md)，后文历史数量不作为本轮通过证明。
 
 
 本地验证：PHP 8.4.26、MySQL 8、Redis 7。框架 19 项、缓存前缀/锁/反序列化限制 5 项、日志 43 项，以及 V10、登录会话、权限、节点、独立路由、DDNS、邮件、支付、后台、Banner、注册策略、额度到期与流量重置全部通过。PHPUnit 12 严格检查通过（2 tests、2 assertions，无 risky 或 warning）。升级脚本 25 个隔离场景和本站队列排空检查通过，平台要求及生产 install dry-run 通过。测试未发送真实邮件或支付请求。

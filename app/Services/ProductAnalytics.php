@@ -8,6 +8,128 @@ use Illuminate\Support\Facades\Schema;
 
 final class ProductAnalytics {
     public const PAGES = ['landing','register','login','forget','dashboard','plan','confirmation','payment','order','order_detail','activities','coupons','subscribe','knowledge','profile','security','invite','traffic','notifications','ticket','browser_guide','browser_prompt'];
+    private const RECURRING_PERIODS = ['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price'];
+
+    private function registrationCohort(int $days, int $now, \DateTimeZone $zone): array {
+        // Measure elapsed seconds before rounding to a complete local date. A
+        // calendar week can be shorter than 168 hours across a DST transition.
+        $boundary=(new \DateTimeImmutable('@'.($now-604800)))->setTimezone($zone)->setTime(0,0,0);
+        $end=$boundary->getTimestamp();
+        $start=$boundary->modify('-'.$days.' days')->getTimestamp();
+        $query=DB::table('v2_user as u')->where('u.is_admin',0)->where('u.created_at','>=',$start)->where('u.created_at','<',$end);
+        return [$query,$start,$end];
+    }
+
+    private function confirmedOrders(string $alias = 'o') {
+        return DB::table('v2_order as '.$alias)->whereIn($alias.'.status',[1,3,4])->where($alias.'.paid_at','>',0);
+    }
+
+    private function recurringOrders(string $alias = 'o') {
+        return $this->confirmedOrders($alias)->where($alias.'.plan_id','>',0)->where(function($q) use($alias) {
+            $q->whereNull($alias.'.credit_bytes')->orWhere($alias.'.credit_bytes',0);
+        })
+            ->whereIn($alias.'.period',self::RECURRING_PERIODS);
+    }
+
+    private function firstPurchase($cohort, int $registered, int $from, int $to): array {
+        // A trial may make the first purchase a renewal/switch. Order.type and the
+        // current account entitlement cannot establish lifetime purchase history.
+        $valued = $this->recurringOrders()->where('o.total_amount','>=',0)->whereRaw('COALESCE(o.balance_amount,0) >= 0')
+            ->whereRaw('o.total_amount + COALESCE(o.balance_amount,0) > 0');
+        $first = (clone $valued)->whereNotExists(function($prior) {
+            $prior->selectRaw('1')->from('v2_order as p')->whereColumn('p.user_id','o.user_id')
+                ->whereIn('p.status',[1,3,4])->where('p.paid_at','>',0)->where('p.plan_id','>',0)
+                ->where(function($q) { $q->whereNull('p.credit_bytes')->orWhere('p.credit_bytes',0); })
+                ->whereIn('p.period',self::RECURRING_PERIODS)->where('p.total_amount','>=',0)->whereRaw('COALESCE(p.balance_amount,0) >= 0')
+                ->whereRaw('p.total_amount + COALESCE(p.balance_amount,0) > 0')
+                ->where(function($q) { $q->whereColumn('p.paid_at','<','o.paid_at')->orWhere(function($tie) {
+                    $tie->whereColumn('p.paid_at','o.paid_at')->whereColumn('p.id','<','o.id');
+                }); });
+        });
+        $first->select('o.user_id','o.paid_at','o.total_amount','o.balance_amount','o.callback_no','o.payment_id');
+        $inWindow = (clone $cohort)->joinSub($first,'p','p.user_id','=','u.id')
+            ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');
+        $method = "CASE WHEN p.callback_no='manual_operation' THEN 'manual'
+            WHEN p.total_amount=0 AND COALESCE(p.balance_amount,0)>0 THEN 'walletOnly'
+            WHEN p.total_amount>0 AND p.payment_id>0 AND COALESCE(TRIM(p.callback_no),'')<>''
+                THEN CASE WHEN COALESCE(p.balance_amount,0)>0 THEN 'mixed' ELSE 'externalOnly' END
+            ELSE 'unclassified' END";
+        $funding = array_fill_keys(['externalOnly','mixed','walletOnly','manual','unclassified'],0);
+        foreach ((clone $inWindow)->selectRaw($method.' AS funding, COUNT(*) AS accounts')->groupBy('funding')->get() as $row) {
+            $funding[$row->funding]=(int)$row->accounts;
+        }
+        $accounts = array_sum($funding);
+        $observed = function($orders) use($cohort) {
+            return (clone $cohort)->whereExists(function($q) use($orders) {
+                $q->selectRaw('1')->fromSub($orders->select('o.user_id','o.paid_at'),'p')->whereColumn('p.user_id','u.id')
+                    ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');
+            })->count();
+        };
+        $withoutNewPayment = $this->recurringOrders()->where('o.total_amount',0)->whereRaw('COALESCE(o.balance_amount,0)=0');
+        $entitlementCredit = 'COALESCE(o.surplus_amount,0)-COALESCE(o.refund_amount,0)';
+        return ['available'=>true,'from'=>gmdate('c',$from),'to'=>gmdate('c',$to),'windowDays'=>7,'registered'=>$registered,
+            'paidRecurringAccounts'=>$accounts,'paidRecurringRate'=>OperationsAnalytics::rate($accounts,$registered),'funding'=>$funding,
+            'zeroValueRecurringAccounts'=>$observed((clone $withoutNewPayment)->whereRaw($entitlementCredit.' <= 0')),
+            'creditOnlyRecurringAccounts'=>$observed((clone $withoutNewPayment)->whereRaw($entitlementCredit.' > 0')),
+            'otherPurchases'=>[
+                'depositAccounts'=>$observed($this->confirmedOrders()->where('o.period','deposit')),
+                'independentCreditAccounts'=>$observed($this->confirmedOrders()->where('o.credit_bytes','>',0)),
+                'resetAccounts'=>$observed($this->confirmedOrders()->where('o.period','reset_price')),
+                'legacyOneTimeAccounts'=>$observed($this->confirmedOrders()->where('o.plan_id','>',0)
+                    ->where(function($q) { $q->whereNull('o.credit_bytes')->orWhere('o.credit_bytes',0); })->where('o.period','onetime_price')),
+            ]];
+    }
+
+    private function receipts(int $from, int $to): array {
+        $paid = $this->confirmedOrders()->where('o.paid_at','>=',$from)->where('o.paid_at','<=',$to);
+        $manual = "COALESCE(o.callback_no,'')='manual_operation'";
+        $counts = (clone $paid)->selectRaw("SUM(CASE WHEN $manual THEN 1 ELSE 0 END) AS manual,
+            SUM(CASE WHEN NOT ($manual) AND o.total_amount=0 AND COALESCE(o.balance_amount,0)>0 THEN 1 ELSE 0 END) AS wallet,
+            SUM(CASE WHEN NOT ($manual) AND o.total_amount=0 AND COALESCE(o.balance_amount,0)=0 THEN 1 ELSE 0 END) AS zero,
+            SUM(CASE WHEN NOT ($manual) AND o.total_amount>0 THEN 1 ELSE 0 END) AS external")->first();
+        $available = Schema::hasColumn('v2_order','payment_snapshot');
+        $report = ['available'=>$available,'from'=>gmdate('c',$from),'to'=>gmdate('c',$to),'complete'=>false,'byCurrency'=>[],
+            'unresolvedExternalOrders'=>(int)$counts->external,'manualOrders'=>(int)$counts->manual,'walletOnlyOrders'=>(int)$counts->wallet,'zeroExternalOrders'=>(int)$counts->zero,
+            // refund_amount is an entitlement exchange returned to a wallet. It is
+            // not a provider refund ledger; there is no settlement or fee ledger.
+            'refundAmount'=>null,'providerFeeAmount'=>null,'netAmount'=>null,'settlementAmount'=>null];
+        if (!$available) return $report;
+        $sqlite = DB::connection()->getDriverName()==='sqlite';
+        $extract = fn($key) => $sqlite ? "json_extract(o.payment_snapshot,'$.".$key."')" : "JSON_UNQUOTE(JSON_EXTRACT(o.payment_snapshot,'$.".$key."'))";
+        $type = fn($key) => $sqlite ? "json_type(o.payment_snapshot,'$.".$key."')" : "LOWER(JSON_TYPE(JSON_EXTRACT(o.payment_snapshot,'$.".$key."')))";
+        $amount=$extract('payment_amount'); $currency=$extract('payment_currency');
+        // A checkout quote is not a receipt. Only a positive externally-confirmed
+        // order with the flat, settled immutable snapshot has known currency/amount.
+        // Missing legacy snapshots remain explicitly unresolved, never FX-estimated.
+        $valid = "CASE WHEN JSON_VALID(o.payment_snapshot) THEN ".$type('payment_amount')."='integer' AND $amount>0
+            AND ".$type('payment_currency')."='text' AND $currency IN ('CNY','USD')
+            AND ".$type('provider')."='text' AND ".$extract('provider')."<>''
+            AND ".$type('uuid')."='text' AND ".$extract('uuid')."<>''
+            AND ".$extract('channels')." IS NULL ELSE 0 END";
+        if (!$sqlite) $valid = str_replace("='text'","='string'",$valid);
+        $kind = "CASE WHEN o.period='deposit' THEN 'deposit'
+            WHEN o.credit_bytes>0 THEN 'independentCredits'
+            WHEN o.period='reset_price' THEN 'reset'
+            WHEN o.plan_id>0 AND COALESCE(o.credit_bytes,0)=0 AND o.period IN ('".implode("','",self::RECURRING_PERIODS)."') THEN 'recurring'
+            WHEN o.plan_id>0 AND COALESCE(o.credit_bytes,0)=0 AND o.period='onetime_price' THEN 'legacyOneTime' ELSE 'other' END";
+        $known = (clone $paid)->where('o.total_amount','>',0)->where('o.payment_id','>',0)
+            ->whereRaw("NOT ($manual) AND COALESCE(TRIM(o.callback_no),'')<>''")->whereRaw($valid)
+            ->selectRaw("$currency AS receipt_currency, $kind AS kind, $amount AS amount");
+        $groups=DB::query()->fromSub($known,'receipts')->select('receipt_currency','kind')->selectRaw('COUNT(*) AS orders, SUM(amount) AS amount')
+            ->groupBy('receipt_currency','kind')->orderBy('receipt_currency')->orderBy('kind')->get();
+        $currencies=[]; $resolved=0;
+        foreach ($groups as $row) {
+            $currencies[$row->receipt_currency] ??= ['currency'=>$row->receipt_currency,'grossAmount'=>0,'orders'=>0,'kinds'=>[]];
+            $currencies[$row->receipt_currency]['grossAmount']+=(int)$row->amount;
+            $currencies[$row->receipt_currency]['orders']+=(int)$row->orders;
+            $currencies[$row->receipt_currency]['kinds'][]=['kind'=>$row->kind,'grossAmount'=>(int)$row->amount,'orders'=>(int)$row->orders];
+            $resolved+=(int)$row->orders;
+        }
+        $report['byCurrency']=array_values($currencies);
+        $report['unresolvedExternalOrders']-=$resolved;
+        $report['complete']=$report['unresolvedExternalOrders']===0;
+        return $report;
+    }
     public function settings(): array {
         return Cache::remember('PRODUCT_ANALYTICS_SETTINGS', 60, function () {
             $values = RiskSetting::whereIn('key', ['analytics_enabled','analytics_retention_days'])->pluck('value','key');
@@ -141,10 +263,7 @@ final class ProductAnalytics {
         }
         // Cohort includes only registrations with a full seven-day observation window.
         // Orders are authoritative; browser events cannot manufacture a conversion.
-        $cohortBoundary=(new \DateTimeImmutable('today',$zone))->modify('-7 days');
-        $cohortEnd=$cohortBoundary->getTimestamp();
-        $cohortStart=$cohortBoundary->modify('-'.$days.' days')->getTimestamp();
-        $cohort=DB::table('v2_user as u')->where('u.is_admin',0)->where('u.created_at','>=',$cohortStart)->where('u.created_at','<',$cohortEnd);
+        [$cohort,$cohortStart,$cohortEnd]=$this->registrationCohort($days,$now,$zone);
         $registered=(clone $cohort)->count();
         $converted=function(string $stage) use($cohort) {
             return (clone $cohort)->whereExists(function($q) use($stage) {
@@ -165,6 +284,8 @@ final class ProductAnalytics {
             'hours'=>$hours,'weekdays'=>$weekdays,'sourcesReady'=>$sourcesReady,'sources'=>$sources,'sourceGroups'=>$sourceGroups,'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
             'latestEventAt'=>$latest ? gmdate('c',$latest) : null,'sessions'=>$visits,'views'=>$views,'pages'=>$pages,'devices'=>$devices,
             'funnel'=>array_map(fn($id,$count)=>['step'=>$id,'sessions'=>$count],['plan','confirmation','payment'],$funnel),
+            'firstPurchase'=>$this->firstPurchase($cohort,$registered,$cohortStart,$cohortEnd),
+            'receipts'=>$this->receipts($start,$now),
             'cohort'=>['from'=>gmdate('c',$cohortStart),'to'=>gmdate('c',$cohortEnd),'windowDays'=>7,'registered'=>$registered,
                 'ordered'=>$converted('ordered'),'paid'=>$converted('paid'),'completed'=>$converted('completed')]];
     }

@@ -97,7 +97,7 @@ FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树�
 
 `node-routes`、`node-v10`、`v2box`、`console-smoke` 和前端 `Nodes`/`admin-linkage` 验证原生与兼容路由、模板隔离、服务引用计数、跨片段标签合并、非法条件拒绝及失败回滚。可视化/高级 JSON 无损切换、复杂条件复制和搜索、引用明细、删除保护及未保存保护保留。面板 `resources/client/node-route-presets.json` 与节点 `core/testdata/panel-routing-presets.json` 同步，节点 `TestPanelRoutingPresets` 验证固定核心解析。
 
-面板部署脚本复用 `v2box` 调用的 `tests/support/v2box-deployment.py`，不新增测试入口。本轮在临时 Linux 容器直接运行该 helper，传入独立的节点网络脚本夹具，115 项全部通过、无跳过；覆盖 HTTP 打开及两种响应体的总期限、已有 alarm 恢复、继承锁复用与争用限时、真实 wrapper→timeout→忽略 TERM 孙进程的清理、服务状态未知时拒绝修复、安装超时保留恢复文件，以及四种模拟包管理器的非交互、GNU timeout 修复和失败不赎回授权。所有服务、包管理器和路径均为测试替身或临时文件，未运行真实站点或 PHP 应用。节点仓库另行执行的 85 项生命周期结果来自其独立测试套件，不与这 115 项相加；新增原子发布验证只按最终实际执行结果另行记录。日志位于忽略目录 `storage/app/test-organization/v2box-deployment-bounds/`。
+面板部署脚本复用 `v2box` 调用的 `tests/support/v2box-deployment.py`，不新增测试入口。helper 可在临时 Linux 容器以普通 UID 执行，传入独立的节点网络脚本夹具；覆盖 HTTP 总期限、已有 alarm 恢复、继承锁及争用、忽略 TERM 的孙进程清理、服务状态未知时拒绝修复、安装超时保留恢复文件、四种模拟包管理器及新旧助手能力协商。CI 另以 `V2BOX_BOOTSTRAP_TEST=1` 执行既有 `v2box` PHP 模块，使用一次性应用、数据库与 Redis；只有合成夹具模拟 root 和 init，生产权限检查不变。节点仓库独立生命周期、文件原子发布和中断窗口用例不与面板 helper 重复计数，真实 QUIC 回环分别核对客户端 IP 和请求目标。所有系统服务、包管理器和生产路径操作均使用替身或临时文件，不把本地纯脚本检查冒称 PHP、真实主机安装或证书/DNS 验收。实际结果绑定提交并保存在忽略目录 `storage/app/test-organization/v2box-deployment-bounds/` 及节点任务日志。
 
 `NODE_ROUTING_FIXTURE` 可在一次性面板副本导出兼容/V10 响应，节点用 `V2BOX_ROUTING_FIXTURE` 验证解码和条件请求，不使用生产响应。真实本地核心覆盖阻断匹配、HTTP 代理/默认出口、DNS 命中/回退及测试证书 HTTPS 规则集，并与出站保护同时执行。`node-backends` 和 `retired-node-tables` 保留来源兼容、旧数据迁移及数据保护。
 

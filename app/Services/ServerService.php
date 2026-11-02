@@ -108,7 +108,7 @@ class ServerService
             $apiHost = rtrim((string)(config('fastai.server_api_url') ?: config('fastai.app_url')), '/');
             $nodeId = (int) $v['id'];
             $apiHostArg = escapeshellarg((string) $apiHost);
-            $entry = NodeDeployment::bootstrapCommand($apiHost) . ' --install v1.0.16';
+            $entry = NodeDeployment::bootstrapCommand($apiHost) . ' --install v1.0.18';
             $servers[$k]['upgrade_command'] = $entry . ' --update';
             $servers[$k]['install_command'] = sprintf(
                 $entry . ' --node-type v2box --api-host %s --node-id %d --prompt-api-key',

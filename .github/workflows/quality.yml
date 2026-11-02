@@ -167,7 +167,9 @@ jobs:
           printf '# Disposable CI workspace\n' > .env
           printf '<?php return [];\n' > config/v2board.php
           rm -f resources/rules/custom.*
-          printf 'APP_KEY=base64:%s\n' "$(php -r 'echo base64_encode(random_bytes(32));')" >> "$GITHUB_ENV"
+          ci_app_key="base64:$(php -r 'echo base64_encode(random_bytes(32));')"
+          printf '::add-mask::%s\n' "$ci_app_key"
+          printf 'APP_KEY=%s\n' "$ci_app_key" >> "$GITHUB_ENV"
       - run: composer validate --strict --no-check-publish
       - run: composer install --no-interaction --prefer-dist --no-progress
       - run: composer check-platform-reqs

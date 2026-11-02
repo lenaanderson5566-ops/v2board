@@ -88,8 +88,11 @@ it("retains an unverified administrative session after a temporary failure and r
     await screen.findByText("accountLoadFailed");
     expect(screen.queryByText("Admin login")).toBeNull();
     expect(screen.queryByText("internal detail")).toBeNull();
-    expect(document.activeElement).toBe(
-        screen.getByRole("heading", { name: "页面暂时无法加载" }),
+    // The recovery DOM can appear before React runs its focus effect.
+    await waitFor(() =>
+        expect(document.activeElement).toBe(
+            screen.getByRole("heading", { name: "页面暂时无法加载" }),
+        ),
     );
     fireEvent.click(screen.getByRole("button", { name: "重试" }));
     fireEvent.click(screen.getByRole("button", { name: /正在加载|重试/ }));

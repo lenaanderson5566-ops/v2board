@@ -3,16 +3,23 @@ $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$original=config('fastai');$seed=config('fastai.entrypoint_signing_seed');
+$original=config('fastai');$seed=config('entrypoint-signing.entrypoint_signing_seed');
 try {
     $catalog=[['origin'=>'https://fastdog.ws','enabled'=>true,'priority'=>2],['origin'=>'https://fastdog66.com','enabled'=>true,'priority'=>1],['origin'=>'https://fastdog.me','enabled'=>false,'priority'=>3]];
-    config(['fastai.app_url'=>'https://fastdog.ws','fastai.fastai_entrypoints'=>$catalog,'fastai.fastai_entrypoints_version'=>12,'fastai.entrypoint_signing_seed'=>base64_encode(random_bytes(32))]);
+    $signingFixture=base64_encode(str_repeat("\x63",32));
+    config(['fastai.app_url'=>'https://fastdog.ws','fastai.fastai_entrypoints'=>$catalog,'fastai.fastai_entrypoints_version'=>12,'entrypoint-signing.entrypoint_signing_seed'=>$signingFixture]);
     $service=app(App\Services\FastaiEntrypoints::class);
     $envelope=$service->envelope();$bytes=base64_decode($envelope['payload']);$public=base64_decode($service->publicKey());
     $assert(sodium_crypto_sign_verify_detached(base64_decode($envelope['signature']),$bytes,$public),'Manifest signature');
     $assert(!sodium_crypto_sign_verify_detached(base64_decode($envelope['signature']),$bytes.' ',$public),'Tampered manifest rejected');
     $payload=json_decode($bytes,true);
+    $expectedPublic=sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair(base64_decode($signingFixture,true)));
+    $assert($public===$expectedPublic,'Public namespace migration must preserve the signing identity');
     $assert($payload['serviceId']===hash('sha256',$public),'Service identity');
+    $businessSettings=config('fastai');
+    config(['fastai'=>[]]);
+    $assert($service->publicKey()===base64_encode($expectedPublic),'An explicitly empty private site config must not erase the independent signing key');
+    config(['fastai'=>$businessSettings]);
     $assert($payload['version']===12 && $payload['expiresAt']- $payload['issuedAt']===604800,'Version and expiry');
     $assert(count($payload['endpoints'])===2 && $payload['endpoints'][0]['origin']==='https://fastdog66.com','Enabled origins ordered');
     foreach (['http://example.com','https://example.com/path','https://user@example.com','https://127.0.0.1','https://example.com:8443','https://example.com?token=x'] as $bad) {
@@ -31,8 +38,8 @@ try {
     $request=Illuminate\Http\Request::create('https://fastdog.ws/api/v10/public/fastai/entrypoints','GET',[],[],[],['REMOTE_ADDR'=>'192.0.2.'.random_int(2,254)]);
     $response=$app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
     $assert($response->getStatusCode()===200 && isset(json_decode($response->getContent(),true)['data']['signature']),'Public signed V10 resource');
-    config(['fastai.entrypoint_signing_seed'=>'']);
+    config(['entrypoint-signing.entrypoint_signing_seed'=>'']);
     $assert($service->publicKey()===null,'Missing signing key fails closed');
     try { $service->envelope(); throw new RuntimeException('Unsigned publication'); } catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===503,'No unsigned manifest'); }
     echo "FastAI entrypoints: $checks checks passed\n";
-} finally { config(['fastai'=>$original,'fastai.entrypoint_signing_seed'=>$seed]); }
+} finally { config(['fastai'=>$original,'entrypoint-signing.entrypoint_signing_seed'=>$seed]); }

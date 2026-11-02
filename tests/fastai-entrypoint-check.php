@@ -7,12 +7,16 @@ $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
-$original=config('fastai');$seed=config('fastai.entrypoint_signing_seed');
+$original=config('fastai');$seed=config('entrypoint-signing.entrypoint_signing_seed');
 $service=app(App\Services\FastaiEntrypoints::class);
 try {
-    config(['fastai.app_url'=>'https://fastdog.ws','fastai.fastai_entrypoints'=>[],'fastai.entrypoint_signing_seed'=>base64_encode(random_bytes(32))]);
+    $signingFixture=base64_encode(str_repeat("\x64",32));
+    config(['fastai.app_url'=>'https://fastdog.ws','fastai.fastai_entrypoints'=>[],'entrypoint-signing.entrypoint_signing_seed'=>$signingFixture]);
     $GLOBALS['entrypointTestIps']=['1.1.1.1'];
     $envelope=$service->envelope();
+    $expectedPublic=sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair(base64_decode($signingFixture,true)));
+    $assert($service->publicKey()===base64_encode($expectedPublic)
+        && json_decode(base64_decode($envelope['payload']),true)['serviceId']===hash('sha256',$expectedPublic), 'Domain checks must retain the existing signing service identity');
     Illuminate\Support\Facades\Http::fake(['*'=>Illuminate\Support\Facades\Http::response(['data'=>$envelope],200)]);
     $checked=$service->check('https://probe.example');
     $assert($checked['origin']==='https://probe.example' && isset($checked['checkedAt'],$checked['durationMs']),'Compatible HTTP service check completes');
@@ -26,7 +30,7 @@ try {
     echo "FastAI entrypoint checks: $checks checks passed\n";
 } finally {
     Illuminate\Support\Facades\Cache::forget('FASTAI_ENTRYPOINT_VERIFIED:'.hash('sha256','https://probe.example:'.$service->publicKey()));
-    config(['fastai'=>$original,'fastai.entrypoint_signing_seed'=>$seed]);
+    config(['fastai'=>$original,'entrypoint-signing.entrypoint_signing_seed'=>$seed]);
     unset($GLOBALS['entrypointTestIps']);
 }
 }

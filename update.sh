@@ -20,6 +20,7 @@ CHECK_ONLY=0
 RESOLVE_DEPENDENCIES=0
 LOCAL_GEOIP=()
 SITE_CONFIG_FILES=()
+LEGACY_FASTAI_DEFAULTS=0
 WORK_DIR=
 BACKUP=
 MAINTENANCE=0
@@ -260,6 +261,27 @@ cd "$PROJECT"
 [[ "$(git rev-parse --show-toplevel)" == "$PROJECT" ]] || die 'Project must be the repository root'
 git check-ref-format --branch "$BRANCH" >/dev/null || die 'Invalid branch'
 git diff --cached --quiet || die 'Review staged changes first'
+# Older releases tracked this public seed loader under the new private filename.
+# Recognize only the two published loaders; never discard a locally edited file.
+if git cat-file -e HEAD:config/fastai.php 2>/dev/null; then
+    legacy_fastai_blob=$(git rev-parse HEAD:config/fastai.php)
+    case "$legacy_fastai_blob" in
+        4927b0b1dd84ebcf3aece5b46fe742ac60aa7677)
+            legacy_fastai_crlf_blob=7eadecdace752c05e46dad59481dad459671b171;;
+        754bbcbe18982c1af0f2e621fcd1d1ef21c2af8d)
+            legacy_fastai_crlf_blob=e787df261b077d66e68ebdbac4041f9bd28319c9;;
+        *) die 'Tracked config/fastai.php is not a recognized public loader; preserve it and review before upgrading';;
+    esac
+    [[ -f config/fastai.php && ! -L config/fastai.php ]] || die 'Tracked config/fastai.php must be a regular file; preserve and review it before upgrading'
+    # Index flags and clean filters can conceal private edits from git diff.
+    # Accept only the exact published bytes or their CRLF representation.
+    case "$(git hash-object --no-filters -- config/fastai.php)" in
+        "$legacy_fastai_blob"|"$legacy_fastai_crlf_blob") ;;
+        *) die 'Local changes to tracked config/fastai.php; preserve this file and review it before upgrading (do not delete or restore it)';;
+    esac
+    git diff --quiet -- config/fastai.php || die 'Local changes to tracked config/fastai.php; preserve this file and review it before upgrading (do not delete or restore it)'
+    LEGACY_FASTAI_DEFAULTS=1
+fi
 while IFS= read -r changed; do
     case "$changed" in
         ''|composer.json|composer.lock) ;;
@@ -272,6 +294,9 @@ done < <(git diff --name-only)
 [[ -s .env ]] || die 'Existing .env required'
 # Keep every existing private settings file protected, including the legacy one.
 for site_config in config/fastai.php config/v2board.php; do
+    if [[ "$site_config" == config/fastai.php ]] && (( LEGACY_FASTAI_DEFAULTS == 1 )); then
+        continue # Retired public code, not a private settings file to restore.
+    fi
     if [[ -e "$site_config" ]]; then
         [[ -s "$site_config" ]] || die "Existing settings file is empty: $site_config"
         SITE_CONFIG_FILES+=("$site_config")
@@ -312,6 +337,7 @@ fi
 for protected in .env config/fastai.php config/v2board.php; do
     if git cat-file -e "$TARGET:$protected" 2>/dev/null; then die "Target must not track $protected"; fi
 done
+git cat-file -e "$TARGET:config/entrypoint-signing.php" || die 'Target lacks the public entrypoint signing configuration'
 git cat-file -e "$TARGET:public/console/.vite/manifest.json" || die 'Target has no built frontend manifest'
 git cat-file -e "$TARGET:$NODE_MAINTENANCE_MIGRATION" || die 'Target lacks node maintenance migration'
 git cat-file -e "$TARGET:$FINANCIAL_INDEX_MIGRATION" || die 'Target lacks financial index migration'

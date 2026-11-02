@@ -36,14 +36,14 @@ final class FastaiEntrypoints
 
     private function secret(): string
     {
-        $seed=base64_decode((string)config('fastai.entrypoint_signing_seed'),true);
+        $seed=base64_decode((string)config('entrypoint-signing.entrypoint_signing_seed'),true);
         abort_unless(function_exists('sodium_crypto_sign_seed_keypair') && is_string($seed) && strlen($seed)===32,503,'Service entrypoint signing is not configured.');
         return sodium_crypto_sign_secretkey(sodium_crypto_sign_seed_keypair($seed));
     }
 
     public function publicKey(): ?string
     {
-        $seed=base64_decode((string)config('fastai.entrypoint_signing_seed'),true);
+        $seed=base64_decode((string)config('entrypoint-signing.entrypoint_signing_seed'),true);
         if (!function_exists('sodium_crypto_sign_seed_keypair') || !is_string($seed) || strlen($seed)!==32) return null;
         return base64_encode(sodium_crypto_sign_publickey_from_secretkey($this->secret()));
     }

@@ -4,7 +4,7 @@ require __DIR__.'/../vendor/autoload.php';
 $app=require __DIR__.'/../bootstrap/app.php';
 $app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
 $file=storage_path('app/fastai-entrypoint.seed');
-$value=config('fastai.entrypoint_signing_seed');
+$value=config('entrypoint-signing.entrypoint_signing_seed');
 $decoded=is_string($value) ? base64_decode($value,true) : false;
 echo json_encode([
     'phpVersion'=>PHP_VERSION,'sapi'=>PHP_SAPI,

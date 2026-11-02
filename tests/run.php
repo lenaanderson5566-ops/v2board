@@ -31,8 +31,9 @@ if (!$entries) throw new RuntimeException('No matching tests');
 if (!app()->environment(['local', 'testing']) || getenv('TEST_DISPOSABLE_WORKSPACE') !== '1') {
     throw new RuntimeException('Run in a disposable project copy with TEST_DISPOSABLE_WORKSPACE=1; scripts may modify configuration files');
 }
-foreach (['.env'=>"# Disposable test workspace\n", 'config/fastai.php'=>"<?php return [];\n"] as $path=>$fixture) {
-    if (!is_file(base_path($path))) file_put_contents(base_path($path), $fixture);
+if (!is_file(base_path('.env'))) file_put_contents(base_path('.env'), "# Disposable test workspace\n");
+if (!is_file(base_path('config/fastai.php')) && !is_file(base_path('config/v2board.php'))) {
+    file_put_contents(base_path('config/fastai.php'), "<?php return [];\n");
 }
 $mysql = config('database.connections.mysql');
 $admin = new PDO('mysql:host='.$mysql['host'].';port='.$mysql['port'].';charset=utf8mb4', $mysql['username'], $mysql['password'], [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);

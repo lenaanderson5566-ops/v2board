@@ -11,6 +11,27 @@ cd "$TMP/seed"
 git init -q
 git config user.email test@example.test
 git config user.name 'Updater Test'
+# Exact public Git blobs from the two historical signing-seed loaders. Never
+# read config/fastai.php from the operator's working tree to build fixtures.
+public_current=$(git hash-object -w --stdin <<'PUBLIC_LOADER'
+<?php
+$seed=env('FASTAI_ENTRYPOINT_SIGNING_SEED', '');
+if (!is_string($seed)) $seed='';
+if ($seed==='') {
+    $seedFile=storage_path('app/fastai-entrypoint.seed');
+    if (is_file($seedFile) && is_readable($seedFile)) $seed=trim(file_get_contents($seedFile));
+}
+return ['entrypoint_signing_seed'=>$seed];
+PUBLIC_LOADER
+)
+public_initial=$(git hash-object -w --stdin <<'PUBLIC_LOADER'
+<?php
+$seedFile=storage_path('app/fastai-entrypoint.seed');
+return ['entrypoint_signing_seed' => env('FASTAI_ENTRYPOINT_SIGNING_SEED', is_file($seedFile) ? trim(file_get_contents($seedFile)) : '')];
+PUBLIC_LOADER
+)
+[[ "$public_current" == 4927b0b1dd84ebcf3aece5b46fe742ac60aa7677 ]]
+[[ "$public_initial" == 754bbcbe18982c1af0f2e621fcd1d1ef21c2af8d ]]
 printf '.env\nconfig/fastai.php\nconfig/v2board.php\ncomposer.lock\nvendor/\nstorage/\nbootstrap/cache/\n' > .gitignore
 printf '{"name":"test/site","require":{"php":"^7.3.0|^8.0"}}\n' > composer.json
 mkdir -p config storage/framework bootstrap/cache
@@ -20,6 +41,7 @@ OLD=$(git rev-parse HEAD)
 git branch -M original
 git checkout -qb codex/payment-icon-picker
 printf '{"name":"test/site","require":{"php":"^7.3.0 || ^8.0","geoip2/geoip2":"^2.12"}}\n' > composer.json
+git cat-file blob "$public_current" > config/entrypoint-signing.php
 mkdir -p public/console/.vite database/migrations
 cp -- "$SOURCE" update.sh
 echo '{}' > public/console/.vite/manifest.json
@@ -73,6 +95,15 @@ printf '%s\n' "$*" >> "${MOCK_LOG:-calls.log}"
 if [[ "$1" == '-r' ]]; then
     if [[ "$2" == *'json_decode'* ]]; then exec "$REAL_PHP" "$@"; fi
     echo "${MANUAL_USERS:-0}"; exit
+fi
+if [[ "$*" == *' install '* && -n "${EXPECT_RETIRED_LOADER_DIR:-}" ]]; then
+    [[ ! -e config/fastai.php ]]
+    cmp config/v2board.php "$EXPECT_RETIRED_LOADER_DIR/legacy.php"
+    cmp config/entrypoint-signing.php "$EXPECT_RETIRED_LOADER_DIR/public.php"
+    cmp storage/app/fastai-entrypoint.seed "$EXPECT_RETIRED_LOADER_DIR/seed"
+    [[ $(stat -c %a config/v2board.php) == 640 ]]
+    [[ $(stat -c %a storage/app/fastai-entrypoint.seed) == 600 ]]
+    printf 'retired public loader verified before dependency scripts\n' >> "$MOCK_LOG"
 fi
 if [[ "$*" == *' update '* && "${FAIL_RESOLVE:-0}" == 1 ]]; then exit 19; fi
 if [[ "$1" == artisan && "$2" == up ]]; then rm -f storage/framework/down; fi
@@ -373,4 +404,105 @@ reject --check
 grep -q 'Target must not track config/fastai.php' "$TMP/output"
 [[ ! -e storage/framework/down ]]
 
-echo 'Updater: 33 isolated scenarios passed'
+# The historical tracked loaders must be retired, never restored as private
+# settings. Reading fixture Git blobs also works in a shallow source checkout.
+for version in current initial; do
+    if [[ "$version" == current ]]; then public_blob=$public_current; else public_blob=$public_initial; fi
+    cd "$TMP/seed"
+    git checkout -qb "public-loader-$version" "$OLD"
+    mkdir -p config
+    git cat-file blob "$public_blob" > config/fastai.php
+    git add -f config/fastai.php
+    git commit -qm "Historical public signing loader $version"
+    historical_old=$(git rev-parse HEAD)
+    [[ $(git rev-parse HEAD:config/fastai.php) == "$public_blob" ]]
+    git checkout -qb "retired-loader-$version"
+    git read-tree --reset -u "$TARGET"
+    git cat-file blob "$public_current" > config/entrypoint-signing.php
+    git add config/entrypoint-signing.php
+    git commit -qm "Relocate public signing loader $version"
+    historical_target=$(git rev-parse HEAD)
+    for private_path in .env config/fastai.php config/v2board.php; do
+        ! git cat-file -e "HEAD:$private_path" 2>/dev/null
+    done
+    git push -q "$TMP/origin.git" "public-loader-$version" "retired-loader-$version"
+
+    new_site "retired-public-$version"
+    git checkout -q "public-loader-$version"
+    mkdir -p storage/app "$TMP/expected-public-$version"
+    printf '<?php return ["preserved"=>true,"legacy_only"=>"unchanged"];\n' > config/v2board.php
+    printf 'fixture-signing-seed-%s\n' "$version" > storage/app/fastai-entrypoint.seed
+    chmod 640 config/v2board.php
+    chmod 600 storage/app/fastai-entrypoint.seed
+    cp -p config/v2board.php "$TMP/expected-public-$version/legacy.php"
+    cp -p storage/app/fastai-entrypoint.seed "$TMP/expected-public-$version/seed"
+    git cat-file blob "$public_current" > "$TMP/expected-public-$version/public.php"
+    ARGS+=(--branch "retired-loader-$version" --backup-dir "$TMP/retired-public-$version-backups")
+    export EXPECT_RETIRED_LOADER_DIR="$TMP/expected-public-$version"
+    bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+    unset EXPECT_RETIRED_LOADER_DIR
+    [[ $(git rev-parse HEAD) == "$historical_target" && -e storage/framework/down ]]
+    [[ ! -e config/fastai.php ]]
+    cmp config/v2board.php "$TMP/expected-public-$version/legacy.php"
+    cmp config/entrypoint-signing.php "$TMP/expected-public-$version/public.php"
+    cmp storage/app/fastai-entrypoint.seed "$TMP/expected-public-$version/seed"
+    [[ $(stat -c %a config/v2board.php) == 640 ]]
+    [[ $(stat -c %a storage/app/fastai-entrypoint.seed) == 600 ]]
+    grep -q 'retired public loader verified before dependency scripts' calls.log
+    protected=$(find "$TMP/retired-public-$version-backups" -name protected.sha256 -print -quit)
+    [[ -n "$protected" ]]
+    ! grep -q 'config/fastai.php$' "$protected"
+    grep -q 'config/v2board.php$' "$protected"
+    sha256sum -c "$protected" > /dev/null
+    tar -xOf "${protected%/*}/site.tar.gz" ./config/v2board.php | cmp - "$TMP/expected-public-$version/legacy.php"
+    tar -xOf "${protected%/*}/site.tar.gz" ./storage/app/fastai-entrypoint.seed | cmp - "$TMP/expected-public-$version/seed"
+    tar -xOf "${protected%/*}/site.tar.gz" ./config/fastai.php | git hash-object --stdin | grep -qx "$public_blob"
+    mkdir "$TMP/expected-public-$version/archive"
+    tar -xzf "${protected%/*}/site.tar.gz" -C "$TMP/expected-public-$version/archive" ./config/v2board.php ./storage/app/fastai-entrypoint.seed
+    [[ $(stat -c %a "$TMP/expected-public-$version/archive/config/v2board.php") == 640 ]]
+    [[ $(stat -c %a "$TMP/expected-public-$version/archive/storage/app/fastai-entrypoint.seed") == 600 ]]
+
+    # A locally edited loader cannot safely be identified as public code or
+    # private settings. Reject every variant before maintenance or checkout.
+    for change in custom-loader private-only both-settings assume-private skip-private; do
+        new_site "dirty-public-$version-$change"
+        git checkout -q "public-loader-$version"
+        mkdir -p storage/app "$TMP/expected-dirty-$version-$change"
+        if [[ "$change" == custom-loader ]]; then
+            printf '\n// Locally customized public loader must be reviewed.\n' >> config/fastai.php
+        else
+            printf '<?php return ["canonical_private"=>true,"disabled"=>false];\n' > config/fastai.php
+        fi
+        if [[ "$change" == private-only ]]; then rm config/v2board.php; fi
+        printf 'unchanged-dirty-fixture-seed\n' > storage/app/fastai-entrypoint.seed
+        chmod 600 config/fastai.php storage/app/fastai-entrypoint.seed
+        [[ ! -f config/v2board.php ]] || chmod 640 config/v2board.php
+        cp -p config/fastai.php "$TMP/expected-dirty-$version-$change/fastai.php"
+        cp -p storage/app/fastai-entrypoint.seed "$TMP/expected-dirty-$version-$change/seed"
+        if [[ -f config/v2board.php ]]; then cp -p config/v2board.php "$TMP/expected-dirty-$version-$change/legacy.php"; fi
+        if [[ "$change" == assume-private ]]; then
+            git update-index --assume-unchanged config/fastai.php
+            git diff --quiet -- config/fastai.php
+        elif [[ "$change" == skip-private ]]; then
+            git update-index --skip-worktree config/fastai.php
+            git diff --quiet -- config/fastai.php
+        fi
+        ARGS+=(--branch "retired-loader-$version" --backup-dir "$TMP/dirty-public-$version-$change-backups")
+        reject --jobs-stopped
+        [[ $(git rev-parse HEAD) == "$historical_old" && ! -e storage/framework/down ]]
+        cmp config/fastai.php "$TMP/expected-dirty-$version-$change/fastai.php"
+        cmp storage/app/fastai-entrypoint.seed "$TMP/expected-dirty-$version-$change/seed"
+        [[ $(stat -c %a config/fastai.php) == 600 && $(stat -c %a storage/app/fastai-entrypoint.seed) == 600 ]]
+        if [[ "$change" == private-only ]]; then
+            [[ ! -e config/v2board.php ]]
+        else
+            cmp config/v2board.php "$TMP/expected-dirty-$version-$change/legacy.php"
+            [[ $(stat -c %a config/v2board.php) == 640 ]]
+        fi
+        [[ ! -e config/entrypoint-signing.php && ! -e "$TMP/dirty-public-$version-$change-backups" ]]
+        [[ ! -e calls.log ]]
+        grep -q 'Local changes to tracked config/fastai.php' "$TMP/output"
+    done
+done
+
+echo 'Updater: 45 isolated scenarios passed'

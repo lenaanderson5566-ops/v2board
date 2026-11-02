@@ -34,7 +34,7 @@ npm run build
 
 - 后端实际执行必须使用独立、可销毁的项目副本、local/testing 环境及 `TEST_DISPOSABLE_WORKSPACE=1`。副本不携带生产 `.env`、站点配置、实例自定义模板或 bootstrap 缓存；需要模板的测试自行创建合成夹具。部分检查会改文件或迁移 schema，仅换数据库名不足以隔离。
 - MySQL 测试账号须能创建/删除随机测试库；不为测试提升线上应用账号权限。普通事务场景共享可销毁 schema，安装/迁移场景单独建库，各入口独立进程运行，结束清理本次创建的库。
-- 运行器在副本缺少 `.env` 或 `config/fastai.php` 时创建空白测试文件。控制台集成测试需提供 `storage/geoip/` 下公开 Country、City、ASN MMDB 的只读副本，不复制其他生产存储。
+- 运行器在副本缺少 `.env` 时创建空白环境文件；仅当 canonical 和 legacy 站点配置都不存在时创建空 canonical，不能用它遮蔽 legacy-only 测试。保留所有真正的公开配置文件，特别是独立签名 loader；不得按旧冲突文件名把公开代码排除出源清单。控制台集成测试需提供 `storage/geoip/` 下公开 Country、City、ASN MMDB 的只读副本，不复制其他生产存储。
 - Redis 使用专用实例或专用测试数据库，每个入口使用独立前缀；不得清空应用或其他任务的 Redis。邮件、支付、Telegram、AWS、Cloudflare、ACME、下载和服务管理使用测试替身或临时服务，不连接生产。
 - 生成器和前端也使用可销毁副本或可写临时目录，使用独立依赖安装和输出。浏览器夹具登记为 helper，其 setup/cleanup 及恢复要求见 [前后台验证](frontend-validation.md)。
 - 日志与报告放在忽略的 `storage/app/test-organization/`，不含凭据或生产数据。清理仅针对本次临时资源；安装包、校验文件、回滚快照、生产日志及应用数据不属于测试垃圾。
@@ -51,9 +51,11 @@ npm run build
 
 FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树别名、显式空值、整文件优先、新旧命令同实现及旧队列不变；`mail-install-schema` 验配置覆盖拒绝和新装 0640；`console-smoke` 验首次保存继承旧文件 0600、自定义站点名及新旧 boot 同对象。`update-script` 验旧/新/并存配置的字节、校验和与备份保护及缺失/损坏/被目标跟踪的拒绝。`timezone-scheduler` 检查新统计命令共用旧完成记录/锁，CLI 与经营报表读取旧状态但输出新命令名。前端既有模块覆盖偏好兼容、双代 revision、离线退出、裸 token 只清理，以及同意记录的两代删除/clear、最新选择和同时间拒绝优先。规则见 [名称与升级兼容](project-structure.md#fastai-名称与升级兼容)。
 
-该命名迁移的隔离验证按各入口最新结果汇总为后端 109/109 通过，包含升级脚本 33 个模拟场景；最终前端资源及修正 SQLite 查询复用夹具后的四个相关模块已定向复验，保留原业务断言。前端全量 115 文件、155 套件、1751 项测试通过，失败/跳过/todo 均为 0；独立 npm 安装、TypeScript、构建打包、十四语言、JavaScript/worker ASCII、前后台隔离及 385 个发布文件核验通过。生成器漂移检查和 13 项单元测试通过。原运行资源未被覆盖，未进行浏览器视觉、真实支付或客户端内核验收；原始结果在忽略的测试输出中查阅。
+公开/私密配置冲突回归须覆盖真实文件布局：`framework-upgrade` 复制全部实际公共配置及原样签名 loader，在独立进程启动 Laravel，覆盖 legacy-only、canonical/空/单 seed 私密树、混合旧缓存、仅 seed 坏缓存、已有新签名根及真实 `config:cache` 重建；不以合成 loader 或纯 Repository 替代。两个 entrypoint 模块使用合成 seed 验签及 serviceId 连续性，bootstrap 回归核对环境优先、存储回退、临时 seed 文件字节和 0600 不变；不得读取真实站点 seed 或运行真实密钥生成器。Shell 夹具在旧提交真实跟踪两版公开 loader，再验证独立公共文件、私密配置保护和 dirty/未知 tracked 文件停止；物理字节校验还须拦截 assume-unchanged/skip-worktree 隐藏的修改。先前的纯数组及空文件夹具未覆盖这一仓库布局，不能将其通过结果当作此修复的证明。
 
-同一隔离安装树实际执行含包发现脚本的 `composer install --no-dev` 后，生产兼容的 `framework-upgrade`、`console-verify` 两模块均通过；核对主配置只导出 canonical 树、旧别名仍可读及生产不含 Tinker，没有补回开发依赖。
+该配置冲突修复在独立 legacy-only 环境完成 15/15 个 PHP 入口及一个 Shell 入口，共 16 个既有模块；12 个真实引导/缓存矩阵、45 个升级场景均通过，699 份 Git 白名单 PHP 文件语法、清单严格校验及平台检查通过。外层开发验证前后均未生成 canonical 占位，legacy 标记正确，独立签名根不混入业务配置；合成环境 seed 的诊断有效。首轮 Shell 夹具缺目录的失败输出保留，最终场景结果来自修正后的完整重跑。未读取真实站点 seed、生成新密钥或执行真实站点升级；原始结果在忽略的测试输出中查阅。
+
+同一隔离安装树实际执行含包发现脚本的 `composer install --no-dev` 后，生产兼容的 `framework-upgrade`、`console-verify` 两模块 2/2 通过，分别为 265 和 4 项检查；开发对应框架/控制台冒烟分别为 271/322 项。生产仍为 legacy-only，主配置只导出 canonical 树、旧别名可读，生产不含 Tinker，未补回开发依赖。本次为后端配置与升级修复，未重做前端或浏览器验收。
 
 发布需核对源码、清单锁和配套 `public/console`（含 `.vite`）一致，`update.sh` 不在生产执行 Node 构建。若用 alternate work-tree 将隔离产物纳入 Git index，同时保留原本地运行资源，提交后工作区差异是有意保留的，不能自动 reset 清掉。发布排除本地 Docker/启动/种子文件、`.env`、实例配置、storage 运行产物和 pycache。
 

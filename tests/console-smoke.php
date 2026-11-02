@@ -3,7 +3,7 @@
 $app = require __DIR__.'/support/bootstrap.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $configPath = base_path('config/fastai.php');
-$originalFile = file_get_contents($configPath);
+$originalFile = is_file($configPath) ? file_get_contents($configPath) : null;
 $originalConfig = config('fastai');
 $securePath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
 $opsPath = config('fastai.ops_api_path', 'ops');
@@ -225,15 +225,24 @@ try {
     $payment = App\Models\Payment::where('name', 'console-smoke-payment')->first();
     $response = $call('/api/v1/' . $securePath . '/payment/getPaymentForm', ['payment' => 'Paytaro', 'id' => $payment->id], $token);
     $assert((json_decode($response->getContent(), true)['data']['key']['value'] ?? '') === 'test-only', 'Saved gateway value did not reload');
-    $configMode=fileperms($configPath)&0777;
-    $response = $call('/api/v1/' . $securePath . '/config/save', ['show_subscribe_expire' => 0], $token);
-    $assert((fileperms($configPath)&0777)===$configMode,'Atomic configuration save preserves permissions');
+    $activeConfigPath=App\Support\SiteConfiguration::readPath();
+    $configMode=fileperms($activeConfigPath)&0777;
+    $zeroIntervalResponse = $call('/api/v1/' . $securePath . '/config/save', ['show_subscribe_expire' => 0], $token);
+    $response = $call('/api/v1/' . $securePath . '/config/save', ['show_subscribe_expire' => 1], $token);
+    // config:cache boots a fresh app; retain this test's transaction and kernel bindings.
+    Illuminate\Container\Container::setInstance($app);
+    Illuminate\Support\Facades\Facade::setFacadeApplication($app);
+    Illuminate\Support\Facades\Facade::clearResolvedInstances();
+    Illuminate\Database\Eloquent\Model::setConnectionResolver($app['db']);
+    Illuminate\Database\Eloquent\Model::setEventDispatcher($app['events']);
+    clearstatcache(true,$configPath);
+    $assert($response->getStatusCode()===200 && is_file($configPath) && (fileperms($configPath)&0777)===$configMode,'Atomic configuration save creates the canonical file without widening permissions');
     $beforeFailure=file_get_contents($configPath);
     $writer=Illuminate\Support\Facades\File::getFacadeRoot();
     Illuminate\Support\Facades\File::partialMock()->shouldReceive('replace')->once()->andThrow(new RuntimeException('simulated storage failure'));
     try {
         $failedSave=$call('/api/v1/'.$securePath.'/config/save',['show_subscribe_expire'=>1],$token);
-        $assert($failedSave->getStatusCode()===500 && file_get_contents($configPath)===$beforeFailure,'Failed configuration replacement preserves the last valid file');
+        $assert($failedSave->getStatusCode()===500 && file_get_contents($configPath)===$beforeFailure,'Failed configuration replacement preserves the last valid canonical file');
     } finally { Illuminate\Support\Facades\File::swap($writer); }
 
     // A first canonical save must not widen a legacy-only private configuration.
@@ -281,7 +290,7 @@ try {
         $assert(App\Support\FrontendRuntime::config('user')['title']==='FastAI', 'A stored legacy default must render as the canonical product name');
     } finally { config(['fastai'=>$brandingSettings,'app.name'=>$brandingAppName]); }
 
-    $assert($response->getStatusCode() === 422, 'Zero subscription interval should be rejected');
+    $assert($zeroIntervalResponse->getStatusCode() === 422, 'Zero subscription interval should be rejected');
     $nodeStateBeforeAddressChange = App\Models\ServerV2box::orderBy('id')->get()->toArray();
     config(['fastai.app_url'=>'https://site.example.test']);
     foreach (['https://api-old.example.test/', 'https://api-new.example.test:8443/', null] as $nodeApiUrl) {
@@ -569,7 +578,8 @@ try {
 } finally {
     if ($auth) $auth->removeAllSession();
     Illuminate\Support\Facades\DB::rollBack();
-    file_put_contents($configPath, $originalFile);
+    if ($originalFile===null) { if (is_file($configPath)) unlink($configPath); }
+    else file_put_contents($configPath, $originalFile);
     config(['fastai' => $originalConfig]);
     Illuminate\Support\Facades\Artisan::call('config:cache');
 }

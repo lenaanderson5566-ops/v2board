@@ -59,6 +59,108 @@ try {
     foreach (['fastai.php', 'v2board.php'] as $filename) if (is_file($configurationDirectory.'/'.$filename)) unlink($configurationDirectory.'/'.$filename);
     rmdir($configurationDirectory);
 }
+// Exercise Laravel's real public config inventory, not a replacement signing loader.
+$bootstrapFixture = sys_get_temp_dir().'/entrypoint-bootstrap-'.bin2hex(random_bytes(8));
+foreach (['config','storage/app','storage/framework/cache/data','storage/framework/views','storage/framework/sessions','bootstrap/cache'] as $directory) {
+    mkdir($bootstrapFixture.'/'.$directory, 0700, true);
+}
+$publicConfigFiles = array_filter(glob(config_path('*.php')), fn ($file) => !in_array(basename($file), ['fastai.php','v2board.php'], true));
+foreach ($publicConfigFiles as $file) copy($file, $bootstrapFixture.'/config/'.basename($file));
+$assert(is_file($bootstrapFixture.'/config/entrypoint-signing.php')
+    && hash_file('sha256',$bootstrapFixture.'/config/entrypoint-signing.php')===hash_file('sha256',config_path('entrypoint-signing.php')),
+    'Bootstrap fixture must include the unchanged real public signing loader');
+$bootstrapShim = "<?php\n\$app = require ".var_export(base_path('bootstrap/app.php'),true).";\n"
+    ."\$app->useConfigPath(".var_export($bootstrapFixture.'/config',true).");\n"
+    ."\$app->useStoragePath(".var_export($bootstrapFixture.'/storage',true).");\n"
+    ."\$app->useBootstrapPath(".var_export($bootstrapFixture.'/bootstrap',true).");\nreturn \$app;\n";
+file_put_contents($bootstrapFixture.'/bootstrap/app.php',$bootstrapShim);
+$environmentSeed=base64_encode(str_repeat("\x21",32));
+$storageSeed=base64_encode(str_repeat("\x42",32));
+$seedFile=$bootstrapFixture.'/storage/app/fastai-entrypoint.seed';
+file_put_contents($seedFile,$storageSeed); chmod($seedFile,0600);
+$seedFileHash=hash_file('sha256',$seedFile);
+$diskLegacy=['app_url'=>'https://legacy-config.example.test','secure_path'=>'legacy-console','new_user_currency'=>'USD','system_timezone'=>'Asia/Kathmandu','disabled'=>false,'zero'=>0];
+$cachedLegacy=$diskLegacy; $cachedLegacy['app_url']='https://cached-config.example.test';
+$canonicalSite=['app_url'=>'https://current-config.example.test','secure_path'=>'current-console','new_user_currency'=>'CNY','system_timezone'=>'UTC','disabled'=>false,'zero'=>0];
+$seedOnlySite=['entrypoint_signing_seed'=>'deliberate-private-fixture'];
+$cachedBase=app('config')->all();
+unset($cachedBase['fastai'],$cachedBase['v2board'],$cachedBase['entrypoint-signing']);
+$cachedPublicSeed=['entrypoint_signing_seed'=>$environmentSeed];
+$bootstrapCases=[
+    'legacy-env'=>['canonical'=>null,'cache'=>null,'expected'=>$diskLegacy,'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'legacy-storage'=>['canonical'=>null,'cache'=>null,'expected'=>$diskLegacy,'env'=>'','seed'=>$storageSeed],
+    'canonical-site'=>['canonical'=>$canonicalSite,'cache'=>null,'expected'=>$canonicalSite,'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'canonical-empty'=>['canonical'=>[],'cache'=>null,'expected'=>[],'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'canonical-seed-only'=>['canonical'=>$seedOnlySite,'cache'=>null,'expected'=>$seedOnlySite,'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'old-mixed-cache'=>['canonical'=>null,'cache'=>['fastai'=>$cachedPublicSeed,'v2board'=>$cachedLegacy],'expected'=>$cachedLegacy,'env'=>$environmentSeed,'seed'=>$environmentSeed,'rebuild'=>true],
+    'old-empty-legacy-cache'=>['canonical'=>null,'cache'=>['fastai'=>$cachedPublicSeed,'v2board'=>[]],'expected'=>[],'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'old-seed-only-cache'=>['canonical'=>null,'cache'=>['fastai'=>$cachedPublicSeed],'expected'=>$diskLegacy,'env'=>$environmentSeed,'seed'=>$environmentSeed,'rebuild'=>true],
+    'existing-public-cache'=>['canonical'=>null,'cache'=>['fastai'=>$cachedPublicSeed,'v2board'=>$cachedLegacy,'entrypoint-signing'=>['entrypoint_signing_seed'=>$storageSeed]],'expected'=>$cachedLegacy,'env'=>$storageSeed,'seed'=>$storageSeed],
+    'cached-empty-site'=>['canonical'=>[],'cache'=>['fastai'=>[],'v2board'=>$cachedLegacy,'entrypoint-signing'=>$cachedPublicSeed],'expected'=>[],'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'cached-private-seed-only'=>['canonical'=>$seedOnlySite,'cache'=>['fastai'=>$seedOnlySite,'v2board'=>$cachedLegacy,'entrypoint-signing'=>$cachedPublicSeed],'expected'=>$seedOnlySite,'env'=>$environmentSeed,'seed'=>$environmentSeed],
+    'cached-multi-key-site'=>['canonical'=>null,'cache'=>['fastai'=>$canonicalSite+['entrypoint_signing_seed'=>'deliberate-private-fixture'],'v2board'=>$cachedLegacy,'entrypoint-signing'=>$cachedPublicSeed],'expected'=>$canonicalSite+['entrypoint_signing_seed'=>'deliberate-private-fixture'],'env'=>$environmentSeed,'seed'=>$environmentSeed],
+];
+$bootstrapProbe = <<<'PHP'
+require 'tests/support/autoload.php';
+set_exception_handler(static function (Throwable $error) {
+    fwrite(STDERR,get_class($error).' at '.basename($error->getFile()).':'.$error->getLine().PHP_EOL); exit(1);
+});
+$case=json_decode(stream_get_contents(STDIN),true,512,JSON_THROW_ON_ERROR);
+$app=require $case['bootstrap'];
+$kernel=$app->make(Illuminate\Contracts\Console\Kernel::class);
+$kernel->bootstrap();
+if ($case['rebuild']) {
+    $kernel->call('config:cache',[],new Symfony\Component\Console\Output\NullOutput);
+    echo json_encode(['rebuilt'=>is_file($app->getCachedConfigPath())],JSON_THROW_ON_ERROR);
+    exit;
+}
+$config=$app->make('config');
+$site=$config->get('fastai');
+$public=(new App\Services\FastaiEntrypoints)->publicKey();
+$expectedPublic=base64_encode(sodium_crypto_sign_publickey(sodium_crypto_sign_seed_keypair(base64_decode($case['seed'],true))));
+echo json_encode([
+    'siteMatches'=>$site===$case['expected'],
+    'legacyAliasMatches'=>$config->get('v2board')===$site,
+    'noLegacyRoot'=>!array_key_exists('v2board',$config->all()),
+    'signingMatches'=>$config->get('entrypoint-signing.entrypoint_signing_seed')===$case['seed'],
+    'publicKeyMatches'=>$public===$expectedPublic,
+    'identityMatches'=>$public!==null && hash('sha256',base64_decode($public,true))===hash('sha256',base64_decode($expectedPublic,true)),
+],JSON_THROW_ON_ERROR);
+PHP;
+$runBootstrapProbe = function (array $case, bool $rebuild=false) use ($bootstrapFixture,$bootstrapProbe): array {
+    $environment=array_merge(getenv(),[
+        'FASTAI_ENTRYPOINT_SIGNING_SEED'=>$case['env'],
+        'APP_CONFIG_CACHE'=>$bootstrapFixture.'/bootstrap/cache/config.php',
+        'APP_SERVICES_CACHE'=>$bootstrapFixture.'/bootstrap/cache/services.php',
+        'APP_PACKAGES_CACHE'=>$bootstrapFixture.'/bootstrap/cache/packages.php',
+        'APP_EVENTS_CACHE'=>$bootstrapFixture.'/bootstrap/cache/events.php',
+        'APP_ROUTES_CACHE'=>$bootstrapFixture.'/bootstrap/cache/routes.php',
+    ]);
+    $process=proc_open([PHP_BINARY,'-r',$bootstrapProbe],[0=>['pipe','r'],1=>['pipe','w'],2=>['pipe','w']],$pipes,base_path(),$environment);
+    if (!is_resource($process)) throw new RuntimeException('Cannot start the isolated configuration bootstrap');
+    fwrite($pipes[0],json_encode(['bootstrap'=>$bootstrapFixture.'/bootstrap/app.php','expected'=>$case['expected'],'seed'=>$case['seed'],'rebuild'=>$rebuild],JSON_THROW_ON_ERROR)); fclose($pipes[0]);
+    $output=stream_get_contents($pipes[1]); $error=stream_get_contents($pipes[2]); fclose($pipes[1]); fclose($pipes[2]);
+    if (proc_close($process)!==0) throw new RuntimeException('Configuration bootstrap fixture failed: '.$error);
+    return json_decode($output,true,512,JSON_THROW_ON_ERROR);
+};
+try {
+    foreach ($bootstrapCases as $caseName=>$case) {
+        foreach (['config/fastai.php','config/v2board.php','bootstrap/cache/config.php'] as $file) if (is_file($bootstrapFixture.'/'.$file)) unlink($bootstrapFixture.'/'.$file);
+        file_put_contents($bootstrapFixture.'/config/v2board.php','<?php return '.var_export($diskLegacy,true).';');
+        if ($case['canonical']!==null) file_put_contents($bootstrapFixture.'/config/fastai.php','<?php return '.var_export($case['canonical'],true).';');
+        if ($case['cache']!==null) file_put_contents($bootstrapFixture.'/bootstrap/cache/config.php','<?php return '.var_export(array_replace($cachedBase,$case['cache']),true).';');
+        $legacyHash=hash_file('sha256',$bootstrapFixture.'/config/v2board.php');
+        $probe=$runBootstrapProbe($case);
+        foreach ($probe as $boundary=>$valid) $assert($valid===true,'Real configuration bootstrap failed '.$caseName.': '.$boundary);
+        if ($case['rebuild']??false) {
+            $assert($runBootstrapProbe($case,true)['rebuilt']===true,'Real config:cache did not rebuild '.$caseName);
+            $rebuiltCase=$case; $rebuiltCase['expected']=$diskLegacy;
+            foreach ($runBootstrapProbe($rebuiltCase) as $boundary=>$valid) $assert($valid===true,'Rebuilt configuration failed '.$caseName.': '.$boundary);
+        }
+        $assert(hash_file('sha256',$bootstrapFixture.'/config/v2board.php')===$legacyHash && hash_file('sha256',$seedFile)===$seedFileHash && (fileperms($seedFile)&0777)===0600,
+            'Bootstrap or cache rebuilding changed legacy settings or the existing signing seed');
+    }
+} finally { (new Illuminate\Filesystem\Filesystem)->deleteDirectory($bootstrapFixture); }
 $manifest = json_decode(file_get_contents(base_path('composer.json')), true, 512, JSON_THROW_ON_ERROR);
 $lock = json_decode(file_get_contents(base_path('composer.lock')), true, 512, JSON_THROW_ON_ERROR);
 $lockedProduction = array_column($lock['packages'], null, 'name');

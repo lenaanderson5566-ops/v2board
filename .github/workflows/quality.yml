@@ -163,6 +163,13 @@ jobs:
           path: public/console
       - name: Prepare disposable application configuration
         run: |
+          for private_config in .env config/fastai.php config/v2board.php; do
+            if git cat-file -e "HEAD:$private_config" 2>/dev/null; then
+              printf 'Release must not track private configuration: %s\n' "$private_config" >&2
+              exit 1
+            fi
+          done
+          git cat-file -e HEAD:config/entrypoint-signing.php
           mkdir -p storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs storage/app/test-organization bootstrap/cache
           printf '# Disposable CI workspace\n' > .env
           printf '<?php return [];\n' > config/fastai.php
@@ -175,7 +182,7 @@ jobs:
       - run: composer check-platform-reqs
       - run: php tests/run.php --validate
       - name: Run existing critical modules
-        run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,framework-upgrade,lightsail,mfa-api,mfa,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,update-script,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
+        run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,fastai-entrypoints,fastai-entrypoint-check,framework-upgrade,lightsail,mfa-api,mfa,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,update-script,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
       - name: Verify a real production dependency installation
         run: |
           composer install --no-dev --no-interaction --prefer-dist --no-progress --optimize-autoloader

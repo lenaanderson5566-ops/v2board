@@ -4,6 +4,10 @@
 
 项目展示名称和主元数据使用 FastAI，业务配置使用 `fastai.*`。`config/fastai.php` 是唯一保存目标；文件存在时整份优先，即使为空也不与旧文件逐字段合并。仅当新文件不存在时读取旧 `config/v2board.php`，避免已删除配置从旧文件重新出现。保存会写完整的新配置，不自动修改或删除旧文件；部署及备份应保留两者，不提交其中的私密内容。
 
+公开的签名 loader 独立放在受 Git 管理的 `config/entrypoint-signing.php`，读取 `entrypoint-signing.entrypoint_signing_seed`，不占用私密站点配置命名空间。它保留原 `FASTAI_ENTRYPOINT_SIGNING_SEED` 环境变量、`storage/app/fastai-entrypoint.seed` 路径和环境优先规则；修复文件名冲突不生成或替换密钥，客户端固定公钥及 serviceId 不变。历史公开 loader 曾使用 `config/fastai.php` 文件名，不能将其 seed-only 数组当作新站点配置保存或恢复。
+
+旧缓存仅在 canonical 文件不存在且 `fastai` 树恰为单个 `entrypoint_signing_seed` 时识别为历史公开占位：签名值转入缺失的独立公开根，原 cached `v2board` 树（含空数组）优先恢复；旧缓存连该树也没有时，才读取 legacy 文件。存在 canonical 文件或多字段站点树时不触发特殊识别，已有独立签名根也不被覆盖。升级仍正常清理并重建配置缓存，不泛化合并用户配置。
+
 配置 Repository 将旧 `v2board.*` 作为同一存储的兼容别名，旧调用的读写即时反映到 `fastai.*`，显式 null、false、零和空数组不当作缺失。配置缓存只导出主命名空间，并兼容读取旧缓存。新安装与操作文档使用 `fastai:*` 主命令，已有 `v2board:*` 命令保留别名；`fastai:update` 和旧别名均只提示使用安全的 `update.sh`，不会重放历史 SQL。
 
 Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序列化载荷、Redis 计数/缓存/会话标识、DNS 所有权标记和每日任务持久 identity 保持兼容。网页以 `window.FASTAI` 输出运行配置，并以同一对象提供旧 `window.V2BOARD` 别名，供滚动升级或缓存中的旧资源使用；旧 boot 输入仍可读取。不要为清除旧名称而更换密钥、清缓存、改数据库表或重置任务状态。

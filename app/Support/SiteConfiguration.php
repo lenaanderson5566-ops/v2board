@@ -32,6 +32,21 @@ final class SiteConfiguration
 
     public static function install(Application $app): void
     {
-        $app->instance('config', new SiteConfigurationRepository($app->make('config')->all()));
+        $items = $app->make('config')->all();
+        // Older releases cached the public signing loader under the current site name.
+        // Never reinterpret an existing private file or a settings tree with other keys.
+        if ($app->configurationIsCached() && !is_file(self::path())
+            && is_array($items['fastai'] ?? null)
+            && array_keys($items['fastai']) === ['entrypoint_signing_seed']) {
+            if (!array_key_exists('entrypoint-signing', $items)) {
+                $items['entrypoint-signing'] = $items['fastai'];
+            }
+            unset($items['fastai']);
+            // The short-lived conflicting release could also cache only the public seed.
+            if (!array_key_exists('v2board', $items) && ($legacy = self::read()) !== null) {
+                $items['v2board'] = $legacy;
+            }
+        }
+        $app->instance('config', new SiteConfigurationRepository($items));
     }
 }

@@ -6,6 +6,10 @@
 
 预检要求至少存在一份非空的站点配置文件，存在的两份文件都纳入校验和及私有备份；内容为 `return [];` 的有效空配置与零字节损坏文件不同。目标提交不得跟踪任一私密配置文件。
 
+历史版本曾将公开签名 loader 跟踪在 `config/fastai.php`。新版仅对两个已发布的已知 Git blob、普通非符号链接文件、匹配对应已知 LF/CRLF 物理字节哈希且 Git-clean 的文件按退役代码处理；原始字节检查不依赖 assume-unchanged、skip-worktree 或 clean filter，不能只以 git status 干净判断。升级时由 Git 删除旧公开路径，不将其恢复成私密配置；真正的 legacy 配置继续逐字节保护。目标必须包含独立公开的 `config/entrypoint-signing.php`，仍不得跟踪新旧私密配置。若只有公开 loader、没有实际站点配置，预检会停止。
+
+若提示 `Local changes to tracked config/fastai.php` 或无法识别的 tracked 文件，先停止并在私有备份中核对本地修改。该文件可能已经包含站点秘密或自定义签名逻辑，不要执行 `rm`、`git restore` 或公开其内容来绕过；须单独确认保存和迁移方法。普通旧站保留原签名环境变量及 seed 文件即可，不要重新运行密钥生成脚本。配置缓存的兼容恢复见 [名称与升级兼容](project-structure.md#fastai-名称与升级兼容)。
+
 ## 全新安装（空数据库）
 
 全新安装与旧站升级是不同入口。先准备 PHP 8.4+、Composer 2.2+、MySQL 和 Redis，使用本分支代码及提交的 composer.lock，Web 根目录指向 `public`，保留配套 `public/console` 静态资源。部署环境的 PHP 扩展以 `composer check-platform-reqs --lock --no-dev` 为准。

@@ -187,8 +187,9 @@ textarea {
     top: calc(100% + 8px);
     z-index: 70;
     width: min(224px, calc(100vw - 32px));
-    max-height: min(480px, 70dvh);
+    max-height: min(700px, calc(100dvh - 112px));
     overflow-y: auto;
+    overscroll-behavior-y: contain;
     padding: 8px;
     background: var(--surface, #fff);
     border: 1px solid var(--line, #e5e5e5);
@@ -219,6 +220,10 @@ textarea {
 .language-popover > button:focus-visible,
 .language-popover > button[aria-checked="true"] {
     background: var(--surface-soft, #f4f4f4);
+}
+@media (min-width: 601px) and (hover: hover) and (pointer: fine) {
+    .language-popover > small { padding-block: 4px; }
+    .language-popover > button { min-height: 32px; padding-block: 4px; }
 }
 .workspace-skeleton {
     width: 100%;
@@ -357,14 +362,20 @@ textarea {
 }
 @media (max-width: 600px) {
     .language-trigger {
-        width: 44px;
-        padding: 0;
+        min-width: 44px;
+        gap: 6px;
+        padding-inline: 8px;
         justify-content: center;
     }
-    .language-name,
-    .language-chevron {
-        display: none;
+    .language-name { max-width: 68px; }
+    .language-chevron { display: none; }
+}
+@media (max-width: 359px) {
+    .language-trigger {
+        width: 44px;
+        padding-inline: 0;
     }
+    .language-name { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
     .skeleton-heading,

@@ -152,7 +152,8 @@
 @media (max-width: 700px) {
     .app.user .pricing-toolbar {
         justify-content: center;
-        margin-bottom: 12px;
+        gap: 16px;
+        margin-bottom: 20px;
     }
     .app.user .pricing-toolbar p {
         width: 100%;
@@ -166,8 +167,8 @@
     .app.user .mobile-plan-picker {
         display: grid;
         grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 8px;
-        margin-bottom: 12px;
+        gap: 10px;
+        margin-bottom: 20px;
     }
     .app.user .mobile-plan-picker button {
         display: grid;
@@ -219,14 +220,15 @@
     }
     .app.user .pricing-summary {
         min-height: auto;
-        padding-block: 10px;
+        padding-block: 16px;
     }
     .app.user .pricing-summary .plan-price {
-        font-size: 30px;
-        margin-bottom: 4px;
+        font-size: 34px;
+        line-height: 1.15;
+        margin-bottom: 8px;
     }
     .app.user .pricing-card-heading h2 {
-        font-size: 20px;
+        font-size: 22px;
     }
     .app.user .pricing-plans .plan-feature-list li {
         font-size: 14px;
@@ -296,10 +298,10 @@
 }
 @media (max-width: 700px) {
     .app.user main:has(.subscription-catalog) {
-        padding-top: 12px;
+        padding-top: 20px;
     }
     .app.user main:has(.subscription-catalog) .page-heading {
-        margin-bottom: 12px;
+        margin-bottom: 20px;
     }
     .app.user .subscription-catalog .pending-order {
         flex-direction: row;
@@ -315,25 +317,8 @@
         padding-inline: 10px;
         font-size: 13px;
     }
-    .app.user .pricing-plans .plan-card {
-        padding: 16px;
-    }
-    .app.user .pricing-summary {
-        padding-block: 6px;
-    }
-    .app.user .pricing-plans .plan-card > .primary {
-        min-height: 44px;
-        margin-bottom: 10px;
-    }
-    .app.user .pricing-plans .plan-feature-list {
-        gap: 2px;
-    }
     .app.user .pricing-plans .plan-feature-list li {
-        padding-block: 3px;
-        line-height: 1.45;
-    }
-    .app.user .mobile-plan-picker {
-        padding-bottom: 6px;
+        line-height: 1.55;
     }
 }
 

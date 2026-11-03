@@ -77,7 +77,10 @@ try {
     $assert($singboxData['nodes'][0]['proxyName']===$data['nodes'][0]['proxyName'], 'Stable node identity across engines');
     $assert(in_array($singboxData['nodes'][0]['proxyName'], array_column($singboxData['configuration']['outbounds'], 'tag')), 'Metadata references emitted sing-box outbound');
     $assert($call($path.'&core=unknown', $token)->getStatusCode()===422, 'Unknown core rejected');
-    $assert($call($path.'&core=sing-box', $token, 'HEAD')->getStatusCode()===200, 'Native sing-box HEAD supported');
+    $singboxHead = $call($path.'&core=sing-box', $token, 'HEAD', 'application/json');
+    $revision = $singboxHead->headers->get('X-FastAI-Config-Revision');
+    $assert($singboxHead->getStatusCode()===200 && $revision===($singboxData['configVersion'] ?? null)
+        && preg_match('/^[a-f0-9]{64}$/', (string)$revision), 'HEAD exposes the same revision as the configuration bundle');
     App\Models\ServerV2box::create([
         'group_id'=>[98765], 'name'=>'Naive capability node', 'rate'=>'1',
         'host'=>'naive.example.com', 'port'=>'443', 'server_port'=>443,
@@ -87,6 +90,9 @@ try {
     $nativeData = json_decode($nativeSing->getContent(),true)['data'];
     $assert($nativeSing->getStatusCode()===200 && in_array('naive',array_column($nativeData['configuration']['outbounds'],'type'),true),'Naive is exported without capability negotiation');
     $assert(count($nativeData['nodes'])===count($singboxData['nodes'])+1,'Naive metadata accompanies configuration');
+    $changedHead = $call($path.'&core=sing-box', $token, 'HEAD', 'application/json');
+    $assert($changedHead->headers->get('X-FastAI-Config-Revision')===$nativeData['configVersion']
+        && $nativeData['configVersion']!==$revision, 'A node change invalidates the previous configuration revision');
 
     $legacy = $call('/api/v10/subscriptions/'.$user->token.'?format=flclash', null, 'GET', 'application/yaml', 'FlClash/0.8.99');
     $assert($legacy->getStatusCode()===200 && str_contains($legacy->getContent(), 'proxy-groups:'), 'Token subscriptions remain compatible');

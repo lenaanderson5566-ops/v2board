@@ -35,14 +35,16 @@ class ClientActions
         if ($request->input('core') === 'sing-box') {
             $configuration = json_decode($yaml->getContent(), true, 512, JSON_THROW_ON_ERROR);
             $nodes = $request->attributes->get('client.nodes', []);
+            $revision = hash('sha256', json_encode([$configuration, $nodes]));
             return response()->json(['data' => [
-                'configVersion' => hash('sha256', json_encode([$configuration, $nodes])),
+                'configVersion' => $revision,
                 'core' => 'sing-box',
                 'coreVersion' => '1.14.3',
                 'configuration' => $configuration,
                 'nodes' => $nodes,
             ]], 200, [
                 'X-FastAI-Config-Version' => '3',
+                'X-FastAI-Config-Revision' => $revision,
                 'Cache-Control' => 'private, no-store',
                 'Vary' => 'Accept, Accept-Language',
             ]);

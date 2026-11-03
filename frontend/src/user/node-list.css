@@ -3,24 +3,12 @@
     align-items: center;
     justify-content: flex-start;
     gap: 12px;
-    min-width: 0;
-    width: 100%;
-    padding: 0;
-    border: 0;
-    background: transparent;
-    color: inherit;
-    font: inherit;
     text-align: start;
 }
 .user-node-name > img,
 .user-node-name > svg:first-child {
     flex: 0 0 28px;
 }
-.user-node-name .user-node-details-icon {
-    flex: 0 0 14px;
-    color: var(--text-secondary);
-}
-.user-node-name:dir(rtl) .user-node-details-icon { transform: rotate(180deg); }
 .user-node-name > span {
     min-width: 0;
     white-space: normal;
@@ -37,18 +25,14 @@
     white-space: normal;
     overflow-wrap: anywhere;
 }
-.user-node-detail .panel-head h2,
-.user-node-detail dd {
-    min-width: 0;
-    overflow-wrap: anywhere;
-}
 @media (max-width: 800px) {
     .user .user-node-list tbody tr {
         display: grid;
         grid-template-columns: minmax(0, 1fr) auto auto;
         align-items: center;
-        gap: 8px;
-        padding: 0 12px;
+        gap: 4px 8px;
+        min-height: 44px;
+        padding: 6px 12px;
     }
     .user .user-node-list table td {
         display: block;
@@ -58,12 +42,19 @@
         line-height: var(--record-line-height);
     }
     .user .user-node-list table td[data-label]::before,
-    .user .user-node-list table td:nth-child(2) {
+    .user .user-node-list table td:nth-child(2):empty {
         display: none;
     }
-    .app.user button.user-node-name {
+    .user .user-node-list table td:first-child { grid-area: 1 / 1; }
+    .user .user-node-list table td:nth-child(2) {
+        grid-row: 2;
+        grid-column: 1 / -1;
+        padding-inline-start: 26px;
+    }
+    .user .user-node-list table td:nth-child(3) { grid-area: 1 / 2; }
+    .user .user-node-list table td:nth-child(4) { grid-area: 1 / 3; }
+    .user-node-name {
         gap: 6px;
-        min-height: 44px;
         font-size: var(--record-text-size);
         line-height: var(--record-line-height);
     }
@@ -73,14 +64,9 @@
         width: 20px;
         height: 20px;
     }
-    .user-node-name > span,
-    .user-node-rate {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
     .user-node-rate {
         display: block;
-        max-width: 6.5rem;
+        max-inline-size: 6.5rem;
+        overflow-wrap: anywhere;
     }
 }

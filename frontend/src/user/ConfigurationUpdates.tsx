@@ -1,16 +1,15 @@
-import { useState } from "react";
 import { ArrowLeft, History } from "lucide-react";
 import type { V10SubscriptionAccessRecord } from "../shared/v10-types";
 import { tx } from "../shared/i18n";
 import { StatusBadge } from "../shared/StatusBadge";
 import { formatInstant } from "../shared/timezone";
 import { State, useData } from "../shared/ui/data";
-import { Pager, Reload } from "../shared/ui/controls";
+import { Reload } from "../shared/ui/controls";
 import { useRetryCountdown } from "../shared/use-retry-countdown";
 import { SettingsHeading } from "./SettingsHeading";
 import "./configuration-updates.css";
 
-const pageSize = 20;
+const recordLimit = 20;
 const text = (value: unknown) => typeof value === "string" ? value.trim() : "";
 const failureExplanations = new Map([
     ["expired", "此次请求时订阅已到期，请检查有效期或续费后更新配置。"],
@@ -41,16 +40,14 @@ function RequestResult({ record }: { record: V10SubscriptionAccessRecord }) {
 }
 
 export function ConfigurationUpdates() {
-    const [page, setPage] = useState(1);
     const records = useData<V10SubscriptionAccessRecord[]>(
-        `user/subscription/access-records?page=${page}&pageSize=${pageSize}`,
+        `user/subscription/access-records?page=1&pageSize=${recordLimit}`,
         undefined, false, { refreshOnEvents: false },
     );
     const retryIn = useRetryCountdown(records.retryAt);
     const blocked = records.loading || retryIn > 0;
-    const rows = Array.isArray(records.data) ? records.data.filter(record => record && typeof record === "object" && !Array.isArray(record)) : [];
-    const retentionDays = records.meta?.retentionDays;
-    const pagination = records.meta?.pagination;
+    const rows = Array.isArray(records.data) ? records.data.slice(0, recordLimit)
+        .filter(record => record && typeof record === "object" && !Array.isArray(record)) : [];
     return <section className="settings-content configuration-updates">
         <a className="configuration-updates-back" href="#/security"><ArrowLeft size={16} aria-hidden="true" />{tx("返回账户安全")}</a>
         <SettingsHeading icon={<History size={24} />} title={tx("配置更新记录")}
@@ -58,9 +55,7 @@ export function ConfigurationUpdates() {
         <div className="settings-card">
             <header className="configuration-updates-toolbar">
                 <div className="muted">
-                    <p>{Number.isInteger(retentionDays) && retentionDays > 0
-                        ? tx("仅显示最近 {{days}} 天内保留的记录。", { days: retentionDays })
-                        : tx("仅显示当前保留范围内的记录。")}</p>
+                    <p>{tx("最多显示最近 {{count}} 条配置更新记录。", { count: recordLimit })}</p>
                     <p>{tx("时间按您的显示时区展示。")}</p>
                 </div>
                 <Reload onClick={records.reload} loading={records.loading} disabled={blocked} />
@@ -87,8 +82,6 @@ export function ConfigurationUpdates() {
                     })}</tbody>
                 </table> : <p className="configuration-updates-empty">{tx("保留范围内暂无配置更新记录。")}</p>}
             </State>
-            {pagination && pagination.total > 0 ? <Pager page={page} total={pagination.total} size={pageSize} loading={blocked} onChange={setPage} />
-                : page > 1 && !records.loading && <div className="configuration-updates-recovery"><button type="button" disabled={blocked} onClick={() => setPage(page - 1)}>{tx("上一页")}</button></div>}
             <p className="muted configuration-updates-location">{tx("位置根据请求 IP 估算，可能显示代理出口所在地。")}</p>
         </div>
     </section>;

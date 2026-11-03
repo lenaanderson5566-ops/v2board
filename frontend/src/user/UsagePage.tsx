@@ -336,9 +336,11 @@ export function UsagePage() {
                                         )
                                     ) : (
                                         <div className="reset-history">
-                                            <p className="reset-history-range muted">
-                                                {b("recentHistory")}
-                                            </p>
+                                            {!!resets.data?.history?.length && (
+                                                <p className="reset-history-range muted">
+                                                    {b("recentHistory")}
+                                                </p>
+                                            )}
                                             {resets.data?.history?.length ? (
                                                 resets.data.history.map(
                                                     (row: Row) => (
@@ -427,7 +429,6 @@ export function UsagePage() {
                 >
                     <div className="pad">
                         <p>{b("resetConfirm", { amount: bytes(used) })}</p>
-                        <p className="muted">{b("resetHelp")}</p>
                         {error && (
                             <p className="alert" role="alert">
                                 {error}
@@ -489,7 +490,6 @@ export function PaidTrafficReset({ plan, used }: { plan: Row; used: number }) {
                     {c("paidReset")} · {money(plan.reset_price, plan.currency)}
                 </button>
             </div>
-            <p className="muted">{c("paidResetHelp")}</p>
             {used <= 0 && <p className="muted">{b("emptyUsage")}</p>}
             {pending && (
                 <a href={`#/order/${pending.trade_no}`}>

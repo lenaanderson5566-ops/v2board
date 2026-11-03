@@ -1,11 +1,10 @@
 import { formatMultiplier } from "../shared/number-format";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { StatusBadge } from "../shared/StatusBadge";
-import { ChevronRight, Globe } from "lucide-react";
+import { Globe } from "lucide-react";
 import { type Row } from "../shared/api";
 import { locale, tx } from "../shared/i18n";
-import { Modal, Table } from "../shared/ui";
+import { Table } from "../shared/ui";
 import "./node-list.css";
 
 const flags = import.meta.glob<string>("./assets/flags/*.svg", {
@@ -39,9 +38,7 @@ function nodeTags(node: Row) {
                 </span>
             ))}
         </span>
-    ) : (
-        <span className="muted">—</span>
-    );
+    ) : null;
 }
 function nodeStatus(node: Row) {
     return (
@@ -53,7 +50,6 @@ function nodeStatus(node: Row) {
 export function NodeList({ nodes }: { nodes: Row[] }) {
     const { t } = useTranslation("nodes");
     const language = locale();
-    const [selected, setSelected] = useState<Row | null>(null);
     return (
         <div className="user-node-list">
             <Table
@@ -71,12 +67,7 @@ export function NodeList({ nodes }: { nodes: Row[] }) {
                             const flag = flags[`./assets/flags/${code}.svg`];
                             const name = nodeName(node, language);
                             return (
-                                <button
-                                    className="user-node-name"
-                                    type="button"
-                                    aria-haspopup="dialog"
-                                    onClick={() => setSelected(node)}
-                                >
+                                <span className="user-node-name">
                                     {flag ? (
                                         <img
                                             src={flag}
@@ -88,13 +79,8 @@ export function NodeList({ nodes }: { nodes: Row[] }) {
                                     ) : (
                                         <Globe size={28} aria-hidden="true" />
                                     )}
-                                    <span title={name}>{name}</span>
-                                    <ChevronRight
-                                        size={14}
-                                        className="user-node-details-icon"
-                                        aria-hidden="true"
-                                    />
-                                </button>
+                                    <span>{name}</span>
+                                </span>
                             );
                         },
                     ],
@@ -111,28 +97,6 @@ export function NodeList({ nodes }: { nodes: Row[] }) {
                     ["is_online", tx("状态"), nodeStatus],
                 ]}
             />
-            {selected && (
-                <Modal
-                    title={nodeName(selected, language)}
-                    className="user-node-detail"
-                    close={() => setSelected(null)}
-                >
-                    <dl className="detail-grid pad">
-                        <div>
-                            <dt>{t("tags")}</dt>
-                            <dd>{nodeTags(selected)}</dd>
-                        </div>
-                        <div>
-                            <dt>{tx("倍率")}</dt>
-                            <dd>{formatMultiplier(selected.rate)}</dd>
-                        </div>
-                        <div>
-                            <dt>{tx("状态")}</dt>
-                            <dd>{nodeStatus(selected)}</dd>
-                        </div>
-                    </dl>
-                </Modal>
-            )}
         </div>
     );
 }

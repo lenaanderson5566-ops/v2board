@@ -16,7 +16,6 @@ body[data-console="user"] .configuration-updates .configuration-request-status {
 }
 .configuration-updates-empty { padding:32px 0; text-align:center; color:var(--text-secondary); }
 .configuration-updates-location { margin:16px 0 0; font-size:12px; line-height:1.6; }
-.configuration-updates-recovery { margin-block-start:16px; }
 @media(max-width:800px) {
     .configuration-updates-toolbar { align-items:flex-start; }
     .configuration-updates-table,.configuration-updates-table tbody { display:block; }
@@ -40,5 +39,4 @@ body[data-console="user"] .configuration-updates .configuration-request-status {
     .configuration-record-result { grid-area:result; justify-self:end; }
     tr:has(.configuration-request-reason) .configuration-record-result { justify-self:stretch; }
     .configuration-record-client small,.configuration-record-source small { display:inline; margin-inline-start:6px; }
-    .configuration-updates .pager { flex-wrap:wrap; gap:12px; }
 }

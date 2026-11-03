@@ -33,7 +33,7 @@ it("shows only safe request fields in the personal time zone and explains succes
     expect(await screen.findByText("Clash Verge Rev")).toBeTruthy();
     expect(screen.getByText("请求成功").getAttribute("data-tone")).toBe("success");
     expect(screen.getByText(/12\/31\/2025, 16:30:00/)).toBeTruthy();
-    expect(screen.getByText("仅显示最近 30 天内保留的记录。")).toBeTruthy();
+    expect(screen.getByText("时间按您的显示时区展示。")).toBeTruthy();
     expect(screen.getByRole("link", { name: "返回账户安全" }).getAttribute("href")).toBe("#/security");
     expect(screen.queryByText("请求详情")).toBeNull();
     expect(document.querySelector("details")).toBeNull();
@@ -58,7 +58,7 @@ it("describes an empty retained window without implying that the subscription wa
     mocks.read.mockResolvedValue(response([], 0, null));
     render(<ConfigurationUpdates />);
     expect(await screen.findByText("保留范围内暂无配置更新记录。")).toBeTruthy();
-    expect(screen.getByText("仅显示当前保留范围内的记录。")).toBeTruthy();
+    expect(screen.getByText("最多显示最近 20 条配置更新记录。")).toBeTruthy();
     expect(screen.queryByRole("table")).toBeNull();
     expect(screen.queryByRole("navigation", {name: "分页"})).toBeNull();
 });
@@ -90,42 +90,32 @@ it.each([
     expect(screen.queryByText(reason)).toBeNull();
 });
 
-it("requests the selected page and never presents old rows as a failed new page", async () => {
-    mocks.read.mockImplementation(async (path: string) => {
-        if (path.includes("page=2")) throw new Error("Page unavailable");
-        return response([first], 41);
-    });
+it("shows the latest twenty records without pagination even when more are retained", async () => {
+    const latest = Array.from({ length: 21 }, (_, index) => ({ ...first, id: index + 1, clientName: `Recent client ${index + 1}` }));
+    mocks.read.mockResolvedValue(response(latest, 41));
     render(<ConfigurationUpdates />);
-    await screen.findByText("Clash Verge Rev");
-    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
-    expect(await screen.findByText("Page unavailable")).toBeTruthy();
-    expect(screen.queryByText("Clash Verge Rev")).toBeNull();
-    expect(mocks.read).toHaveBeenCalledWith("user/subscription/access-records?page=2&pageSize=20", undefined, false);
+    expect(await screen.findAllByText(/^Recent client /)).toHaveLength(20);
+    expect(screen.queryByText("Recent client 21")).toBeNull();
+    expect(screen.getByText("最多显示最近 20 条配置更新记录。")).toBeTruthy();
+    expect(mocks.read).toHaveBeenCalledTimes(1);
+    expect(mocks.read).toHaveBeenCalledWith("user/subscription/access-records?page=1&pageSize=20", undefined, false);
     expect(screen.queryByRole("navigation", { name: "分页" })).toBeNull();
-    expect(screen.queryByText(/第 0 页/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "上一页" }));
-    await screen.findByText("Clash Verge Rev");
-    expect(mocks.read).toHaveBeenLastCalledWith("user/subscription/access-records?page=1&pageSize=20", undefined, false);
-    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
-    await screen.findByText("Page unavailable");
-    mocks.read.mockResolvedValueOnce(response([{ ...first, id: 21, clientName: "sing-box" }], 41));
-    fireEvent.click(screen.getByRole("button", { name: "重试" }));
-    expect(await screen.findByText("sing-box")).toBeTruthy();
-    expect(mocks.read).toHaveBeenLastCalledWith("user/subscription/access-records?page=2&pageSize=20", undefined, true);
+    expect(screen.queryByRole("button", { name: "上一页" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "下一页" })).toBeNull();
 });
 
-it("ignores a late response from an abandoned page", async () => {
+it("ignores a late refresh response from an unmounted history", async () => {
     let finish!: (value: unknown) => void;
     mocks.read.mockResolvedValueOnce(response([first], 41)).mockReturnValueOnce(new Promise(resolve => { finish = resolve; })).mockResolvedValue(response([{ ...first, clientName: "Current client" }], 41));
     const previous = render(<ConfigurationUpdates />);
     await screen.findByText("Clash Verge Rev");
-    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
     await waitFor(() => expect(mocks.read).toHaveBeenCalledTimes(2));
     previous.unmount();
     render(<ConfigurationUpdates />);
     await screen.findByText("Current client");
-    await act(async () => finish(response([{ ...first, clientName: "Abandoned page" }], 41)));
-    expect(screen.queryByText("Abandoned page")).toBeNull();
+    await act(async () => finish(response([{ ...first, clientName: "Abandoned refresh" }], 41)));
+    expect(screen.queryByText("Abandoned refresh")).toBeNull();
     expect(screen.getByText("Current client")).toBeTruthy();
 });
 
@@ -142,6 +132,19 @@ it("refreshes explicitly while focus and visibility events do not request the hi
     fireEvent.click(screen.getByRole("button", { name: "刷新" }));
     expect(await screen.findByText("Updated client")).toBeTruthy();
     expect(mocks.read).toHaveBeenLastCalledWith("user/subscription/access-records?page=1&pageSize=20", undefined, true);
+});
+
+it("blocks refresh and retry during the rate-limit cooldown", async () => {
+    mocks.read.mockRejectedValueOnce(Object.assign(new Error("Too many requests"), { status: 429, retryAfter: 60 }));
+    render(<ConfigurationUpdates />);
+    expect(await screen.findByText("Too many requests")).toBeTruthy();
+    const refresh = screen.getByRole<HTMLButtonElement>("button", { name: "刷新" });
+    const retry = screen.getByRole<HTMLButtonElement>("button", { name: "retryIn" });
+    expect(refresh.disabled).toBe(true);
+    expect(retry.disabled).toBe(true);
+    fireEvent.click(refresh);
+    fireEvent.click(retry);
+    expect(mocks.read).toHaveBeenCalledTimes(1);
 });
 
 it("loads the independent security route for an expired subscription without a plan gate", async () => {

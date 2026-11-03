@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 
 final class SubscriptionAccessActions
 {
+    private const HISTORY_LIMIT = 20;
     private const REASONS = ['banned', 'no_plan', 'expired', 'user_unavailable', 'client_disabled',
         'client_version_too_low', 'client_ua_not_allowed', 'client_format_not_allowed', 'traffic_exhausted',
         'credits_expired', 'credits_exhausted', 'no_available_nodes', 'subscription_changed'];
@@ -17,15 +18,16 @@ final class SubscriptionAccessActions
     public function index(Request $request)
     {
         $page = max(1, (int) $request->input('page', 1));
-        $size = min(100, max(1, (int) $request->input('pageSize', 20)));
+        $size = min(self::HISTORY_LIMIT, max(1, (int) $request->input('pageSize', self::HISTORY_LIMIT)));
         $days = app(LogRetentionService::class)->settings()['subscribe_log_retention_days'];
         $query = SubscribeLog::query()->where('user_id', (int) $request->attributes->get('v10.userId'));
         if ($days > 0) $query->where('created_at', '>=', time() - $days * 86400);
-        $total = (clone $query)->count();
-        $totalPages = (int) ceil($total / $size);
-        $rows = $page > $totalPages ? collect() : $query->select(['id', 'created_at', 'client_type', 'status', 'reason', 'ip', 'country', 'region', 'city'])
+        $latest = $query->select(['id', 'created_at', 'client_type', 'status', 'reason', 'ip', 'country', 'region', 'city'])
             ->selectRaw('SUBSTR(user_agent, 1, 512) AS user_agent, LENGTH(user_agent) AS user_agent_length')
-            ->orderByDesc('created_at')->orderByDesc('id')->forPage($page, $size)->get();
+            ->orderByDesc('created_at')->orderByDesc('id')->limit(self::HISTORY_LIMIT)->get();
+        $total = $latest->count();
+        $totalPages = (int) ceil($total / $size);
+        $rows = $page > $totalPages ? collect() : $latest->forPage($page, $size)->values();
         return response()->json([
             'data' => $rows->map(fn($row) => $this->record($row))->all(),
             'meta' => ['pagination' => ['page' => $page, 'pageSize' => $size, 'total' => $total,

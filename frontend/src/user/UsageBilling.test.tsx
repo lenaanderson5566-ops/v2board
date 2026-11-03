@@ -7,6 +7,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({
     request: vi.fn(),
@@ -404,18 +405,14 @@ it.each(["active", "expired", "banned", undefined])(
         expect(screen.getByRole("button", { name: "账户充值" })).toBeTruthy();
     },
 );
-it("keeps new-account filtered no-results separate from an empty unfiltered transaction history", () => {
+it("keeps purchase guidance for new accounts without suggesting that an existing history is empty", () => {
     mocks.info.account_status.state = "new";
+    mocks.orders = [{ trade_no: "previous-recharge", plan_id: 0, period: "deposit", status: 3 }];
+    mocks.orderTotal = 1;
     render(<BillingPage />);
-    fireEvent.change(screen.getByLabelText("状态"), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: "searchTransactions" }));
-    expect(screen.getByText("noMatchingTransactions")).toBeTruthy();
     expect(screen.queryByText("noTransactions")).toBeNull();
     expect(screen.queryByRole("link", { name: "选择套餐" })).toBeNull();
     expect(screen.getByText("购买套餐可直接付款，无需先充值账户余额。")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "重置" }));
-    expect(screen.getByText("noTransactions")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "选择套餐" }).getAttribute("href")).toBe("#/plan");
 });
 it("waits for a successful empty-history response before offering a new account a plan", () => {
     mocks.info.account_status.state = "new";
@@ -464,6 +461,9 @@ it("confirms a banked reset, reuses the retry key and shows the updated reset da
     render(<UsagePage />);
     expect(screen.getByText("resetAt:2026/11/30 08:00 (UTC+8)")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "resetNow" }));
+    const confirm = within(screen.getByRole("dialog", { name: "resetNow" }));
+    expect(confirm.getByText("resetConfirm")).toBeTruthy();
+    expect(confirm.queryByText("resetHelp")).toBeNull();
     expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "useOne" }));
     fireEvent.click(screen.getByRole("button", { name: "处理中" }));
@@ -569,7 +569,10 @@ it("grants banked credits to the exact selected user filter", async () => {
 it("creates a paid reset order from usage without consuming banked resets", async () => {
     mocks.request.mockResolvedValue({ data: "reset-order" });
     render(<UsagePage />);
+    expect(screen.queryByText("paidResetHelp")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /paidReset/ }));
+    const checkout = within(screen.getByRole("dialog", { name: "paidReset" }));
+    expect(checkout.getByText("paidResetHelp")).toBeTruthy();
     expect(screen.queryByText("选择订阅周期")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "创建订单并继续" }));
     await waitFor(() =>
@@ -657,57 +660,33 @@ it("omits duplicate coupon and usage shortcuts while retaining billing actions",
     expect(screen.getByRole("button", { name: "账户充值" })).toBeTruthy();
 });
 
-it("applies order filters only on submit, searches full server history and resets pagination", () => {
-    mocks.orderTotal = 42;
-    render(<BillingPage />);
-    fireEvent.click(screen.getByText("findTransactions"));
-    fireEvent.change(screen.getByLabelText("状态"), { target: { value: "3" } });
-    fireEvent.change(screen.getByLabelText("timeRange"), {
-        target: { value: "90" },
-    });
-    fireEvent.change(screen.getByLabelText("orderNumber"), {
-        target: { value: "invoice_2025-1" },
-    });
-    expect(mocks.orderPaths.at(-1)).not.toContain("order_number");
-    fireEvent.click(screen.getByRole("button", { name: "searchTransactions" }));
-    let params = new URLSearchParams(mocks.orderPaths.at(-1)?.split("?")[1]);
-    expect(params.get("status")).toBe("3");
-    expect(params.get("order_number")).toBe("invoice_2025-1");
-    expect(
-        Math.abs(
-            Date.parse(params.get("created_from")!) -
-                (Date.now() - 90 * 86400000),
-        ),
-    ).toBeLessThan(1000);
-    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
-    expect(
-        new URLSearchParams(mocks.orderPaths.at(-1)?.split("?")[1]).get(
-            "current",
-        ),
-    ).toBe("2");
-    fireEvent.click(screen.getByRole("button", { name: "重置" }));
-    params = new URLSearchParams(mocks.orderPaths.at(-1)?.split("?")[1]);
-    expect(params.get("current")).toBe("1");
-    expect(params.has("status")).toBe(false);
-    expect(params.has("order_number")).toBe(false);
-    expect(params.has("created_from")).toBe(false);
-});
-it("keeps all matching rows and a useful empty state rather than filtering only the first five", () => {
-    mocks.orders = Array.from({ length: 8 }, (_, index) => ({
+it("browses unfiltered transaction history twenty at a time and collapses to the first page", () => {
+    const pageOne = Array.from({ length: 20 }, (_, index) => ({
         trade_no: `past-${index}`,
         plan: { name: `Historical ${index}` },
         status: 3,
         total_amount: 100,
     }));
+    mocks.orders = pageOne;
+    mocks.orderTotal = 42;
     const view = render(<BillingPage />);
-    fireEvent.change(screen.getByLabelText("状态"), { target: { value: "3" } });
-    fireEvent.click(screen.getByRole("button", { name: "searchTransactions" }));
-    expect(screen.getByText("Historical 7")).toBeTruthy();
-    mocks.orders = [];
+    expect(screen.queryByText("findTransactions")).toBeNull();
+    expect(screen.getAllByText(/^Historical \d+$/)).toHaveLength(5);
+    expect(screen.queryByRole("button", { name: "下一页" })).toBeNull();
+    const params = () => Object.fromEntries(new URLSearchParams(mocks.orderPaths.at(-1)?.split("?")[1]));
+    expect(params()).toEqual({ current: "1", page_size: "20" });
+    fireEvent.click(screen.getByRole("button", { name: "viewAll" }));
+    expect(screen.getAllByText(/^Historical \d+$/)).toHaveLength(20);
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    expect(params()).toEqual({ current: "2", page_size: "20" });
+    mocks.orders = [{ ...pageOne[0], trade_no: "second-page", plan: { name: "Second page" } }];
     view.rerender(<BillingPage />);
-    expect(screen.getByText("noMatchingTransactions")).toBeTruthy();
+    expect(screen.getByText("Second page").closest("a")?.getAttribute("href")).toBe("#/order/second-page");
+    fireEvent.click(screen.getByRole("button", { name: "showLess" }));
+    expect(params()).toEqual({ current: "1", page_size: "20" });
+    expect(screen.queryByRole("button", { name: "下一页" })).toBeNull();
 });
-it("respects order-list loading and rate-limit cooldown for filters and pagination", () => {
+it("blocks transaction pagination while loading and during the rate-limit cooldown", () => {
     mocks.orders = Array.from({ length: 6 }, (_, i) => ({
         trade_no: `order-${i}`,
         plan: { name: `Order ${i}` },
@@ -718,32 +697,14 @@ it("respects order-list loading and rate-limit cooldown for filters and paginati
     fireEvent.click(screen.getByRole("button", { name: "viewAll" }));
     mocks.orderLoading = true;
     view.rerender(<BillingPage />);
-    expect(
-        (
-            screen.getByRole("button", {
-                name: "searchTransactions",
-            }) as HTMLButtonElement
-        ).disabled,
-    ).toBe(true);
-    expect(
-        (screen.getByRole("button", { name: "下一页" }) as HTMLButtonElement)
-            .disabled,
-    ).toBe(true);
+    const nextPage = () => screen.getByRole("button", { name: "下一页" }) as HTMLButtonElement;
+    expect(nextPage().disabled).toBe(true);
     mocks.orderLoading = false;
     mocks.orderRetryAt = Date.now() + 60000;
     view.rerender(<BillingPage />);
-    expect(
-        (screen.getByRole("button", { name: "retryIn" }) as HTMLButtonElement)
-            .disabled,
-    ).toBe(true);
-    expect(
-        (screen.getByRole("button", { name: "下一页" }) as HTMLButtonElement)
-            .disabled,
-    ).toBe(true);
+    expect(nextPage().disabled).toBe(true);
     const last = mocks.orderPaths.at(-1);
-    fireEvent.submit(
-        screen.getByRole("button", { name: "retryIn" }).closest("form")!,
-    );
+    fireEvent.click(nextPage());
     expect(mocks.orderPaths.at(-1)).toBe(last);
 });
 it.each(["USD", "CNY"])(

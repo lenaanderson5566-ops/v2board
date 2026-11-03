@@ -1504,7 +1504,7 @@
         "operationId": "getMeSubscriptionAccessRecords",
         "tags": ["user"],
         "summary": "Read the current user's retained configuration update requests",
-        "description": "Read-only owner-scoped history, also available to authenticated users with an expired subscription or no plan. Sorted by createdAt descending and id descending. The configured subscription-log retention cutoff applies even before scheduled cleanup runs. This read neither records a subscription access nor triggers risk evaluation.",
+        "description": "Read-only owner-scoped history, also available to authenticated users with an expired subscription or no plan. At most the latest 20 retained records are available, sorted by createdAt descending and id descending. Existing pageSize values up to 100 are accepted, with an effective maximum of 20. Pagination totals describe only this capped history. The configured subscription-log retention cutoff applies even before scheduled cleanup runs. This read neither records a subscription access nor triggers risk evaluation.",
         "parameters": [
           { "$ref": "#/components/parameters/HeaderAcceptLanguage" },
           { "$ref": "#/components/parameters/QueryPage" },
@@ -1512,7 +1512,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Only the authenticated owner's currently retained records",
+            "description": "The authenticated owner's latest 20 retained records, paginated",
             "headers": {
               "X-Request-ID": { "$ref": "#/components/headers/XRequestID" },
               "Content-Language": { "$ref": "#/components/headers/XRequestID" },
@@ -1566,7 +1566,7 @@
       "subscriptionAccessRecordPage": {
         "type": "object",
         "properties": {
-          "data": { "type": "array", "items": { "$ref": "#/components/schemas/subscriptionAccessRecord" } },
+          "data": { "type": "array", "maxItems": 20, "items": { "$ref": "#/components/schemas/subscriptionAccessRecord" } },
           "meta": {
             "type": "object",
             "properties": {

@@ -226,8 +226,8 @@ try {
     } finally { DB::disableQueryLog(); }
     $logReads=array_values(array_filter($accessQueries,fn($query)=>str_contains($query['query'],'v2_subscribe_log')));
     $assert($read->getStatusCode()===200 && count($history['data'])===5 && $history['meta']['retentionDays']===null,'Unknown retention settings use the existing no-automatic-cleanup default');
-    $assert(count($logReads)===2 && str_contains(strtolower($logReads[1]['query']),'limit 100')
-        && str_contains(strtolower($logReads[1]['query']),'substr(user_agent, 1, 512)'), 'Maximum history pages require only a count and bounded, UA-limited row read');
+    $assert(count($logReads)===1 && str_contains(strtolower($logReads[0]['query']),'limit 20')
+        && str_contains(strtolower($logReads[0]['query']),'substr(user_agent, 1, 512)'), 'Maximum history pages use one read of at most 20 UA-limited rows');
     $assert(!array_filter($accessQueries,fn($query)=>str_contains($query['query'],'v2_plan') || str_contains($query['query'],'v2_risk_rule_')),'History does not fetch plans or evaluate risk per log row');
     DB::enableQueryLog();DB::flushQueryLog();
     try {
@@ -236,11 +236,27 @@ try {
     } finally { DB::disableQueryLog(); }
     $overflowReads=array_values(array_filter($overflowQueries,fn($query)=>str_contains($query['query'],'v2_subscribe_log')));
     $assert($read->getStatusCode()===200 && $history['data']===[]
-        && $history['meta']['pagination']===['page'=>PHP_INT_MAX,'pageSize'=>100,'total'=>5,'totalPages'=>1], 'A valid maximum integer page remains an empty collection with the requested metadata');
-    $assert(count($overflowReads)===1 && str_contains(strtolower($overflowReads[0]['query']),'count(*)'), 'Pages beyond the retained result count never calculate or execute an overflowing SQL offset');
+        && $history['meta']['pagination']===['page'=>PHP_INT_MAX,'pageSize'=>20,'total'=>5,'totalPages'=>1], 'A valid maximum integer page remains an empty collection with capped page size');
+    $assert(count($overflowReads)===1 && str_contains(strtolower($overflowReads[0]['query']),'limit 20')
+        && !str_contains(strtolower($overflowReads[0]['query']),'offset'), 'Pages beyond the capped result count never calculate or execute a SQL offset');
     $accessAfter=App\Models\SubscribeLog::whereIn('user_id',[$accessOwner->id,$other->id])->orderBy('id')->get()->map(fn($row)=>$row->getAttributes())->all();
     $assert($accessBefore===$accessAfter && $riskHitsBefore===App\Models\RiskRuleHit::count()
         && $accessAttributes===$accessOwner->fresh()->getAttributes(),'History GETs never append or rewrite subscription logs, risk hits or account state');
+    $recentAccessIds=[];
+    for ($i=0;$i<24;$i++) {
+        $recentAccessIds[]=App\Models\SubscribeLog::create(array_replace($accessBase,['created_at'=>$accessAt+2]))->id;
+    }
+    $latestAccessIds=array_slice(array_reverse($recentAccessIds),0,20);
+    [$read,$history]=$call('GET',$accessPath.'?pageSize=100',[],$accessBearer);
+    $assert($read->getStatusCode()===200 && array_column($history['data'],'id')===$latestAccessIds
+        && $history['meta']['pagination']===['page'=>1,'pageSize'=>20,'total'=>20,'totalPages'=>1],
+        'An oversized page still returns only the latest 20 owner records with stable timestamp ties');
+    foreach ([1,2,3,4] as $page) {
+        [$read,$history]=$call('GET',$accessPath.'?page='.$page.'&pageSize=7',[],$accessBearer);
+        $assert($read->getStatusCode()===200 && array_column($history['data'],'id')===array_slice($latestAccessIds,($page-1)*7,7)
+            && $history['meta']['pagination']===['page'=>$page,'pageSize'=>7,'total'=>20,'totalPages'=>3],
+            'Small pages never reveal records outside the latest 20, page '.$page);
+    }
     $noticeReasons=['traffic_exhausted','credits_expired','credits_exhausted','no_available_nodes','subscription_changed'];
     foreach($noticeReasons as $reason)App\Models\SubscribeLog::create(array_replace($accessBase,['status'=>'failed','reason'=>$reason,'created_at'=>time()-10]));
     [$read,$history]=$call('GET',$accessPath,[],$accessBearer);

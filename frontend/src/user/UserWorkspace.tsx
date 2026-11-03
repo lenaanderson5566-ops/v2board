@@ -585,9 +585,11 @@ export default function UserWorkspace() {
                             >
                                 <Menu />
                             </button>
-                            <span>{tx("工作空间")}</span>
-                            <ChevronRight size={14} />
-                            <strong>{tx(item?.label || "总览")}</strong>
+                            {!mobile && <>
+                                <span>{tx("工作空间")}</span>
+                                <ChevronRight size={14} />
+                                <strong>{tx(item?.label || "总览")}</strong>
+                            </>}
                         </div>
                         <div className="actions header-controls">
                             <LanguagePicker />

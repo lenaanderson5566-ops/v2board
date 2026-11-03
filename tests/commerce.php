@@ -153,9 +153,12 @@ try {
     $assert(DB::transactionLevel()===$transactionLevel && $user->fresh()->commission_balance===$beforeFailure && $commissionOrder->fresh()->commission_status===1,'Failed commission did not roll back atomically');
     $commissionOrder->commission_status=2;$commissionOrder->save();
     $user->refresh();$user->auto_renewal=1;$user->balance=6000;$user->expired_at=time()+3600;$user->save();
+    $autoRenewalStartedAt=time();
     (new App\Console\Commands\CheckRenewal)->handle();
     $assert($user->fresh()->balance===3000 && $user->fresh()->currency==='CNY','Automatic renewal changed original CNY price');
     $assert($user->fresh()->expired_at>time()+25*86400,'Automatic renewal did not extend service');
+    $autoRenewal=Order::where('user_id',$user->id)->latest('id')->firstOrFail();
+    $assert((int)$autoRenewal->status===3 && (int)$autoRenewal->type===2 && (int)$autoRenewal->paid_at>=$autoRenewalStartedAt && (int)$autoRenewal->paid_at<=time(),'Automatic wallet renewal records its payment confirmation time');
     (new App\Console\Commands\CheckRenewal)->handle();$assert($user->fresh()->balance===3000,'Automatic renewal repeated debit');
 
     $stripeClient=new class implements Stripe\HttpClient\ClientInterface {

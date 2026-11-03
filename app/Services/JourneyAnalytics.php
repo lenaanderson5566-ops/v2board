@@ -29,7 +29,9 @@ final class JourneyAnalytics
 
     private function planOrders()
     {
-        return DB::table('v2_order')->where('plan_id','>',0)->whereIn('period',self::PERIODS)->where('paid_at','>',0);
+        return DB::table('v2_order')->where('plan_id','>',0)->whereIn('period',self::PERIODS)
+            ->whereIn('status',[1,3,4])->where('paid_at','>',0)
+            ->where(fn($q)=>$q->whereNull('credit_bytes')->orWhere('credit_bytes',0));
     }
 
     public function report(int $days): array
@@ -88,14 +90,15 @@ final class JourneyAnalytics
         }
         // Repurchase measures a fully observed first-payment cohort, not historical expiry churn.
         $repurchaseStart=$today->modify('-'.($days+30).' days')->getTimestamp(); $repurchaseEnd=$today->modify('-30 days')->getTimestamp();
-        $first=(clone $paid)->where('total_amount','>',0);
+        $valued=$this->planOrders()->where('total_amount','>=',0)->whereRaw('COALESCE(balance_amount,0) >= 0')
+            ->whereRaw('total_amount + COALESCE(balance_amount,0) > 0');
+        $first=(clone $valued)->select('user_id')->selectRaw('MIN(paid_at) AS first_paid')->groupBy('user_id');
         $repurchase=DB::query()->fromSub($first,'p')->join('v2_user as u','u.id','=','p.user_id')->where('u.is_admin',0)
             ->where('p.first_paid','>=',$repurchaseStart)->where('p.first_paid','<',$repurchaseEnd);
         $eligible=(clone $repurchase)->count();
-        $renewed=(clone $repurchase)->whereExists(function($q) {
-            $q->selectRaw('1')->from('v2_order as r')->whereColumn('r.user_id','u.id')->where('r.type',2)->where('r.plan_id','>',0)
-                ->whereIn('r.period',self::PERIODS)->where('r.total_amount','>',0)->whereColumn('r.paid_at','>','p.first_paid')->whereRaw('r.paid_at < p.first_paid + 2592000');
-        })->count();
+        $renewals=(clone $valued)->selectRaw('1')->whereColumn('v2_order.user_id','u.id')->where('v2_order.type',2)
+            ->whereColumn('v2_order.paid_at','>','p.first_paid')->whereRaw('v2_order.paid_at < p.first_paid + 2592000');
+        $renewed=(clone $repurchase)->whereExists($renewals)->count();
         $expiryFrom=$today->modify('-'.($days+6).' days')->getTimestamp();
         $expiryTo=$now-7*86400;
         $expired=DB::table('v2_user')->where('is_admin',0)->whereNotNull('plan_id')->where('expired_at','>=',$expiryFrom)->where('expired_at','<=',$expiryTo)->count();

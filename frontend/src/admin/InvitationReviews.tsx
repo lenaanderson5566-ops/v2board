@@ -287,13 +287,14 @@ function Person({ row, inviter }: { row: Row; inviter: boolean }) {
         </section>
     );
 }
-export function InvitationReviews() {
+export function InvitationReviews({ reviewId }: { reviewId?: string } = {}) {
     const [filter, setFilter] = useState("pending");
     const [detail, setDetail] = useState<Row | null>(null);
     const [revision, setRevision] = useState(0);
     const [state, setState] = useState("");
     const [note, setNote] = useState("");
     const [error, setError] = useState("");
+    const [refreshNotice, setRefreshNotice] = useState("");
     const [notice, setNotice] = useState("");
     const [busy, setBusy] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -305,6 +306,7 @@ export function InvitationReviews() {
         setState("");
         setNote("");
         setError("");
+        setRefreshNotice("");
     }
     function close() {
         if (saving.current) return;
@@ -313,9 +315,12 @@ export function InvitationReviews() {
         setLoading(false);
         setReady(false);
     }
-    async function open(row: Row) {
+    async function open(row: Row, keepDraft = false) {
         const current = ++sequence.current;
-        prepare(row);
+        if (keepDraft) {
+            setError("");
+            setRefreshNotice("");
+        } else prepare(row);
         setReady(false);
         setLoading(true);
         try {
@@ -329,6 +334,7 @@ export function InvitationReviews() {
                 throw new Error("记录已不存在，请刷新列表。");
             setDetail(result.data[0]);
             setReady(true);
+            if (keepDraft) setRefreshNotice("已加载最新资料。请重新核对，原结论草稿和说明已保留。");
         } catch (e) {
             if (current === sequence.current)
                 setError(e instanceof Error ? e.message : "资料加载失败");
@@ -380,7 +386,11 @@ export function InvitationReviews() {
         } catch (e) {
             const message = e instanceof Error ? e.message : "操作失败";
             if (saved) setNotice(`结论已保存，但下一条加载失败：${message}`);
-            else setError(message);
+            else {
+                if (typeof e === "object" && e !== null && "status" in e && e.status === 409)
+                    setReady(false);
+                setError(message);
+            }
         } finally {
             saving.current = false;
             setBusy(false);
@@ -393,6 +403,12 @@ export function InvitationReviews() {
         !state ||
         note.trim().length < 5 ||
         note.trim().length > 1000;
+    const commissionQuery = detail && new URLSearchParams({
+        tab: "commissions",
+        user_id: String(detail.user_id),
+        invite_user_id: String(detail.inviter_id),
+        commission_status: "",
+    });
     return (
         <>
             {notice && (
@@ -401,10 +417,13 @@ export function InvitationReviews() {
                 </p>
             )}
             <ResourcePage
-                key={`${filter}:${revision}`}
+                key={`${reviewId ?? filter}:${revision}`}
                 resource={resource}
+                searchable={!reviewId}
                 queryParams={
-                    filter === "pending"
+                    reviewId
+                        ? { id: reviewId }
+                        : filter === "pending"
                         ? { state: filter, queue: 1 }
                         : filter
                           ? { state: filter }
@@ -416,7 +435,9 @@ export function InvitationReviews() {
                             同 IP 仅提示核查；同 UA
                             不单独进入待审核。先核实再下结论，不自动封禁或扣佣金。
                         </p>
-                        <label>
+                        {reviewId ? (
+                            <p>关联复核 #{reviewId} · <a href="#/invitations?tab=reviews">返回复核列表</a></p>
+                        ) : <label>
                             查看范围
                             <select
                                 aria-label="复核状态"
@@ -430,7 +451,7 @@ export function InvitationReviews() {
                                     </option>
                                 ))}
                             </select>
-                        </label>
+                        </label>}
                     </div>
                 }
                 extraActions={(r) => (
@@ -467,6 +488,7 @@ export function InvitationReviews() {
                             </div>
                         </div>
                         {loading && <p role="status">正在加载最新资料…</p>}
+                        {refreshNotice && <p role="status">{refreshNotice}</p>}
                         <div className="invitation-people">
                             <Person row={detail} inviter />
                             <Person row={detail} inviter={false} />
@@ -482,7 +504,9 @@ export function InvitationReviews() {
                                             ? `24 小时 ${detail.invitation_counts.last24Hours} 人 · 7 天 ${detail.invitation_counts.last7Days} 人 · 累计 ${detail.invitation_counts.total} 人`
                                             : "无记录"}
                                         <small>
-                                            截至当前的数量，仅作参考，不自动认定批量违规。
+                                            {detail.invitation_counts?.asOf == null
+                                                ? "统计时点无记录"
+                                                : `统计截至 ${date(detail.invitation_counts.asOf)}`}。仅作核查参考。
                                         </small>
                                     </dd>
                                 </div>
@@ -500,8 +524,8 @@ export function InvitationReviews() {
                                 缺失或已清理的历史资料不能补推。IP、UA
                                 均相同也不能单独证明是同一人。
                             </p>
-                            <a href="#/invitations?tab=commissions">
-                                进入佣金审核
+                            <a href={`#/invitations?${commissionQuery}`}>
+                                查看这组邀请的佣金
                             </a>
                         </section>
                         <fieldset
@@ -573,7 +597,7 @@ export function InvitationReviews() {
                                 {!ready && !loading && (
                                     <button
                                         type="button"
-                                        onClick={() => void open(detail)}
+                                        onClick={() => void open(detail, true)}
                                     >
                                         重新加载资料
                                     </button>
@@ -581,7 +605,7 @@ export function InvitationReviews() {
                                 {ready && !busy && (
                                     <button
                                         type="button"
-                                        onClick={() => void open(detail)}
+                                        onClick={() => void open(detail, true)}
                                     >
                                         重新加载最新记录
                                     </button>

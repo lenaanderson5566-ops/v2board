@@ -34,14 +34,19 @@ const commissionResource = {
     actions: [],
     columns: [
         [
+            "created_at",
+            "创建时间",
+            (r: Row) => (
+                <>
+                    <div>{date(r.created_at)}</div>
+                    <small className="muted">{tx("支付时间")} {r.paid_at ? date(r.paid_at) : tx("无记录")}</small>
+                </>
+            ),
+        ] as (typeof resources.orders.columns)[number],
+        [
             "total_amount",
             "订单应付",
             (r: Row) => money(r.total_amount, r.currency),
-        ] as (typeof resources.orders.columns)[number],
-        [
-            "paid_at",
-            "支付时间",
-            (r: Row) => (r.paid_at ? date(r.paid_at) : "无记录"),
         ] as (typeof resources.orders.columns)[number],
         ...resources.orders.columns.filter(([key]) =>
             [
@@ -51,7 +56,6 @@ const commissionResource = {
                 "status",
                 "commission_balance",
                 "commission_status",
-                "created_at",
             ].includes(key),
         ),
         [
@@ -568,22 +572,32 @@ function OrderDetail({
 }) {
     const d = useData<Row>(admin("order/detail"), { id: row.id });
     const r = d.data;
+    const [copyFeedback, setCopyFeedback] = useState("");
+    async function copyOrderNumber(tradeNumber: string) {
+        try {
+            await navigator.clipboard.writeText(tradeNumber);
+            setCopyFeedback(tx("订单号已复制。"));
+        } catch {
+            setCopyFeedback(tx("复制失败，请手动选择订单号复制。"));
+        }
+    }
     return (
         <div className="pad">
             <State {...d} retry={d.reload}>
                 {r && (
                     <>
-                        <PaymentCallbackHistory history={r.callback_history} />
                         <dl className="detail-grid">
                             {[
                                 ["trade_no", "订单号"],
+                                ["created_at", "创建时间"],
+                                ["paid_at", "支付时间"],
+                                ["status", "订单状态"],
                                 ["user_id", "用户（ID / 邮箱）"],
                                 ["plan_id", "套餐"],
                                 ["period", "周期"],
                                 ["callback_no", "回调单号"],
                                 ["payment_display", "支付方式"],
                                 ["payment_provider", "支付接口"],
-                                ["status", "订单状态"],
                                 ["commission_status", "佣金状态"],
                                 ...[
                                     "total_amount",
@@ -605,9 +619,7 @@ function OrderDetail({
                                         "实际佣金",
                                     ][i],
                                 ]),
-                                ["created_at", "创建时间"],
                                 ["updated_at", "更新时间"],
-                                ["paid_at", "支付时间"],
                             ]
                                 .filter(
                                     ([key]) =>
@@ -618,7 +630,15 @@ function OrderDetail({
                                     <div key={key}>
                                         <dt>{label}</dt>
                                         <dd>
-                                            {key.endsWith("_at")
+                                            {key === "trade_no" && r.trade_no ? (
+                                                <>
+                                                    <code>{r.trade_no}</code>{" "}
+                                                    <button type="button" onClick={() => void copyOrderNumber(r.trade_no)}>
+                                                        {tx("复制订单号")}
+                                                    </button>
+                                                    <span role="status">{copyFeedback}</span>
+                                                </>
+                                            ) : key.endsWith("_at")
                                                 ? date(r[key])
                                                 : key.includes("amount") ||
                                                     key.includes("balance")
@@ -636,6 +656,7 @@ function OrderDetail({
                                     </div>
                                 ))}
                         </dl>
+                        <PaymentCallbackHistory history={r.callback_history} />
                         {commissionMode && (
                             <>
                                 <h3>佣金记录</h3>
@@ -705,6 +726,24 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
     };
     const signal = (value: unknown) =>
         value === true ? "相同" : value === false ? "不同" : "无记录";
+    const orderStatus = order?.status == null ? NaN : Number(order.status);
+    const commissionStatus = order?.commission_status == null ? NaN : Number(order.commission_status);
+    let restriction: string | null = null;
+    let needsRefresh = false;
+    if (commissionStatus === 2) restriction = "佣金已发放，不能修改审核结果。";
+    else if (orderStatus === 0) restriction = "订单待支付，暂不可审核佣金。";
+    else if (orderStatus === 2) restriction = "订单已取消，不能审核佣金。";
+    else if (![1, 3, 4].includes(orderStatus) || ![0, 1, 3].includes(commissionStatus)) {
+        restriction = "订单或佣金状态无记录，暂不可审核。";
+        needsRefresh = true;
+    } else if (order?.commission_balance == null) {
+        restriction = "佣金金额无记录，暂不可审核。";
+        needsRefresh = true;
+    }
+    else if (!(Number(order.commission_balance) > 0)) restriction = "该订单没有可审核的佣金金额。";
+    const payoutRecords: Row[] = Array.isArray(order?.commission_log)
+        ? order.commission_log
+        : [];
     return (
         <State {...detail} retry={detail.reload}>
             {order && (
@@ -751,7 +790,7 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                                         "已取消",
                                         "已完成",
                                         "已折抵",
-                                    ][Number(order.status)] || "未知"}
+                                    ][orderStatus] || "无记录"}
                                 </dd>
                             </div>
                             <div>
@@ -778,7 +817,7 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                                 </dd>
                             </div>
                             <div>
-                                <dt>待审核佣金</dt>
+                                <dt>订单计提佣金</dt>
                                 <dd>
                                     <strong>
                                         {money(
@@ -792,8 +831,8 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                                 <dt>当前佣金状态</dt>
                                 <dd>
                                     {["待确认", "有效", "已发放", "无效"][
-                                        Number(order.commission_status)
-                                    ] || "未知"}
+                                        commissionStatus
+                                    ] || "无记录"}
                                 </dd>
                             </div>
                             <div>
@@ -804,6 +843,12 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                                         : "无复核记录"}
                                 </dd>
                             </div>
+                            {review && (
+                                <div>
+                                    <dt>复核记录更新时间</dt>
+                                    <dd>{review.updated_at == null ? "无记录" : date(review.updated_at)}</dd>
+                                </div>
+                            )}
                             <div>
                                 <dt>注册来源</dt>
                                 <dd>
@@ -822,16 +867,27 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                             同 IP、UA
                             仅为线索，不代表同一人。邀请复核与佣金状态分别处理；标记有效后系统将按规则处理发放。
                         </p>
-                        <a href={`#/invitations?tab=reviews`}>
-                            查看邀请人工复核
-                        </a>
+                        {review?.id && (
+                            <a href={`#/invitations?tab=reviews&review_id=${encodeURIComponent(String(review.id))}`}>
+                                查看关联复核 #{review.id}
+                            </a>
+                        )}
+                        <h3>实际发放记录</h3>
+                        {payoutRecords.length ? (
+                            <Table data={payoutRecords} columns={[
+                                ["invite_user_id", "收款用户", (entry) => adminUserLabel({ user_id: entry.invite_user_id, email: entry.invite_email })],
+                                ["get_amount", "入账金额", (entry) => entry.currency ? money(entry.get_amount, entry.currency) : "币种无记录"],
+                                ["created_at", "入账时间", (entry) => entry.created_at == null ? "无记录" : date(entry.created_at)],
+                            ]} />
+                        ) : (
+                            <p className="muted">{Array.isArray(order.commission_log) ? "暂无发放记录。" : "发放记录未返回。"}</p>
+                        )}
                     </div>
-                    {[0, 2].includes(Number(order.status)) ||
-                    !Number(order.commission_balance) ||
-                    Number(order.commission_status) === 2 ? (
-                        <p className="pad muted">
-                            当前佣金不可修改，请刷新列表查看最新状态。
-                        </p>
+                    {restriction ? (
+                        <div className="pad">
+                            <p className="muted">{restriction}</p>
+                            {needsRefresh && <button type="button" onClick={detail.reload}>重新加载订单</button>}
+                        </div>
                     ) : (
                         <Editor
                             fields={[

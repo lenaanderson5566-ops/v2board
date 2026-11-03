@@ -134,11 +134,13 @@ try {
     };
     foreach ([$a,$b,$c,$administrator] as $u) {
         $paidAt=(int)$u->getRawOriginal('created_at')+3600;
-        $makeOrder($u,$paidAt);
+        $order=$makeOrder($u,$paidAt);
+        if ($u->id===$b->id) $order->update(['total_amount'=>0,'balance_amount'=>1000]);
         DB::table('v2_subscribe_log')->insert(['user_id'=>$u->id,'status'=>'success','created_at'=>$paidAt+600]);
     }
-    $makeOrder($b,(int)$b->getRawOriginal('created_at')+10*86400,2);
+    $makeOrder($b,(int)$b->getRawOriginal('created_at')+10*86400,2)->update(['total_amount'=>0,'balance_amount'=>1000]);
     $makeOrder($d,(int)$d->getRawOriginal('created_at')+100,1,'reset_price');
+    $makeOrder($d,(int)$d->getRawOriginal('created_at')+200)->update(['status'=>2]);
     foreach ([$a,$b,$administrator] as $u) {
         $recordAt=$today->modify('-4 days')->getTimestamp();
         foreach ([1,2] as $rate) DB::table('v2_stat_user')->insert(['user_id'=>$u->id,'server_rate'=>$rate,'u'=>1,'d'=>1,'record_type'=>'d','record_timezone'=>'Asia/Kathmandu','record_at'=>$recordAt,'created_at'=>$recordAt+3600,'updated_at'=>$recordAt+3600]);
@@ -146,11 +148,11 @@ try {
     }
     $journey=(new App\Services\JourneyAnalytics())->report(7);
     $activation=$journey['activation'];
-    $assert($activation['registered']===2 && $activation['paid']===1 && $activation['subscribed']===1 && $activation['used']===1,'Activation excludes immature/admin accounts and non-plan reset orders');
+    $assert($activation['registered']===2 && $activation['paid']===1 && $activation['subscribed']===1 && $activation['used']===1,'Activation excludes immature/admin accounts, reset orders and cancelled orders');
     $assert($activation['averagePaymentSeconds']===3600 && $activation['averageSubscriptionSeconds']===600,'Exact paid/subscribe latency uses authoritative ordered timestamps');
     $assert($journey['retentionCohorts'][0]['registered']===2 && $journey['retentionCohorts'][0]['login']===1 && $journey['retentionCohorts'][0]['usage']===1 && $journey['retentionCohorts'][0]['usageRate']===0.5,'D7 retention deduplicates repeated logins and traffic-rate buckets');
     $assert($journey['retentionCohorts'][1]['registered']===1 && $journey['retentionCohorts'][1]['loginRate']===1.0,'D30 uses its own fully observed registration cohort');
-    $assert($journey['repurchase']['eligible']===1 && $journey['repurchase']['renewed']===1 && $journey['repurchase']['rate']===1.0,'Repurchase cohort requires first positive payment and a later type-2 payment');
+    $assert($journey['repurchase']['eligible']===1 && $journey['repurchase']['renewed']===1 && $journey['repurchase']['rate']===1.0,'Repurchase counts first positive payments and later type-2 payments funded entirely by wallet balance');
     $assert($journey['expiredUnrestored']===1 && $journey['active'][1]['login']===2 && $journey['active'][1]['usage']===2,'Expiry is a current mature snapshot; active counts exclude administrators');
     $assert(!str_contains(json_encode($journey),'journey-a@example.test'),'Journey reports expose no account identifiers');
     $analytics->save(['enabled'=>true,'retentionDays'=>7]);

@@ -43,14 +43,14 @@ import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
-it("prioritizes order status and immutable order-currency amounts ahead of diagnostic columns", async () => {
+it("shows order creation time first, ahead of status and immutable order-currency amounts", async () => {
     const { ResourcePage } = await import("./admin");
-    api.request.mockResolvedValue({data:[{id:1,trade_no:"usd-order",currency:"USD",total_amount:1234,status:3,user_id:7}],total:1});
+    api.request.mockResolvedValue({data:[{id:1,trade_no:"usd-order",currency:"USD",total_amount:1234,status:3,user_id:7,created_at:1700000000}],total:1});
     render(<ResourcePage resource={resources.orders}/>);
     await screen.findByText("usd-order");
     expect(screen.getByText("USD 12.34")).toBeTruthy();
     const headers=screen.getAllByRole("columnheader").map(header=>header.textContent);
-    expect(headers.slice(0,4)).toEqual(["订单号","状态","金额","用户（ID / 邮箱）"]);
+    expect(headers.slice(0,5)).toEqual(["创建时间","订单号","状态","金额","用户（ID / 邮箱）"]);
     expect(headers.indexOf("金额")).toBeLessThan(headers.indexOf("套餐"));
 });
 const order = {
@@ -65,6 +65,16 @@ const order = {
     commission_status: 0,
     status: 3,
 };
+it("keeps creation time first in commission review and shows the payment timestamp with it", async () => {
+    api.request.mockImplementation(async (path: string) => path.includes("order/fetch")
+        ? { data: [{ ...order, created_at: 1700000000, paid_at: 1700000060 }], total: 1 }
+        : { data: [] });
+    render(<OrdersPage commissionMode />);
+    const orderNumber = await screen.findByText("order-1");
+    const firstCell = within(orderNumber.closest("tr")!).getAllByRole("cell")[0];
+    expect(screen.getAllByRole("columnheader")[0].textContent).toBe("创建时间");
+    expect(within(firstCell).getByText(/^支付时间 /).textContent).not.toContain("无记录");
+});
 beforeEach(() => {
     sessionStorage.clear();
     window.location.hash = "#/overview";
@@ -190,6 +200,24 @@ it("keeps commission amounts, records and approval out of order management", asy
     await screen.findByText("折抵订单");
     for (const text of ["佣金金额", "实际佣金", "佣金记录", "佣金审核"])
         expect(screen.queryByText(text)).toBeNull();
+});
+it("shows key dates with the order number before callback diagnostics and supports copying", async () => {
+    const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("clipboard denied"));
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    render(<OrdersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "订单详情" }));
+    const dialog = await screen.findByRole("dialog", { name: "订单详情" });
+    const copy = await within(dialog).findByRole("button", { name: "复制订单号" });
+    const details = within(dialog).getAllByRole("term");
+    expect(details.slice(0, 4).map(term => term.textContent)).toEqual(["订单号", "创建时间", "支付时间", "订单状态"]);
+    const diagnostics = within(dialog).getByText(/回调诊断尚未就绪/);
+    expect(details[0].compareDocumentPosition(diagnostics) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(copy);
+    await within(dialog).findByText("订单号已复制。");
+    expect(writeText).toHaveBeenCalledWith("order-1");
+    fireEvent.click(copy);
+    await within(dialog).findByText("复制失败，请手动选择订单号复制。");
+    expect(within(dialog).getByText("order-1")).toBeTruthy();
 });
 it("keeps order details primary and moves secondary actions into more without enabling completed-order writes", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -427,6 +455,15 @@ it("ignores a late clipboard failure after a different user action has opened de
     expect(screen.queryByLabelText("用户订阅链接")).toBeNull();
 });
 it("searches invitation relationships and submits commission approval through the existing contract", async () => {
+    const existingRequest = api.request.getMockImplementation()!;
+    api.request.mockImplementation(async (path: string, ...args: unknown[]) => {
+        if (path.includes("order/detail")) return { data: {
+            ...order,
+            invitation_review: { id: 42, state: "insufficient", updated_at: 1700000010 },
+            commission_log: [{ id: 4, invite_user_id: 9, get_amount: 250, currency: "USD", created_at: 1700000020 }],
+        } };
+        return existingRequest(path, ...args);
+    });
     render(<AdminInvitations />);
     await screen.findByText(/inviter@example.com/);
     fireEvent.change(screen.getByRole("textbox", { name: "查询邮箱" }), {
@@ -443,6 +480,10 @@ it("searches invitation relationships and submits commission approval through th
     fireEvent.mouseDown(screen.getByRole("tab", { name: "佣金审核" }), { button: 0, ctrlKey: false });
     fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
     fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
+    const dialog = within(screen.getByRole("dialog"));
+    expect(await dialog.findByText("USD 2.50")).toBeTruthy();
+    expect(dialog.getByRole("link", { name: "查看关联复核 #42" }).getAttribute("href"))
+        .toBe("#/invitations?tab=reviews&review_id=42");
     fireEvent.change(await within(screen.getByRole("dialog")).findByRole("combobox"), {
         target: { value: "1" },
     });
@@ -462,6 +503,69 @@ it("searches invitation relationships and submits commission approval through th
             ],
         ]),
     );
+});
+it("requires fresh commission facts when detail is incomplete and explains an issued commission", async () => {
+    const existingRequest = api.request.getMockImplementation()!;
+    let reads = 0;
+    api.request.mockImplementation(async (path: string, ...args: unknown[]) => {
+        if (path.includes("order/detail")) return { data: reads++ === 0
+            ? { ...order, commission_status: null }
+            : { ...order, commission_status: 2, commission_log: [] } };
+        return existingRequest(path, ...args);
+    });
+    render(<OrdersPage commissionMode />);
+    fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
+    fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect(await dialog.findByText("订单或佣金状态无记录，暂不可审核。")).toBeTruthy();
+    expect(dialog.getByText("发放记录未返回。")).toBeTruthy();
+    expect(dialog.queryByRole("button", { name: "保存" })).toBeNull();
+    fireEvent.click(dialog.getByRole("button", { name: "重新加载订单" }));
+    expect(await dialog.findByText("佣金已发放，不能修改审核结果。")).toBeTruthy();
+    expect(dialog.getByText("暂无发放记录。")).toBeTruthy();
+    expect(dialog.queryByRole("button", { name: "保存" })).toBeNull();
+});
+it("loads the linked invitation review and keeps the draft after a revision conflict", async () => {
+    window.location.hash = "#/invitations?tab=reviews&review_id=42";
+    let revision = 0;
+    const review = {
+        id: 42, user_id: 7, inviter_id: 9, email: "guest@example.com",
+        inviter_email: "inviter@example.com", state: "pending",
+        signals: { sameRegistrationIp: true, sameRegistrationUa: null },
+        history: [],
+    };
+    api.request.mockImplementation(async (path: string) => {
+        if (path.startsWith("test-admin/invitation-review/fetch"))
+            return { data: [{ ...review, revision }], total: 1 };
+        if (path === "test-admin/invitation-review/review" && revision === 0) {
+            revision = 1;
+            throw Object.assign(new Error("记录已更新，请刷新后重试"), { status: 409 });
+        }
+        return { data: true };
+    });
+    render(<AdminInvitations />);
+    fireEvent.click(await screen.findByRole("button", { name: "查看并审核" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    const decision = dialog.getByRole("button", { name: /证据不足/ });
+    await waitFor(() => expect((decision.closest("fieldset") as HTMLFieldSetElement).disabled).toBe(false));
+    fireEvent.click(decision);
+    fireEvent.change(dialog.getByLabelText("复核依据"), { target: { value: "目前缺少独立核验资料。" } });
+    fireEvent.click(dialog.getByRole("button", { name: "保存结论" }));
+    await dialog.findByText("记录已更新，请刷新后重试");
+    expect((dialog.getByRole("button", { name: "保存结论" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(dialog.getByRole("button", { name: "重新加载资料" }));
+    await dialog.findByText(/原结论草稿和说明已保留/);
+    expect((dialog.getByLabelText("复核依据") as HTMLTextAreaElement).value).toBe("目前缺少独立核验资料。");
+    expect(dialog.getByRole("link", { name: "查看这组邀请的佣金" }).getAttribute("href"))
+        .toBe("#/invitations?tab=commissions&user_id=7&invite_user_id=9&commission_status=");
+    fireEvent.click(dialog.getByRole("button", { name: "保存结论" }));
+    await screen.findByText(/审核结论已保存/);
+    expect(api.request.mock.calls.filter(([path]) => path.includes("invitation-review/fetch")).every(([path]) =>
+        new URLSearchParams(path.split("?")[1]).get("id") === "42",
+    )).toBe(true);
+    expect(api.request).toHaveBeenCalledWith("test-admin/invitation-review/review", {
+        id: 42, revision: 1, state: "insufficient", note: "目前缺少独立核验资料。",
+    });
 });
 it("removes operations grouping and keeps each new group contiguous", () => {
     expect(legacyAdminMenu.some((item) => String(item[3]) === "运营中台")).toBe(

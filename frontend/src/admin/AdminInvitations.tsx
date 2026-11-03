@@ -8,6 +8,14 @@ import { ResourcePage } from "./admin";
 import { OrdersPage } from "./admin-orders";
 import { adminUserLabel } from "./admin-user-label";
 
+function readReviewId() {
+    const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
+    const id = params.get("review_id");
+    return id && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id))
+        ? id
+        : undefined;
+}
+
 const invitationResource = {
     title: "邀请关系",
     fetch: admin("user/fetch"),
@@ -56,8 +64,12 @@ export function AdminInvitations() {
             : "relations";
     };
     const [tab, setTab] = useState(readTab);
+    const [reviewId, setReviewId] = useState(readReviewId);
     useEffect(() => {
-        const changed = () => setTab(readTab());
+        const changed = () => {
+            setTab(readTab());
+            setReviewId(readReviewId());
+        };
         window.addEventListener("hashchange", changed);
         return () => window.removeEventListener("hashchange", changed);
     }, []);
@@ -65,6 +77,7 @@ export function AdminInvitations() {
         value: "relations" | "commissions" | "reviews" | "emails",
     ) => {
         setTab(value);
+        setReviewId(undefined);
         window.location.hash =
             value === "relations"
                 ? "#/invitations"
@@ -85,7 +98,7 @@ export function AdminInvitations() {
             <section className="panel pad invitation-workflow">
                 <div>
                     <h2>邀请与奖励</h2>
-                    <p className="muted">查看邀请关系、佣金审核与邀请邮件。</p>
+                    <p className="muted">查看邀请关系、佣金审核、异常复核与邀请邮件。</p>
                 </div>
                 <div className="actions">
                     <a className="button" href="#/overview-analytics">
@@ -99,7 +112,7 @@ export function AdminInvitations() {
             {tab === "emails" ? (
                 <InvitationEmails />
             ) : tab === "reviews" ? (
-                <InvitationReviews />
+                <InvitationReviews key={reviewId ?? "all-reviews"} reviewId={reviewId} />
             ) : tab === "commissions" ? (
                 <OrdersPage commissionMode />
             ) : (
@@ -155,7 +168,7 @@ export function AdminInvitations() {
                             </a>
                             <a
                                 className="button"
-                                href={`#/invitations?tab=commissions&user_id=${r.id}&commission_status=`}
+                                href={`#/invitations?tab=commissions&user_id=${r.id}&invite_user_id=${r.invite_user_id}&commission_status=`}
                             >
                                 查看佣金
                             </a>

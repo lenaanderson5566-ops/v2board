@@ -101,6 +101,7 @@ class CheckRenewal extends Command
                         throw new Exception('自动续费失败');
                     }
                     $order->status = 3;
+                    $order->paid_at = time();
                     if (!$order->save()) {
                         DB::rollback();
                         throw new Exception('自动续费失败');

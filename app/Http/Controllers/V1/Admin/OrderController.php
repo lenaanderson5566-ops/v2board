@@ -62,7 +62,7 @@ class OrderController extends Controller
     {
         $current = max(1, (int) $request->input('current', 1));
         $pageSize = min(100, max(10, (int) $request->input('pageSize', 10)));
-        $orderModel = Order::orderBy('created_at', 'DESC');
+        $orderModel = Order::orderByDesc('created_at')->orderByDesc('id');
         if ($request->input('is_commission')) {
             $orderModel->where('invite_user_id', '!=', NULL);
             $orderModel->whereNotIn('status', [0, 2]);
@@ -127,20 +127,20 @@ class OrderController extends Controller
             'commission_status'
         ]);
 
-        $order = Order::where('trade_no', $request->input('trade_no'))
-            ->first();
-        if (!$order) {
-            abort(500, '订单不存在');
-        }
-
-        if ($request->has('commission_status') && (in_array($order->status, [0, 2]) || !$order->commission_balance || $order->commission_status === 2)) {
-            abort(422, '该订单佣金不可审核');
-        }
-        try {
-            $order->update($params);
-        } catch (\Exception $e) {
-            abort(500, '更新失败');
-        }
+        DB::transaction(function () use ($request, $params) {
+            // The settlement job locks the same order before crediting the wallet.
+            $order = Order::where('trade_no', $request->input('trade_no'))->lockForUpdate()->first();
+            if (!$order) abort(500, '订单不存在');
+            if ($request->has('commission_status') && (in_array((int)$order->status, [0, 2], true) || !$order->commission_balance || (int)$order->commission_status === 2)) {
+                abort(422, '该订单佣金不可审核');
+            }
+            try {
+                $updated = $order->update($params);
+            } catch (\Exception $e) {
+                abort(500, '更新失败');
+            }
+            if (!$updated) abort(500, '更新失败');
+        });
 
         return response([
             'data' => true

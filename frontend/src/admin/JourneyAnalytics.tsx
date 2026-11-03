@@ -245,7 +245,7 @@ export function JourneyAnalytics({
                     </Panel>
                     <Panel padded title="续费与到期未恢复">
                         <p className="muted">
-                            首笔非零金额套餐付款批次：
+                            首笔非零金额套餐付款批次（含余额）：
                             {adminBusinessInstant(b.repurchase.from, {}, b.timeZone)} 至{" "}
                             {adminBusinessInstant(b.repurchase.to, {}, b.timeZone)}
                             （不含结束）；仅纳入已完成 30×24
@@ -266,8 +266,7 @@ export function JourneyAnalytics({
                             ]}
                         />
                         <p className="muted">
-                            按账户去重，续费取 type=2
-                            的正价套餐付款，排除充值、重置与零元订单。不同周期的自然续费机会不同，30
+                            按账户去重，以订单应付金额和余额扣款判断是否有付款金额。续费沿用创建订单时的分类，仅统计有付款确认时间的套餐订单。不同周期的自然续费机会不同，30
                             日内续费比例不能作为全站到期续费率。
                         </p>
                         <p>

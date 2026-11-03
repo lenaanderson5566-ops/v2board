@@ -366,6 +366,7 @@ export const resources: Record<string, Resource> = {
         title: "订单管理",
         fetch: admin("order/fetch"),
         columns: [
+            created,
             ["trade_no", "订单号"],
             ["status", "状态", (r) => ["待支付", "开通中", "已取消", "已完成", "已折抵"][r.status]],
             ["total_amount", "金额", (r) => money(r.total_amount, r.currency)],
@@ -415,7 +416,6 @@ export const resources: Record<string, Resource> = {
                         Number(r.commission_status)
                     ],
             ],
-            created,
         ],
         fields: [],
         actions: [

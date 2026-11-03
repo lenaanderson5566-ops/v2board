@@ -118,7 +118,6 @@ class ConfigController extends Controller
                 'plan_change_enable' => (int)config('fastai.plan_change_enable', 1),
                 'reset_traffic_method' => (int)config('fastai.reset_traffic_method', 0),
                 'surplus_enable' => (int)config('fastai.surplus_enable', 1),
-                'allow_new_period' => (int)config('fastai.allow_new_period', 0),
                 'new_order_event_id' => (int)config('fastai.new_order_event_id', 0),
                 'renew_order_event_id' => (int)config('fastai.renew_order_event_id', 0),
                 'change_order_event_id' => (int)config('fastai.change_order_event_id', 0),
@@ -321,7 +320,7 @@ class ConfigController extends Controller
         if (empty($data['apple_account_token'])) unset($data['apple_account_token']);
         $config = config('fastai');
         $config['custom_footer_html'] = \App\Support\FrontendConfig::footer();
-        foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url', 'recaptcha_enable', 'recaptcha_key', 'recaptcha_site_key', 'frontend_theme_google_analytics', 'google_analytics'] as $legacyKey) {
+        foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url', 'recaptcha_enable', 'recaptcha_key', 'recaptcha_site_key', 'frontend_theme_google_analytics', 'google_analytics', 'allow_new_period'] as $legacyKey) {
             unset($config[$legacyKey]);
         }
         foreach (ConfigSave::allRules() as $k => $v) {

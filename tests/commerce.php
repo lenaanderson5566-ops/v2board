@@ -34,6 +34,19 @@ try {
     $assert($planIds()===[$plan->id],'Hidden current plan remains available for permitted renewal');
     try { $catalog->fetch(Illuminate\Http\Request::create('/api/v10/plans','GET',['user'=>['id'=>$policyUser->id],'id'=>$otherPlan->id]));throw new RuntimeException('Disabled plan detail exposed'); }
     catch(Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===409,'Direct detail cannot reopen a disallowed plan switch'); }
+    $policyUser->expired_at=time()-1;$policyUser->credit_balance=500;$policyUser->save();
+    $assert(!in_array($plan->id,$planIds(),true),'Independent credits do not reopen an expired hidden plan');
+    try { $catalog->fetch(Illuminate\Http\Request::create('/api/v10/plans','GET',['user'=>['id'=>$policyUser->id],'id'=>$plan->id]));throw new RuntimeException('Expired hidden plan detail exposed'); }
+    catch(Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===409,'Direct detail denies expired hidden plan with credits'); }
+    $hiddenOrder=OrderSave::create('/api/v10/me/orders','POST',['plan_id'=>$plan->id,'period'=>'month_price']);
+    $hiddenOrder->user=['id'=>$policyUser->id];$originalRequest=app('request');app()->instance('request',$hiddenOrder);
+    try {
+        foreach (['quote','save'] as $action) {
+            try { (new OrderActions())->$action($hiddenOrder);throw new RuntimeException('Expired hidden plan allowed '.$action); }
+            catch(Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode()===409,'Expired hidden plan denies '.$action.' with credits'); }
+        }
+    } finally { app()->instance('request',$originalRequest); }
+    $policyUser->credit_balance=0;$policyUser->save();
     $plan->show=1;$plan->save();
     $policyUser->expired_at=time()-1;$policyUser->save();
     $assert(in_array($otherPlan->id,$planIds(),true),'Expired subscriptions may purchase another plan');
@@ -60,6 +73,154 @@ try {
     (new OrderService($renew))->paid('test-paid');(new OrderService($renew->fresh()))->open();
     $assert($renew->fresh()->status===3 && $user->fresh()->expired_at>time()+25*86400,'Legacy CNY renewal fulfillment');
     $before=$user->fresh()->balance;(new OrderService($renew->fresh()))->open();$assert($user->fresh()->balance===$before,'Duplicate fulfillment changed wallet');
+    $originalPhpZone = date_default_timezone_get();
+    // Pick a business zone where the fixture is well away from local midnight.
+    date_default_timezone_set((int)gmdate('G') < 12 ? 'Asia/Shanghai' : 'America/New_York');
+    try {
+        $today = new DateTimeImmutable('today');
+        $trafficUser = $user->replicate();
+        $trafficUser->email = 'renew-traffic-'.uniqid().'@example.test';
+        $trafficUser->token = bin2hex(random_bytes(16));
+        $trafficUser->uuid = Illuminate\Support\Str::uuid();
+        foreach ([[$today->modify('+4 years'), 123, 456], [$today, 0, 0], [$today->modify('-1 day'), 0, 0]] as [$date, $expectedUp, $expectedDown]) {
+            $trafficUser->expired_at = $date->setTime(23, 59, 59)->getTimestamp();
+            $trafficUser->u = 123;
+            $trafficUser->d = 456;
+            $trafficUser->traffic_reset_anchor_at = time() - 86400 * 10;
+            $trafficUser->save();
+            $trafficRenewal = Order::create([
+                'user_id' => $trafficUser->id, 'plan_id' => $plan->id,
+                'period' => 'month_price', 'trade_no' => bin2hex(random_bytes(16)),
+                'total_amount' => BillingCurrency::price($plan, 'month_price', $trafficUser->currency),
+                'currency' => $trafficUser->currency, 'status' => 1,
+                'type' => 2, 'paid_at' => time(),
+            ]);
+            (new OrderService($trafficRenewal))->open();
+            $trafficUser->refresh();
+            $assert((int)$trafficRenewal->fresh()->status === 3
+                && (int)$trafficUser->u === $expectedUp && (int)$trafficUser->d === $expectedDown,
+                'Renewal preserves usage before the expiration date and resets it at or after expiration');
+            $assert(($trafficUser->traffic_reset_anchor_at === null) === ($date < $today),
+                'Only an expired renewal discards the old traffic cycle anchor');
+        }
+    } finally {
+        date_default_timezone_set($originalPhpZone);
+    }
+
+    $swapAt = time();
+    $fundedAt = $swapAt - 86400;
+    $paidUntil = strtotime('+1 month', $fundedAt);
+    $swapPlan = $plan->replicate();
+    $swapPlan->name = 'Replacement subscription fixture';
+    $swapPlan->save();
+    $swapOwner = User::create([
+        'email'=>'proration-'.uniqid().'@example.test', 'password'=>'test', 'token'=>bin2hex(random_bytes(16)),
+        'uuid'=>Illuminate\Support\Str::uuid(), 'balance'=>0, 'plan_id'=>$plan->id, 'group_id'=>$plan->group_id,
+        'transfer_enable'=>100*1073741824, 'expired_at'=>$paidUntil+60*86400, 'u'=>0, 'd'=>0,
+    ]);
+    config(['fastai.surplus_enable'=>1]);
+    $paidSource = static function (array $overrides = []) use ($swapOwner, $plan, $fundedAt): Order {
+        return Order::create($overrides+[
+            'user_id'=>$swapOwner->id, 'plan_id'=>$plan->id, 'currency'=>$swapOwner->currency,
+            'trade_no'=>bin2hex(random_bytes(16)), 'type'=>1, 'period'=>'month_price', 'status'=>3,
+            'total_amount'=>6000, 'balance_amount'=>4000, 'paid_at'=>$fundedAt, 'created_at'=>$fundedAt,
+        ]);
+    };
+    $source = $paidSource();
+    $wrongCurrency = $paidSource(['currency'=>$swapOwner->currency==='USD' ? 'CNY' : 'USD']);
+    $wrongPlan = $paidSource(['plan_id'=>$swapPlan->id]);
+    $unpaidHistory = $paidSource(['paid_at'=>null]);
+    $depositHistory = $paidSource(['type'=>9, 'period'=>'deposit']);
+    $creditHistory = $paidSource(['type'=>5, 'period'=>'onetime_price', 'credit_bytes'=>1073741824]);
+    $resetHistory = $paidSource(['type'=>4, 'period'=>'reset_price']);
+    $switch = new Order([
+        'user_id'=>$swapOwner->id, 'plan_id'=>$swapPlan->id, 'currency'=>$swapOwner->currency,
+        'trade_no'=>bin2hex(random_bytes(16)), 'period'=>'month_price', 'status'=>0,
+        'total_amount'=>1000, 'created_at'=>$swapAt,
+    ]);
+    $switchService = new OrderService($switch);
+    $switchService->setOrderType($swapOwner);
+    $expectedSurplus = (int)floor(10000 * (($paidUntil-$swapAt)/($paidUntil-$fundedAt)));
+    $assert($switch->type===3 && $switch->total_amount===0 && $switch->surplus_amount===$expectedSurplus
+        && $switch->refund_amount===$expectedSurplus-1000 && $switch->surplus_order_ids===[$source->id],
+        'Gift time, deposits, credits, resets, unpaid history and other plans/currencies cannot inflate paid surplus');
+    $assert($switchService->isSurplusQuoteCurrent($swapOwner),'A fresh funded switch quote can be used');
+    $swapOwner->u = $swapOwner->transfer_enable;
+    $assert(!$switchService->isSurplusQuoteCurrent($swapOwner),'Using the original paid quota invalidates its saved switch credit');
+    $swapOwner->save();
+    $switch->save();
+    $switchCheckout = Illuminate\Http\Request::create('/api/v10/me/orders/checkout', 'POST', [
+        'trade_no' => $switch->trade_no, 'payment_request_key' => (string) Illuminate\Support\Str::uuid(),
+    ]);
+    $switchCheckout->user = ['id' => $swapOwner->id];
+    try {
+        (new OrderActions())->checkout($switchCheckout);
+        throw new RuntimeException('Stale zero-pay switch was accepted');
+    } catch (Symfony\Component\HttpKernel\Exception\HttpException $error) {
+        $assert($error->getStatusCode() === 409 && (int)$switch->fresh()->status === 0,
+            'A stale switch quote is rejected before payment is recorded');
+    }
+    $swapOwner->u = 0;
+    $swapOwner->save();
+    (new OrderActions())->checkout($switchCheckout);
+    $switch->refresh();
+    $assert((int)$switch->status === 1, 'A valid zero-pay switch can be recorded after checkout revalidation');
+
+    // Historical issued payments may carry overbroad source IDs. Only eligible rows are retired.
+    $switch->surplus_order_ids = [$source->id, $wrongCurrency->id, $wrongPlan->id, $unpaidHistory->id,
+        $depositHistory->id, $creditHistory->id, $resetHistory->id];
+    $switch->status = 1;
+    $switch->paid_at = $swapAt;
+    $switch->save();
+    (new OrderService($switch))->open();
+    (new OrderService($switch))->open();
+    $assert($switch->fresh()->status===3 && $source->fresh()->status===4 && $swapOwner->fresh()->balance===$expectedSurplus-1000,
+        'An issued switch applies the stored wallet refund and retires its funded source once');
+    foreach ([$wrongCurrency, $wrongPlan, $unpaidHistory, $depositHistory, $creditHistory, $resetHistory] as $unrelated) {
+        $assert($unrelated->fresh()->status===3,'Switch fulfillment preserves unrelated historical order '.$unrelated->id);
+    }
+
+    $swapOwner->plan_id = $plan->id;
+    $swapOwner->expired_at = null;
+    $swapOwner->transfer_enable = 100*1073741824;
+    $swapOwner->u = 50*1073741824;
+    $swapOwner->d = 0;
+    $legacySource = $paidSource(['period'=>'onetime_price', 'total_amount'=>4000, 'balance_amount'=>0]);
+    $paidSource(['period'=>'onetime_price', 'type'=>5, 'credit_bytes'=>1073741824, 'paid_at'=>$swapAt, 'total_amount'=>100000]);
+    $legacySwap = new Order(['plan_id'=>$swapPlan->id, 'period'=>'month_price', 'total_amount'=>3000, 'created_at'=>$swapAt]);
+    (new OrderService($legacySwap))->setOrderType($swapOwner);
+    $assert($legacySwap->surplus_amount===2000 && $legacySwap->total_amount===1000
+        && $legacySwap->surplus_order_ids===[$legacySource->id],'Legacy permanent-plan credit uses only its paid entitlement source');
+
+    $giftEnd = time()+60*86400;
+    $giftOwner = User::create([
+        'email'=>'renewal-gift-gap-'.uniqid().'@example.test', 'password'=>'test', 'token'=>bin2hex(random_bytes(16)),
+        'uuid'=>Illuminate\Support\Str::uuid(), 'plan_id'=>$plan->id, 'group_id'=>$plan->group_id,
+        'transfer_enable'=>100*1073741824, 'expired_at'=>$giftEnd, 'u'=>100*1073741824, 'd'=>0,
+    ]);
+    $renewal = Order::create([
+        'user_id'=>$giftOwner->id, 'plan_id'=>$plan->id, 'currency'=>$giftOwner->currency,
+        'trade_no'=>bin2hex(random_bytes(16)), 'type'=>2, 'period'=>'month_price', 'status'=>1,
+        'total_amount'=>4000, 'paid_at'=>time(), 'payment_snapshot'=>['name'=>'Settled channel', 'provider'=>'Paytaro'],
+    ]);
+    (new OrderService($renewal))->open();
+    $renewal->refresh();
+    $giftOwner->refresh();
+    $renewedTerm = $renewal->payment_snapshot['subscription_term'];
+    $assert($renewedTerm['starts_at']===$giftEnd && $renewedTerm['ends_at']===$giftOwner->expired_at
+        && $renewedTerm['quota_bytes']===100*1073741824
+        && $renewal->payment_snapshot['name']==='Settled channel',
+        'Fulfilled early renewal stores its exact paid term after the gift gap and preserves payment metadata');
+    $giftSwap = new Order(['plan_id'=>$swapPlan->id, 'period'=>'month_price', 'total_amount'=>5000]);
+    (new OrderService($giftSwap))->setOrderType($giftOwner);
+    $assert($giftSwap->surplus_amount===4000 && $giftSwap->surplus_order_ids===[$renewal->id],
+        'An exhausted gift interval does not consume a fully paid renewal that starts in the future');
+    $displayOrder = new Order(['payment_id'=>1, 'total_amount'=>1000]);
+    OrderService::recordSubscriptionTerm($displayOrder, $giftEnd, $giftOwner->expired_at, 100*1073741824);
+    $displayPayment = new Payment(['name'=>'Fallback channel', 'payment'=>'Paytaro']);
+    $assert(App\Services\OrderPaymentHistory::display($displayOrder,$displayPayment)==='Fallback channel（当前渠道信息）',
+        'Term-only metadata does not hide the existing payment-channel fallback');
+
     $user->refresh();$user->currency='USD';try{$user->save();throw new RuntimeException('Currency changed');}catch(InvalidArgumentException $e){$checks++;}$user->refresh();
     $coupon=Coupon::create(['name'=>'Ten percent','code'=>uniqid(),'type'=>2,'value'=>10,'show'=>1,'public_claim'=>1,'limit_use'=>2,'started_at'=>time()-10,'ended_at'=>time()+3600]);
     $wallet=CouponWallet::issue($user->id,$coupon->id);$assert(CouponWallet::issue($user->id,$coupon->id)===$wallet && $coupon->fresh()->limit_use===1,'Claim replay consumes stock');
@@ -160,6 +321,56 @@ try {
     $autoRenewal=Order::where('user_id',$user->id)->latest('id')->firstOrFail();
     $assert((int)$autoRenewal->status===3 && (int)$autoRenewal->type===2 && (int)$autoRenewal->paid_at>=$autoRenewalStartedAt && (int)$autoRenewal->paid_at<=time(),'Automatic wallet renewal records its payment confirmation time');
     (new App\Console\Commands\CheckRenewal)->handle();$assert($user->fresh()->balance===3000,'Automatic renewal repeated debit');
+
+    $renewalCommand = new App\Console\Commands\CheckRenewal;
+    $renewalExpiry = time() + 3600;
+    $user->refresh()->update(['auto_renewal'=>1, 'balance'=>6000, 'expired_at'=>$renewalExpiry]);
+    $renewalOtherPlan = $plan->replicate();
+    $renewalOtherPlan->name = 'Unrelated renewal history';
+    $renewalOtherPlan->save();
+    $planSwitch = Order::create(['user_id'=>$user->id, 'plan_id'=>$renewalOtherPlan->id, 'currency'=>'CNY',
+        'period'=>'year_price', 'trade_no'=>'auto-conflict-'.uniqid(), 'total_amount'=>30000, 'type'=>3, 'status'=>0]);
+    foreach ([0, 1] as $blockingStatus) {
+        $planSwitch->update(['status'=>$blockingStatus]);
+        $renewalStatus = $renewalCommand->handle();
+        $account = $user->fresh();
+        $assert((int)$account->balance === 6000 && (int)$account->expired_at === $renewalExpiry && (int)$account->auto_renewal === 1,
+            'Automatic renewal charged the account while a switch was unpaid or awaiting fulfillment');
+        $assert($renewalStatus === 0, 'Waiting for a pending plan switch was treated as a failed renewal');
+    }
+    $planSwitch->update(['status'=>2]);
+    $user->update(['banned'=>1]);
+    $assert($renewalCommand->handle() === 0 && (int)$user->fresh()->balance === 6000 && (int)$user->fresh()->expired_at === $renewalExpiry,
+        'Automatic renewal charged a banned account');
+
+    $user->update(['banned'=>0, 'balance'=>2800, 'discount'=>10]);
+    Order::create(['user_id'=>$user->id, 'plan_id'=>$renewalOtherPlan->id, 'currency'=>'CNY',
+        'period'=>'year_price', 'trade_no'=>'unrelated-history-'.uniqid(), 'total_amount'=>30000, 'type'=>3,
+        'status'=>3, 'created_at'=>time()+1]);
+    $orderCount = Order::where('user_id', $user->id)->count();
+    $failAutomaticOrder = true;
+    Order::creating(function (Order $order) use ($user, &$failAutomaticOrder) {
+        if ($failAutomaticOrder && (int)$order->user_id === (int)$user->id) {
+            $failAutomaticOrder = false;
+            throw new RuntimeException('fixture automatic order write failure');
+        }
+    });
+    $beforeRenewalTransaction = DB::transactionLevel();
+    $assert($renewalCommand->handle() === 1 && DB::transactionLevel() === $beforeRenewalTransaction, 'Automatic renewal leaked a failed transaction');
+    $account = $user->fresh();
+    $assert((int)$account->balance === 2800 && (int)$account->expired_at === $renewalExpiry && (int)$account->auto_renewal === 1
+        && Order::where('user_id', $user->id)->count() === $orderCount, 'Failed automatic renewal did not roll back the wallet and entitlement');
+    $assert($renewalCommand->handle() === 0, 'Automatic renewal could not recover after the order write failure');
+    $account = $user->fresh();
+    $discountedRenewal = Order::where('user_id', $user->id)->latest('id')->firstOrFail();
+    $assert((int)$account->balance === 100 && (int)$account->expired_at === strtotime('+1 month', $renewalExpiry)
+        && (int)$discountedRenewal->plan_id === (int)$plan->id && $discountedRenewal->period === 'month_price'
+        && (int)$discountedRenewal->balance_amount === 2700 && (int)$discountedRenewal->discount_amount === 300,
+        'Automatic renewal ignored the current plan history or applicable wallet discount');
+    $renewalTerm = $discountedRenewal->payment_snapshot['subscription_term'];
+    $assert($renewalTerm['starts_at'] === $renewalExpiry && $renewalTerm['ends_at'] === (int)$account->expired_at
+        && $renewalTerm['quota_bytes'] === (int)$account->transfer_enable,
+        'Automatic renewal did not persist the exact added term and allowance');
 
     $stripeClient=new class implements Stripe\HttpClient\ClientInterface {
         public array $calls=[];

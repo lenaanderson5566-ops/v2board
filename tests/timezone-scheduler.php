@@ -142,3 +142,24 @@ $other->transfer_enable=1000; $other->plan_id=null;
 $check($service->getResetInfo($other,$now)['state']===null,'Account without a plan advertised a reset');
 $check(date_default_timezone_get()==='UTC','Status read changed process/display timezone');
 echo "Reset status: 14 isolated checks passed\n";
+
+// A manual reset replaces the old calendar day with a business-local anchor.
+$anchor = $at('2026-11-10 17:00:00');
+$user->traffic_reset_anchor_at = $anchor;
+$firstReset = $at('2026-12-10 00:00:00');
+$check($service->getResetInfo($user, $anchor)['at'] === $firstReset, 'Manual reset did not start a new monthly cycle');
+$check($service->getResetInfo($user, $at('2026-12-01 00:00:00'))['at'] === $firstReset, 'Old calendar boundary remained due after manual reset');
+$status = $service->getResetInfo($user, $firstReset);
+$check($status['at'] === $firstReset && $status['state'] === 'pending', 'Anchored reset day did not report the pending run');
+Illuminate\Support\Facades\DB::table('v2_daily_user_reset')->insert(['user_id'=>101, 'business_date'=>'2026-12-10']);
+$status = $service->getResetInfo($user, $firstReset);
+$check($status['at'] === $at('2027-01-10 00:00:00') && $status['state'] === 'scheduled', 'Reset receipt did not advance to the next anchored cycle');
+$user->expired_at = $at('2026-12-20 00:00:00');
+Illuminate\Support\Facades\DB::table('v2_plan')->where('id', 1)->update(['reset_traffic_method'=>1]);
+$check($service->getResetInfo($user, $anchor)['at'] === $firstReset, 'Legacy expiry guard suppressed a paid anchored cycle before actual expiry');
+$user->expired_at = $firstReset;
+$check($service->getResetInfo($user, $anchor)['at'] === null, 'Anchored reset at expiry was advertised');
+$user->expired_at = $at('2027-04-01');
+Illuminate\Support\Facades\DB::table('v2_plan')->where('id', 1)->update(['reset_traffic_method'=>2]);
+$check($service->getResetInfo($user, $anchor)['at'] === null, 'No-reset plan acquired an automatic cycle from the anchor');
+echo "Anchored reset status: 7 isolated checks passed\n";

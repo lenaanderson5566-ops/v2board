@@ -51,8 +51,19 @@ class UserService
         return (int)(($nextYear - time()) / 86400);
     }
 
-    public function getResetDay(User $user)
+    public function getResetDay(User $user, ?array $resetInfo = null)
     {
+        if ($user->traffic_reset_anchor_at !== null) {
+            $resetInfo ??= $this->getResetInfo($user);
+            if ($resetInfo['at'] === null) return null;
+            $zone = new \DateTimeZone($resetInfo['timezone']);
+            $today = (new \DateTimeImmutable('now', $zone))->format('Y-m-d');
+            $next = (new \DateTimeImmutable('@'.$resetInfo['at']))->setTimezone($zone)->format('Y-m-d');
+            // Compare civil dates in UTC so even a midnight DST change counts as a day.
+            $utc = new \DateTimeZone('UTC');
+            $days = (new \DateTimeImmutable($today, $utc))->diff(new \DateTimeImmutable($next, $utc));
+            return max(0, (int)$days->format('%r%a'));
+        }
         if (!isset($user->plan)) {
             if ($user->plan_id === NULL) return null;
             $user->plan = Plan::find($user->plan_id);
@@ -116,10 +127,11 @@ class UserService
         $plan = Plan::find($user->plan_id);
         if (!$plan) return $result;
         $method = (int)($plan->reset_traffic_method ?? config('fastai.reset_traffic_method', 0));
-        $future = TrafficResetSchedule::next($method, (int)$user->expired_at, $now, $zone);
+        $anchorAt = $user->traffic_reset_anchor_at;
+        $future = TrafficResetSchedule::next($method, (int)$user->expired_at, $now, $zone, $anchorAt);
         $result['at'] = $future;
         $result['state'] = $future ? 'scheduled' : null;
-        if (!TrafficResetSchedule::due($method, (int)$user->expired_at, $now, $zone)) return $result;
+        if (!TrafficResetSchedule::due($method, (int)$user->expired_at, $now, $zone, $anchorAt)) return $result;
         $local = (new \DateTimeImmutable('@'.$now))->setTimezone(new \DateTimeZone($zone));
         $date = $local->format('Y-m-d');
         if (DB::table('v2_daily_user_reset')->where('user_id', $user->id)->where('business_date', $date)->exists()) return $result;
@@ -128,49 +140,6 @@ class UserService
         $result['at'] = $local->setTime(0, 0)->getTimestamp();
         $result['state'] = $run && $run->status === 'failed' ? 'failed' : 'pending';
         return $result;
-    }
-
-    public function getResetPeriod(User $user)
-    {
-        if ($user->plan_id === NULL) return null;
-        $plan = Plan::find($user->plan_id);
-        if ($user->expired_at <= time() || $user->expired_at === NULL) return null;
-        // if reset method is not reset
-        if ($plan->reset_traffic_method === 2) return null;
-        switch (true) {
-            case ($plan->reset_traffic_method === NULL) : {
-                $resetTrafficMethod = config('fastai.reset_traffic_method', 0);
-                switch ((int)$resetTrafficMethod) {
-                    case 0:
-                        return 1;
-                    case 1:
-                        return 30;
-                    case 2:
-                        return null;
-                    case 3:
-                        return 12;
-                    case 4:
-                        return 365;
-                }
-                break;
-            }
-            case ($plan->reset_traffic_method === 0): {
-                return 1;
-            }
-            case ($plan->reset_traffic_method === 1): {
-                return 30;
-            }
-            case ($plan->reset_traffic_method === 2): {
-                return null;
-            }
-            case ($plan->reset_traffic_method === 3): {
-                return 12;
-            }
-            case ($plan->reset_traffic_method === 4): {
-                return 365;
-            }
-        }    
-        return null;
     }
 
     public function isAvailable(User $user)

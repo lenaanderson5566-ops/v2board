@@ -9,7 +9,7 @@ class User extends Model
     protected $table = 'v2_user';
     protected $dateFormat = 'U';
     protected $guarded = ['id'];
-    protected $hidden = ['password', 'password_algo', 'password_salt'];
+    protected $hidden = ['password', 'password_algo', 'password_salt', 'traffic_reset_anchor_at'];
     protected static function booted() {
         static::creating(function ($user) {
             $currency = config('fastai.new_user_currency', 'CNY');
@@ -19,6 +19,10 @@ class User extends Model
         static::updating(function ($user) {
             if ($user->getOriginal('account_deleted_at') && ($user->isDirty('account_deleted_at') || !$user->banned || $user->isDirty('email') || $user->isDirty('password'))) throw new \RuntimeException('Deleted accounts cannot be restored');
             if ($user->isDirty('currency')) throw new \InvalidArgumentException('Account currency cannot be changed');
+            if ($user->traffic_reset_anchor_at !== null && ($user->isDirty('plan_id')
+                || ($user->isDirty('expired_at') && ($user->expired_at === null || (int)$user->getRawOriginal('expired_at') <= time())))) {
+                $user->traffic_reset_anchor_at = null;
+            }
         });
     }
     protected $casts = [
@@ -26,7 +30,8 @@ class User extends Model
         'remind_service' => 'boolean',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
-        'credit_balance' => 'integer'
+        'credit_balance' => 'integer',
+        'traffic_reset_anchor_at' => 'integer',
     ];
     public function getCreditBalanceAttribute($value)
     {

@@ -29,6 +29,7 @@ class OrderService
     public function open()
     {
         DB::transaction(function () {
+            $this->user = User::whereKey($this->order->user_id)->lockForUpdate()->firstOrFail();
             $this->order = Order::where('id', $this->order->id)->lockForUpdate()->firstOrFail();
             if ((int)$this->order->status !== 1) return;
             $this->openLocked();
@@ -46,22 +47,17 @@ class OrderService
             (new TrafficCreditService())->fulfill($order);
             return;
         }
-        $this->user = User::where('id', $order->user_id)->lockForUpdate()->firstOrFail();
         if (BillingCurrency::account($this->user) !== ($order->currency ?: 'CNY')) throw new \RuntimeException('Order wallet currency mismatch');
         if ($order->type == 9) {
-            DB::beginTransaction();
             $this->user->balance += $order->total_amount + (($order->currency ?: 'CNY') === 'CNY' ? $this->getbounus($order->total_amount) : 0);
 
             if (!$this->user->save()) {
-                DB::rollBack();
                 abort(500, '充值失败');
             }
             $order->status = 3;
             if (!$order->save()) {
-                DB::rollBack();
                 abort(500, '充值失败');
             }
-            DB::commit();
             return;
         }
 
@@ -70,16 +66,14 @@ class OrderService
         if ($order->refund_amount) {
             $this->user->balance = $this->user->balance + $order->refund_amount;
         }
-        DB::beginTransaction();
         if ($order->surplus_order_ids) {
-            try {
-                Order::whereIn('id', $order->surplus_order_ids)->update([
-                    'status' => 4
-                ]);
-            } catch (\Exception $e) {
-                DB::rollback();
-                abort(500, '开通失败');
-            }
+            $periods = $this->user->expired_at === null ? ['onetime_price'] : array_keys(self::STR_TO_TIME);
+            $this->paidSurplusSources($this->user, $periods)
+                ->where('id', '<', $order->id)
+                ->where('paid_at', '<=', $order->created_at)
+                ->whereIn('id', $order->surplus_order_ids)
+                ->whereRaw('COALESCE(total_amount, 0) + COALESCE(balance_amount, 0) > 0')
+                ->update(['status' => 4]);
         }
         switch ((string)$order->period) {
             case 'onetime_price':
@@ -87,6 +81,10 @@ class OrderService
                 break;
             case 'reset_price':
                 $this->buyByResetTraffic();
+                $resetAt = time();
+                if ((int)$this->user->plan_id === (int)$order->plan_id && $this->user->expired_at > $resetAt) {
+                    $this->user->traffic_reset_anchor_at = $resetAt;
+                }
                 break;
             default:
                 $this->buyByPeriod($order, $plan);
@@ -107,19 +105,15 @@ class OrderService
         $this->setSpeedLimit($plan->speed_limit);
 
         if (!$this->user->save()) {
-            DB::rollBack();
             abort(500, '开通失败');
         }
         $order->status = 3;
         if (!$order->save()) {
-            DB::rollBack();
             abort(500, '开通失败');
         }
         // An old permanent-plan reset must restore its promised allowance before conversion.
         (new TrafficCreditService())->migrateUser($this->user);
-        $this->user->save();
-
-        DB::commit();
+        if (!$this->user->save()) abort(500, '开通失败');
     }
 
 
@@ -135,7 +129,9 @@ class OrderService
         } else if ($user->transfer_enable > 0 && $user->plan_id !== NULL && $order->plan_id !== $user->plan_id && ($user->expired_at > time() || $user->expired_at === NULL)) {
             if (!(int)config('fastai.plan_change_enable', 1)) abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
             $order->type = 3;
-            if ((int)config('fastai.surplus_enable', 1)) $this->getSurplusValue($user, $order);
+            if ((int)config('fastai.surplus_enable', 1)) {
+                [$order->surplus_amount, $order->surplus_order_ids] = $this->surplusValue($user, $order->created_at ?? time());
+            }
             if ($order->surplus_amount >= $order->total_amount) {
                 $order->refund_amount = $order->surplus_amount - $order->total_amount;
                 $order->total_amount = 0;
@@ -205,96 +201,119 @@ class OrderService
             ->first();
     }
 
-    private function getSurplusValue(User $user, Order $order)
+    public function isSurplusQuoteCurrent(User $user): bool
     {
-        if ($user->expired_at === NULL) {
-            $this->getSurplusValueByOneTime($user, $order);
-        } else {
-            $this->getSurplusValueByPeriod($user, $order);
+        $order = $this->order;
+        if (!(int) config('fastai.plan_change_enable', 1) || !(int) config('fastai.surplus_enable', 1)
+            || (int) $order->type !== 3 || (int) $order->user_id !== (int) $user->id
+            || (int) $order->plan_id === (int) $user->plan_id || !TrafficCreditService::hasPeriod($user)
+            || BillingCurrency::account($user) !== ($order->currency ?: 'CNY') || !$order->created_at) {
+            return false;
         }
+
+        [$amount, $ids] = $this->surplusValue($user, $order->created_at);
+
+        return $amount > 0 && $amount === (int) $order->surplus_amount
+            && $ids === array_map('intval', $order->surplus_order_ids ?? []);
     }
 
-
-    private function getSurplusValueByOneTime(User $user, Order $order)
+    private function paidSurplusSources(User $user, array $periods): \Illuminate\Database\Eloquent\Builder
     {
-        $lastOneTimeOrder = Order::where('user_id', $user->id)
-            ->where('period', 'onetime_price')
+        return Order::query()
+            ->where('user_id', $user->id)
+            ->where('plan_id', $user->plan_id)
+            ->where('currency', BillingCurrency::account($user))
             ->where('status', 3)
-            ->orderBy('id', 'DESC')
-            ->first();
-        if (!$lastOneTimeOrder) return;
-        $nowUserTraffic = $user->transfer_enable / 1073741824;
-        if ($nowUserTraffic == 0) return;
-        $paidTotalAmount = ($lastOneTimeOrder->total_amount + $lastOneTimeOrder->balance_amount);
-        if ($paidTotalAmount == 0) return;
-        $notUsedTraffic = $nowUserTraffic - (($user->u + $user->d) / 1073741824);
-        $remainingTrafficRatio = $notUsedTraffic / $nowUserTraffic;
-        $result = $remainingTrafficRatio * $paidTotalAmount;
-        $order->surplus_amount = max($result, 0);
-        $orderModel = Order::where('user_id', $user->id)->where('period', '!=', 'reset_price')->where('status', 3);
-        $order->surplus_order_ids = array_column($orderModel->get()->toArray(), 'id');
+            ->where('paid_at', '>', 0)
+            ->whereNull('credit_bytes')
+            ->whereIn('type', [1, 2, 3])
+            ->whereIn('period', $periods);
     }
 
-    private function getSurplusValueByPeriod(User $user, Order $order)
+    public static function recordSubscriptionTerm(Order $order, int $start, int $end, int $quota): void
     {
-        $orders = Order::where('user_id', $user->id)
-            ->where('period', '!=', 'reset_price')
-            ->where('period', '!=', 'onetime_price')
-            ->where('period', '!=', 'deposit')
-            ->where('status', 3)
-            ->get()
-            ->toArray();
-        if (!$orders) return;
-        $orderAmountSum = 0;
-        $orderMonthSum = 0;
-        $lastValidateAt = null;
-        foreach ($orders as $item) {
-            $period = self::STR_TO_TIME[$item['period']];
-            $orderEndTime = strtotime("+{$period} month", $item['created_at']);
-            if ($orderEndTime < time()) continue;
-            $lastValidateAt = $item['created_at'] > $lastValidateAt ? $item['created_at'] : $lastValidateAt;
-            $orderMonthSum += $period;
-            $orderAmountSum += $item['total_amount'] + $item['balance_amount'] + $item['surplus_amount'] - $item['refund_amount'];
-        }
-        if ($lastValidateAt === null) return;
-    
-        $expiredAtByOrder = strtotime("+{$orderMonthSum} month", $lastValidateAt);
-        $expiredAtByUser = $user->expired_at;
-        if ($expiredAtByOrder < time() || $expiredAtByUser < time()) return;
-        $orderSurplusSecond = $expiredAtByUser - time();
-        $orderRangeSecond = $expiredAtByOrder - $lastValidateAt;
-    
-        $totalTraffic = $user->transfer_enable;
-        $usedTraffic = ($user->u + $user->d);
-        if ($totalTraffic == 0) return;
-    
-        $remainingTrafficRatio = ($totalTraffic - $usedTraffic) / $totalTraffic;
-    
-        $avgPricePerSecond = $orderAmountSum / $orderRangeSecond;
-        if ($orderRangeSecond <= 31 * 86400) {
-            $remainingExpiredTimeRatio = $orderSurplusSecond / $orderRangeSecond;
-            $surplusRatio = min($remainingExpiredTimeRatio, $remainingTrafficRatio);
-            $orderSurplusAmount = $avgPricePerSecond * $orderSurplusSecond * $surplusRatio;
-        } else {
-            $monthSeconds = 30 * 86400;
-            $firstMonthRemainSeconds = $orderSurplusSecond % $monthSeconds;
-            $surplusRatio = min($firstMonthRemainSeconds / $monthSeconds, $remainingTrafficRatio);
-            $laterMonthsSeconds = $orderSurplusSecond - $firstMonthRemainSeconds;
-            $orderSurplusAmount = $avgPricePerSecond * $monthSeconds * $surplusRatio +
-                                  $avgPricePerSecond * $laterMonthsSeconds;
-        }
-    
-        $order->surplus_amount = max($orderSurplusAmount, 0);
-        $order->surplus_order_ids = array_column($orders, 'id');
+        $snapshot = $order->payment_snapshot ?? [];
+        $snapshot['subscription_term'] = ['starts_at' => $start, 'ends_at' => $end, 'quota_bytes' => $quota];
+        $order->payment_snapshot = $snapshot;
     }
 
-    public function paid(string $callbackNo, array $paymentContext = [])
+    private function surplusValue(User $user, int $at): array
+    {
+        $quota = (int) $user->transfer_enable;
+        if ($quota <= 0 || ($user->expired_at !== null && $user->expired_at <= $at)) return [0, []];
+
+        $traffic = min(1, max(0, ($quota - (int) $user->u - (int) $user->d) / $quota));
+        if ($user->expired_at === null) {
+            $source = $this->paidSurplusSources($user, ['onetime_price'])
+                ->where('paid_at', '<=', $at)->orderByDesc('paid_at')->orderByDesc('id')->first();
+            if (!$source) return [0, []];
+            $amount = (int) floor($traffic * max(0, (int) $source->total_amount + (int) $source->balance_amount));
+
+            return [$amount, $amount > 0 ? [(int) $source->id] : []];
+        }
+
+        $sources = $this->paidSurplusSources($user, array_keys(self::STR_TO_TIME))
+            ->where('paid_at', '<=', $at)->orderBy('paid_at')->orderBy('id')->get();
+        $end = 0;
+        $terms = [];
+        foreach ($sources as $source) {
+            // Renewals extend the provable paid timeline. New activations replace it.
+            if ((int) $source->type !== 2) {
+                $end = 0;
+                $terms = [];
+            }
+            $term = $source->payment_snapshot['subscription_term'] ?? null;
+            $termQuota = $quota;
+            if ($term !== null) {
+                $start = $term['starts_at'] ?? null;
+                $stop = $term['ends_at'] ?? null;
+                $snapshotQuota = $term['quota_bytes'] ?? null;
+                if (!is_int($start) || $start < (int) $source->paid_at || !is_int($stop) || $stop <= $start
+                    || !is_int($snapshotQuota) || $snapshotQuota <= 0) continue;
+                $end = $stop;
+                $termQuota = min($quota, $snapshotQuota);
+            } else {
+                $start = max($end, (int) $source->paid_at);
+                $end = self::periodExpiry($source->period, $start);
+            }
+            $terms[] = [$source, $start, $end, $termQuota];
+        }
+
+        $amount = 0;
+        $ids = [];
+        $nextStart = (int) $user->expired_at;
+        foreach (array_reverse($terms) as [$source, $start, $end, $termQuota]) {
+            // Exact later activations also cap any overlapping legacy estimate.
+            $remaining = min($end, $nextStart) - max($start, $at);
+            $nextStart = min($nextStart, $start);
+            if ($remaining <= 0) continue;
+
+            // Unrecorded gifts and manual extensions add no paid time or money.
+            // Only funds applied to this order are directly traceable on historical rows.
+            $funded = max(0, (int) $source->total_amount + (int) $source->balance_amount);
+            $unusedQuota = min(1, max(0, ($termQuota - (int) $user->u - (int) $user->d) / $termQuota));
+            $ratio = min($remaining / ($end - $start), $start <= $at ? $unusedQuota : 1);
+            $value = (int) floor($funded * $ratio);
+            if ($value <= 0) continue;
+
+            $amount += $value;
+            $ids[] = (int) $source->id;
+        }
+
+        return [min($amount, 2147483647), array_reverse($ids)];
+    }
+
+    public function paid(string $callbackNo, array $paymentContext = [], ?callable $beforeRecording = null)
     {
         $order = $this->order;
         // A stale simultaneous callback must never reopen a completed order.
-        $changed = Order::where('id', $order->id)->where('status', 0)->update([
-            'status' => 1, 'paid_at' => time(), 'callback_no' => $callbackNo,
-        ] + $paymentContext);
+        $record = function () use ($order, $callbackNo, $paymentContext, $beforeRecording) {
+            if ($beforeRecording) $beforeRecording();
+            return Order::where('id', $order->id)->where('status', 0)->update([
+                'status' => 1, 'paid_at' => time(), 'callback_no' => $callbackNo,
+            ] + $paymentContext);
+        };
+        $changed = $beforeRecording ? DB::transaction($record, 3) : $record();
         $order->refresh();
         if (!$changed && (int)$order->status !== 1) return true;
         try {
@@ -334,29 +353,35 @@ class OrderService
 
     private function buyByPeriod(Order $order, Plan $plan)
     {
+        $now = time();
+        $type = (int)$order->type;
+        $expiredAt = $this->user->expired_at;
+        $expiredRenewal = $type === 2 && $expiredAt !== null && $expiredAt <= $now;
+        if ($expiredRenewal || in_array($type, [1, 3], true)) {
+            $this->user->traffic_reset_anchor_at = null;
+        }
         // change plan process
-        if ((int)$order->type === 3) {
-            $this->user->expired_at = time();
+        if ($type === 3) {
+            $this->user->expired_at = $now;
         }
         $this->user->transfer_enable = $plan->transfer_enable * 1073741824;
         $this->user->device_limit = $plan->device_limit;
         // 从一次性转换到循环
         if ($this->user->expired_at === NULL) $this->buyByResetTraffic();
         // 新购
-        if ($order->type === 1) $this->buyByResetTraffic();
+        if ($type === 1) $this->buyByResetTraffic();
 
-        // 到期当天续费刷新流量
-        $expireDay = date('d', $this->user->expired_at);
-        $expireMonth = date('m', $this->user->expired_at);
-        $today = date('d');
-        $currentMonth = date('m');
-        if ($order->type === 2 && $expireMonth == $currentMonth && $expireDay === $today ) {
+        // An order created as a renewal may be fulfilled after the old term has ended.
+        if ($type === 2 && $expiredAt !== null
+            && ($expiredRenewal || date('Y-m-d', $expiredAt) === date('Y-m-d', $now))) {
             $this->buyByResetTraffic();
         }
 
         $this->user->plan_id = $plan->id;
         $this->user->group_id = $plan->group_id;
-        $this->user->expired_at = $this->getTime($order->period, $this->user->expired_at);
+        $start = max($now, (int) $this->user->expired_at);
+        $this->user->expired_at = self::periodExpiry($order->period, $start);
+        self::recordSubscriptionTerm($order, $start, $this->user->expired_at, (int) $this->user->transfer_enable);
     }
 
     private function buyByOneTime(Order $order, Plan $plan)
@@ -386,25 +411,12 @@ class OrderService
         $this->user->transfer_enable = 0;
     }
 
-    private function getTime($str, $timestamp)
+    public static function periodExpiry(string $period, int $start): int
     {
-        if ($timestamp < time()) {
-            $timestamp = time();
-        }
-        switch ($str) {
-            case 'month_price':
-                return strtotime('+1 month', $timestamp);
-            case 'quarter_price':
-                return strtotime('+3 month', $timestamp);
-            case 'half_year_price':
-                return strtotime('+6 month', $timestamp);
-            case 'year_price':
-                return strtotime('+12 month', $timestamp);
-            case 'two_year_price':
-                return strtotime('+24 month', $timestamp);
-            case 'three_year_price':
-                return strtotime('+36 month', $timestamp);
-        }
+        $months = self::STR_TO_TIME[$period] ?? throw new \InvalidArgumentException('Invalid subscription period');
+        $end = strtotime("+{$months} month", $start);
+        if ($end === false || $end <= $start) throw new \RuntimeException('Invalid subscription expiry');
+        return $end;
     }
 
     private function openEvent($eventId)

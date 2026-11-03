@@ -26,6 +26,10 @@ class OrderPaymentHistory {
         if ($order->callback_no === 'manual_operation') return '人工确认';
         if ((int)$order->total_amount === 0) return (int)$order->balance_amount > 0 ? '余额抵扣 / 无需外部付款' : '无需外部付款';
         $snapshot = $order->payment_snapshot;
+        if (isset($snapshot['subscription_term'])) {
+            unset($snapshot['subscription_term']);
+            $snapshot = $snapshot ?: null;
+        }
         if (!$order->payment_id && is_array($snapshot) && !isset($snapshot['name'])) return '尚未选择';
         $historical = is_array($snapshot);
         if (!$historical && $current) $snapshot = self::capture($current);

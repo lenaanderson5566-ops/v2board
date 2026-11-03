@@ -93,6 +93,10 @@ class OrderActions
         abort_if($request->exists('coupon_code') || $request->exists('couponCode'), 422, __('Please select this coupon from your wallet.'));
         // Serialize order creation and keep cancellation/refund/new order atomic.
         return DB::transaction(function () use ($request) {
+            // Lock the target plan before any snapshot reads so concurrent buyers
+            // see the reservation committed by the previous holder of this lock.
+            $planId = (int)$request->input('plan_id');
+            if ($planId > 0) Plan::query()->select('id')->lockForUpdate()->find($planId);
             $lockedUser = User::where('id', $request->user['id'])->lockForUpdate()->firstOrFail();
             abort_if($lockedUser->banned,403,__('Account is disabled.'));
             if ($request->filled('checkout_quote')) {
@@ -210,7 +214,6 @@ class OrderActions
 
     private function prepareSubscriptionOrder(OrderSave $request, User $user, bool $preview = false, ?int $replacingOrderId = null): Order
     {
-        $userService = new UserService();
         $planService = new PlanService($request->input('plan_id'));
 
         $plan = $planService->plan;
@@ -223,8 +226,8 @@ class OrderActions
         $price = \App\Services\BillingCurrency::price($plan, $request->input('period'), $currency);
         $isCredit = $request->input('period') === 'onetime_price';
         if ($isCredit && (!$plan->show || $plan->transfer_enable <= 0 || $plan->group_id === null)) abort(422, __('Current product is sold out'));
-        if ($user->plan_id !== $plan->id && !$planService->haveCapacity() && $request->input('period') !== 'reset_price') {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Current product is sold out'));
+        if ($request->input('period') !== 'reset_price' && !$planService->haveCapacity($user, $replacingOrderId)) {
+            abort($request->is('api/v10/*') ? 409 : 500, __('Current product is sold out'));
         }
 
         if ($price === null || $price < 0) {
@@ -237,10 +240,8 @@ class OrderActions
             }
         }
 
-        if ((!$plan->show && !$plan->renew) || (!$plan->show && $user->plan_id !== $plan->id)) {
-            if ($request->input('period') !== 'reset_price') {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('This subscription has been sold out, please choose another subscription'));
-            }
+        if ($request->input('period') !== 'reset_price' && !PlanService::visibleToSubscriber($plan, $user)) {
+            abort($request->is('api/v10/*') ? 409 : 500, __('This subscription has been sold out, please choose another subscription'));
         }
 
         if (!$isCredit && !$plan->renew && $user->plan_id == $plan->id && $request->input('period') !== 'reset_price') {
@@ -248,9 +249,6 @@ class OrderActions
         }
 
 
-        if (!$plan->show && $plan->renew && !$userService->isAvailable($user)) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('This subscription has expired, please change to another subscription'));
-        }
         $order = new Order();
         $orderService = new OrderService($order);
         $order->user_id = $request->user['id'];
@@ -259,6 +257,7 @@ class OrderActions
         $order->trade_no = Helper::generateOrderNo();
         $order->currency = $currency;
         $order->total_amount = $price;
+        $order->created_at = time();
         if ($isCredit) {
             $order->credit_bytes = (int)round($plan->transfer_enable * 1073741824);
             $order->credit_snapshot = $plan->only(['name','group_id','speed_limit','device_limit']);
@@ -298,7 +297,10 @@ class OrderActions
         // free process
         if ($order->total_amount <= 0) {
             $orderService = new OrderService($order);
-            if (!$orderService->paid($order->trade_no)) abort(500, '');
+            if (!$orderService->paid($order->trade_no, [], function () use ($order) {
+                $fresh = $this->lockCheckoutOrder($order);
+                abort_unless((int)$fresh->total_amount === 0, 409, __('Invalid parameter'));
+            })) abort(500, '');
             return response([
                 'type' => -1,
                 'data' => true
@@ -318,8 +320,7 @@ class OrderActions
         $order->payment_id = $method;
         // Claim payment before contacting the provider; replacement must not cancel issued payments.
         $claimed = DB::transaction(function () use ($order, $method, $payment, $quote) {
-            $fresh = Order::where('id', $order->id)->lockForUpdate()->first();
-            if (!$fresh || (int)$fresh->status !== 0) return false;
+            $fresh = $this->lockCheckoutOrder($order);
             $fresh->payment_id = $method;
             $fresh->handling_amount = $order->handling_amount;
             $saved = \App\Services\OrderPaymentHistory::select($fresh, $payment, $quote);
@@ -342,6 +343,20 @@ class OrderActions
             'type' => $result['type'],
             'data' => $result['data']
         ]);
+    }
+
+    private function lockCheckoutOrder(Order $order): Order
+    {
+        $user = User::whereKey($order->user_id)->lockForUpdate()->firstOrFail();
+        $fresh = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+        abort_unless((int)$fresh->status === 0, 409, __('Order does not exist or has been paid'));
+        if ((int)$fresh->surplus_amount > 0 || (int)$fresh->refund_amount > 0) {
+            abort_unless((int)$fresh->created_at >= time() - 900 && (new OrderService($fresh))->isSurplusQuoteCurrent($user),
+                409, $fresh->payment_id
+                    ? __('Payment is being confirmed. Please check the order status before trying again.')
+                    : __('This order quote has expired. Cancel this order and create a new one.'));
+        }
+        return $fresh;
     }
 
     public function check(Request $request)

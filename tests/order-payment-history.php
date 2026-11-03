@@ -2,7 +2,7 @@
 $app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
-use App\Models\{Order, Payment};
+use App\Models\{Order, Payment, User};
 use App\Services\{OrderPaymentHistory, OrderService};
 use App\Services\Actions\User\OrderActions;
 use App\Services\Actions\Guest\PaymentActions;
@@ -13,11 +13,14 @@ $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
 try {
+    config(['fastai.new_user_currency'=>'CNY']);
+    $owner = User::create(['email'=>'payment-history-'.uniqid().'@example.test','password'=>'test',
+        'token'=>bin2hex(random_bytes(16)),'uuid'=>(string) Illuminate\Support\Str::uuid()]);
     $payment = Payment::create(['name'=>'Original Alipay','payment'=>'Paytaro','uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>['pid'=>'test', 'key'=>'test-secret'], 'handling_fee_fixed'=>10]);
-    $order = Order::create(['user_id'=>1,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>1000,'status'=>0]);
+    $order = Order::create(['user_id'=>$owner->id,'plan_id'=>1,'type'=>1,'period'=>'month_price','trade_no'=>App\Utils\Helper::generateOrderNo(),'total_amount'=>1000,'status'=>0]);
     $checkout = function () use ($order, $payment) {
         $request = Request::create('/api/v10/orders/'.$order->trade_no.'/payments', 'POST', ['trade_no'=>$order->trade_no,'method'=>$payment->id]);
-        $request->user = ['id'=>1];
+        $request->user = ['id'=>$order->user_id];
         return json_decode((new OrderActions())->checkout($request)->getContent(), true);
     };
     $first = $checkout();
@@ -27,7 +30,7 @@ try {
     $checkout();
     $assert($order->fresh()->payment_snapshot['name']==='Original Alipay', 'Original channel snapshot retained');
     $other = Payment::create(['name'=>'Second channel','payment'=>'Paytaro','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['pid'=>'test','key'=>'test-secret'],'handling_fee_fixed'=>30]);
-    $request=Request::create('/', 'POST',['trade_no'=>$order->trade_no,'method'=>$other->id]); $request->user=['id'=>1];
+    $request=Request::create('/', 'POST',['trade_no'=>$order->trade_no,'method'=>$other->id]); $request->user=['id'=>$order->user_id];
     (new OrderActions())->checkout($request);
     $notify = function ($channel, $callback) use ($order) {
         $params=['out_trade_no'=>$order->trade_no,'trade_no'=>$callback,'trade_status'=>'TRADE_SUCCESS','money'=>number_format((1000 + $channel->handling_fee_fixed)/100,2,'.','')];

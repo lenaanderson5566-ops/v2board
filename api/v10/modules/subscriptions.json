@@ -464,26 +464,13 @@
           "user"
         ],
         "summary": "POST me/subscription/period-advances",
+        "deprecated": true,
         "parameters": [
           {
             "$ref": "#/components/parameters/HeaderAcceptLanguage"
           }
         ],
         "responses": {
-          "204": {
-            "description": "Success",
-            "headers": {
-              "X-Request-ID": {
-                "$ref": "#/components/headers/XRequestID"
-              },
-              "Content-Language": {
-                "$ref": "#/components/headers/XRequestID"
-              },
-              "Cache-Control": {
-                "$ref": "#/components/headers/PrivateNoStore"
-              }
-            }
-          },
           "401": {
             "$ref": "#/components/responses/ProblemDetails"
           },
@@ -519,7 +506,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/newPeriod",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403.",
+        "description": "Retired. Authenticated requests return 410 Gone without changing subscription expiry or traffic usage.",
         "x-runtime": {
           "input": {},
           "output": "scalar",
@@ -835,6 +822,8 @@
           },
           "canAdvancePeriod": {
             "type": "boolean",
+            "deprecated": true,
+            "description": "Always false. Advancing a traffic period by shortening a subscription is retired.",
             "x-runtime-field": [
               "allow_new_period",
               "boolean"

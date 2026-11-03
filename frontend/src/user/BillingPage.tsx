@@ -2,7 +2,7 @@ import { StatusBadge, orderStatusTone } from "../shared/StatusBadge";
 import { GiftCardRedemption } from "./GiftCardRedemption";
 import { TrafficCredits } from "./TrafficCredits";
 import { c } from "../shared/credit-copy";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { ArrowUpRight, ChevronRight, Gift, Plus } from "lucide-react";
 import {
     bytes,
@@ -29,6 +29,50 @@ type HistoryFilters = {
 };
 const emptyFilters: HistoryFilters = { status: "", days: "", number: "" };
 
+function BalanceAutoRenewal({ account, canEnable, refresh }: {
+    account: Row;
+    canEnable: boolean;
+    refresh: () => void;
+}) {
+    const id = useId();
+    const [saved, setSaved] = useState<{ account: Row; enabled: boolean }>();
+    const [saving, setSaving] = useState(false);
+    const [failed, setFailed] = useState(false);
+    const checked = saved?.account === account ? saved.enabled : Number(account.auto_renewal) === 1;
+
+    async function toggle() {
+        if (saving) return;
+        setSaving(true);
+        setFailed(false);
+        try {
+            await request("user/update", { auto_renewal: !checked });
+            setSaved({ account, enabled: !checked });
+            refresh();
+        } catch {
+            setFailed(true);
+        } finally {
+            setSaving(false);
+        }
+    }
+
+    return (
+        <div className="settings-card notification-options">
+            <div className="notification-option">
+                <div className="notification-description">
+                    <label htmlFor={id}>{pc("balanceAutoRenewal")}</label>
+                    <p id={`${id}-hint`}>{pc("balanceAutoRenewalHelp")}</p>
+                    {failed && <p className="notification-feedback" data-error="true" role="alert">{pc("balanceAutoRenewalError")}</p>}
+                </div>
+                <button id={id} type="button" role="switch" className="toggle-control"
+                    aria-describedby={`${id}-hint`} aria-checked={checked}
+                    aria-busy={saving} disabled={saving || (!checked && !canEnable)} onClick={() => void toggle()}>
+                    <span className="toggle-track" aria-hidden="true"><i /></span>
+                </button>
+            </div>
+        </div>
+    );
+}
+
 export function BillingPage() {
     const [page, setPage] = useState(1);
     const [draft, setDraft] = useState(emptyFilters);
@@ -50,6 +94,9 @@ export function BillingPage() {
     const retryIn = useRetryCountdown(orders.retryAt);
     const blocked = orders.loading || retryIn > 0;
     const newAccount = info.data?.account_status?.state === "new";
+    const autoRenewalEnabled = Number(info.data?.auto_renewal) === 1;
+    const canAutoRenew = sub.data?.has_subscription !== false &&
+        Number(sub.data?.expired_at) * 1000 > Date.now() && Number(sub.data?.plan?.renew) === 1;
     const offerFirstPlan = newAccount && !filtered && page === 1 &&
         !orders.loading && !orders.error && orders.total === 0 &&
         Array.isArray(orders.data) && orders.data.length === 0;
@@ -104,6 +151,9 @@ export function BillingPage() {
                         </a>
                     </div>
                 </State>
+                {!info.error && info.data?.auto_renewal != null && (autoRenewalEnabled || canAutoRenew) && (
+                    <BalanceAutoRenewal account={info.data} canEnable={canAutoRenew} refresh={info.reload} />
+                )}
             </section>
             <State {...info} retry={info.reload}>
                 <section className="settings-section">

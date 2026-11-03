@@ -14,6 +14,7 @@ import shutil
 import signal
 import socket
 import ssl
+import stat
 import subprocess
 import sys
 import tempfile
@@ -162,9 +163,45 @@ def _json_request(url, token=None, body=None, timeout=10, extra_headers=None):
         raise OSError("Invalid response") from None
 
 
-def read_object(path, label):
+TRUSTED_OWNER = os.geteuid()
+
+
+def require_trusted_directory(path):
+    info = path.lstat()
+    if not stat.S_ISDIR(info.st_mode) or info.st_uid != TRUSTED_OWNER or info.st_mode & 0o022 or path.resolve() != path.absolute():
+        raise DeploymentError("Deployment directory must be owned by root and cannot be writable by other users")
+
+
+def read_trusted_text(path, label, forbidden_mode):
     try:
-        document = json.loads(path.read_text())
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+    except OSError as error:
+        if error.errno == errno.ELOOP:
+            raise DeploymentError(label + " must not be a symlink") from None
+        raise
+    with os.fdopen(fd, encoding="utf-8") as source:
+        info = os.fstat(source.fileno())
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != TRUSTED_OWNER or info.st_mode & forbidden_mode:
+            raise DeploymentError(label + " must be a regular file owned by root with safe permissions")
+        return source.read()
+
+
+def open_deployment_lock(path):
+    fd = os.open(path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW | os.O_NONBLOCK, 0o600)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != TRUSTED_OWNER or info.st_mode & 0o022:
+            raise DeploymentError("Deployment lock must be a root-owned regular file without write access for other users")
+        return fd
+    except BaseException:
+        os.close(fd)
+        raise
+
+
+def read_object(path, label, *, private=False):
+    try:
+        contents = read_trusted_text(path, label, 0o077) if private else path.read_text()
+        document = json.loads(contents)
     except (ValueError, UnicodeError):
         raise DeploymentError(
             label
@@ -336,7 +373,7 @@ def completed_enrollment(path, config, host, node_id, grant_hash):
         or not config.is_file()
     ):
         return False
-    receipt = read_object(path, "Completed deployment receipt")
+    receipt = read_object(path, "Completed deployment receipt", private=True)
     if (
         receipt.get("grantHash") != grant_hash
         or receipt.get("apiHost") != panel_identity(host)
@@ -469,8 +506,9 @@ def has_systemd():
 
 def managed_identity(path):
     path = Path(path)
+    require_trusted_directory(STATE_DIRECTORY)
     if (
-        STATE_DIRECTORY.is_symlink() or path.parent.resolve() != STATE_DIRECTORY.resolve()
+        path.parent != STATE_DIRECTORY
         or not re.fullmatch(r"deployment-state(?:-[a-zA-Z0-9_-]{1,128})?\.json", path.name)
         or path.is_symlink()
     ):
@@ -490,13 +528,18 @@ def unit_quote(value):
     return '"' + str(value).replace("\\", "\\\\").replace('"', '\\"').replace("%", "%%") + '"'
 
 
+def read_managed_unit(target):
+    return read_trusted_text(target, "Deployment service file", 0o022)
+
+
 def write_managed_unit(path, unit):
     directory = SYSTEMD_DIRECTORY
+    require_trusted_directory(directory)
     target = directory / unit
     if directory.is_symlink() or not directory.is_dir() or target.is_symlink():
         raise DeploymentError("Unsafe deployment service path; state was retained")
     if target.exists() and (
-        not target.is_file() or not target.read_text().startswith(MANAGED_UNIT_MARKER)
+        not target.is_file() or not read_managed_unit(target).startswith(MANAGED_UNIT_MARKER)
     ):
         raise DeploymentError("Existing deployment service is not managed by this helper; retained")
     contents = MANAGED_UNIT_MARKER + "# StateFile=" + str(path) + "\n" + (
@@ -526,13 +569,14 @@ def write_managed_unit(path, unit):
 
 def remove_managed_unit(path):
     path, unit = managed_identity(path)
+    require_trusted_directory(SYSTEMD_DIRECTORY)
     target = SYSTEMD_DIRECTORY / unit
-    if target.is_symlink() or (
-        target.exists() and (not target.is_file() or not target.read_text().startswith(MANAGED_UNIT_MARKER))
-    ):
+    if target.is_symlink():
         raise DeploymentError("Unsafe deployment service file; retained")
-    if target.exists() and "# StateFile=" + str(path) not in target.read_text().splitlines():
-        raise DeploymentError("A different deployment task is selected; no task was changed")
+    if target.exists():
+        contents = read_managed_unit(target)
+        if not contents.startswith(MANAGED_UNIT_MARKER) or "# StateFile=" + str(path) not in contents.splitlines():
+            raise DeploymentError("A different deployment task is selected; no task was changed")
     service_command("disable", unit)
     target.unlink(missing_ok=True)
     service_command("daemon-reload")
@@ -556,9 +600,8 @@ def managed_idle_state(unit):
 
 @contextmanager
 def managed_service_lock():
-    if STATE_DIRECTORY.is_symlink() or not STATE_DIRECTORY.is_dir():
-        raise DeploymentError("Unsafe deployment directory; state was retained")
-    fd = os.open(STATE_DIRECTORY / ".deployment-service.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    require_trusted_directory(STATE_DIRECTORY)
+    fd = open_deployment_lock(STATE_DIRECTORY / ".deployment-service.lock")
     try:
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -570,11 +613,11 @@ def managed_service_lock():
 
 
 def launch_managed(path):
+    path, unit = managed_identity(path)
     deployment = Deployment(path)
     if not has_systemd():
         print("No systemd: deployment runs in foreground. Keep SSH open; automatic recovery after reboot is not available on this init system.", flush=True)
         return False
-    path, unit = managed_identity(path)
     if not deployment.flow:
         raise DeploymentError("Automatic recovery requires current panel deployment authorization. Generate a new command in the panel.")
     managed_idle_state(unit)
@@ -622,6 +665,7 @@ def cancel_managed():
 
 
 def cancel_selected_managed():
+    require_trusted_directory(SYSTEMD_DIRECTORY)
     unit = MANAGED_UNIT
     target = SYSTEMD_DIRECTORY / unit
     selected = None
@@ -640,7 +684,7 @@ def cancel_selected_managed():
         print("Legacy transient deployment stopped. It cannot restart after reboot; saved state, configuration and certificates retained.", flush=True)
         return
     if target.exists():
-        contents = target.read_text()
+        contents = read_managed_unit(target)
         if not contents.startswith(MANAGED_UNIT_MARKER):
             raise DeploymentError("Existing deployment service is not managed by this helper; retained")
         for line in contents.splitlines():
@@ -662,12 +706,10 @@ def cancel_selected_managed():
 
 def boot_recovery(path):
     path, unit = managed_identity(path)
+    require_trusted_directory(SYSTEMD_DIRECTORY)
     target = SYSTEMD_DIRECTORY / unit
-    if (
-        target.is_symlink() or not target.is_file()
-        or not target.read_text().startswith(MANAGED_UNIT_MARKER)
-        or "# StateFile=" + str(path) not in target.read_text().splitlines()
-    ):
+    contents = read_managed_unit(target) if not target.is_symlink() and target.is_file() else ""
+    if not contents.startswith(MANAGED_UNIT_MARKER) or "# StateFile=" + str(path) not in contents.splitlines():
         raise UnselectedDeploymentError("This deployment is not the selected recovery task; no task was changed")
     deployment = Deployment(path)
     recovery = deployment.state.get("managedRecovery")
@@ -686,13 +728,12 @@ def boot_recovery(path):
 
 def pause_recovery(path):
     path, unit = managed_identity(path)
+    require_trusted_directory(SYSTEMD_DIRECTORY)
     target = SYSTEMD_DIRECTORY / unit
-    if target.exists() and (
-        target.is_symlink() or not target.is_file()
-        or not target.read_text().startswith(MANAGED_UNIT_MARKER)
-        or "# StateFile=" + str(path) not in target.read_text().splitlines()
-    ):
-        raise DeploymentError("A different deployment task is selected; no task was changed")
+    if target.exists() or target.is_symlink():
+        contents = read_managed_unit(target)
+        if not contents.startswith(MANAGED_UNIT_MARKER) or "# StateFile=" + str(path) not in contents.splitlines():
+            raise DeploymentError("A different deployment task is selected; no task was changed")
     try:
         if Path(path).exists():
             deployment = Deployment(path)
@@ -705,7 +746,8 @@ def pause_recovery(path):
 
 @contextmanager
 def bootstrap_lock(directory):
-    fd = os.open(directory / ".bootstrap.lock", os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    require_trusted_directory(directory)
+    fd = open_deployment_lock(directory / ".bootstrap.lock")
     try:
         # The foreground bootstrap already owns fd 9. Reuse its open-file
         # description rather than waiting on our own parent's lock.
@@ -736,13 +778,8 @@ class Deployment:
 
     def __init__(self, path):
         self.path = Path(path)
-        if (
-            self.path.is_symlink()
-            or not self.path.is_file()
-            or self.path.stat().st_mode & 0o077
-        ):
-            raise DeploymentError("Deployment state must be a private regular file")
-        self.state = read_object(self.path, "Saved deployment state")
+        require_trusted_directory(self.path.parent)
+        self.state = read_object(self.path, "Saved deployment state", private=True)
         self.data = self.state.get("data")
         if not isinstance(self.data, dict) or not isinstance(
             self.data.get("apiHost"), str
@@ -1644,9 +1681,8 @@ def main():
             return 0
         if len(sys.argv) == 3 and sys.argv[1] == "--configure-report":
             path = Path(sys.argv[2])
-            if path.is_symlink() or not path.is_file() or path.stat().st_mode & 0o077:
-                raise DeploymentError("Reporting state must be private")
-            data = read_object(path, "Reporting state")["data"]
+            require_trusted_directory(path.parent)
+            data = read_object(path, "Reporting state", private=True)["data"]
             configure_reporting(
                 panel_identity(data["apiHost"]), data["networkReport"], path.parent
             )
@@ -1663,10 +1699,10 @@ def main():
             sys.argv = [sys.argv[0], sys.argv[2]]
         if len(sys.argv) != 2:
             raise DeploymentError("Run with a deployment state file")
-        path = Path(sys.argv[1])
+        path, _ = managed_identity(sys.argv[1])
         with bootstrap_lock(path.parent):
             lock = path.parent / ".deployment.lock"
-            fd = os.open(lock, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+            fd = open_deployment_lock(lock)
             with os.fdopen(fd, "w") as handle:
                 fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 try:

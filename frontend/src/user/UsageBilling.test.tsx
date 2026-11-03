@@ -265,6 +265,53 @@ it("groups subscription, balance and transactions and opens redemption on demand
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(mocks.reload).toHaveBeenCalled();
 });
+it("enables balance auto renewal only after saving the preference", async () => {
+    mocks.info.auto_renewal = 0;
+    mocks.subscription.plan.renew = 1;
+    let finish!: (value: { data: boolean }) => void;
+    mocks.request.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    render(<BillingPage />);
+    const toggle = screen.getByRole("switch", { name: "balanceAutoRenewal" });
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    expect(screen.getByText("balanceAutoRenewalHelp")).toBeTruthy();
+    fireEvent.click(toggle);
+    fireEvent.click(toggle);
+    expect(mocks.request).toHaveBeenCalledExactlyOnceWith("user/update", { auto_renewal: true });
+    expect((toggle as HTMLButtonElement).disabled).toBe(true);
+    expect(toggle.getAttribute("aria-checked")).toBe("false");
+    finish({ data: true });
+    await waitFor(() => expect(toggle.getAttribute("aria-checked")).toBe("true"));
+    expect((toggle as HTMLButtonElement).disabled).toBe(false);
+    expect(mocks.reload).toHaveBeenCalled();
+});
+it("preserves a saved auto-renewal preference when turning it off fails, even after expiry", async () => {
+    mocks.info.auto_renewal = 1;
+    mocks.info.account_status.state = "expired";
+    mocks.subscription.has_subscription = false;
+    mocks.subscription.expired_at = 1;
+    mocks.request.mockRejectedValueOnce(new Error("network"));
+    render(<BillingPage />);
+    const toggle = screen.getByRole("switch", { name: "balanceAutoRenewal" });
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(mocks.request).toHaveBeenCalledExactlyOnceWith("user/update", { auto_renewal: false });
+    expect((await screen.findByRole("alert")).textContent).toContain("balanceAutoRenewalError");
+    expect(toggle.getAttribute("aria-checked")).toBe("true");
+    expect((toggle as HTMLButtonElement).disabled).toBe(false);
+    expect(mocks.reload).not.toHaveBeenCalled();
+});
+it.each(["missing preference", "nonrenewable", "nonexpiring", "expired"])(
+    "does not offer balance auto renewal for %s when it is off",
+    (scenario) => {
+        if (scenario !== "missing preference") mocks.info.auto_renewal = 0;
+        mocks.subscription.plan.renew = scenario === "nonrenewable" ? 0 : 1;
+        if (scenario === "nonexpiring") mocks.subscription.expired_at = null;
+        if (scenario === "expired") mocks.subscription.expired_at = 1;
+        render(<BillingPage />);
+        expect(screen.queryByRole("switch", { name: "balanceAutoRenewal" })).toBeNull();
+        expect(mocks.request).not.toHaveBeenCalled();
+    },
+);
 it.each([BillingPage, UsagePage])(
     "keeps unknown credit balances out of %s until account data is recovered",
     (Page) => {
@@ -405,8 +452,9 @@ it("separates overview and analysis without removing historical usage", () => {
     expect(screen.getByText("chart-30-days")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "resetNow" })).toBeNull();
 });
-it("requires confirmation, prevents double submit and reuses the key on network retry", async () => {
+it("confirms a banked reset, reuses the retry key and shows the updated reset date", async () => {
     let reject!: (reason: Error) => void;
+    mocks.subscription.reset_at = Date.parse("2026-11-30T00:00:00Z") / 1000;
     mocks.request.mockImplementationOnce(
         () =>
             new Promise((_, r) => {
@@ -414,6 +462,7 @@ it("requires confirmation, prevents double submit and reuses the key on network 
             }),
     );
     render(<UsagePage />);
+    expect(screen.getByText("resetAt:2026/11/30 08:00 (UTC+8)")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "resetNow" }));
     expect(mocks.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "useOne" }));
@@ -422,13 +471,18 @@ it("requires confirmation, prevents double submit and reuses the key on network 
     const key = mocks.request.mock.calls[0][1].request_key;
     reject(Error("network"));
     await screen.findByRole("alert");
-    mocks.request.mockResolvedValue({ data: { outcome: "already_redeemed" } });
+    mocks.request.mockImplementationOnce(async () => {
+        mocks.subscription.reset_at = Date.parse("2026-12-10T00:00:00Z") / 1000;
+        return { data: { outcome: "already_redeemed" } };
+    });
     fireEvent.click(screen.getByRole("button", { name: "useOne" }));
     await waitFor(() =>
         expect(screen.getByRole("status").textContent).toBe("resetSuccess"),
     );
     expect(mocks.request.mock.calls[1][1].request_key).toBe(key);
     expect(mocks.reload).toHaveBeenCalled();
+    expect(screen.getByText("resetAt:2026/12/10 08:00 (UTC+8)")).toBeTruthy();
+    expect(screen.queryByText("resetAt:2026/11/30 08:00 (UTC+8)")).toBeNull();
 });
 it.each(["reset_inactive", "reset_empty", "reset_no_credit"])(
     "disables ineligible reset: %s",

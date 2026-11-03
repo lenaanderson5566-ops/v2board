@@ -50,6 +50,10 @@ export function SubscriptionPurchase() {
         !pending.payment_id &&
         purchasePeriods({ [pending.period]: 0 }).length > 0;
     const currentPlan = sub.data?.plan;
+    const currentPlanId = Number(sub.data?.plan_id || currentPlan?.id);
+    const holdsSeat = activePlan(currentPlanId, sub.data?.expired_at) || Number(sub.data?.credit_balance) > 0;
+    const soldOut = (plan: Row) => plan.capacity_limit != null && Number(plan.capacity_limit) <= 0 &&
+        !(holdsSeat && Number(plan.id) === currentPlanId);
     const currentAvailable =
         activePlan(currentPlan, sub.data?.expired_at) &&
         Number(sub.data?.transfer_enable) > 0;
@@ -86,14 +90,12 @@ export function SubscriptionPurchase() {
         cyclePlans.find((plan) => Number(plan.id) === mobilePlanId) ||
         cyclePlans.find(
             (plan) =>
-                Number(plan.id) ===
-                    Number(sub.data?.plan_id || currentPlan?.id) &&
+                Number(plan.id) === currentPlanId && !soldOut(plan) &&
                 Number(plan.renew) !== 0,
         ) ||
         cyclePlans.find(
             (plan) =>
-                (plan.capacity_limit == null ||
-                    Number(plan.capacity_limit) > 0) &&
+                !soldOut(plan) &&
                 !(
                     Number(plan.id) ===
                         Number(sub.data?.plan_id || currentPlan?.id) &&
@@ -132,7 +134,7 @@ export function SubscriptionPurchase() {
                 const same = Number(plan.id) === Number(sub.data?.plan_id || currentPlan?.id);
                 return purchasePeriods(plan).includes(period) &&
                     usablePurchaseCoupon(intendedCoupon, Number(plan.id), period) &&
-                    (plan.capacity_limit == null || Number(plan.capacity_limit) > 0 || same) &&
+                    !soldOut(plan) &&
                     !(same && Number(plan.renew) === 0);
             });
             const match = matching.find((plan) => Number(plan.id) === mobilePlanId) || matching[0];
@@ -245,13 +247,7 @@ export function SubscriptionPurchase() {
                                         {" · "}
                                         {tx(billingPeriods[activePeriod])}
                                     </span>
-                                    {plan.capacity_limit != null &&
-                                        Number(plan.capacity_limit) <= 0 &&
-                                        Number(plan.id) !==
-                                            Number(
-                                                sub.data?.plan_id ||
-                                                    currentPlan?.id,
-                                            ) && (
+                                    {soldOut(plan) && (
                                             <span className="mobile-plan-status">
                                                 {tx("暂时售罄")}
                                             </span>
@@ -272,10 +268,7 @@ export function SubscriptionPurchase() {
                                 Number(
                                     sub.data?.plan_id || sub.data?.plan?.id,
                                 ) === Number(plan.id);
-                            const soldOut =
-                                plan.capacity_limit != null &&
-                                Number(plan.capacity_limit) <= 0 &&
-                                !same;
+                            const unavailable = soldOut(plan);
                             const blocked =
                                 (Boolean(pending) && !replaceable) ||
                                 orders.loading ||
@@ -283,7 +276,7 @@ export function SubscriptionPurchase() {
                                 sub.loading ||
                                 Boolean(sub.error) ||
                                 !available.length ||
-                                soldOut ||
+                                unavailable ||
                                 (same && Number(plan.renew) === 0);
                             return (
                                 <article
@@ -425,7 +418,7 @@ export function SubscriptionPurchase() {
                                             });
                                         }}
                                     >
-                                        {soldOut
+                                        {unavailable
                                             ? tx("暂时售罄")
                                             : same && Number(plan.renew) === 0
                                               ? tx("暂不支持续费")

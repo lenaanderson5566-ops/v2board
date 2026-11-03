@@ -3,7 +3,8 @@ import { readListView, saveListView } from "./list-view-state";
 import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
 import { adminStatusCell } from "../shared/admin-status";
 import { adminUserLabel } from "./admin-user-label";
-import { adminPlanLabel, type AdminPlanDirectory } from "./admin-plan-reference";
+import type { AdminPlanDirectory } from "./admin-plan-reference";
+import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-labels";
 import { useEffect, useState } from "react";
 import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
@@ -48,9 +49,9 @@ const commissionResource = {
             "订单应付",
             (r: Row) => money(r.total_amount, r.currency),
         ] as (typeof resources.orders.columns)[number],
+        ["trade_no", "订单号"] as (typeof resources.orders.columns)[number],
         ...resources.orders.columns.filter(([key]) =>
             [
-                "trade_no",
                 "user_id",
                 "plan_name",
                 "status",
@@ -593,6 +594,7 @@ function OrderDetail({
                                 ["paid_at", "支付时间"],
                                 ["status", "订单状态"],
                                 ["user_id", "用户（ID / 邮箱）"],
+                                ["type", "类型"],
                                 ["plan_id", "套餐"],
                                 ["period", "周期"],
                                 ["callback_no", "回调单号"],
@@ -646,11 +648,12 @@ function OrderDetail({
                                                   : key === "user_id"
                                                     ? adminUserLabel(r)
                                                     : key === "plan_id"
-                                                      ? adminPlanLabel(r, plans)
+                                                      ? adminOrderPlan(r, plans)
                                                     : adminStatusCell(
                                                           key,
                                                           label,
                                                           r[key],
+                                                          key === "type" ? adminOrderType(r) : key === "period" ? adminOrderPeriod(r) : undefined,
                                                       )}
                                         </dd>
                                     </div>
@@ -779,7 +782,7 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                             </div>
                             <div>
                                 <dt>套餐（当前名称）</dt>
-                                <dd>{adminPlanLabel(order, plans)}</dd>
+                                <dd>{adminOrderPlan(order, plans)}</dd>
                             </div>
                             <div>
                                 <dt>订单状态</dt>

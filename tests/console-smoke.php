@@ -159,6 +159,7 @@ try {
     $rules = json_decode($response->getContent(), true)['data'] ?? [];
     $assert($response->getStatusCode() === 200 && ($rules['email_verify'] ?? '') === 'in:0,1' && ($rules['reset_traffic_method'] ?? '') === 'in:0,1,2,3,4', 'Configuration control schema failed');
     $assert(($rules['passkey_enable'] ?? '') === 'in:0,1' && !isset($rules['recaptcha_enable'],$rules['recaptcha_key'],$rules['recaptcha_site_key']), 'Passkey replaces retired CAPTCHA settings');
+    $assert(!array_key_exists('allow_new_period',$rules),'Retired traffic period advance is absent from the admin settings schema');
     $assert($call('/api/v1/' . $securePath . '/console/nodeSchema?type=v2box')->getStatusCode() === 403, 'Node schema must require admin authentication');
     foreach (['v2box'] as $type) {
         $response = $call('/api/v1/' . $securePath . '/console/nodeSchema?type=' . $type, null, $token);
@@ -521,8 +522,15 @@ try {
     });
     Illuminate\Support\Facades\Artisan::call('check:ticket');
     $assert(!$racePending && (int)$ticket->refresh()->status === 0, 'Scheduler overwrote a reply received after its initial scan');
+    App\Models\Ticket::whereKey($ticket->id)->update(['reply_status' => 0]);
+    $pendingTickets = App\Models\Ticket::where('status', 0)->where('reply_status', 0)->count();
+    $overviewPath = '/api/v1/' . $securePath . '/stat/getOverride';
+    $overviewBeforeClose = $call($overviewPath, null, $token);
+    $assert($overviewBeforeClose->getStatusCode() === 200 && json_decode($overviewBeforeClose->getContent(), true)['data']['ticket_pending_total'] === $pendingTickets, 'Dashboard did not count the open unanswered ticket');
     $response = $call('/api/v1/' . $securePath . '/ticket/close', ['id' => $ticket->id], $token);
     $assert($response->getStatusCode() === 200 && $ticket->refresh()->status === 1, 'Ticket close failed');
+    $overviewAfterClose = $call($overviewPath, null, $token);
+    $assert($overviewAfterClose->getStatusCode() === 200 && json_decode($overviewAfterClose->getContent(), true)['data']['ticket_pending_total'] === $pendingTickets - 1, 'Dashboard retained the closed ticket after a cached overview was loaded');
     foreach (['stat/getServerTodayRank', 'stat/getServerLastRank', 'stat/getUserTodayRank', 'stat/getUserLastRank', 'stat/getOrder', 'system/getQueueWorkload', 'system/getQueueMasters'] as $endpoint) {
         $assert($call('/api/v1/' . $securePath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Legacy read control failed: ' . $endpoint);
         $assert($call('/api/v1/' . $securePath . '/' . $endpoint)->getStatusCode() === 403, 'Legacy control lacks admin authentication: ' . $endpoint);
@@ -642,7 +650,7 @@ PHP;
         'email_password'=>$customSecret,'email_password_encrypted'=>true,'email_encryption'=>'tls','email_from_address'=>'owner@example.test',
         'email_announcement_separate'=>0,'email_announcements_enabled'=>0,'new_user_currency'=>'CNY',
         'stop_register'=>0,'force_https'=>0,'plan_change_enable'=>0,'email_verify'=>0,
-        'system_timezone'=>'UTC','show_subscribe_method'=>0,'show_subscribe_expire'=>5,
+        'system_timezone'=>'UTC','show_subscribe_method'=>0,'show_subscribe_expire'=>5,'allow_new_period'=>1,
         'payment_extension'=>['merchant_key'=>'synthetic-payment-secret'],
         'unknown_null'=>null,'unknown_false'=>false,'unknown_zero'=>0,'unknown_empty'=>[],
         'unknown_extension'=>['null'=>null,'false'=>false,'zero'=>0,'empty'=>[],'nested'=>['values'=>[null,false,0,[]]]],
@@ -665,14 +673,16 @@ PHP;
             try {
                 // Assert the controller requests cache rebuilding, then run it in a real fresh process.
                 Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')->andReturn(0);
-                $customResponse=$call('/api/v1/'.$securePath.'/config/save',['app_description'=>'Changed description '.$layout,'email_password'=>''],$token);
+                $customResponse=$call('/api/v1/'.$securePath.'/config/save',['app_description'=>'Changed description '.$layout,'email_password'=>'','allow_new_period'=>1],$token);
             } finally {
                 Illuminate\Support\Facades\Artisan::swap($customArtisan);
                 $app->useConfigPath($customSourceConfigPath);
             }
             $assert($customResponse->getStatusCode()===200,'Partial custom settings save failed: '.$layout);
+            unset($expectedCustom['allow_new_period']);
             $expectedCustom['app_description']='Changed description '.$layout;
             $persistedCustom=require $customFixture.'/config/fastai.php';
+            $assert(!array_key_exists('allow_new_period',$persistedCustom),'A legacy payload cannot save the retired traffic period advance setting: '.$layout);
             $assert($persistedCustom===$expectedCustom,'Partial save changed an unrelated custom setting: '.$layout);
             clearstatcache(true,$customFixture.'/config/fastai.php');
             $assert((fileperms($customFixture.'/config/fastai.php')&0777)===0600,'Custom settings save changed private permissions: '.$layout);

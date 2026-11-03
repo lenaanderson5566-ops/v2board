@@ -18,7 +18,7 @@ class StatController extends Controller
 {
     public function getOverride(Request $request)
     {
-        return \App\Services\DashboardRevenue::cachedOverview(fn()=>[
+        $overview = \App\Services\DashboardRevenue::cachedOverview(fn()=>[
             'data' => array_merge(\App\Services\DashboardRevenue::summary(), [
                 'financial' => \App\Services\DashboardRevenue::financial(),
                 'usage' => \App\Services\DashboardUsage::summary(),
@@ -29,9 +29,6 @@ class StatController extends Controller
                     ->count(),
                 'day_register_total' => User::where('created_at', '>=', strtotime(date('Y-m-d')))
                     ->where('created_at', '<', time())
-                    ->count(),
-                'ticket_pending_total' => Ticket::where('status', 0)
-                    ->where('reply_status', 0)
                     ->count(),
                 'commission_pending_total' => Order::where('commission_status', 0)
                     ->where('invite_user_id', '!=', NULL)
@@ -46,6 +43,11 @@ class StatController extends Controller
                     ->where('currency','CNY')->sum('get_amount'),
             ])
         ]);
+        // Operational work changes independently of the cached financial report.
+        $overview['data']['ticket_pending_total'] = Ticket::where('status', 0)
+            ->where('reply_status', 0)
+            ->count();
+        return $overview;
     }
 
     public function getOrder(Request $request)

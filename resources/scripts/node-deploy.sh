@@ -7,15 +7,35 @@ __NODE_PREREQUISITES__
 if [ -z "${BASH_VERSION:-}" ]; then exec bash "$0" "$@"; fi
 set -o pipefail
 umask 077
-[[ ! -L /etc/v2box && ! -L /etc/v2box/.bootstrap.lock ]] || { echo 'Refusing symlinked deployment directory or lock' >&2; exit 1; }
+trusted_path() {
+  local path=$1 mode
+  [[ ! -L "$path" && -O "$path" ]] || return 1
+  mode=$(stat -c '%a' "$path") || return 1
+  (( (8#$mode & 0022) == 0 ))
+}
+require_private_state() {
+  [[ -f "$1" ]] && trusted_path "$1" && [[ $(stat -c '%a' "$1") == 600 ]] || {
+    echo 'Deployment or reporting state must be a root-owned regular file with mode 600. State retained.' >&2; exit 1;
+  }
+}
+for directory in /etc/v2box /usr/local/lib/v2box; do
+  if [[ -e "$directory" || -L "$directory" ]]; then
+    [[ -d "$directory" ]] && trusted_path "$directory" && [[ $(cd -- "$directory" && pwd -P) == "$directory" ]] || { echo 'Unsafe deployment or installation directory; files retained.' >&2; exit 1; }
+  fi
+done
+for program in /usr/local/bin/v2box /usr/local/lib/v2box/{v2box,manager.sh,install.sh,node-network.py,node-credentials.py,panel-deploy.py} /etc/v2box/{.bootstrap.lock,config.json}; do
+  if [[ -e "$program" || -L "$program" ]]; then
+    [[ -f "$program" ]] && trusted_path "$program" || { echo 'Unsafe deployment or installation file; files retained.' >&2; exit 1; }
+  fi
+done
 install -d -m 755 /etc/v2box
-exec 9>/etc/v2box/.bootstrap.lock
+exec 9>>/etc/v2box/.bootstrap.lock
 flock -n 9 || { echo 'Another deployment is running; wait for it to finish.' >&2; exit 1; }
 if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh"
+  curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh"
   V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" "$@" 9>&- || {
     echo 'Installation or update failed or exceeded 15 minutes. Review the installer error above; existing configuration and certificates were retained. Re-run the original command after correcting the cause.' >&2; exit 1;
   }
@@ -79,13 +99,13 @@ select_resume_state() {
 # Resume can follow uninstall: restore programs before invoking the helper.
 restore_programs() {
   [[ -f ${deployment_state:-/etc/v2box/deployment-state.json} && ! -L ${deployment_state:-/etc/v2box/deployment-state.json} ]] || { echo 'No private deployment state found. Generate a deployment command in the panel.' >&2; exit 1; }
-  [[ $(stat -c '%a' "${deployment_state:-/etc/v2box/deployment-state.json}") == 600 ]] || { echo 'Deployment state must have mode 600. Run chmod 600 ${deployment_state:-/etc/v2box/deployment-state.json}, then resume.' >&2; exit 1; }
+  require_private_state "${deployment_state:-/etc/v2box/deployment-state.json}"
   if ! programs_ready; then
     refuse_live_repair
     echo 'Deployment recovery: restoring missing V2Box programs; configuration and certificates are retained.'
     stage=$(mktemp -d)
     trap 'rm -rf -- "$stage"' EXIT
-    curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
+    curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
     V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.19 </dev/null 9>&- || { echo 'Program restoration failed or exceeded 15 minutes. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
     programs_ready || { echo 'Program restoration is incomplete. Check disk space, permissions and release files, then run --resume; do not remove configuration or certificates.' >&2; exit 1; }
     rm -rf -- "$stage"
@@ -138,11 +158,14 @@ if $network_only; then
   jq -e --arg host "$panel_url" --argjson id "$requested_id" '.Nodes | any(.NodeType == "v2box" and .NodeID == $id and .ApiHost == $host)' /etc/v2box/config.json >/dev/null || { echo 'This server configuration does not match the selected panel and node; preserved.' >&2; exit 1; }
   fi
   [[ ! -L /etc/node-network && ! -L /etc/node-network/enrollment-state.json ]] || { echo 'Refusing symlinked reporting state' >&2; exit 1; }
+  if [[ -e /etc/node-network ]]; then
+    [[ -d /etc/node-network ]] && trusted_path /etc/node-network || { echo 'Unsafe reporting directory; files retained.' >&2; exit 1; }
+  fi
   install -d -m 700 /etc/node-network
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
   # Download and validate prerequisites before consuming the one-use grant.
-  curl -fsS --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/node-network.py -o "$stage/node-network.py"
+  curl -q -fsS --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/node-network.py -o "$stage/node-network.py"
   python3 -m py_compile "$stage/node-network.py"
   timeout -k 2 15 python3 "$stage/node-network.py" capabilities | jq -e '.features | index("report-multi-target-v1") != null' >/dev/null || { echo 'Reporting helper check failed or timed out, or lacks multi-target support; no authorization was consumed.' >&2; exit 1; }
   install_helper
@@ -153,17 +176,18 @@ if $network_only; then
   validate_network_response() {
     jq -e --arg host "$panel_url" --argjson id "$requested_id" --argjson server "$server_only" '.data | (if $server then .purpose == "server" and .serverId == $id else .purpose == "network" and .nodeType == "v2box" and .nodeId == $id end) and .apiHost == $host and (has("apiKey") | not) and (.networkReport.token | test("^[a-f0-9]{64}$")) and (.networkReport.family | . == "ipv4" or . == "ipv6" or . == "dual")' "$1" >/dev/null
   }
-  if [[ -f /etc/node-network/enrollment-state.json && ! -L /etc/node-network/enrollment-state.json ]] && validate_network_response /etc/node-network/enrollment-state.json; then
-    network_state=/etc/node-network/enrollment-state.json
+  if [[ -e /etc/node-network/enrollment-state.json ]]; then
+    require_private_state /etc/node-network/enrollment-state.json
+    if validate_network_response /etc/node-network/enrollment-state.json; then network_state=/etc/node-network/enrollment-state.json; fi
   fi
   [[ ! -L "$network_state" ]] || { echo 'Refusing symlinked reporting state' >&2; exit 1; }
   if [[ -e "$network_state" ]]; then
-    [[ $(stat -c '%a' "$network_state") == 600 ]] || { echo 'Reporting state must have mode 600' >&2; exit 1; }
+    require_private_state "$network_state"
     validate_network_response "$network_state" || { echo 'Pending reporting setup belongs to another node; preserved.' >&2; exit 1; }
   else
     printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
     unset grant
-    curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \
+    curl -q -fsS --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --data '{}' \
       "$panel_url/api/v10/server/enrollments/redeem" -o "$stage/response.json"
     validate_network_response "$stage/response.json" || { echo 'Invalid reporting setup response' >&2; exit 1; }
     state_stage=$(mktemp /etc/node-network/.enrollment.XXXXXXXX)
@@ -180,12 +204,13 @@ if $network_only; then
 fi
 [[ ! -L /etc/v2box && ! -L /etc/v2box/config.json && ! -L /etc/v2box/.deployment-pending ]] || { echo 'Refusing symlinked configuration' >&2; exit 1; }
 deployment_state="/etc/v2box/deployment-state-$(printf '%s|%s' "$panel_url" "$requested_id" | sha256sum | cut -d ' ' -f 1).json"
-if [[ -f /etc/v2box/deployment-state.json && ! -L /etc/v2box/deployment-state.json ]] && jq -e --arg host "$panel_url" --arg id "$requested_id" '.data.apiHost == $host and ($id == "" or (.data.nodeId | tostring) == $id)' /etc/v2box/deployment-state.json >/dev/null; then
-  deployment_state=/etc/v2box/deployment-state.json
+if [[ -e /etc/v2box/deployment-state.json || -L /etc/v2box/deployment-state.json ]]; then
+  require_private_state /etc/v2box/deployment-state.json
+  if jq -e --arg host "$panel_url" --arg id "$requested_id" '.data.apiHost == $host and ($id == "" or (.data.nodeId | tostring) == $id)' /etc/v2box/deployment-state.json >/dev/null; then deployment_state=/etc/v2box/deployment-state.json; fi
 fi
 grant_hash=$(printf '%s' "$grant" | sha256sum | cut -d ' ' -f 1)
 if [[ -e "$deployment_state" ]]; then
-  [[ ! -L "$deployment_state" ]] || exit 1
+  require_private_state "$deployment_state"
   jq -e --arg host "$panel_url" --arg id "$requested_id" '.data.apiHost == $host and ($id == "" or (.data.nodeId | tostring) == $id)' "$deployment_state" >/dev/null || { echo 'Pending deployment belongs to another node; preserved.' >&2; exit 1; }
   if [[ -n "$shared_listener" ]] && ! jq -e --arg shared "$shared_listener" '.sharedListener == $shared' "$deployment_state" >/dev/null; then echo 'Pending deployment has a different sharing selection; preserved.' >&2; exit 1; fi
   if jq -e --arg hash "$grant_hash" '.grantHash == $hash' "$deployment_state" >/dev/null; then
@@ -213,7 +238,7 @@ if ! $existing_install || ! programs_ready; then
   if $existing_install; then refuse_live_repair; fi
   echo 'Checking installation: installing or repairing V2Box program files; existing configuration and certificates are retained.'
   : > /etc/v2box/.deployment-pending
-  curl -fSL --proto '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh"
+  curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh"
   V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.19 </dev/null 9>&- || { echo 'Installation failed or exceeded 15 minutes. Configuration and certificates were retained and deployment authorization has not been consumed; correct the installer error, then rerun the original command.' >&2; exit 1; }
   programs_ready || { echo 'Installation is incomplete. Check disk space, permissions and release files, then rerun this command. Deployment authorization has not been consumed.' >&2; exit 1; }
 fi
@@ -229,7 +254,7 @@ if [[ -n "$requested_id" ]] && python3 /usr/local/lib/v2box/panel-deploy.py --co
 fi
 printf 'header = "Authorization: Bearer %s"\n' "$grant" > "$stage/authorization"
 unset grant
-curl -fsS --proto '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --header 'X-Deployment-Capabilities: runtime-ready-v1' --data '{}' \
+curl -q -fsS --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 30 --config "$stage/authorization" --header 'Content-Type: application/json' --header 'X-Deployment-Capabilities: runtime-ready-v1' --data '{}' \
   "$panel_url/api/v10/server/enrollments/redeem" -o "$stage/response.json" || { echo 'Authorization redemption failed. Existing deployment state and configuration were retained. For an expired or used grant, generate a new command in the panel; use --resume only for the existing valid task. Check HTTPS/gateway access if the request cannot reach the panel.' >&2; exit 1; }
 jq -e --arg host "$panel_url" --arg expected "$requested_id" '.data | ($expected == "" or (.nodeId | tostring) == $expected) and .nodeType == "v2box" and .apiHost == $host and (.nodeId | type == "number" and . > 0 and floor == .) and (.apiKey | test("^nk_[a-f0-9]{32}\\.[a-f0-9]{64}$"))' "$stage/response.json" >/dev/null || { echo 'Invalid deployment response' >&2; exit 1; }
 if [[ -z "$requested_id" ]]; then

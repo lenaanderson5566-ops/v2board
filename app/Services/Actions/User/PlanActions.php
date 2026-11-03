@@ -7,8 +7,8 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\PlanService;
 use App\Services\PlanTranslationService;
+use App\Services\TrafficCreditService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class PlanActions
 {
@@ -17,10 +17,10 @@ class PlanActions
         $plans = Plan::where('show', 1)->where('transfer_enable', '>', 0)
             ->whereNotNull('group_id')->orderBy('sort')->get();
         $user = User::findOrFail($request->user['id']);
-        $counts = PlanService::countActiveUsers();
+        $counts = PlanService::countOccupiedSeats();
         $plans = $plans->filter(function ($plan) use ($user, $counts) {
-            return $user->plan_id === $plan->id || $plan->capacity_limit === null
-                || $plan->capacity_limit > ($counts[$plan->id]->count ?? 0);
+            return $plan->capacity_limit === null || $plan->capacity_limit > ($counts[$plan->id]->count ?? 0)
+                || PlanService::occupiesSeat($user, (int)$plan->id);
         })->values();
         (new PlanTranslationService())->translateCollection($plans, app()->getLocale());
         foreach ($plans as $plan) \App\Services\BillingCurrency::present($plan, \App\Services\BillingCurrency::account($user));
@@ -33,19 +33,22 @@ class PlanActions
     public function fetch(Request $request)
     {
         $user = User::find($request->user['id']);
-        $renewalOnly = !(int) config('fastai.plan_change_enable', 1)
-            && $user->transfer_enable > 0 && $user->plan_id !== null
-            && ($user->expired_at === null || $user->expired_at > time());
+        $currentPlan = TrafficCreditService::hasPeriod($user) ? $user->plan_id : null;
+        $renewalOnly = $currentPlan !== null && !(int) config('fastai.plan_change_enable', 1);
         if ($request->input('id')) {
             if ($renewalOnly && (int) $request->input('id') !== (int) $user->plan_id) {
                 abort(409, __('Subscription plan does not exist'));
             }
             $plan = Plan::where('id', $request->input('id'))->first();
             if (!$plan) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
+                abort($request->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
             }
-            if ((!$plan->show && !$plan->renew) || (!$plan->show && $user->plan_id !== $plan->id)) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
+            if (!PlanService::visibleToSubscriber($plan, $user)) {
+                abort($request->is('api/v10/*') ? 409 : 500, __('Subscription plan does not exist'));
+            }
+            if ($plan->capacity_limit !== null) {
+                $counts = PlanService::countOccupiedSeats((int)$plan->id);
+                $plan->capacity_limit = max(0, $plan->capacity_limit - ($counts[$plan->id]->count ?? 0));
             }
             $translationService = new PlanTranslationService();
             $translationService->translateSingle($plan, app()->getLocale());
@@ -56,17 +59,20 @@ class PlanActions
             ]);
         }
 
-        $counts = PlanService::countActiveUsers();
         $plans = Plan::query()
-            ->when($renewalOnly,
-                fn($query) => $query->where('id', $user->plan_id)->where(fn($visible) => $visible->where('show', 1)->orWhere('renew', 1)),
-                fn($query) => $query->where('show', 1))
+            ->when($renewalOnly, fn($query) => $query->where('id', $currentPlan))
+            ->where(function ($query) use ($currentPlan) {
+                $query->where('show', 1);
+                if ($currentPlan !== null) {
+                    $query->orWhere(fn($renewal) => $renewal->where('id', $currentPlan)->where('renew', 1));
+                }
+            })
             ->orderBy('sort', 'ASC')
             ->get();
+        $counts = $plans->contains(fn($plan) => $plan->capacity_limit !== null) ? PlanService::countOccupiedSeats() : [];
         foreach ($plans as $k => $v) {
             if ($plans[$k]->capacity_limit === NULL) continue;
-            if (!isset($counts[$plans[$k]->id])) continue;
-            $plans[$k]->capacity_limit = $plans[$k]->capacity_limit - $counts[$plans[$k]->id]->count;
+            $plans[$k]->capacity_limit = max(0, $plans[$k]->capacity_limit - ($counts[$plans[$k]->id]->count ?? 0));
         }
         $translationService = new PlanTranslationService();
         $translationService->translateCollection($plans, app()->getLocale());

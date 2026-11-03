@@ -43,14 +43,20 @@ import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
-it("shows order creation time first, ahead of status and immutable order-currency amounts", async () => {
+it("shows time first and distinguishes top-ups from commission transfers without a full order-number column", async () => {
     const { ResourcePage } = await import("./admin");
-    api.request.mockResolvedValue({data:[{id:1,trade_no:"usd-order",currency:"USD",total_amount:1234,status:3,user_id:7,created_at:1700000000}],total:1});
+    const topUp = { id: 1, trade_no: "usd-order", type: 9, period: "deposit", plan_id: 0, currency: "USD", total_amount: 1234, status: 3, user_id: 7, created_at: 1700000000 };
+    api.request.mockResolvedValue({ data: [topUp, { ...topUp, id: 2, trade_no: "commission-transfer-order", callback_no: "佣金划转 Commission transfer" }], total: 2 });
     render(<ResourcePage resource={resources.orders}/>);
-    await screen.findByText("usd-order");
-    expect(screen.getByText("USD 12.34")).toBeTruthy();
+    const recharge = await screen.findByText("余额充值");
+    expect(within(recharge.closest("tr")!).getByText("USD 12.34")).toBeTruthy();
+    expect(within(recharge.closest("tr")!).getByText("不适用")).toBeTruthy();
+    expect(screen.getByText("佣金划转")).toBeTruthy();
+    expect(screen.queryByText("未指定套餐")).toBeNull();
+    expect(screen.queryByText("usd-order")).toBeNull();
     const headers=screen.getAllByRole("columnheader").map(header=>header.textContent);
-    expect(headers.slice(0,5)).toEqual(["创建时间","订单号","状态","金额","用户（ID / 邮箱）"]);
+    expect(headers.slice(0,4)).toEqual(["创建时间","状态","金额","用户（ID / 邮箱）"]);
+    expect(headers).not.toContain("订单号");
     expect(headers.indexOf("金额")).toBeLessThan(headers.indexOf("套餐"));
 });
 const order = {
@@ -204,10 +210,15 @@ it("keeps commission amounts, records and approval out of order management", asy
 it("shows key dates with the order number before callback diagnostics and supports copying", async () => {
     const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("clipboard denied"));
     vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    api.request.mockImplementation(async (path: string) => path.includes("order/detail")
+        ? { data: { ...order, type: 9, period: "deposit", plan_id: 0 } }
+        : path.includes("order/fetch") ? { data: [order], total: 1 } : { data: [] });
     render(<OrdersPage />);
     fireEvent.click(await screen.findByRole("button", { name: "订单详情" }));
     const dialog = await screen.findByRole("dialog", { name: "订单详情" });
     const copy = await within(dialog).findByRole("button", { name: "复制订单号" });
+    expect(within(dialog).getByText("余额充值")).toBeTruthy();
+    expect(within(dialog).getByText("不适用")).toBeTruthy();
     const details = within(dialog).getAllByRole("term");
     expect(details.slice(0, 4).map(term => term.textContent)).toEqual(["订单号", "创建时间", "支付时间", "订单状态"]);
     const diagnostics = within(dialog).getByText(/回调诊断尚未就绪/);
@@ -823,7 +834,7 @@ it("shares one plan directory across order rows and details without blocking the
         return { data: [] };
     });
     render(<OrdersPage />);
-    await screen.findByText("order-1");
+    await screen.findByRole("button", { name: "订单详情" });
     expect(screen.getAllByRole("columnheader", { name: "套餐" })).toHaveLength(1);
     expect(screen.queryByRole("columnheader", { name: "订阅计划" })).toBeNull();
     expect(screen.getAllByText("套餐加载中 (#7)").length).toBeGreaterThan(0);

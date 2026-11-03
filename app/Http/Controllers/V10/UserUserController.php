@@ -35,8 +35,7 @@ class UserUserController extends ResourceController
     public function postMeSubscriptionPeriodAdvances(\Illuminate\Http\Request $request)
     {
         $this->prepare($request, 'postMeSubscriptionPeriodAdvances');
-        $result = app(\App\Services\Actions\User\UserActions::class)->newPeriod($this->businessRequest($request, \Illuminate\Http\Request::class));
-        return $this->respond($request, $result, 'postMeSubscriptionPeriodAdvances');
+        abort(410);
     }
     public function postMeGiftCardRedemptions(\Illuminate\Http\Request $request)
     {

@@ -460,6 +460,7 @@ CREATE TABLE `v2_user` (
                            `language` varchar(10) DEFAULT NULL,
                            `token` char(32) NOT NULL,
                            `expired_at` bigint(20) DEFAULT '0',
+                           `traffic_reset_anchor_at` bigint unsigned DEFAULT NULL,
                            `remarks` text,
                            `created_at` int(11) NOT NULL,
                            `updated_at` int(11) NOT NULL,

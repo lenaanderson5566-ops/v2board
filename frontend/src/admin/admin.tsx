@@ -47,6 +47,7 @@ import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
 import { QueueDetails, SortButton } from "./admin-tools";
 import { adminUserLabel } from "./admin-user-label";
+import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-labels";
 import { adminPlanLabel, adminPlanOptions, type AdminPlanDirectory } from "./admin-plan-reference";
 import { readListView, saveListView } from "./list-view-state";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
@@ -367,37 +368,13 @@ export const resources: Record<string, Resource> = {
         fetch: admin("order/fetch"),
         columns: [
             created,
-            ["trade_no", "订单号"],
             ["status", "状态", (r) => ["待支付", "开通中", "已取消", "已完成", "已折抵"][r.status]],
             ["total_amount", "金额", (r) => money(r.total_amount, r.currency)],
             ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
-            [
-                "type",
-                "类型",
-                (r) =>
-                    ["", "新购", "续费", "升级", "流量重置", "额度购买"][
-                        Number(r.type)
-                    ] || r.type,
-            ],
+            ["type", "类型", adminOrderType],
             ["plan_name", "套餐"],
             ["payment_display", "支付方式"],
-            [
-                "period",
-                "周期",
-                (r) =>
-                    (
-                        ({
-                            month_price: "月付",
-                            quarter_price: "季付",
-                            half_year_price: "半年付",
-                            year_price: "年付",
-                            two_year_price: "两年付",
-                            three_year_price: "三年付",
-                            onetime_price: "额度包",
-                            reset_price: "重置包",
-                        }) as Row
-                    )[r.period] || r.period,
-            ],
+            ["period", "周期", adminOrderPeriod],
             [
                 "credit_bytes",
                 "额度数量",
@@ -1278,7 +1255,7 @@ export function ResourcePage({
                                 if (resource === resources.users && key === "id" && onUserDetails)
                                     return [key, label, (r: Row) => <button className="link" onClick={() => onUserDetails(r)}>{adminUserLabel({user_id:r.id,email:r.email})}</button>] as [string,string,(r:Row)=>ReactNode];
                                 if (key === "plan_id" || key === "plan_name")
-                                    return [key, label, (r: Row) => adminPlanLabel(r, plans)] as [string, string, (r: Row) => ReactNode];
+                                    return [key, label, (r: Row) => resource.fetch === resources.orders.fetch ? adminOrderPlan(r, plans) : adminPlanLabel(r, plans)] as [string, string, (r: Row) => ReactNode];
                                 if (key === "limit_plan_ids")
                                     return [key, label, (r: Row) => (Array.isArray(r[key]) && r[key].length)
                                         ? r[key].map((id: unknown) => adminPlanLabel({ plan_id: id }, plans)).join("、")

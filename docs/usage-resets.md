@@ -13,18 +13,21 @@
 
 有效套餐、有可用额度、未封禁且当前已用流量大于零时才可使用 Banked；无需流量耗尽。过期次数不计入可用次数。新账号、已过期或封禁账号可以获得次数，恢复有效资格后使用。
 
-两种操作只清零当前入库的 `u` / `d`；不修改套餐、额度、到期日期、自动重置日期、订阅凭据、历史流量分析及登录状态。正在排队或延迟到达的流量上报会继续记入用量；不丢弃节点上报。流量入库改为数据库原子累加，防止旧快照覆盖并发重置。
+全局重置只清零当前入库的 `u` / `d`，沿用原自动重置日期。有效周期套餐使用储备次数或完成付费重置时，会从本次重置的业务日期重新起算。月度规则在下一月同日执行，年度规则在下一年同日执行。目标月份没有对应日期时取月末，之后仍按原日计算。套餐有效期、套餐额度和独立额度均保持原值。若下一次重置已超出有效期，或套餐原本没有自动重置规则，则没有可显示的下次日期。正在排队或延迟到达的流量上报会继续记入用量。
+
+旧的扣减订阅有效期以提前开启流量周期功能已退役。旧客户端调用对应端点时，认证后返回 410。
 
 用户显示近 30 天最新 100 条发放/使用/全局重置记录，数据库保留完整记录和管理员 ID。所有写操作均使用事务；用户行锁串行化扣减，幂等键阻止网络重试重复消耗或重复全局清零。全局操作对所有用户写入审计，人数多时可能需要较长时间，建议低峰操作；超时后使用同一窗口重试。
 
 ## 升级
 
-新增三张表，不改已有用户字段，不给老用户自动发次数：`v2_usage_reset_batch`、`v2_usage_reset_credit`、`v2_usage_reset_log`。`database/install.sql` 包含新表；`update.sh` 已加入定向迁移。
+储备重置使用 `v2_usage_reset_batch`、`v2_usage_reset_credit` 和 `v2_usage_reset_log`。用户的重置起算日保存在可空字段 `traffic_reset_anchor_at`，从新发生的手动重置开始写入。`database/install.sql` 包含完整结构，`update.sh` 包含定向迁移。
 
 按原升级流程备份数据库并停止队列/计划任务，运行 `update.sh --jobs-stopped` 等既有参数。已经拉取代码且只需补表时，先备份，然后执行：
 
 ```bash
 /www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_10_02_000003_create_usage_resets.php --force
+/www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_11_03_000001_add_traffic_reset_anchor.php --force
 ```
 
 不要对历史 SQL 安装环境直接执行全量 `artisan migrate`，也不要使用 `migrate:fresh`。前端静态资源随仓库提交，生产无需 Node 构建。

@@ -923,6 +923,20 @@ it("initially shows an available plan on mobile instead of a sold-out first plan
         screen.getByRole("button", { name: "暂时售罄" }).matches(":disabled"),
     ).toBe(true);
 });
+it("treats a full previous plan as sold out after the subscriber loses their seat", () => {
+    mocks.plans = [
+        { ...plan, capacity_limit: 0 },
+        { ...plan, id: 2, name: "Available", capacity_limit: 5 },
+    ];
+    mocks.sub = { plan_id: plan.id, expired_at: 1, credit_balance: 0 };
+    const view = render(<SubscriptionPurchase />);
+    expect(document.querySelector(".mobile-active")?.id).toBe("pricing-plan-2");
+    expect(screen.getByRole("button", { name: "暂时售罄" }).matches(":disabled")).toBe(true);
+
+    mocks.sub = { ...mocks.sub, expired_at: Math.floor(Date.now() / 1000) + 86400 };
+    view.rerender(<SubscriptionPurchase />);
+    expect(screen.queryByRole("button", { name: "暂时售罄" })).toBeNull();
+});
 it("puts the connection action before receipt details after successful payment", () => {
     checkout({ status: 3 });
     const action = screen.getByRole("link", { name: "快速开始" });

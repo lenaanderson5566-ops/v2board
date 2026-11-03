@@ -21,10 +21,11 @@ $auths = [];
 DB::beginTransaction();
 try {
     $plan = Plan::firstOrFail();
+    $plan->update(['reset_traffic_method' => 0]);
     $makeUser = function ($admin = false) use ($plan, &$auths) {
         $user = User::create(['email'=>'reset-'.Str::uuid().'@example.com', 'password'=>password_hash(Str::random(24), PASSWORD_DEFAULT),
             'uuid'=>App\Utils\Helper::guid(true), 'token'=>App\Utils\Helper::guid(), 'is_admin'=>$admin ? 1 : 0,
-            'plan_id'=>$plan->id, 'group_id'=>$plan->group_id, 'expired_at'=>time()+86400*20, 'transfer_enable'=>1073741824, 'credit_balance'=>75, 'u'=>10, 'd'=>20]);
+            'plan_id'=>$plan->id, 'group_id'=>$plan->group_id, 'expired_at'=>time()+86400*100, 'transfer_enable'=>1073741824, 'credit_balance'=>75, 'u'=>10, 'd'=>20]);
         $auth = new App\Services\AuthService($user); $auths[] = $auth;
         return [$user, $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data']];
     };
@@ -57,15 +58,45 @@ try {
     $service->batch(User::where('id',$user->id),$admin->id,$soonGrant);
     $soon = DB::table('v2_usage_reset_credit')->where('user_id',$user->id)->whereNotNull('expires_at')->first();
     $key=(string)Str::uuid();
+    $beforeConsume = time();
     $r=$call('/api/v10/me/usage-resets/consumptions',['requestKey'=>$key,'user_id'=>$other->id],$token);
     $assert($r->getStatusCode()===200,'Consume failed: '.$r->getContent());
     $assert($user->refresh()->u===0 && $user->d===0,'Usage not cleared');
+    $consumeAnchor = $user->traffic_reset_anchor_at;
+    $assert($consumeAnchor >= $beforeConsume && $consumeAnchor <= time(),'Consumption did not save the new reset cycle');
+    $zone = new DateTimeZone(App\Services\TimeZones::system());
+    $anchorDate = (new DateTimeImmutable('@'.$consumeAnchor))->setTimezone($zone);
+    $nextMonth = $anchorDate->modify('first day of next month')->setTime(0, 0);
+    $nextReset = $nextMonth->modify('+'.(min((int)$anchorDate->format('j'), (int)$nextMonth->format('t'))-1).' days')->getTimestamp();
+    $assert((new App\Services\UserService())->getResetInfo($user)['at'] === $nextReset,'Consumption did not move the displayed reset to its new monthly date');
+    $subscriptionResponse = $call('/api/v10/me/subscription', null, $token);
+    $subscription = json_decode($subscriptionResponse->getContent(), true)['data'] ?? [];
+    $expectedDays = $anchorDate->setTime(0, 0)->diff((new DateTimeImmutable('@'.$nextReset))->setTimezone($zone))->days;
+    $assert($subscriptionResponse->getStatusCode() === 200 && ($subscription['resetAt'] ?? null) === gmdate('Y-m-d\TH:i:s\Z', $nextReset)
+        && ($subscription['resetDay'] ?? null) === $expectedDays && !array_key_exists('traffic_reset_anchor_at', $subscription),
+        'Authenticated subscription did not expose the anchored reset consistently');
     $assert($user->only(array_keys($before))===$before,'Subscription or credentials changed');
     $assert($other->refresh()->u===10 && $other->d===20,'Other account was reset');
     $assert(DB::table('v2_usage_reset_credit')->where('id',$soon->id)->value('remaining')===0,'Expiring credit not used first');
     $user->update(['u'=>50]);
     $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>$key],$token)->getStatusCode()===200 && $user->refresh()->u===50,'Retry reset newly accrued usage');
     $assert($service->summary($user->id)['available']===2,'Retry consumed a second credit');
+    $assert($user->traffic_reset_anchor_at === $consumeAnchor,'Retry moved the reset cycle again');
+    $paidReset = App\Models\Order::create([
+        'user_id'=>$other->id, 'plan_id'=>$plan->id, 'trade_no'=>App\Utils\Helper::generateOrderNo(),
+        'currency'=>$other->currency ?: 'CNY', 'period'=>'reset_price', 'type'=>4, 'status'=>1, 'paid_at'=>time(), 'total_amount'=>100,
+    ]);
+    $otherExpiry = $other->expired_at;
+    $beforePaidReset = time();
+    (new App\Services\OrderService($paidReset))->open();
+    $other->refresh();
+    $paidAnchor = $other->traffic_reset_anchor_at;
+    $assert((int)$paidReset->fresh()->status === 3 && $other->u === 0 && $other->d === 0
+        && $paidAnchor >= $beforePaidReset && $paidAnchor <= time() && $other->expired_at === $otherExpiry,
+        'Paid reset did not clear usage and start a cycle without extending subscription');
+    $other->update(['u'=>20]);
+    (new App\Services\OrderService($paidReset))->open();
+    $assert($other->refresh()->u === 20 && $other->traffic_reset_anchor_at === $paidAnchor,'Paid reset retry applied usage reset or changed anchor');
     foreach ([['banned'=>1], ['expired_at'=>time()-1], ['plan_id'=>null], ['transfer_enable'=>0]] as $state) {
         $original=$user->only(array_keys($state)); $user->update($state);
         $r=$call('/api/v10/me/usage-resets/consumptions',['requestKey'=>(string)Str::uuid()],$token);
@@ -85,6 +116,7 @@ try {
     $r=$call($endpoint,$all,$adminToken);
     $assert($r->getStatusCode()===200,'Global reset failed: '.$r->getContent());
     $assert($user->refresh()->u===0 && $other->refresh()->u===0,'Global reset did not affect all accounts');
+    $assert($other->traffic_reset_anchor_at === $paidAnchor,'Global reset moved the paid reset cycle');
     $assert(DB::table('v2_usage_reset_log')->where('user_id',$user->id)->where('kind','global')->value('u_before')===100,'Global audit lost prior usage');
     $other->update(['d'=>37]);
     $assert($call($endpoint,$all,$adminToken)->getStatusCode()===200 && $other->refresh()->d===37,'Repeated global reset changed new usage');

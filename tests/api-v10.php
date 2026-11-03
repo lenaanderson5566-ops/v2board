@@ -527,9 +527,11 @@ try {
     $assert($r->getStatusCode()===200 && $before===$user->fresh()->getAttributes(),'Subscription GET does not write business records');
     // Keep reset fixtures in a savepoint: reads must report scheduler state without executing it.
     $resetConfig=config('fastai.system_timezone');
+    $advanceConfig=config('fastai.allow_new_period');
     DB::beginTransaction();
     try {
         config(['fastai.system_timezone'=>'Asia/Shanghai']);
+        config(['fastai.allow_new_period'=>1]);
         App\Services\TimeZones::apply();
         $resetNow=new DateTimeImmutable('now',new DateTimeZone('Asia/Shanghai'));
         $resetDate=$resetNow->format('Y-m-d');
@@ -548,6 +550,7 @@ try {
         $assert($j['data']['resetTimezone']==='Asia/Shanghai' && $j['data']['displayTimeZone']==='UTC' && str_contains($r->headers->get('Cache-Control'),'no-store'),'Reset business zone is distinct from the private display preference');
         $assert($readOnlyBefore===$resetOwner->fresh()->getAttributes() && !$resetRun()->exists() && !$resetLedger()->exists(),'Pending subscription GET neither resets traffic nor writes task completion records');
         $assert(!isset($j['data']['reset_state']) && !isset($j['data']['reset_at']),'Reset resource projects only the declared public field names');
+        $assert(($j['data']['canAdvancePeriod']??null)===false,'A saved legacy setting cannot advertise traffic period advances');
         [$r,$j]=$call('GET','/api/v10/me/subscription?'.http_build_query(['user'=>['id'=>$resetOwner->id],'userId'=>$resetOwner->id]),[],$foreignBearer);
         $assert($r->getStatusCode()===200 && array_key_exists('resetState',$j['data']) && $j['data']['resetState']===null && $j['data']['resetAt']===null && !str_contains($r->getContent(),$resetOwner->token),'Reset state remains bound to the authenticated owner despite forged user identifiers');
         [$r]=$call('GET','/api/v10/me/subscription');
@@ -571,9 +574,16 @@ try {
         $resetPlan->reset_traffic_method=2; $resetPlan->save();
         [$r,$j]=$call('GET','/api/v10/me/subscription',[],$resetBearer);
         $assert($r->getStatusCode()===200 && array_key_exists('resetState',$j['data']) && $j['data']['resetState']===null && $j['data']['resetAt']===null,'Subscription with no applicable reset preserves explicit nullable reset fields');
+        $resetPlan->reset_traffic_method=1; $resetPlan->save();
+        $resetOwner->update(['u'=>$resetOwner->transfer_enable]);
+        $beforeAdvance=$resetOwner->fresh()->getAttributes();
+        [$r,$j]=$call('POST','/api/v10/me/subscription/period-advances',[],$resetBearer);
+        $assert($r->getStatusCode()===410 && ($j['code']??null)==='GONE' && $beforeAdvance===$resetOwner->fresh()->getAttributes(),'Retired period advance cannot shorten expiry or clear usage on an exhausted subscription');
+        [$r]=$call('POST','/api/v10/me/subscription/period-advances');
+        $assert($r->getStatusCode()===401,'Retired period advance still requires authentication');
     } finally {
         DB::rollBack();
-        config(['fastai.system_timezone'=>$resetConfig]);
+        config(['fastai.system_timezone'=>$resetConfig,'fastai.allow_new_period'=>$advanceConfig]);
         App\Services\TimeZones::apply();
     }
     $imageName=sha1((string)Str::uuid()).'.png';

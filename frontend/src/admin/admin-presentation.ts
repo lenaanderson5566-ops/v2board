@@ -268,7 +268,6 @@ export const adminLabels: Record<string, string> = {
     plan_change_enable: "允许切换套餐",
     surplus_enable: "折抵剩余价值",
     reset_traffic_method: "流量重置模式",
-    allow_new_period: "允许新周期",
     show_subscribe_method: "订阅链接生效模式",
     show_subscribe_expire: "限时链接有效时间（分钟）",
     show_info_to_server_enable: "在订阅中展示订阅信息",

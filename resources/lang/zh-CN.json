@@ -135,6 +135,7 @@
     "Failed to create order, deposit amount must be greater than 0": "充值金额必须大于零。",
     "Deposit amount too large, please contact the administrator": "充值金额过大，请联系支持。",
     "Payment quote changed. Reload and confirm the payment amount.": "付款报价已变化，请刷新并重新确认付款金额。",
+    "This order quote has expired. Cancel this order and create a new one.": "套餐折抵报价已失效，请取消此订单后重新下单。",
     "请先购买套餐": "请先购买套餐。",
     "当前套餐不允许发起工单": "当前套餐不允许发起工单。",
     "You have not used up your traffic, you cannot renew your subscription": "当前仍有剩余流量，暂时不能提前开始新周期。",

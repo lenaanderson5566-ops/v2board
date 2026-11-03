@@ -3,7 +3,7 @@ import { useState } from "react";
 import { AdminTabs } from "./AdminChoices";
 import { UserActivityContent } from "./UserActivityContent";
 import { adminUserLabel } from "./admin-user-label";
-import { adminPlanLabel } from "./admin-plan-reference";
+import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-labels";
 import { admin, query, bytes, money, type Row } from "../shared/api";
 import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
 import { Modal, State, Table, Pager, useData } from "../shared/ui";
@@ -57,7 +57,8 @@ function UserOrders({ row }: { row: Row }) {
                     data={d.data || []}
                     columns={[
                         ["trade_no", "订单号"],
-                        ["plan_name", "套餐", r => adminPlanLabel(r, plans)],
+                        ["type", "类型", adminOrderType],
+                        ["plan_name", "套餐", r => adminOrderPlan(r, plans)],
                         [
                             "total_amount",
                             "金额",
@@ -102,8 +103,9 @@ function UserOrders({ row }: { row: Row }) {
                             data={detail.data ? [detail.data] : []}
                             columns={[
                                 ["trade_no", "订单号"],
-                                ["plan_id", "套餐", r => adminPlanLabel(r, plans)],
-                                ["period", "周期"],
+                                ["type", "类型", adminOrderType],
+                                ["plan_id", "套餐", r => adminOrderPlan(r, plans)],
+                                ["period", "周期", adminOrderPeriod],
                                 [
                                     "total_amount",
                                     "订单金额",

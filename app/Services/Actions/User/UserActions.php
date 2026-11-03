@@ -125,74 +125,6 @@ class UserActions
         ]);
     }
 
-    public function newPeriod(Request $request)
-    {
-        if (!config('fastai.allow_new_period', 0)) {
-            abort(request()->is('api/v10/*') ? 409 : 500, __('Renewal is not allowed'));
-        }
-        DB::beginTransaction();
-        try {
-            $user = User::find($request->user['id']);
-            if (!$user) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
-            }
-            if ($user->transfer_enable > $user->u + $user->d) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('You have not used up your traffic, you cannot renew your subscription'));
-            }
-            $userService = new UserService();
-            $reset_day = $userService->getResetDay($user);
-            if ($reset_day === null) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('You do not allow to renew the subscription'));
-            }
-            unset($user->plan);
-            $reset_period = $userService->getResetPeriod($user);
-            if ($reset_period === null) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('You do not allow to renew the subscription'));
-            }
-            switch ($reset_period) {
-                case 1:
-                    $reset_day = 30;
-                    $reset_period = 30;
-                    break;
-                case 30:
-                    break;
-                case 12:
-                    $reset_day = 365;
-                    $reset_period = 365;
-                    break;
-                case 365:
-                    break;
-                default:
-                    abort(request()->is('api/v10/*') ? 409 : 500, __('Invalid reset period'));
-            }
-            if ($reset_day <= 0) {
-                $reset_day = $reset_period;
-            }
-            if ($user->expired_at !== null && ($reset_period + 1) * 86400 < $user->expired_at - time()) {
-                if (!$user->update(
-                    [
-                        'expired_at' => $user->expired_at - $reset_day * 86400,
-                        'u' => 0,
-                        'd' => 0
-                    ]
-                )) {
-                    throw new \Exception(__('Save failed'));
-                }
-            } else {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('You do not have enough time to renew your subscription'));
-            }
-
-            DB::commit();
-            return response([
-                'data' => true
-            ]);
-        } catch (\Exception $e) {
-            DB::rollBack();
-            if ($request->is('api/v10/*') && $e instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface) throw $e;
-            abort(500, $e->getMessage());
-        }
-    }
-
     public function redeemgiftcard(UserRedeemGiftCard $request)
     {
         DB::beginTransaction();
@@ -377,6 +309,7 @@ class UserActions
                 'plan_id',
                 'token',
                 'expired_at',
+                'traffic_reset_anchor_at',
                 'u',
                 'd',
                 'transfer_enable',
@@ -411,8 +344,8 @@ class UserActions
         $user['display_timezone'] = $displayUser->display_timezone;
         $user['reset_at_display'] = \App\Services\TimeZones::format($user['reset_at']??null,$displayUser);
         $user['has_subscription'] = \App\Services\TrafficCreditService::hasPeriod($user);
-        $user['reset_day'] = $userService->getResetDay($user);
-        $user['allow_new_period'] = config('fastai.allow_new_period', 0);
+        $user['reset_day'] = $userService->getResetDay($user, $reset);
+        $user['allow_new_period'] = false;
         return response([
             'data' => $user
         ]);

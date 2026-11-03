@@ -53,6 +53,10 @@ describe('V10 wire contracts', () => {
     expect(request.method).toBe('POST');
     expect(JSON.parse(request.body!)).toEqual({planId: 3, billingPeriod: 'annual', replacementOrderNumber: 'old'});
     expect(v10Request('user/update', {remind_expire: true}).method).toBe('PATCH');
+    const renewal = v10Request('user/update', {auto_renewal: true});
+    expect([renewal.method, renewal.url]).toEqual(['PATCH', '/api/v10/me']);
+    expect(JSON.parse(renewal.body!)).toEqual({autoRenewal:true});
+    expect(JSON.parse(v10Request('user/update', {auto_renewal: false}).body!)).toEqual({autoRenewal:false});
     expect(v10Request('user/removeActiveSession', {session_id:'abc'}).url).toBe('/api/v10/me/sessions/abc');
     expect(v10Request('user/logout').method).toBe('DELETE');
     expect(v10Request('user/usage/reset').url).toBe('/api/v10/me/usage-resets');

@@ -97,5 +97,38 @@ try {
  $assert(TrafficResetSchedule::next(3,strtotime('2028-01-01'),strtotime('2026-10-02'))===strtotime('2027-01-01'),'Year-first reset wrong');
  $assert(TrafficResetSchedule::next(4,strtotime('2032-02-29'),strtotime('2026-10-02'))===strtotime('2028-02-29'),'Leap-year reset wrong');
  $assert(TrafficResetSchedule::next(2,strtotime('2028-01-01'))===null && TrafficResetSchedule::next(0,null)===null,'No reset plan reported timestamp');
+ $newYork = 'America/New_York';
+ $local = fn($value) => (new DateTimeImmutable($value, new DateTimeZone($newYork)))->getTimestamp();
+ $anchor = $local('2026-10-10 19:00');
+ $expiry = $local('2032-04-01');
+ $assert(TrafficResetSchedule::next(0, $expiry, $anchor, $newYork, $anchor) === $local('2026-11-10 00:00'), 'Monthly anchor drifted across the DST boundary');
+ $assert(!TrafficResetSchedule::due(0, $expiry, $local('2026-10-10 23:59'), $newYork, $anchor), 'Manual reset day also ran an automatic reset');
+ $anchor = $local('2027-01-31 12:00');
+ $february = $local('2027-02-28 00:00');
+ $assert(TrafficResetSchedule::next(1, $expiry, $anchor, $newYork, $anchor) === $february, 'Monthly anchor was not clamped for February');
+ $assert(TrafficResetSchedule::next(1, $expiry, $february, $newYork, $anchor) === $local('2027-03-31 00:00'), 'February clamp changed the original monthly anchor');
+ $anchor = $local('2028-02-29 12:00');
+ foreach ([3, 4] as $annual) {
+   $assert(TrafficResetSchedule::next($annual, $expiry, $anchor, $newYork, $anchor) === $local('2029-02-28 00:00'), 'Annual anchor was not clamped in a non-leap year');
+   $assert(TrafficResetSchedule::next($annual, $expiry, $local('2031-02-28 00:00'), $newYork, $anchor) === $local('2032-02-29 00:00'), 'Annual anchor did not restore its original leap day');
+ }
+ $previousZone = config('fastai.system_timezone');
+ $schedulerZone = gmdate('G') === '23' ? 'Asia/Shanghai' : 'UTC';
+ config(['fastai.system_timezone'=>$schedulerZone]);
+ try {
+   $today = new DateTimeImmutable('now', new DateTimeZone($schedulerZone));
+   $prior = $today->modify('-4 years');
+   if ($prior->format('m-d') !== $today->format('m-d')) $prior = $today->modify('-8 years');
+   $recurring->update(['reset_traffic_method'=>3]);
+   $schedule = ['plan_id'=>$recurring->id, 'expired_at'=>$today->modify('+90 days')->getTimestamp()];
+   $due = $make($schedule + ['traffic_reset_anchor_at'=>$prior->getTimestamp()]);
+   $manualToday = $make($schedule + ['traffic_reset_anchor_at'=>$today->getTimestamp()]);
+   $command = new App\Console\Commands\ResetTraffic;
+   $assert($command->handle() === 0 && (int)$due->refresh()->u === 0 && (int)$due->d === 0, 'Scheduler did not execute an anchored cycle');
+   $assert((int)$manualToday->refresh()->u === 200 && (int)$manualToday->d === 300, 'Scheduler cleared new usage on the manual reset day');
+   $assert(DB::table('v2_daily_user_reset')->where('user_id', $due->id)->value('business_date') === $today->format('Y-m-d'), 'Anchored execution did not record the business date');
+   $due->update(['u'=>23]);
+   $assert($command->handle() === 0 && (int)$due->refresh()->u === 23, 'Scheduler repeated the anchored reset within the same day');
+ } finally { config(['fastai.system_timezone'=>$previousZone]); }
  echo "Traffic credits: $checks checks passed\n";
 } finally {foreach($auths as $auth)$auth->removeAllSession(); DB::rollBack();}

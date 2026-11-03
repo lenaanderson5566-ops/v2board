@@ -1216,7 +1216,7 @@ wait "$child"
         )
         for name, body in {
             "python3": 'if [[ "${2:-}" == --completed ]]; then exit 1; fi\necho \'{"features":["report-multi-target-v1"]}\'',
-            "curl": 'while (($#)); do if [[ "$1" == -o ]]; then shift; out=$1; fi; shift; done\n[ ! -f "'
+            "curl": '[[ "$1" == -q && " $* " == *" --proto-redir =https "* ]] || exit 42\nwhile (($#)); do if [[ "$1" == -o ]]; then shift; out=$1; fi; shift; done\n[ ! -f "'
             + str(root / "fail")
             + '" ] || exit 22\necho redeemed >> "'
             + str(root / "redeemed")
@@ -1291,6 +1291,17 @@ wait "$child"
         result = run("nd_" + "f" * 64, legacy=True)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertTrue(json.loads(self.path.read_text())["replaceCredential"])
+        redemptions = (root / "redeemed").read_bytes()
+        lib.chmod(0o777)
+        result = run("nd_" + "a" * 64)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Unsafe deployment or installation directory", result.stderr)
+        lib.chmod(0o700)
+        self.path.chmod(0o644)
+        result = run("nd_" + "a" * 64)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("root-owned regular file", result.stderr)
+        self.assertEqual((root / "redeemed").read_bytes(), redemptions)
 
     def test_missing_program_has_actionable_error(self):
         with patch.object(m.subprocess, "Popen", side_effect=FileNotFoundError()):
@@ -1754,6 +1765,41 @@ wait "$child"
         os.chmod(self.path, 0o644)
         with self.assertRaises(m.DeploymentError):
             m.Deployment(self.path)
+
+    def test_private_state_rejects_wrong_owner_from_open_file_metadata(self):
+        metadata = list(self.path.stat())
+        metadata[4] = m.TRUSTED_OWNER + 1
+        with patch.object(m.os, "fstat", return_value=os.stat_result(metadata)):
+            with self.assertRaisesRegex(m.DeploymentError, "owned by root"):
+                m.Deployment(self.path)
+
+    def test_state_symlink_and_writable_directory_are_rejected(self):
+        link = self.path.parent / "deployment-state-other.json"
+        link.symlink_to(self.path)
+        with self.assertRaisesRegex(m.DeploymentError, "symlink"):
+            m.Deployment(link)
+        self.path.parent.chmod(0o777)
+        with self.assertRaisesRegex(m.DeploymentError, "owned by root"):
+            m.Deployment(self.path)
+
+    def test_boot_worker_rejects_foreign_path_before_creating_locks(self):
+        foreign = self.path.parent / "foreign"
+        foreign.mkdir()
+        path = foreign / self.path.name
+        m.write_private(path, {"data": self.data})
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", ["deploy", "--boot-worker", str(path)]), patch.object(m, "bootstrap_lock") as lock:
+            self.assertEqual(m.main(), 78)
+        lock.assert_not_called()
+        self.assertFalse((foreign / ".bootstrap.lock").exists())
+
+    def test_bootstrap_lock_rejects_writable_lock_without_truncation(self):
+        path = self.path.parent / ".bootstrap.lock"
+        path.write_text("retained")
+        path.chmod(0o666)
+        with self.assertRaisesRegex(m.DeploymentError, "root-owned regular file"):
+            with m.bootstrap_lock(self.path.parent):
+                self.fail("Untrusted lock must not be acquired")
+        self.assertEqual(path.read_text(), "retained")
 
     def test_report_secret_removed_on_failure(self):
         def fail(args):
@@ -2234,7 +2280,7 @@ exec "$@"''')
         with open(self.path.parent / ".deployment.lock", "w") as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
             result = subprocess.run(
-                [sys.executable, "-c", 'import os,runpy,sys; os.geteuid=lambda:0; program=sys.argv.pop(1); runpy.run_path(program,run_name="__main__")', sys.argv[1], "--worker", str(self.path)],
+                [sys.executable, "-c", 'import importlib.util,sys; from pathlib import Path; spec=importlib.util.spec_from_file_location("deploy",sys.argv.pop(1)); m=importlib.util.module_from_spec(spec); spec.loader.exec_module(m); m.STATE_DIRECTORY=Path(sys.argv[-1]).parent; m.os.geteuid=lambda:0; sys.exit(m.main())', sys.argv[1], "--worker", str(self.path)],
                 capture_output=True,
                 text=True,
                 timeout=10,

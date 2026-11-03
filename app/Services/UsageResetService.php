@@ -44,8 +44,9 @@ class UsageResetService
             if (DB::table('v2_usage_reset_log')->where('user_id', $userId)->where('request_key', $key)->exists()) {
                 return ['outcome' => 'already_redeemed'];
             }
+            $resetAt = time();
             if ($user->banned || !$user->plan_id || !Plan::where('id', $user->plan_id)->exists()
-                || ($user->expired_at !== null && $user->expired_at <= time()) || $user->transfer_enable <= 0) $this->fail('reset_inactive');
+                || ($user->expired_at !== null && $user->expired_at <= $resetAt) || $user->transfer_enable <= 0) $this->fail('reset_inactive');
             if ($user->u + $user->d <= 0) $this->fail('reset_empty');
             $credit = $this->available($userId)->orderByRaw('expires_at IS NULL')->orderBy('expires_at')->orderBy('id')->lockForUpdate()->first();
             if (!$credit) $this->fail('reset_no_credit');
@@ -53,10 +54,12 @@ class UsageResetService
             DB::table('v2_usage_reset_log')->insert([
                 'user_id' => $userId, 'actor_id' => $userId, 'credit_id' => $credit->id, 'batch_id' => $credit->batch_id,
                 'kind' => 'use', 'quantity' => -1, 'u_before' => $user->u, 'd_before' => $user->d,
-                'request_key' => $key, 'created_at' => time(),
+                'request_key' => $key, 'created_at' => $resetAt,
             ]);
-            // Only reset usage: preserve the plan, quota, credentials and all renewal dates.
-            $user->update(['u' => 0, 'd' => 0]);
+            // Start a new usage cycle for a term plan while preserving its expiry.
+            if (!$user->update(['u' => 0, 'd' => 0, 'traffic_reset_anchor_at' => $user->expired_at !== null ? $resetAt : null])) {
+                throw new \RuntimeException('Usage reset could not be saved');
+            }
             return ['outcome' => 'reset'];
         }, 3);
     }

@@ -1,6 +1,7 @@
 .user-node-name {
     display: flex;
     align-items: center;
+    justify-content: flex-start;
     gap: 12px;
     min-width: 0;
     width: 100%;

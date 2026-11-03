@@ -1168,7 +1168,7 @@
     "ruleFulfillment": "L’accès commence après confirmation du paiement et traitement de la commande.",
     "ruleRenewable": "Renouvellement disponible.",
     "balanceAutoRenewal": "Renouvellement automatique avec le solde",
-    "balanceAutoRenewalHelp": "Avant l’expiration, le renouvellement sera tenté avec le solde de votre compte. Si le solde est insuffisant, le renouvellement automatique sera désactivé. Aucun débit ne sera effectué via Alipay, WeChat Pay ou un autre moyen de paiement externe.",
+    "balanceAutoRenewalHelp": "Avant l’expiration, le renouvellement sera tenté avec le solde de votre compte. Si le solde est insuffisant, le renouvellement automatique sera désactivé.",
     "balanceAutoRenewalError": "Impossible d’enregistrer le paramètre de renouvellement automatique.",
     "ruleNotRenewable": "Le renouvellement de cette offre est actuellement indisponible.",
     "openPayment": "Procéder au paiement",

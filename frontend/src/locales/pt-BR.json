@@ -1168,7 +1168,7 @@
     "ruleFulfillment": "O acesso começa após a confirmação do pagamento e o processamento do pedido.",
     "ruleRenewable": "Renovação disponível.",
     "balanceAutoRenewal": "Renovação automática com saldo",
-    "balanceAutoRenewalHelp": "Antes do vencimento, o sistema tenta renovar com o saldo da sua conta. Se o saldo for insuficiente, a renovação automática é desativada. Não haverá cobrança via Alipay, WeChat Pay ou outros meios de pagamento externos.",
+    "balanceAutoRenewalHelp": "Antes do vencimento, o sistema tenta renovar com o saldo da sua conta. Se o saldo for insuficiente, a renovação automática é desativada.",
     "balanceAutoRenewalError": "Não foi possível salvar a configuração de renovação automática.",
     "ruleNotRenewable": "A renovação deste plano está indisponível no momento.",
     "openPayment": "Continuar para o pagamento",

@@ -1168,7 +1168,7 @@
     "ruleFulfillment": "Access starts after payment is confirmed and the order is processed.",
     "ruleRenewable": "Renewal available.",
     "balanceAutoRenewal": "Auto-renew with balance",
-    "balanceAutoRenewalHelp": "Before expiry, we try to renew using your account balance. If your balance is insufficient, auto-renew turns off. Alipay, WeChat Pay, and other external payment methods won’t be charged.",
+    "balanceAutoRenewalHelp": "Before expiry, we try to renew using your account balance. If your balance is insufficient, auto-renew turns off.",
     "balanceAutoRenewalError": "Could not save your auto-renew setting.",
     "ruleNotRenewable": "Renewal is currently unavailable for this plan.",
     "openPayment": "Continue to payment",

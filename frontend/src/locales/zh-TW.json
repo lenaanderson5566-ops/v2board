@@ -1166,7 +1166,7 @@
     "ruleFulfillment": "付款確認並處理完成後生效。",
     "ruleRenewable": "支援續費。",
     "balanceAutoRenewal": "餘額自動續費",
-    "balanceAutoRenewalHelp": "到期前會嘗試使用站內餘額續費。餘額不足時，自動續費會關閉。不會透過支付寶、微信支付或其他外部付款方式扣款。",
+    "balanceAutoRenewalHelp": "到期前會嘗試使用站內餘額續費。餘額不足時，自動續費會關閉。",
     "balanceAutoRenewalError": "無法儲存自動續費設定。",
     "ruleNotRenewable": "此方案暫不支援續費。",
     "openPayment": "前往付款",

@@ -1168,7 +1168,7 @@
     "ruleFulfillment": "Der Zugang beginnt nach Bestätigung der Zahlung und Bearbeitung der Bestellung.",
     "ruleRenewable": "Verlängerung möglich.",
     "balanceAutoRenewal": "Automatische Verlängerung mit Guthaben",
-    "balanceAutoRenewalHelp": "Vor Ablauf wird versucht, die Verlängerung mit deinem Kontoguthaben zu bezahlen. Reicht es nicht aus, wird die automatische Verlängerung deaktiviert. Alipay, WeChat Pay und andere externe Zahlungsmittel werden nicht belastet.",
+    "balanceAutoRenewalHelp": "Vor Ablauf wird versucht, die Verlängerung mit deinem Kontoguthaben zu bezahlen. Reicht es nicht aus, wird die automatische Verlängerung deaktiviert.",
     "balanceAutoRenewalError": "Die Einstellung zur automatischen Verlängerung konnte nicht gespeichert werden.",
     "ruleNotRenewable": "Dieser Tarif kann derzeit nicht verlängert werden.",
     "openPayment": "Weiter zur Zahlung",

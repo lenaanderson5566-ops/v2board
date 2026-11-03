@@ -1166,7 +1166,7 @@
     "ruleFulfillment": "支払いの確認と注文処理の完了後に有効になります。",
     "ruleRenewable": "更新できます。",
     "balanceAutoRenewal": "アカウント残高で自動更新",
-    "balanceAutoRenewalHelp": "有効期限が切れる前に、アカウント残高での更新を試みます。残高が不足している場合は自動更新がオフになります。Alipay、WeChat Pay、その他の外部決済手段への請求はありません。",
+    "balanceAutoRenewalHelp": "有効期限が切れる前に、アカウント残高での更新を試みます。残高が不足している場合は自動更新がオフになります。",
     "balanceAutoRenewalError": "自動更新の設定を保存できませんでした。",
     "ruleNotRenewable": "このプランは現在更新できません。",
     "openPayment": "支払いに進む",

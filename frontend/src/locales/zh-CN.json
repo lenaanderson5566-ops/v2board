@@ -1166,7 +1166,7 @@
     "ruleFulfillment": "支付确认并处理完成后生效。",
     "ruleRenewable": "支持续费。",
     "balanceAutoRenewal": "余额自动续费",
-    "balanceAutoRenewalHelp": "到期前会尝试使用站内余额续费。余额不足时，自动续费会关闭。不会通过支付宝、微信支付或其他外部支付方式扣款。",
+    "balanceAutoRenewalHelp": "到期前会尝试使用站内余额续费。余额不足时，自动续费会关闭。",
     "balanceAutoRenewalError": "无法保存自动续费设置。",
     "ruleNotRenewable": "此套餐暂不支持续费。",
     "openPayment": "前往支付",

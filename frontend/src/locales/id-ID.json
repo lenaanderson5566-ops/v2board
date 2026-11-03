@@ -1168,7 +1168,7 @@
     "ruleFulfillment": "Akses dimulai setelah pembayaran dikonfirmasi dan pesanan selesai diproses.",
     "ruleRenewable": "Dapat diperpanjang.",
     "balanceAutoRenewal": "Perpanjangan otomatis dengan saldo",
-    "balanceAutoRenewalHelp": "Sebelum masa berlaku berakhir, sistem akan mencoba memperpanjang dengan saldo akun. Jika saldo tidak cukup, perpanjangan otomatis dinonaktifkan. Alipay, WeChat Pay, dan metode pembayaran eksternal lainnya tidak akan ditagih.",
+    "balanceAutoRenewalHelp": "Sebelum masa berlaku berakhir, sistem akan mencoba memperpanjang dengan saldo akun. Jika saldo tidak cukup, perpanjangan otomatis dinonaktifkan.",
     "balanceAutoRenewalError": "Pengaturan perpanjangan otomatis tidak dapat disimpan.",
     "ruleNotRenewable": "Paket ini belum dapat diperpanjang saat ini.",
     "openPayment": "Lanjutkan ke pembayaran",

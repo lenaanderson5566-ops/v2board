@@ -1166,7 +1166,7 @@
     "ruleFulfillment": "Quyền sử dụng có hiệu lực sau khi thanh toán được xác nhận và đơn hàng được xử lý.",
     "ruleRenewable": "Có thể gia hạn.",
     "balanceAutoRenewal": "Tự động gia hạn bằng số dư",
-    "balanceAutoRenewalHelp": "Trước khi hết hạn, hệ thống sẽ thử gia hạn bằng số dư tài khoản. Nếu số dư không đủ, tính năng tự động gia hạn sẽ tắt. Hệ thống sẽ không thu tiền qua Alipay, WeChat Pay hoặc các phương thức thanh toán bên ngoài khác.",
+    "balanceAutoRenewalHelp": "Trước khi hết hạn, hệ thống sẽ thử gia hạn bằng số dư tài khoản. Nếu số dư không đủ, tính năng tự động gia hạn sẽ tắt.",
     "balanceAutoRenewalError": "Không thể lưu cài đặt tự động gia hạn.",
     "ruleNotRenewable": "Hiện không thể gia hạn gói này.",
     "openPayment": "Tiếp tục thanh toán",

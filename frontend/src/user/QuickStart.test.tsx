@@ -20,7 +20,7 @@ vi.mock("../shared/ui", () => ({
         return { data: path === "user/info" ? { account_status: { state: "active", is_available: true } }
             : path === "user/getSubscribe" ? { subscribe_url: "https://example.com/sub?token=test-only" } : [], loading: false, error: "", reload: vi.fn() };
     },
-    Panel: ({ title, children }: any) => <section><h2>{title}</h2>{children}</section>,
+    Panel: ({ title, actions, children }: any) => <section><h2>{title}</h2>{actions}{children}</section>,
     State: ({ children }: any) => children,
 }));
 vi.mock("./NodeList", () => ({ NodeList: () => null }));
@@ -46,6 +46,15 @@ it("offers a light configuration-history link below quick start without requesti
     expect(history.getAttribute("href")).toBe("#/security/configuration-updates");
     expect(startup.paths.some(path => path.includes("access-records"))).toBe(false);
     expect(screen.queryByRole("heading", { name: "配置更新记录" })).toBeNull();
+});
+it("jumps to the available nodes and moves keyboard focus there", async () => {
+    render(<Suspense fallback={null}><Subscribe /></Suspense>);
+    const nodes = await screen.findByRole("region", { name: "可用节点" });
+    const scrollIntoView = vi.fn();
+    nodes.scrollIntoView = scrollIntoView;
+    fireEvent.click(screen.getByRole("button", { name: "可用节点" }));
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "start" });
+    expect(document.activeElement).toBe(nodes);
 });
 it("lets users switch systems and copies the correct client format without opening an app", async () => {
     render(

@@ -16,6 +16,9 @@
 .app.user {
     color: var(--ink);
     background: var(--surface);
+    --record-text-size: 0.875rem;
+    --record-meta-size: 0.75rem;
+    --record-line-height: 1.5;
 }
 .app.user aside {
     background: var(--surface-soft);
@@ -569,9 +572,13 @@
 .app.user .transaction-row:hover {
     background: var(--surface-soft);
 }
+.app.user :is(.transaction-row small, .reset-history time) {
+    color: var(--text-secondary);
+    font-size: var(--record-meta-size);
+    line-height: var(--record-line-height);
+}
 .app.user .transaction-row small {
     display: block;
-    color: var(--muted);
     margin-top: 5px;
 }
 .app.user .transaction-row > strong {
@@ -691,8 +698,6 @@
     font-weight: 500;
 }
 .app.user .reset-history time {
-    font-size: 12px;
-    color: var(--muted);
     text-align: end;
 }
 .reset-admin-form > label:not(.check) {
@@ -1233,14 +1238,102 @@
     min-height: 44px;
 }
 @media (max-width: 600px) {
+    .app.user .help-intro {
+        margin-block-end: 12px;
+    }
     .app.user .help-categories {
         gap: 4px;
+        margin-block: 12px 8px;
     }
     .app.user .help-categories button {
         padding-inline: 12px;
     }
     .app.user .help-results summary {
-        min-height: 60px;
+        gap: 12px;
+        min-height: 48px;
+        padding-block: 10px;
+    }
+    .app.user .knowledge-category {
+        padding-block: 10px;
+    }
+    .app.user .knowledge-category h3 {
+        margin-block: 0 4px;
+    }
+    .app.user .knowledge-articles .article-link {
+        min-height: 48px;
+        gap: 12px;
+        padding-block: 10px;
+        text-align: start;
+        overflow-wrap: anywhere;
+    }
+    .app.user .knowledge-articles .article-link svg {
+        flex-shrink: 0;
+    }
+}
+@media (max-width: 800px) {
+    /* The user ticket columns are ID, subject, status, update time and action. */
+    .app.user .user-ticket-list tbody tr {
+        display: grid;
+        grid-template-columns: auto minmax(0, 1fr) minmax(0, auto);
+        grid-template-areas: "subject subject status" "number updated action";
+        align-items: center;
+        gap: 4px 8px;
+        padding: 8px 14px;
+    }
+    .app.user .user-ticket-list table td {
+        display: block;
+        padding: 0;
+    }
+    .app.user .user-ticket-list table td[data-label]::before {
+        display: none;
+    }
+    .app.user .user-ticket-list table td:nth-child(1) {
+        grid-area: number;
+    }
+    .app.user .user-ticket-list table td:nth-child(1)::before {
+        display: inline;
+        content: "#";
+        color: inherit;
+        font-size: inherit;
+    }
+    .app.user .user-ticket-list table td:nth-child(2) {
+        grid-area: subject;
+        font-weight: 600;
+        font-size: var(--record-text-size);
+        line-height: var(--record-line-height);
+    }
+    .app.user .user-ticket-list table td:nth-child(3) {
+        grid-area: status;
+        justify-self: end;
+    }
+    .app.user .user-ticket-list table td:nth-child(4) {
+        grid-area: updated;
+    }
+    .app.user .user-ticket-list table td:nth-child(4)::before {
+        display: block;
+        font-size: inherit;
+    }
+    .app.user .user-ticket-list table td:first-child,
+    .app.user .user-ticket-list table td:nth-child(4) {
+        color: var(--text-secondary);
+        font-size: var(--record-meta-size);
+        line-height: var(--record-line-height);
+    }
+    .app.user .user-ticket-list .table-actions {
+        grid-area: action;
+        justify-self: end;
+        overflow: visible;
+    }
+    .app.user .user-ticket-list .status-badge,
+    .app.user .user-ticket-list .table-actions button {
+        max-width: 8rem;
+        white-space: normal;
+    }
+    .app.user .user-ticket-list .table-actions button {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 6px 10px;
+        font-size: 12px;
     }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1268,16 +1361,18 @@
     .user .compact-mobile-table table td {
         display: block;
         padding: 0;
-        font-size: 12px;
+        font-size: var(--record-meta-size);
+        line-height: var(--record-line-height);
     }
     .user .compact-mobile-table table td:first-child {
         grid-column: 1/-1;
         font-weight: 600;
-        font-size: 14px;
+        font-size: var(--record-text-size);
     }
     .user .compact-mobile-table table td[data-label]::before {
         display: block;
-        font-size: 10px;
+        color: var(--text-secondary);
+        font-size: var(--record-meta-size);
         margin-bottom: 3px;
     }
     .user .compact-mobile-table table td:first-child::before {
@@ -2135,6 +2230,15 @@ body[data-console="user"] .client-family-header p {
 .app.user .subscription-ready > .button { flex-shrink: 0; }
 .app.user .usage-current-plan { display: grid; gap: 8px; margin-bottom: 12px; }
 .app.user .subscription-name { font-size: 24px; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+    .app.user .subscription-name,
+    .app.user .billing-current-plan > div > strong {
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.3;
+        overflow-wrap: anywhere;
+    }
+}
 .app.user .subscription-expiry { color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .app.user .subscription-label {
     display: block;

@@ -3,12 +3,25 @@
     align-items: center;
     gap: 12px;
     min-width: 0;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
 }
 .user-node-name > img,
-.user-node-name > svg {
+.user-node-name > svg:first-child {
     flex: 0 0 28px;
 }
+.user-node-name .user-node-details-icon {
+    flex: 0 0 14px;
+    color: var(--text-secondary);
+}
+.user-node-name:dir(rtl) .user-node-details-icon { transform: rotate(180deg); }
 .user-node-name > span {
+    min-width: 0;
     white-space: normal;
     overflow-wrap: anywhere;
     font-weight: 500;
@@ -23,11 +36,50 @@
     white-space: normal;
     overflow-wrap: anywhere;
 }
-@media (max-width: 640px) {
-    .user-node-name {
+.user-node-detail .panel-head h2,
+.user-node-detail dd {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+@media (max-width: 800px) {
+    .user .user-node-list tbody tr {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto auto;
+        align-items: center;
         gap: 8px;
+        padding: 0 12px;
     }
-    .user-node-tags {
-        max-width: none;
+    .user .user-node-list table td {
+        display: block;
+        min-width: 0;
+        padding: 0;
+        font-size: var(--record-meta-size);
+        line-height: var(--record-line-height);
+    }
+    .user .user-node-list table td[data-label]::before,
+    .user .user-node-list table td:nth-child(2) {
+        display: none;
+    }
+    .app.user button.user-node-name {
+        gap: 6px;
+        min-height: 44px;
+        font-size: var(--record-text-size);
+        line-height: var(--record-line-height);
+    }
+    .user-node-name > img,
+    .user-node-name > svg:first-child {
+        flex-basis: 20px;
+        width: 20px;
+        height: 20px;
+    }
+    .user-node-name > span,
+    .user-node-rate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .user-node-rate {
+        display: block;
+        max-width: 6.5rem;
     }
 }

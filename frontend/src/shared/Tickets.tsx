@@ -112,6 +112,7 @@ export function Tickets({
             )}
             <Panel
                 title={heading || tx("工单中心")}
+                className={isAdmin ? undefined : "user-ticket-list"}
                 actions={
                     <>
                         <Reload

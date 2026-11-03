@@ -36,6 +36,7 @@ export function Invite() {
             <Panel className="invite-ledger" title={tx("佣金记录")}>
                 <State {...details}>
                     <Table
+                        compact
                         data={details.data || []}
                         columns={[
                             ["trade_no", tx("订单")],

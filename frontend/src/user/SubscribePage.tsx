@@ -1,4 +1,4 @@
-import { lazy } from "react";
+import { lazy, useId, useRef } from "react";
 import { NodeList } from "./NodeList";
 import { AccountEntry } from "./AccountEntry";
 import { e } from "../shared/experience-copy";
@@ -9,6 +9,8 @@ import { useData, State, Panel } from "../shared/ui";
 const SubscriptionImport = lazy(() => import("./SubscriptionImport").then(module => ({ default: module.SubscriptionImport })));
 
 export function Subscribe() {
+    const nodeSectionId = useId();
+    const nodeSection = useRef<HTMLDivElement>(null);
     const info = useData("user/info");
     const ready = info.data?.account_status?.state === "active";
     const d = useData("user/getSubscribe"),
@@ -36,11 +38,18 @@ export function Subscribe() {
     return (
         <>
             <Panel
+                className="configuration-quick-start"
                 title={tx("快速开始")}
                 actions={
-                    <a href="#/plan" className="button">
-                        {tx("管理订阅")}
-                    </a>
+                    <>
+                        <button type="button" aria-controls={nodeSectionId} onClick={() => {
+                            nodeSection.current?.scrollIntoView({ block: "start" });
+                            nodeSection.current?.focus({ preventScroll: true });
+                        }}>
+                            {tx("可用节点")}
+                        </button>
+                        <a href="#/plan" className="button">{tx("管理订阅")}</a>
+                    </>
                 }
             >
                 <div aria-busy={d.loading}>
@@ -73,14 +82,19 @@ export function Subscribe() {
                             </a>
                         </div>
                     )}
-                    <p className="pad muted"><a href="#/security/configuration-updates">{tx("查看配置更新记录")}</a></p>
+                    <a className="configuration-history-link" href="#/security/configuration-updates">
+                        {tx("查看配置更新记录")}
+                    </a>
                 </div>
             </Panel>
-            <Panel title={tx("可用节点")}>
-                <State {...nodes} retry={nodes.reload}>
-                    <NodeList nodes={nodes.data || []} />
-                </State>
-            </Panel>
+            <div ref={nodeSection} id={nodeSectionId} className="configuration-node-section"
+                role="region" aria-label={tx("可用节点")} tabIndex={-1}>
+                <Panel title={tx("可用节点")}>
+                    <State {...nodes} retry={nodes.reload}>
+                        <NodeList nodes={nodes.data || []} />
+                    </State>
+                </Panel>
+            </div>
         </>
     );
 }

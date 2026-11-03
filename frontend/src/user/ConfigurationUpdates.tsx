@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ArrowLeft, History } from "lucide-react";
 import type { V10SubscriptionAccessRecord } from "../shared/v10-types";
 import { tx } from "../shared/i18n";
+import { StatusBadge } from "../shared/StatusBadge";
 import { formatInstant } from "../shared/timezone";
 import { State, useData } from "../shared/ui/data";
 import { Pager, Reload } from "../shared/ui/controls";
@@ -32,7 +33,9 @@ function RequestResult({ record }: { record: V10SubscriptionAccessRecord }) {
     const label = status === "success" ? "请求成功" : status === "failed" ? "请求未成功" : "结果未知";
     const explanation = status === "failed" ? failureExplanations.get(text(record.reason)) : undefined;
     return <>
-        <span className={`configuration-request-status ${status}`}>{tx(label)}</span>
+        <StatusBadge className="configuration-request-status" tone={status === "failed" ? "danger" : status === "success" ? "success" : "neutral"}>
+            {tx(label)}
+        </StatusBadge>
         {explanation && <small className="configuration-request-reason">{tx(explanation)}</small>}
     </>;
 }
@@ -63,23 +66,23 @@ export function ConfigurationUpdates() {
                 <Reload onClick={records.reload} loading={records.loading} disabled={blocked} />
             </header>
             <State {...records} retry={records.reload}>
-                {rows.length ? <table className="configuration-updates-table">
+                {rows.length ? <table className="configuration-updates-table" role="table">
                     <caption className="sr-only">{tx("配置更新记录")}</caption>
                     <thead><tr>
                         {["请求时间", "客户端", "请求结果", "来源 IP 与地区"].map(label => <th key={label} scope="col">{tx(label)}</th>)}
                     </tr></thead>
-                    <tbody>{rows.map((record, index) => {
+                    <tbody role="rowgroup">{rows.map((record, index) => {
                         const requestedAt = text(record.requestedAt);
                         const validTime = requestedAt && Number.isFinite(Date.parse(requestedAt));
                         const clientName = text(record.clientName) || tx("客户端未识别");
                         const version = text(record.clientVersion);
                         const ip = text(record.ip);
                         const location = text(record.location);
-                        return <tr key={record.id ?? index}>
-                            <td data-label={tx("请求时间")}><time dateTime={validTime ? requestedAt : undefined}>{validTime ? formatInstant(requestedAt) : "—"}</time></td>
-                            <td data-label={tx("客户端")}><strong>{clientName}</strong>{version && <small><bdi>{version}</bdi></small>}</td>
-                            <td data-label={tx("请求结果")}><RequestResult record={record} /></td>
-                            <td data-label={tx("来源 IP 与地区")}><bdi dir="ltr">{ip || tx("来源未知")}</bdi>{location && <small>{location}</small>}</td>
+                        return <tr key={record.id ?? index} role="row">
+                            <td className="configuration-record-time" role="cell"><time dateTime={validTime ? requestedAt : undefined}>{validTime ? formatInstant(requestedAt) : "—"}</time></td>
+                            <td className="configuration-record-client" role="cell"><strong>{clientName}</strong>{version && <small><bdi>{version}</bdi></small>}</td>
+                            <td className="configuration-record-result" role="cell"><RequestResult record={record} /></td>
+                            <td className="configuration-record-source" role="cell"><bdi dir="ltr">{ip || tx("来源未知")}</bdi>{location && <small>{location}</small>}</td>
                         </tr>;
                     })}</tbody>
                 </table> : <p className="configuration-updates-empty">{tx("保留范围内暂无配置更新记录。")}</p>}

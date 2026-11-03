@@ -54,12 +54,12 @@ export function Knowledge() {
                 {null}
             </Panel>
             <HelpGuides search={keyword} onSearchChange={setKeyword} showSearch={false} />
-            <Panel title={tx("使用文档")}>
+            <Panel title={tx("使用文档")} className="knowledge-articles">
                 <State {...d} retry={d.reload}>
                     {Object.entries(d.data || {}).length ? (
                         Object.entries(d.data || {}).map(
                             ([category, items]) => (
-                                <div className="pad" key={category}>
+                                <div className="pad knowledge-category" key={category}>
                                     <h3>{category}</h3>
                                     {rows(items).map((item) => (
                                         <button
@@ -68,7 +68,7 @@ export function Knowledge() {
                                             onClick={() => { trackAction("help_open","knowledge"); setId(item.id); }}
                                         >
                                             <span>{item.title}</span>
-                                            <ArrowUpRight size={16} />
+                                            <ArrowUpRight size={16} aria-hidden="true" />
                                         </button>
                                     ))}
                                 </div>

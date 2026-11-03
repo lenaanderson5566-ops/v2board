@@ -292,7 +292,7 @@ export function BillingPage() {
                                             order.currency || "CNY",
                                         )}
                                     </strong>
-                                    <ChevronRight size={16} />
+                                    <ChevronRight size={16} aria-hidden="true" />
                                 </a>
                             ))}
                         </div>

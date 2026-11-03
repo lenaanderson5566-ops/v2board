@@ -10,3 +10,30 @@
     flex-shrink: 0;
     white-space: nowrap;
 }
+
+@media (max-width: 600px) {
+    .app.user .usage-page .reset-card .reset-history-range {
+        margin-block-end: 10px;
+    }
+    .app.user .usage-page .reset-history > .settings-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) fit-content(40%);
+        align-items: baseline;
+        gap: 8px;
+    }
+    .app.user .usage-page .reset-history > .settings-row + .settings-row {
+        margin-block-start: 8px;
+        padding-block-start: 8px;
+    }
+    .app.user .usage-page .reset-history > .settings-row p {
+        margin-block-start: 2px;
+    }
+    .app.user .usage-page .reset-history time {
+        text-align: end;
+        overflow-wrap: anywhere;
+    }
+    .app.user .usage-page .usage-records summary {
+        box-sizing: border-box;
+        min-block-size: 44px;
+    }
+}

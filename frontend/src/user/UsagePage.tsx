@@ -149,7 +149,9 @@ export function UsagePage() {
                         <section className="settings-section">
                             <header>
                                 <h2>{e("quota")}</h2>
-                                <a href="#/plan">{tx("管理订阅")}</a>
+                                {(usable || info.data?.account_status?.state !== "active") && (
+                                    <a href="#/plan">{tx("管理订阅")}</a>
+                                )}
                             </header>
                             <State
                                 loading={info.loading || sub.loading}

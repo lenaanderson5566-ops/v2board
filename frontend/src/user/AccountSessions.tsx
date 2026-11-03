@@ -49,7 +49,7 @@ export function AccountSessions() {
         }
     }
     return (
-        <section className="settings-section">
+        <section className="settings-section account-sessions">
             {error && !selected && !allOpen && (
                 <p role="alert" className="alert">
                     {error}
@@ -83,6 +83,7 @@ export function AccountSessions() {
                 </p>
                 <State {...sessions} retry={sessions.reload}>
                     <Table
+                        compact
                         data={Object.entries(sessions.data || {})
                             .sort(
                                 ([, a], [, b]) =>

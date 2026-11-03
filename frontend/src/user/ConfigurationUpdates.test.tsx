@@ -31,6 +31,7 @@ afterEach(() => { cleanup(); setDisplayTimeZone(null); vi.restoreAllMocks(); });
 it("shows only safe request fields in the personal time zone and explains success without claiming connectivity", async () => {
     render(<ConfigurationUpdates />);
     expect(await screen.findByText("Clash Verge Rev")).toBeTruthy();
+    expect(screen.getByText("请求成功").getAttribute("data-tone")).toBe("success");
     expect(screen.getByText(/12\/31\/2025, 16:30:00/)).toBeTruthy();
     expect(screen.getByText("仅显示最近 30 天内保留的记录。")).toBeTruthy();
     expect(screen.getByRole("link", { name: "返回账户安全" }).getAttribute("href")).toBe("#/security");
@@ -44,7 +45,7 @@ it("shows only safe request fields in the personal time zone and explains succes
 it("treats unknown fields and status conservatively without exposing raw diagnostic data", async () => {
     mocks.read.mockResolvedValue(response([{ id: 2, requestedAt: null, status: "future-status", clientName: null, clientVersion: null, ip: null, location: null, reason: "private-reason", rawUserAgent: "private-agent", url: "https://example.test/private-token" } as any]));
     render(<ConfigurationUpdates />);
-    expect(await screen.findByText("结果未知")).toBeTruthy();
+    expect((await screen.findByText("结果未知")).getAttribute("data-tone")).toBe("neutral");
     expect(screen.getByText("客户端未识别")).toBeTruthy();
     expect(screen.getByText("来源未知")).toBeTruthy();
     expect(screen.queryByText("地区未知")).toBeNull();
@@ -84,7 +85,7 @@ it.each([
     mocks.read.mockResolvedValue(response([{ ...first, status: "failed", reason }]));
     render(<ConfigurationUpdates />);
     expect(await screen.findByText(explanation)).toBeTruthy();
-    expect(screen.getByText("请求未成功")).toBeTruthy();
+    expect(screen.getByText("请求未成功").getAttribute("data-tone")).toBe("danger");
     expect(screen.queryByText("请求成功")).toBeNull();
     expect(screen.queryByText(reason)).toBeNull();
 });

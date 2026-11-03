@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 vi.mock("../shared/api", () => ({ boot: { mode: "user" } }));
 import i18n from "../shared/i18n";
 import { NodeList, nodeName } from "./NodeList";
@@ -50,6 +50,25 @@ it("handles missing countries and tags with a neutral fallback", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(container.querySelector("svg")).toBeTruthy();
     expect(screen.getByText("Legacy")).toBeTruthy();
+});
+
+it("opens full node information from the accessible name button", async () => {
+    await i18n.changeLanguage("zh-CN");
+    const name = "台北 · 这个节点名称在狭窄屏幕上会缩略显示 · 高速线路 A";
+    const tag = "备用连接与流媒体长标签，不丢失原有说明";
+    render(<NodeList nodes={[{ name, tags: [tag, tag, "低延迟"], rate: 1.25, is_online: false }]} />);
+    const trigger = screen.getByRole("button", { name });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("dialog");
+    trigger.focus();
+    fireEvent.click(trigger);
+    const detail = screen.getByRole("dialog", { name });
+    expect(within(detail).getAllByText(tag)).toHaveLength(1);
+    expect(within(detail).getByText("低延迟")).toBeTruthy();
+    expect(within(detail).getByText("1.25×")).toBeTruthy();
+    expect(within(detail).getByText("离线")).toBeTruthy();
+    fireEvent.click(within(detail).getByRole("button", { name: "关闭" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
 });
 
 it("bundles valid SVG flags and keeps TW identical to CN", () => {

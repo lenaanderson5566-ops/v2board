@@ -71,7 +71,7 @@ function fixture(): JourneyReport {
             rows: [
                 {
                     page: "subscribe",
-                    event: "download",
+                    event: "copy_failed",
                     samples: 5,
                     sessions: 3,
                     average: null,
@@ -95,7 +95,7 @@ it("shows mature cohorts, observed retention, honest renewal and percentile desc
     api.request.mockResolvedValue({ data: fixture() });
     render(<JourneyAnalytics days={30} device="all" />);
     await screen.findByRole("heading", { name: "注册到首次使用 · 7 日观察窗" });
-    expect(screen.getByText("下载点击")).toBeTruthy();
+    expect(screen.getByText("复制失败")).toBeTruthy();
     expect(screen.getByText("P95 桶上界")).toBeTruthy();
     expect(screen.getByText("0.25")).toBeTruthy();
     expect(screen.getByText(/不计算历史流失率/)).toBeTruthy();
@@ -121,7 +121,7 @@ it("keeps business reports available before telemetry migration and uses unavail
 it("reloads range and device filters and reports request failures", async () => {
     api.request.mockResolvedValue({ data: fixture() });
     const view = render(<JourneyAnalytics days={7} device="desktop" />);
-    await screen.findByText("下载点击");
+    await screen.findByText("复制失败");
     fireEvent.click(screen.getByRole("button", { name: "刷新旅程报表" }));
     await waitFor(() => expect(api.request.mock.calls.length).toBe(2));
     api.request.mockRejectedValue(new Error("旅程读取失败"));
@@ -132,7 +132,7 @@ it("reloads range and device filters and reports request failures", async () => 
     );
 });
 
-it("labels a payment-provider click separately from completed business payments", async () => {
+it("ignores retired click events while preserving completed business payments", async () => {
     const data = fixture();
     data.experience.rows = [
         {
@@ -147,18 +147,27 @@ it("labels a payment-provider click separately from completed business payments"
     ];
     api.request.mockResolvedValue({ data });
     render(<JourneyAnalytics days={7} device="mobile" />);
-    expect(await screen.findByText("点击前往付款")).toBeTruthy();
-    expect(screen.getByText(/不代表支付完成/)).toBeTruthy();
-    expect(
-        screen.getByRole("heading", { name: "注册到首次使用 · 7 日观察窗" }),
-    ).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "注册到首次使用 · 7 日观察窗" })).toBeTruthy();
+    expect(screen.queryByText("payment_open")).toBeNull();
+    expect(screen.queryByText("点击前往付款")).toBeNull();
 });
-it("explains opt-in sample coverage in the standalone experience report", async () => {
-    api.request.mockResolvedValue({ data: fixture() });
+it("prioritizes affected sessions and tail performance without treating click counts as outcomes", async () => {
+    const data = fixture();
+    data.experience.rows.push(
+        { page: "payment", event: "api_error", samples: 90, sessions: 2, average: null, p75Upper: null, p95Upper: null },
+        { page: "confirmation", event: "network_error", samples: 20, sessions: 12, average: null, p75Upper: null, p95Upper: null },
+        { page: "subscribe", event: "download", samples: 100, sessions: 20, average: null, p75Upper: null, p95Upper: null },
+    );
+    api.request.mockResolvedValue({ data: { experience: data.experience } });
     render(<JourneyAnalytics days={7} device="mobile" experienceOnly />);
     expect(await screen.findByText(/不能代表全部访客/)).toBeTruthy();
     expect(screen.getByText(/不应把体验事件会话数作为业务漏斗分母/)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "注册到首次使用 · 7 日观察窗" })).toBeNull();
+    expect(screen.getAllByRole("row")[1].textContent).toMatch(/网络错误.*12/);
+    expect(screen.queryByText("下载点击")).toBeNull();
+    expect(screen.queryByText("平均值")).toBeNull();
+    expect(screen.getByText("P95 桶上界")).toBeTruthy();
+    expect(api.request.mock.calls[0][0]).toBe("test-admin/analytics/journey?days=7&device=mobile&view=experience");
 });
 
 it("separates business cohort bounds from the generation instant in the admin display zone", async () => {

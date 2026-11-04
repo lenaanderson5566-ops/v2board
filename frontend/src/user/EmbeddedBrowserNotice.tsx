@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { currentDevice } from "../shared/user-experience";
 import { boot } from "../shared/api";
 import { browserHandoffUrl, browserPolicy } from "../shared/browser-access";
-import { useAnalyticsPage, trackAction } from "./product-analytics";
+import { useAnalyticsPage, trackCopyFailure } from "./product-analytics";
 import { LanguagePicker } from "../shared/LanguagePicker";
 import { BrowserNoticeView } from "../shared/ui/BrowserNoticeView";
 export function BrowserAccessGate({
@@ -45,5 +45,5 @@ export function EmbeddedBrowserNotice({onContinue, compact = false}: {onContinue
         };
     }, []);
     useAnalyticsPage(context.embedded ? (onContinue ? "browser_prompt" : "browser_guide") : null);
-    return <BrowserNoticeView {...context} compact={compact} title={boot.title} address={browserHandoffUrl(href)} onContinue={onContinue} onAction={trackAction} languagePicker={<LanguagePicker />} />;
+    return <BrowserNoticeView {...context} compact={compact} title={boot.title} address={browserHandoffUrl(href)} onContinue={onContinue} onCopyFailure={trackCopyFailure} languagePicker={<LanguagePicker />} />;
 }

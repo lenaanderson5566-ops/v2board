@@ -66,14 +66,7 @@ const count = (v: number | null) =>
 const duration = (v: number | null) =>
     v === null ? "—" : formatDuration(v, "s").replace(/ s$/, " 秒");
 const eventNames: Record<string, string> = {
-    guide_manual: "展开手动复制",
-    guide_continue: "继续当前浏览器",
-    payment_open: "点击前往付款",
-    download: "下载点击",
-    copy_success: "复制成功",
     copy_failed: "复制失败",
-    import_start: "发起导入",
-    help_open: "打开帮助",
     js_error: "脚本异常",
     api_error: "接口错误",
     network_error: "网络错误",
@@ -82,6 +75,35 @@ const eventNames: Record<string, string> = {
     inp: "INP",
     cls: "CLS",
 };
+const performanceEvents = ["api_request", "lcp", "inp", "cls"];
+const issueEvents = ["api_error", "network_error", "js_error", "copy_failed"];
+
+function DashboardExperience({ data }: { data: JourneyReport["experience"] }) {
+    const issues = data.rows.filter((row) => issueEvents.includes(row.event)).sort((a, b) => b.sessions - a.sessions);
+    const metrics = data.rows.filter((row) => performanceEvents.includes(row.event)).sort((a, b) =>
+        performanceEvents.indexOf(a.event) - performanceEvents.indexOf(b.event) ||
+        (b.p75Upper ?? -1) - (a.p75Upper ?? -1) || b.samples - a.samples,
+    );
+    return <Panel padded title="排查影响用户的体验问题">
+        {!data.available ? <p className="alert">体验统计表尚未安装，请通过更新流程执行数据库迁移。</p> : <>
+            {!data.enabled && <p className="muted">匿名统计已关闭，仅展示保留期内已有的历史样本。</p>}
+            <p className="muted">最早查询时间 {data.effectiveFrom ? formatInstant(data.effectiveFrom) : "暂无"} · 保留 {data.retentionDays} 天。样本来自同意统计且上报成功的会话，不能代表全部访客，也不应把体验事件会话数作为业务漏斗分母。</p>
+            <h3>异常影响会话</h3>
+            {issues.length === 0 ? <p role="status">当前范围未收到这些异常的上报。</p> : <ReportTable pageSize={10}
+                headers={["页面", "异常", "受影响会话"]} rows={issues.map((row) => [
+                    analyticsLabels[row.page] || row.page, eventNames[row.event], count(row.sessions),
+                ])} />}
+            <p className="muted">按受影响会话排序，优先排查会话较多的页面和错误类型。同一会话可能出现在不同页面或类别，不能将各行相加作为独立用户数。</p>
+            <h3>页面性能瓶颈</h3>
+            {metrics.length === 0 ? <p role="status">当前范围没有可用的性能样本。</p> : <ReportTable pageSize={10}
+                headers={["归属页面", "指标", "样本数", "P75 桶上界", "P95 桶上界"]} rows={metrics.map((row) => {
+                    const value = (v: Ratio) => v === null ? "—" : row.event === "cls" ? formatNumber(v / 1000, { maximumFractionDigits: 3 }) : formatDuration(v);
+                    return [analyticsLabels[row.page] || row.page, eventNames[row.event], count(row.samples), value(row.p75Upper), value(row.p95Upper)];
+                })} />}
+            <p className="muted">对照同一指标的页面和样本数，P75 反映较普遍的慢请求，P95 辅助定位长尾。二者为固定桶的上界估计。LCP、INP 和 CLS 归属启动监测时的入口页面。</p>
+        </>}
+    </Panel>;
+}
 export function JourneyAnalytics({
     days,
     device,
@@ -91,8 +113,8 @@ export function JourneyAnalytics({
     device: string;
     experienceOnly?: boolean;
 }) {
-    const report = useData<JourneyReport>(
-        query(admin("analytics/journey"), { days, device }),
+    const report = useData<Partial<JourneyReport>>(
+        query(admin("analytics/journey"), { days, device, view: experienceOnly ? "experience" : undefined }),
         undefined,
         false,
         { refreshOnEvents: false },
@@ -102,17 +124,14 @@ export function JourneyAnalytics({
     const x = data?.experience;
     const metrics =
         x?.rows.filter((r) =>
-            ["api_request", "lcp", "inp", "cls"].includes(r.event),
+            performanceEvents.includes(r.event),
         ) || [];
-    const actions =
-        x?.rows.filter(
-            (r) => !["api_request", "lcp", "inp", "cls"].includes(r.event),
-        ) || [];
+    const issues = x?.rows.filter((r) => issueEvents.includes(r.event)) || [];
     return (
         <>
             <Panel
                 padded
-                title={experienceOnly ? "体验问题与引导" : "用户旅程与体验"}
+                title={experienceOnly ? "体验问题" : "用户旅程与体验"}
             >
                 <p className="muted">
                     {experienceOnly
@@ -124,7 +143,7 @@ export function JourneyAnalytics({
                     onClick={report.reload}
                     disabled={report.loading}
                 >
-                    刷新旅程报表
+                    {experienceOnly ? "刷新体验报表" : "刷新旅程报表"}
                 </button>
                 <State loading={report.loading} error={report.error}>
                     {null}
@@ -281,8 +300,8 @@ export function JourneyAnalytics({
                     </Panel>
                 </>
             )}
-            {x && (
-                <Panel padded title="引导效果与性能观测">
+            {x && (experienceOnly ? <DashboardExperience data={x} /> : (
+                <Panel padded title="异常与性能观测">
                     {!x.available ? (
                         <p className="alert">
                             体验统计表尚未安装，请通过更新流程执行新增迁移。业务旅程仍可查看。
@@ -300,11 +319,11 @@ export function JourneyAnalytics({
                             <ReportTable
                                 headers={[
                                     "页面",
-                                    "动作／异常",
+                                    "异常类型",
                                     "事件样本",
                                     "会话数",
                                 ]}
-                                rows={actions.map((r) => [
+                                rows={issues.map((r) => [
                                     analyticsLabels[r.page] || r.page,
                                     eventNames[r.event] || r.event,
                                     r.samples,
@@ -339,7 +358,7 @@ export function JourneyAnalytics({
                                 })}
                             />
                             <p className="muted">
-                                前往付款、下载、导入和帮助仅统计发起动作，不代表支付完成、安装完成或连接成功。每页最多采样
+                                每页最多采样
                                 20
                                 次接口调用，仅记录耗时和错误类别；客户端样本可能漏报，不用于风控或账务。
                             </p>
@@ -363,7 +382,7 @@ export function JourneyAnalytics({
                         </>
                     )}
                 </Panel>
-            )}
+            ))}
         </>
     );
 }

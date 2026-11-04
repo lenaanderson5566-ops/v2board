@@ -42,7 +42,7 @@ try {
     config(['cache.default'=>'array','fastai.system_timezone'=>'Asia/Kathmandu']);
     $now=time();
     $from=(new DateTimeImmutable('tomorrow',new DateTimeZone('Asia/Kathmandu')))->modify('-7 days')->getTimestamp();
-    foreach (['v2_login_log','v2_subscribe_log','v2_risk_rule_hit','v2_order','v2_payment_callback_event','v2_mail_log','v2_daily_task_run','v2_analytics_page','v2_analytics_session'] as $table) DB::table($table)->delete();
+    foreach (['v2_login_log','v2_subscribe_log','v2_risk_rule_hit','v2_order','v2_payment_callback_event','v2_mail_log','v2_daily_task_run','v2_analytics_session'] as $table) DB::table($table)->delete();
     foreach ([[1,'success',$now-1],[0,'password_error',$now-2],[0,'token=private@example.com',$now-3],[0,'another-secret',$now-4],[0,'password_error',$from-1],[0,'password_error',$now+3600]] as [$success,$reason,$at]) {
         DB::table('v2_login_log')->insert(['is_success'=>$success,'reason'=>$reason,'created_at'=>$at,'email'=>'private@example.com','ip'=>'192.0.2.1']);
     }
@@ -95,12 +95,15 @@ try {
     $assert(App\Services\OperationsAnalytics::rate(0,0)===null,'Zero denominator is unavailable, not zero percent');
     // Non-integral-hour timezone and local midnight boundary coverage.
     $at=(new DateTimeImmutable('yesterday 00:05',$zone))->getTimestamp();
-    DB::table('v2_analytics_session')->insert(['session_hash'=>str_repeat('a',64),'created_at'=>$at,'last_at'=>$at,'device'=>'desktop','language'=>'zh-CN','stage'=>3]);
-    DB::table('v2_analytics_session')->insert(['session_hash'=>str_repeat('b',64),'created_at'=>$at-600,'last_at'=>$at-600,'device'=>'mobile','language'=>'zh-CN','stage'=>0]);
+    DB::table('v2_analytics_session')->insert(['session_hash'=>str_repeat('a',64),'created_at'=>$at,'last_at'=>$at,'device'=>'desktop','stage'=>3]);
+    DB::table('v2_analytics_session')->insert(['session_hash'=>str_repeat('b',64),'created_at'=>$at-600,'last_at'=>$at-600,'device'=>'mobile','stage'=>0]);
     $analytics=new App\Services\ProductAnalytics();
     $visits=$analytics->report(7,'all');
-    $assert($visits['hours'][0]===1 && $visits['hours'][23]===1 && array_sum($visits['weekdays'])===2,'Hourly/weekday report respects quarter-hour timezone and midnight');
-    $assert(array_sum($analytics->report(7,'desktop')['hours'])===1,'Access time distribution respects the device filter');
+    $dayCounts=array_column($visits['daily'],'sessions','date');
+    $assert($dayCounts[(new DateTimeImmutable('yesterday',$zone))->format('Y-m-d')]===1
+        && $dayCounts[(new DateTimeImmutable('2 days ago',$zone))->format('Y-m-d')]===1 && $visits['sessions']===2,
+        'Session trends respect a quarter-hour-offset timezone at midnight');
+    $assert($analytics->report(7,'desktop')['sessions']===1,'Session trends respect the device filter');
     $controller=new App\Http\Controllers\V1\Admin\ProductAnalyticsController();
     $response=$controller->operations(Request::create('/','GET',['days'=>7]),$service);
     $assert($response->getStatusCode()===200 && str_contains($response->headers->get('Cache-Control'),'no-store'),'Administrative response is private and non-storable');
@@ -121,7 +124,7 @@ try {
     $degraded=$service->report(7);
     $assert($degraded['health']['queues']===null && !str_contains(json_encode($degraded),'connection-secret'),'Queue failure is unavailable without leaking errors');
     // Second-batch cohorts and anonymous numeric observations share the same disposable fixture.
-    foreach (['v2_analytics_measurement','v2_analytics_page','v2_analytics_session','v2_login_log','v2_subscribe_log','v2_stat_user','v2_order','v2_user'] as $table) DB::table($table)->delete();
+    foreach (['v2_analytics_measurement','v2_analytics_session','v2_login_log','v2_subscribe_log','v2_stat_user','v2_order','v2_user'] as $table) DB::table($table)->delete();
     $today=new DateTimeImmutable('today',$zone);
     $makeUser=function($name,$age,$admin=0) use($today) {
         $at=$today->modify('-'.$age.' days')->getTimestamp()+3600;
@@ -157,9 +160,9 @@ try {
     $assert(!str_contains(json_encode($journey),'journey-a@example.test'),'Journey reports expose no account identifiers');
     $analytics->save(['enabled'=>true,'retentionDays'=>7]);
     $event=['sessionId'=>(string)Illuminate\Support\Str::uuid(),'page'=>'plan','device'=>'desktop','language'=>'zh-CN','consent'=>true];
-    $analytics->record($event, 'Mozilla/5.0 (Linux; Android 14) Chrome/123.0 MicroMessenger/8');
+    $analytics->record($event);
     foreach ([100,200,500,10000] as $value) $analytics->record($event+['event'=>'lcp','value'=>$value]);
-    $analytics->record(array_replace($event,['page'=>'payment','event'=>'import_start']));
+    $analytics->record(array_replace($event,['page'=>'payment','event'=>'copy_failed']));
     $measurement=new App\Services\ExperienceMeasurements();
     $measured=$measurement->report(7,'desktop');
     $lcp=collect($measured['rows'])->firstWhere('event','lcp');
@@ -168,20 +171,15 @@ try {
     $assert(DB::table('v2_analytics_measurement')->sum('samples')==5,'Measurement migration is idempotent and preserves existing observations');
     $assert($lcp['samples']===4 && $lcp['sessions']===1 && $lcp['average']===2700.0 && $lcp['p75Upper']===500 && $lcp['p95Upper']===10000,'Numeric histograms retain exact sums and expose estimated percentile bucket bounds');
     $session=DB::table('v2_analytics_session')->first();
-    $assert($session->browser==='chrome' && $session->browser_major===123 && $session->embedded==='wechat' && $session->os==='android','Only coarse browser categories persist on first event');
-    $browserRows=$analytics->report(7,'all')['browsers'];
-    $assert($browserRows[0]['sessions']===1 && $browserRows[0]['browser']==='chrome','Browser aggregate uses session cohort');
-    $repeatBrowserMigration=require database_path('migrations/2026_10_19_000003_add_analytics_browsers.php');
-    $repeatBrowserMigration->up();
-    $assert(DB::table('v2_analytics_session')->first()->browser==='chrome','Repeat browser migration preserves observations');
-    $assert(DB::table('v2_analytics_page')->sum('views')==1 && $session->stage===1,'Action and numeric events never inflate page views or purchase funnel stages');
+    $assert(!array_intersect(['browser','browser_major','embedded','language','os'],array_keys((array)$session))
+        && !Illuminate\Support\Facades\Schema::hasTable('v2_analytics_page'), 'Retired session dimensions and page-view table are absent');
+    $assert($session->stage===1,'Error and numeric events never advance the purchase path');
     $assert($measurement->report(7,'mobile')['rows']===[],'Experience reports respect anonymous device filtering');
     $analytics->record(array_replace($event,['page'=>'payment','event'=>'payment_open']));
-    $opened=collect($measurement->report(7,'desktop')['rows'])->firstWhere('event','payment_open');
-    $assert($opened && $opened['page']==='payment' && $opened['samples']===1 && $opened['sessions']===1 && $opened['average']===null,'Payment open records a bounded named click, without a metric value');
-    $assert(DB::table('v2_analytics_page')->sum('views')==1 && DB::table('v2_analytics_session')->first()->stage===1,'Opening a provider does not manufacture a page view or successful payment funnel stage');
+    $assert(!DB::table('v2_analytics_measurement')->where('event','payment_open')->exists()
+        && DB::table('v2_analytics_session')->first()->stage===1,'Retired payment clicks never persist or advance the purchase path');
 
-    DB::table('v2_analytics_measurement')->where('event','lcp')->where('bucket',100)->update(['samples'=>195]);
+    DB::table('v2_analytics_measurement')->where('event','lcp')->where('bucket',100)->update(['samples'=>196]);
     $before=DB::table('v2_analytics_measurement')->sum('samples');
     $analytics->record($event+['event'=>'js_error']);
     $assert((int)$before===200 && (int)DB::table('v2_analytics_measurement')->sum('samples')===200,'Session lock and sample budget bound observation storage');
@@ -195,9 +193,33 @@ try {
         catch (Illuminate\Validation\ValidationException $e) {$assert(true,'Invalid observation validation rejected');}
         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===422,'Invalid observation contract rejected');}
     }
-    $assert($invoke(['page'=>'payment','event'=>'payment_open'])->getStatusCode()===204,'The public contract accepts a payment click without a value or transaction fields');
+    $attempts=Illuminate\Support\Facades\RateLimiter::attempts('product-analytics-global');
+    foreach (['download','copy_success','import_start','help_open','guide_manual','guide_continue','payment_open'] as $retired) {
+        $response=$invoke(['sessionId'=>(string)Illuminate\Support\Str::uuid(),'page'=>'payment','event'=>$retired]);
+        $assert($response->getStatusCode()===204 && str_contains($response->headers->get('Cache-Control'),'no-store'),
+            'Valid legacy action is accepted without recording: '.$retired);
+    }
+    $assert(DB::table('v2_analytics_session')->count()===1 && (int)DB::table('v2_analytics_measurement')->sum('samples')===200
+        && Illuminate\Support\Facades\RateLimiter::attempts('product-analytics-global')===$attempts,
+        'Retired actions consume neither session storage, sample allowance nor global collection quota');
     $assert($invoke(['event'=>'lcp','value'=>100],['HTTP_SEC_GPC'=>'1'])->getStatusCode()===204 && (int)DB::table('v2_analytics_measurement')->sum('samples')===200,'GPC prevents optional metric storage');
-    DB::table('v2_analytics_session')->where('id',$session->id)->update(['created_at'=>$now-8*86400]);
+    $referral=array_replace($event,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'attributionVersion'=>1,'sourceDomain'=>'partner.example.test']);
+    foreach (['plan','confirmation','payment'] as $page) $analytics->record(array_replace($referral,['page'=>$page]));
+    $analytics->record($referral+['event'=>'js_error']);
+    $analytics->record(array_replace($referral,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'sourceDomain'=>null]));
+    $analytics->record(array_replace($referral,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'device'=>'mobile']));
+    $traffic=$analytics->report(7,'desktop','traffic');
+    $assert($traffic['sessions']===3 && array_sum(array_column($traffic['daily'],'sessions'))===3
+        && $traffic['sourceCoverage']===['known'=>1,'unknown'=>1,'historical'=>1],
+        'Dashboard coverage reconciles to all sampled sessions and respects the device filter');
+    $assert($traffic['sources']===[['domain'=>'partner.example.test','sessions'=>1,'paymentEntries'=>1]]
+        && !isset($traffic['views'],$traffic['receipts'],$traffic['browsers']) && !array_key_exists('views',$traffic['daily'][0]),
+        'Traffic projection exposes ordered checkout intent for attributable sessions and skips unused report dimensions');
+    $assert(array_column($analytics->report(7,'desktop','conversion')['funnel'],'sessions')===[3,1,1],
+        'Dashboard conversion uses the ordered stages for each anonymous session');
+    $assert(array_column($measurement->report(7,'desktop')['rows'],'event')===['copy_failed','js_error','lcp'],
+        'Dashboard experience keeps errors and performance while omitting click-only action counters');
+    DB::table('v2_analytics_session')->update(['created_at'=>$now-8*86400]);
     $analytics->prune();
     $assert(DB::table('v2_analytics_measurement')->count()===0,'Existing privacy retention removes measurement buckets with sessions');
     $analytics->save(['enabled'=>false,'retentionDays'=>7]);
@@ -236,10 +258,10 @@ try {
         if($case===1) $assert($fixedNow-$fixedEnd===604800 && !in_array((int)$accounts['at_end']->id,$selected,true),
             'An exactly mature midnight starts the next excluded calendar date');
         if($case===1) {
-            $makeOrder($accounts['at_start'],(int)$accounts['at_start']->getRawOriginal('created_at')+604799);
-            $makeOrder($accounts['last_complete'],(int)$accounts['last_complete']->getRawOriginal('created_at')+604800);
+            $makeOrder($accounts['at_start'],(int)$accounts['at_start']->getRawOriginal('created_at')+604799)->update(['total_amount'=>0,'balance_amount'=>1000]);
+            $makeOrder($accounts['last_complete'],(int)$accounts['last_complete']->getRawOriginal('created_at')+604800)->update(['total_amount'=>0,'balance_amount'=>1000]);
             $fixedPurchases=$purchaseWindow->invoke($analytics,$fixedCohort,2,$fixedStart,$fixedEnd);
-            $assert($fixedPurchases['registered']===2 && $fixedPurchases['paidRecurringAccounts']===1,
+            $assert($fixedPurchases['registered']===2 && $fixedPurchases['verifiedRecurringAccounts']===1,
                 'First purchase includes payment at 604799 elapsed seconds and excludes the exact 604800-second boundary across DST');
         }
     }
@@ -264,9 +286,16 @@ try {
     $purchaseOrder($wallet,0,['balance_amount'=>1000]);
     $manual=$purchaseUser('manual'); $purchaseOrder($manual,1000,['callback_no'=>'manual_operation','payment_id'=>$payment->id]);
     $unknown=$purchaseUser('unknown'); $purchaseOrder($unknown,1000);
+    $purchaseOrder($manual,1000,['payment_id'=>$payment->id,'callback_no'=>'verified-after-manual','paid_at'=>(int)$manual->getRawOriginal('created_at')+200]);
+    $purchaseOrder($unknown,0,['balance_amount'=>1000,'paid_at'=>(int)$unknown->getRawOriginal('created_at')+200]);
     $free=$purchaseUser('free'); $purchaseOrder($free,0);
     $exchange=$purchaseUser('exchange'); $purchaseOrder($exchange,0,['surplus_amount'=>1500,'refund_amount'=>500]);
     $credits=$purchaseUser('credits'); $purchaseOrder($credits,400,['period'=>'onetime_price','type'=>5,'credit_bytes'=>1073741824]);
+    $creditOrder=['period'=>'onetime_price','type'=>5,'credit_bytes'=>1073741824];
+    $purchaseOrder($credits,400,$creditOrder+['payment_id'=>$payment->id,'callback_no'=>'credit-external']);
+    $purchaseOrder($credits,0,$creditOrder+['balance_amount'=>400]);
+    $purchaseOrder($manual,400,$creditOrder+['payment_id'=>$payment->id,'callback_no'=>'manual_operation']);
+    $purchaseOrder($unknown,400,$creditOrder);
     $reset=$purchaseUser('reset'); $purchaseOrder($reset,300,['period'=>'reset_price','type'=>4]);
     $legacy=$purchaseUser('legacy'); $purchaseOrder($legacy,600,['period'=>'onetime_price']);
     $late=$purchaseUser('late'); $purchaseOrder($late,1000,['paid_at'=>(int)$late->getRawOriginal('created_at')+604800]);
@@ -284,65 +313,25 @@ try {
     $immature=$purchaseUser('immature',2); $purchaseOrder($immature,1000);
     $admin=$purchaseUser('admin',10,true); $purchaseOrder($admin,1000);
     $purchaseReport=$analytics->report(7,'mobile'); $first=$purchaseReport['firstPurchase'];
-    $assert($first['registered']===16 && $first['paidRecurringAccounts']===7 && $first['paidRecurringRate']===0.4375,'First purchase uses mature registrations and the earliest lifetime valued recurring purchase');
+    $assert($first['registered']===16 && $first['verifiedRecurringAccounts']===5,'First purchase uses mature registrations and the earliest lifetime valued recurring purchase');
     $assert($first['funding']===['externalOnly'=>1,'mixed'=>2,'walletOnly'=>2,'manual'=>1,'unclassified'=>1],'First-purchase funding includes zero credit-byte placeholders but excludes invalid negative entitlements');
-    $assert($first['zeroValueRecurringAccounts']===2 && $first['creditOnlyRecurringAccounts']===1,'Free grants and entitlement-only exchanges never inflate valued first purchases');
-    $assert($first['otherPurchases']===['depositAccounts'=>1,'independentCreditAccounts'=>1,'resetAccounts'=>1,'legacyOneTimeAccounts'=>1],'Deposits, independent credits, resets and legacy one-time products remain separate');
     $assert($first===$analytics->report(7,'desktop')['firstPurchase'],'Business purchases do not depend on consent, collection enablement or browser device');
-    $assert(isset($purchaseReport['cohort']['ordered'],$purchaseReport['cohort']['paid'],$purchaseReport['cohort']['completed']) && !str_contains(json_encode($first),'@example.test'),'Legacy cohort remains compatible and purchase report exposes no identity');
+    $assert(isset($purchaseReport['sessions'],$purchaseReport['funnel']) && !array_intersect(
+        ['cohort','receipts','browsers','browsersReady','pages','views','latestEventAt','hours','weekdays','devices'],array_keys($purchaseReport))
+        && !str_contains(json_encode($first),'@example.test'),'Default report returns retained metrics and keeps purchase identity anonymous');
+    $dashboardConversion=$analytics->report(7,'mobile','conversion'); $dashboardPurchase=$dashboardConversion['firstPurchase'];
+    $assert($dashboardPurchase['registered']===16 && $dashboardPurchase['verifiedRecurringAccounts']===5
+        && $dashboardPurchase['verifiedCreditAccounts']===1 && $dashboardPurchase['funding']['manual']===1
+        && $dashboardPurchase['funding']['unclassified']===1 && !isset($dashboardConversion['receipts'],$dashboardConversion['cohort']),
+        'Dashboard conversion excludes unverifiable first purchases and deduplicates verified independent quota purchases');
 
-    // External receipts are counted once at paid_at in their captured payment
-    // currency. Spending prepaid wallet balance creates no second cash receipt.
     DB::table('v2_order')->delete(); DB::table('v2_user')->delete();
-    $cashAccount=$purchaseUser('cash',1); $receiptAt=time()-60;
-    $snapshot=fn(int $amount,string $currency='CNY')=>['provider'=>'PaytaroQR','uuid'=>$payment->uuid,'payment_amount'=>$amount,'payment_currency'=>$currency,'handling_amount'=>10];
-    $receipt=function(int $amount,int $captured,array $extra=[]) use($purchaseOrder,$cashAccount,$payment,$receiptAt,$snapshot) {
-        return $purchaseOrder($cashAccount,$amount,array_replace(['paid_at'=>$receiptAt,'created_at'=>$receiptAt-30,'payment_id'=>$payment->id,'callback_no'=>'callback-'.bin2hex(random_bytes(5)),'payment_snapshot'=>$snapshot($captured)],$extra));
-    };
-    $receipt(2000,2040,['plan_id'=>0,'period'=>'deposit','type'=>9]);
-    $receipt(0,0,['balance_amount'=>1500,'payment_id'=>null,'callback_no'=>null,'payment_snapshot'=>null]);
-    $receipt(0,0,['payment_id'=>null,'callback_no'=>null,'payment_snapshot'=>null]);
-    $receipt(1000,1010);
-    $receipt(400,405,['balance_amount'=>600]);
-    $receipt(1000,7250,['currency'=>'USD']);
-    $receipt(400,400,['period'=>'onetime_price','credit_bytes'=>1073741824,'type'=>5]);
-    $receipt(300,303,['period'=>'reset_price','type'=>4]);
-    $receipt(600,600,['period'=>'onetime_price']);
-    $receipt(700,700,['period'=>'custom','currency'=>'USD','payment_snapshot'=>$snapshot(700,'USD')]);
-    $receipt(500,505,['currency'=>'USD','payment_snapshot'=>$snapshot(505,'USD')]);
-    $receipt(500,500,['plan_id'=>0,'credit_bytes'=>1073741824]);
-    $receipt(700,700,['plan_id'=>0]);
-    $receipt(800,808,['credit_bytes'=>0]);
-    $receipt(900,909,['plan_id'=>-1]);
-    $receipt(2000,2000,['callback_no'=>'manual_operation']);
-    $receipt(500,500,['payment_snapshot'=>null]);
-    $receipt(500,500,['payment_snapshot'=>array_replace($snapshot(500),['payment_amount'=>'500'])]);
-    $receipt(500,500,['payment_snapshot'=>$snapshot(500)+['channels'=>[(string)$payment->id=>$snapshot(500)]]]);
-    $receipt(500,500,['payment_snapshot'=>$snapshot(500,'EUR')]);
-    $receipt(999,999,['status'=>2]); $receipt(999,999,['status'=>0]);
-    $receipt(999,999,['paid_at'=>time()+3600]);
-    foreach ([1,2,3] as $duplicate) DB::table('v2_payment_callback_event')->insert(['payment_id'=>$payment->id,'provider'=>'PaytaroQR','stage'=>'settlement','result'=>'handled','created_at'=>time()-10]);
-    $sourceCount=Order::count();
-    $receipts=$analytics->report(7,'all')['receipts'];
-    $cashRows=collect($receipts['byCurrency'])->keyBy('currency');
-    $assert($receipts['available'] && !$receipts['complete'] && $receipts['unresolvedExternalOrders']===4,'Legacy, malformed, unsettled and unsupported snapshots are explicitly unresolved');
-    $assert($cashRows['CNY']['grossAmount']===14925 && $cashRows['CNY']['orders']===11 && $cashRows['USD']['grossAmount']===1205 && $cashRows['USD']['orders']===2,'Receipt amounts use captured payment currencies without reconverting or mixing CNY and USD');
-    $cashKinds=collect($cashRows['CNY']['kinds'])->keyBy('kind');
-    $assert($cashKinds['deposit']['grossAmount']===2040 && $cashKinds['recurring']['grossAmount']===9473 && $cashKinds['independentCredits']['grossAmount']===900 && $cashKinds['reset']['grossAmount']===303 && $cashKinds['legacyOneTime']['grossAmount']===600,'Explicit product kinds retain deposits, zero-byte recurring placeholders and independent credits without double-counting wallet spending');
-    $assert($cashKinds['other']['grossAmount']===1609 && $cashKinds['other']['orders']===2,'Missing and invalid plan IDs never manufacture deposits or recurring purchases');
-    $assert($receipts['manualOrders']===1 && $receipts['walletOnlyOrders']===1 && $receipts['zeroExternalOrders']===1,'Manual confirmations, wallet-only purchases and free grants are not external callback cash');
-    foreach (['refundAmount','providerFeeAmount','netAmount','settlementAmount'] as $unknownField) $assert(array_key_exists($unknownField,$receipts) && $receipts[$unknownField]===null,'Unavailable accounting ledger never fabricates '.$unknownField);
-    $assert(Order::count()===$sourceCount && !str_contains(json_encode($receipts),$payment->uuid),'Receipt report is read-only and exposes no payment identifiers');
-    $assert($analytics->report(7,'all')['firstPurchase']['paidRecurringRate']===null,'No mature registration cohort has an unavailable conversion denominator');
-    $schemaRoot=Illuminate\Support\Facades\Schema::getFacadeRoot();
-    Illuminate\Support\Facades\Schema::partialMock()->shouldReceive('hasColumn')->with('v2_order','payment_snapshot')->andReturn(false);
-    try {
-        $method=new ReflectionMethod($analytics,'receipts');
-        $unavailable=$method->invoke($analytics,$receiptAt-3600,time());
-        $assert(!$unavailable['available'] && !$unavailable['complete'] && $unavailable['byCurrency']===[] && $unavailable['unresolvedExternalOrders']===17,'Missing immutable snapshot schema marks external receipt amounts unavailable');
-    } finally { Illuminate\Support\Facades\Schema::swap($schemaRoot); }
+    $immatureAccount=$purchaseUser('immature-only',1);
+    $emptyFirst=$analytics->report(7,'all')['firstPurchase'];
+    $assert($emptyFirst['registered']===0 && $emptyFirst['verifiedRecurringAccounts']===0
+        && $emptyFirst['verifiedCreditAccounts']===0,'Immature accounts never supply a conversion denominator');
     $noticeReasons=['traffic_exhausted','credits_expired','credits_exhausted','no_available_nodes','subscription_changed'];
-    foreach($noticeReasons as $reason)DB::table('v2_subscribe_log')->insert(['user_id'=>$cashAccount->id,'status'=>'failed','reason'=>$reason,'created_at'=>time()-10]);
+    foreach($noticeReasons as $reason)DB::table('v2_subscribe_log')->insert(['user_id'=>$immatureAccount->id,'status'=>'failed','reason'=>$reason,'created_at'=>time()-10]);
     $noticeCounts=array_column($service->report(7)['subscription']['reasons'],'count','reason');
     foreach($noticeReasons as $reason)$assert(($noticeCounts[$reason]??0)===1,'Operational reports preserve a distinct safe notice reason: '.$reason);
     echo "PASS {$n} admin payment/version/operations/journey checks\n";

@@ -3,24 +3,24 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 142252,
-      "startupBytes": 468749,
+      "startupGzipBytes": 142245,
+      "startupBytes": 468660,
       "startupFileCount": 16,
       "largestStartupAssets": [
         {
-          "file": "assets/render-app-yRyGJCzP.js",
+          "file": "assets/render-app-gqtuoOlJ.js",
           "bytes": 210023,
-          "gzipBytes": 65536
+          "gzipBytes": 65539
         },
         {
-          "file": "assets/createLucideIcon-C4m-lQm3.js",
+          "file": "assets/createLucideIcon-DDqQSRq3.js",
           "bytes": 200994,
-          "gzipBytes": 52656
+          "gzipBytes": 52655
         },
         {
-          "file": "assets/app-B-LKWNEb.js",
-          "bytes": 12582,
-          "gzipBytes": 5263
+          "file": "assets/app-BwpfQhze.js",
+          "bytes": 12597,
+          "gzipBytes": 5276
         },
         {
           "file": "assets/runtime-config-DXkPanaE.js",
@@ -28,9 +28,9 @@
           "gzipBytes": 4234
         },
         {
-          "file": "assets/browser-access-FKt3jSpC.js",
-          "bytes": 8176,
-          "gzipBytes": 3399
+          "file": "assets/browser-access-B6OLV3z8.js",
+          "bytes": 8072,
+          "gzipBytes": 3363
         }
       ],
       "budget": 163840,
@@ -38,76 +38,76 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 142252,
-          "bytes": 468749,
+          "gzipBytes": 142245,
+          "bytes": 468660,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 208235,
-          "bytes": 772699,
+          "gzipBytes": 208126,
+          "bytes": 772246,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 221278,
-          "bytes": 815632,
+          "gzipBytes": 221179,
+          "bytes": 815179,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 211547,
-          "bytes": 739822,
+          "gzipBytes": 211460,
+          "bytes": 739492,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 224590,
-          "bytes": 782755,
+          "gzipBytes": 224513,
+          "bytes": 782425,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3490895,
+      "totalBytes": 3484140,
       "fileCount": 343
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 379379,
-      "startupBytes": 1286278,
+      "startupGzipBytes": 380579,
+      "startupBytes": 1290655,
       "startupFileCount": 31,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-CS_I_uN-.js",
-          "bytes": 519822,
-          "gzipBytes": 147283
+          "file": "assets/AdminApp-DfdZ7cmZ.js",
+          "bytes": 524045,
+          "gzipBytes": 148421
         },
         {
-          "file": "assets/render-app-yRyGJCzP.js",
+          "file": "assets/render-app-gqtuoOlJ.js",
           "bytes": 210023,
-          "gzipBytes": 65536
+          "gzipBytes": 65539
         },
         {
-          "file": "assets/createLucideIcon-C4m-lQm3.js",
+          "file": "assets/createLucideIcon-DDqQSRq3.js",
           "bytes": 200994,
-          "gzipBytes": 52656
+          "gzipBytes": 52655
         },
         {
-          "file": "assets/admin-status-BK2ySKox.js",
+          "file": "assets/admin-status-CclqRTtT.js",
           "bytes": 117689,
-          "gzipBytes": 47913
+          "gzipBytes": 47914
         },
         {
-          "file": "assets/AdminApp-Bv2qvgur.css",
-          "bytes": 100647,
-          "gzipBytes": 16351
+          "file": "assets/AdminApp-BQOSRySg.css",
+          "bytes": 100796,
+          "gzipBytes": 16378
         }
       ],
       "budget": 460800,
-      "totalBytes": 4777057,
+      "totalBytes": 4771433,
       "fileCount": 93
     }
   ],

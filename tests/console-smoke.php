@@ -1,4 +1,6 @@
 <?php
+use Illuminate\Support\Facades\DB;
+
 // Run with: php tests/console-smoke.php (requires a configured local database).
 $app = require __DIR__.'/support/bootstrap.php';
 $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
@@ -73,6 +75,95 @@ try {
     $assert($call($operationsUrl.'?days=7')->getStatusCode()===403,'Operations analytics rejects anonymous access');
     $subjectAuth=new App\Services\AuthService($subject);
     $subjectToken=$subjectAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $dashboardReportUrl = '/api/v1/'.$securePath.'/analytics/report';
+    $dashboardRiskUrl = '/api/v1/'.$opsPath.'/risk/summary/fetch';
+    foreach ([$dashboardReportUrl, $dashboardRiskUrl] as $dashboardUrl) {
+        $assert($call($dashboardUrl)->getStatusCode()===403 && $call($dashboardUrl, null, $subjectToken)->getStatusCode()===403,
+            'Dashboard reporting requires administrator access: '.$dashboardUrl);
+    }
+    foreach ([
+        $dashboardReportUrl.'?days=7&device=mobile&view=traffic'=>'sourceCoverage',
+        $dashboardReportUrl.'?days=7&device=mobile&view=conversion'=>'firstPurchase',
+        '/api/v1/'.$securePath.'/analytics/journey?days=7&device=mobile&view=experience'=>'experience',
+        $dashboardRiskUrl.'?window=7d&view=dashboard'=>'blacklist',
+    ] as $dashboardUrl => $metric) {
+        $dashboardResponse = $call($dashboardUrl, null, $token);
+        $assert($dashboardResponse->getStatusCode()===200 && isset(json_decode($dashboardResponse->getContent(), true)['data'][$metric])
+            && str_contains($dashboardResponse->headers->get('Cache-Control'), 'no-store'),
+            'Administrator dashboard response is readable and private: '.$dashboardUrl);
+    }
+    $creditUrl='/api/v1/'.$securePath.'/user/creditBatches?user_id='.$subject->id;
+    $assert($call($creditUrl)->getStatusCode()===403 && $call($creditUrl,null,$subjectToken)->getStatusCode()===403,
+        'Credit batch details require administrator access');
+    $creditData = function ($query = '', &$response = null) use ($call, $creditUrl, $token, $assert) {
+        $response = $call($creditUrl.$query, null, $token);
+        $payload = json_decode($response->getContent(), true);
+        $assert($response->getStatusCode() === 200 && isset($payload['data']),
+            'Credit batch query '.$query.' returned HTTP '.$response->getStatusCode().': '
+            .(($response->exception ?? null)?->getMessage() ?? $payload['message'] ?? 'missing data'));
+        return $payload;
+    };
+    $emptyCredits = $creditData();
+    $assert($emptyCredits['data']===[] && $emptyCredits['total']===0 && $emptyCredits['meta']['summary']=== [
+        'available_bytes'=>0, 'next_expiry_at'=>null, 'next_expiry_bytes'=>null,
+    ], 'New accounts have an empty credit batch list and summary');
+    DB::beginTransaction();
+    try {
+        $now = time();
+        $order = App\Models\Order::create([
+            'user_id'=>$subject->id, 'plan_id'=>1, 'trade_no'=>'credit-detail-'.bin2hex(random_bytes(6)),
+            'period'=>'onetime_price', 'type'=>1, 'status'=>3, 'total_amount'=>1000,
+        ]);
+        $otherOrder = App\Models\Order::create([
+            'user_id'=>$user->id, 'plan_id'=>1, 'trade_no'=>'credit-other-'.bin2hex(random_bytes(6)),
+            'period'=>'onetime_price', 'type'=>1, 'status'=>3, 'total_amount'=>1000,
+        ]);
+        $fixture = ['created_at'=>$now-100, 'user_id'=>$subject->id];
+        DB::table('v2_credit_batch')->insert([
+            $fixture + ['reference'=>'order:'.$order->id, 'remaining_bytes'=>200, 'expires_at'=>$now+3600],
+            $fixture + ['reference'=>'upgrade:'.$subject->id, 'remaining_bytes'=>100, 'expires_at'=>$now+7200],
+            $fixture + ['reference'=>'used-credit:'.$subject->id, 'remaining_bytes'=>0, 'expires_at'=>$now+1800],
+            $fixture + ['reference'=>'order:'.$otherOrder->id, 'remaining_bytes'=>50, 'expires_at'=>$now],
+            array_replace($fixture, ['user_id'=>$user->id, 'reference'=>'credit-isolation:'.$user->id,
+                'remaining_bytes'=>999, 'expires_at'=>$now+100]),
+        ]);
+        DB::table('v2_traffic_credit_log')->insert([
+            $fixture + ['reference'=>'order:'.$order->id, 'kind'=>'purchase', 'bytes'=>250,
+                'snapshot'=>json_encode(['name'=>'Purchased credit pack', 'private_fixture'=>'excluded'])],
+            array_replace($fixture, ['user_id'=>$user->id, 'reference'=>'order:'.$otherOrder->id,
+                'kind'=>'purchase', 'bytes'=>999, 'snapshot'=>json_encode(['name'=>'Other user pack'])]),
+        ]);
+        DB::table('v2_user')->where('id', $subject->id)->update(['credit_balance'=>350]);
+        $payload = $creditData('&pageSize=1', $response);
+        $purchase = $payload['data'][0];
+        $assert($response->getStatusCode()===200 && str_contains($response->headers->get('Cache-Control'), 'no-store')
+            && $payload['total']===4 && count($payload['data'])===1 && $purchase['order_id']===$order->id
+            && $purchase['trade_no']===$order->trade_no && $purchase['source']==='purchase'
+            && $purchase['plan_name']==='Purchased credit pack' && $purchase['granted_bytes']===250
+            && $purchase['available_bytes']===200 && $purchase['status']==='active'
+            && !str_contains($response->getContent(), 'private_fixture'), 'Nearest active batch is first and exposes only selected purchase fields');
+        $assert($payload['meta']['summary']===['available_bytes'=>300, 'next_expiry_at'=>$now+3600, 'next_expiry_bytes'=>200],
+            'Summary excludes unprocessed expired credits and covers all pages');
+        $historical = $creditData('&pageSize=1&current=2')['data'][0];
+        $assert($historical['source']==='upgrade' && $historical['granted_bytes']===null && $historical['available_bytes']===100,
+            'Historical batches preserve unknown issuance and paginate');
+        $used = $creditData('&status=used');
+        $assert($used['total']===1 && $used['data'][0]['status']==='used' && $used['data'][0]['available_bytes']===0,
+            'Depleted batches are independently filterable');
+        $expired = $creditData('&status=expired');
+        $assert($expired['total']===1 && $expired['meta']===$payload['meta'] && $expired['data'][0]['remaining_bytes']===50
+            && $expired['data'][0]['available_bytes']===0 && $expired['data'][0]['order_id']===null
+            && $expired['data'][0]['trade_no']===null && $expired['data'][0]['granted_bytes']===null,
+            'Expired filter keeps overall summary and never joins another user order or grant');
+        $assert($creditData('&status=active')['total']===2 && $call($creditUrl.'&status=invalid',null,$token)->getStatusCode()===422
+            && $call($creditUrl.'&pageSize=101',null,$token)->getStatusCode()===422,
+            'Active filtering and bounded request validation');
+        $assert((int)DB::table('v2_user')->where('id', $subject->id)->value('credit_balance')===350
+            && (int)DB::table('v2_credit_batch')->where('reference', 'order:'.$otherOrder->id)->value('remaining_bytes')===50,
+            'Credit history reads never run expiry cleanup');
+    } finally {
+        DB::rollBack();
+    }
     $assert($call($operationsUrl.'?days=7',null,$subjectToken)->getStatusCode()===403,'Operations analytics rejects ordinary account credentials');
     $journeyUrl='/api/v1/'.$securePath.'/analytics/journey';
     $assert($call($journeyUrl.'?days=7')->getStatusCode()===403 && $call($journeyUrl.'?days=7',null,$subjectToken)->getStatusCode()===403,'Journey analytics rejects anonymous and ordinary-account access');
@@ -939,4 +1030,4 @@ PHP;
     config(['fastai' => $originalConfig]);
     Illuminate\Support\Facades\Artisan::call('config:cache');
 }
-if ($failure) { fwrite(STDERR, $failure->getMessage() . "\n"); exit(1); }
+if ($failure) { fwrite(STDERR, basename($failure->getFile()).':'.$failure->getLine().' '.$failure->getMessage()."\n"); exit(1); }

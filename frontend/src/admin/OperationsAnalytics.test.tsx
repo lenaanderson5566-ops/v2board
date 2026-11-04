@@ -24,58 +24,17 @@ import {
 } from "./OperationsAnalytics";
 import { ReportTable } from "./ReportTable";
 import { AdminAnalytics } from "./AdminAnalytics";
-import { FirstPurchaseReport, type FirstPurchaseData, type ReceiptData } from "./FirstPurchaseReport";
-import { money } from "../shared/api";
+import type { DashboardFirstPurchaseData } from "./FirstPurchaseReport";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
 });
 const at = "2026-10-19T02:00:00Z";
-function firstPurchaseFixture(): Extract<FirstPurchaseData, { available: true }> {
+function firstPurchaseFixture(): Extract<DashboardFirstPurchaseData, { available: true }> {
     return { available: true, from: at, to: at, windowDays: 7, registered: 10,
-        paidRecurringAccounts: 5, paidRecurringRate: 0.5,
         funding: { externalOnly: 1, mixed: 1, walletOnly: 2, manual: 1, unclassified: 0 },
-        zeroValueRecurringAccounts: 3, creditOnlyRecurringAccounts: 1,
-        otherPurchases: { depositAccounts: 6, independentCreditAccounts: 2, resetAccounts: 1, legacyOneTimeAccounts: 0 } };
+        verifiedRecurringAccounts: 4, verifiedCreditAccounts: 2 };
 }
-function receiptsFixture(): Extract<ReceiptData, { available: true }> {
-    return { available: true, from: at, to: at, complete: true,
-        byCurrency: [
-            { currency: "CNY", grossAmount: 12345, orders: 2, kinds: [{ kind: "deposit", grossAmount: 10000, orders: 1 }, { kind: "recurring", grossAmount: 2345, orders: 1 }] },
-            { currency: "USD", grossAmount: 5000, orders: 1, kinds: [{ kind: "recurring", grossAmount: 5000, orders: 1 }] },
-        ], unresolvedExternalOrders: 0, manualOrders: 1, walletOnlyOrders: 2, zeroExternalOrders: 3,
-        refundAmount: null, providerFeeAmount: null, netAmount: null, settlementAmount: null };
-}
-it("distinguishes valued recurring first purchases from zero-price grants and other purchases", () => {
-    render(<FirstPurchaseReport firstPurchase={firstPurchaseFixture()} receipts={receiptsFixture()} timeZone="Asia/Shanghai" />);
-    const panel = screen.getByRole("heading", { name: "周期套餐首购 · 7 天观察窗" }).closest("section")!;
-    expect(within(panel).getByText("有价首购确认率").parentElement?.textContent).toContain("50%");
-    expect(within(panel).getByText("7 天内有价周期套餐首购").parentElement?.textContent).toContain("5");
-    expect(within(panel).getByRole("row", { name: /仅余额支付/ }).textContent).toContain("2");
-    expect(within(panel).getByRole("row", { name: /人工确认/ }).textContent).toContain("1");
-    expect(within(panel).getByText(/不能直接视为现金首购率/)).toBeTruthy();
-    expect(within(panel).getByText(/独立诊断人数，可与首购用户重叠/)).toBeTruthy();
-});
-it("keeps payment currencies separate and never fabricates refund fees net income or settlement", () => {
-    render(<FirstPurchaseReport firstPurchase={firstPurchaseFixture()} receipts={receiptsFixture()} timeZone="Asia/Shanghai" />);
-    const panel = screen.getByRole("heading", { name: "外部订单回调确认金额" }).closest("section")!;
-    const summary = panel.querySelector("table")!;
-    expect(within(summary).getByRole("row", { name: /CNY/ }).textContent).toContain(money(12345, "CNY"));
-    expect(within(summary).getByRole("row", { name: /USD/ }).textContent).toContain(money(5000, "USD"));
-    expect(within(panel).getByText(/退款、服务商手续费、净收入与服务商结算金额：不可计算/)).toBeTruthy();
-    expect(within(panel).getByText(/后续余额消费不重复计入/)).toBeTruthy();
-});
-it("labels incomplete receipts and distinguishes missing reports from empty cohorts", () => {
-    const first = firstPurchaseFixture();
-    const receipts = receiptsFixture();
-    const view = render(<FirstPurchaseReport timeZone="UTC" />);
-    expect(screen.getByText(/首购统计暂不可用/)).toBeTruthy();
-    expect(screen.getByText(/外部收款记录暂不可用/)).toBeTruthy();
-    view.rerender(<FirstPurchaseReport firstPurchase={{ ...first, registered: 0, paidRecurringAccounts: 0, paidRecurringRate: null }} receipts={{ ...receipts, complete: false, unresolvedExternalOrders: 2 }} timeZone="UTC" />);
-    expect(screen.getByText("有价首购确认率").parentElement?.textContent).toContain("—");
-    expect(screen.getByText(/2 笔外部订单缺少可核实的收款快照/).getAttribute("role")).toBe("status");
-    expect(screen.queryByText(/首购统计暂不可用/)).toBeNull();
-});
 function fixture(): OperationsReport {
     const access = {
         available: true,
@@ -321,50 +280,50 @@ it("reloads for the selected range and displays request errors", async () => {
         "test-admin/analytics/operations?days=90",
     );
 });
-it("integrates range, device-independent operations and local access distributions in the existing page", async () => {
+it("uses the traffic and conversion projections and keeps observed intent separate from verified orders", async () => {
     api.request.mockImplementation(async (path: string) => ({
         data: path.includes("/operations")
             ? fixture()
             : {
-                  settings: { enabled: false, retentionDays: 30 },
+                  settings: { enabled: true, retentionDays: 30 },
                   ready: true,
                   timeZone: "Asia/Shanghai",
                   from: at,
                   to: at,
-                  latestEventAt: null,
                   effectiveFrom: at,
-                  collectionStartedAt: null,
+                  collectionStartedAt: at,
                   previous: null,
-                  daily: [],
-                  sessions: 0,
-                  views: 0,
-                  pages: [],
-                  devices: [],
-                  funnel: [],
-                  cohort: {
-                      from: at,
-                      to: at,
-                      windowDays: 7,
-                      registered: 0,
-                      ordered: 0,
-                      paid: 0,
-                      completed: 0,
-                  },
-                  hours: Array(24).fill(0),
-                  weekdays: Array(7).fill(0),
+                  ...(path.includes("view=conversion") ? {
+                      firstPurchase: { ...firstPurchaseFixture(), verifiedRecurringAccounts: 4, verifiedCreditAccounts: 2 },
+                      funnel: [{ step: "plan", sessions: 10 }, { step: "confirmation", sessions: 4 }, { step: "payment", sessions: 3 }],
+                  } : {
+                      daily: [{ date: "2026-10-18", sessions: 0, available: false }, { date: "2026-10-19", sessions: 10, available: true }],
+                      sessions: 10,
+                      sourceCoverage: { known: 4, unknown: 4, historical: 2 },
+                      sources: [{ domain: "partner.example.test", sessions: 4, paymentEntries: 2 }],
+                  }),
               },
     }));
     render(<AdminAnalytics />);
-    await screen.findByRole("heading", { name: "访问摘要" });
+    await screen.findByRole("heading", { name: "访问会话与趋势" });
     expect(screen.getAllByRole("tab").map(tab=>tab.textContent)).toEqual(["访问概览","购买转化","体验问题"]);
-    expect(screen.queryByRole("heading", {name:"访问时段分布"})).toBeNull();
+    expect(screen.getByRole("row", {name:/partner.example.test.*4.*2.*50%/})).toBeTruthy();
+    expect(screen.getByText(/来源未知 4 个，历史未采集 2 个/).textContent).toContain("4 / 10");
+    expect(screen.getByText(/当前没有可对照的上期采集数据/)).toBeTruthy();
+    expect(screen.queryByText("页面浏览")).toBeNull();
+    expect(screen.queryByRole("heading", {name:"访问浏览器与系统"})).toBeNull();
     expect(api.request.mock.calls.every(([path])=>!path.includes("/operations") && !path.includes("/journey"))).toBe(true);
     fireEvent.mouseDown(screen.getByRole("tab",{name:"购买转化"}),{button:0,ctrlKey:false});
-    await screen.findByRole("heading",{name:"注册后的业务转化 · 7 天观察窗"});
-    expect(screen.queryByRole("heading",{name:"转化改进工作台"})).toBeNull();
+    await screen.findByRole("heading",{name:"新用户付费转化 · 7 天观察窗"});
+    expect(screen.getByText("周期套餐首购").parentElement?.textContent).toContain("40%");
+    expect(screen.getByText("独立额度包购买").parentElement?.textContent).toContain("20%");
+    expect(screen.getByText(/人工确认首购 1 个/)).toBeTruthy();
+    expect(screen.getByText(/进入付款页只代表到达/)).toBeTruthy();
+    expect(screen.queryByRole("heading",{name:"外部订单回调确认金额"})).toBeNull();
+    expect(screen.queryByRole("heading",{name:/注册后的业务转化/})).toBeNull();
     fireEvent.mouseDown(screen.getByRole("tab",{name:"访问概览"}),{button:0,ctrlKey:false});
     fireEvent.change(screen.getByLabelText("统计范围"),{target:{value:"90"}});
-    await waitFor(()=>expect(api.request.mock.calls.some(([p])=>p.includes("days=90"))).toBe(true));
+    await waitFor(()=>expect(api.request.mock.calls.some(([p])=>p.includes("days=90") && p.includes("view=traffic"))).toBe(true));
     fireEvent.change(screen.getByLabelText("访问设备"), {
         target: { value: "mobile" },
     });
@@ -378,6 +337,24 @@ it("integrates range, device-independent operations and local access distributio
             .filter(([p]) => p.includes("/operations"))
             .every(([p]) => !p.includes("device")),
     ).toBe(true);
+});
+
+it("shows missing traffic and immature conversion samples without displaying a zero-percent conversion", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: {
+        settings: { enabled: false, retentionDays: 30 }, ready: true, timeZone: "Asia/Shanghai",
+        from: at, to: at, effectiveFrom: at, collectionStartedAt: null,
+        ...(path.includes("view=conversion") ? {
+            firstPurchase: { ...firstPurchaseFixture(), registered: 0, verifiedRecurringAccounts: 0, verifiedCreditAccounts: 0 },
+            funnel: [],
+        } : { daily: [], sessions: 0, previous: null, sourceCoverage: null, sources: [] }),
+    } }));
+    render(<AdminAnalytics />);
+    expect(await screen.findByText("当前范围没有可用的访问采集样本。")).toBeTruthy();
+    expect(screen.queryByText(/本期已采集会话/)).toBeNull();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "购买转化" }), { button: 0, ctrlKey: false });
+    expect((await screen.findByText("周期套餐首购")).parentElement?.textContent).toContain("—");
+    expect(screen.getByText("独立额度包购买").parentElement?.textContent).toContain("—");
+    expect(screen.getByText("当前没有可计算购买路径的套餐浏览会话。")).toBeTruthy();
 });
 
 it("labels existing-log IP totals and renders masked addresses without implying unique users", async () => {

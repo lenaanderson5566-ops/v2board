@@ -18,7 +18,7 @@ import {
     privacyRevision,
     savePrivacyChoice,
     setCollection,
-    trackAction,
+    trackCopyFailure,
     useAnalyticsPage,
 } from "./product-analytics";
 import { observeApi } from "../shared/telemetry";
@@ -59,7 +59,7 @@ const legacyPrivacyKey="v2board.analytics.consent.v2.%2Fapi%2Fv10";
 
 it("retains an earlier refusal without granting analytics during the brand migration", async () => {
     localStorage.setItem(legacyPrivacyKey,JSON.stringify({choice:"deny",version:3,chosenAt:Date.now(),retentionDays:30}));
-    render(<Page />);setCollection(true);trackAction("download");
+    render(<Page />);setCollection(true);trackCopyFailure();
     await Promise.resolve();
     expect(consent()).toBe("deny");expect(fetcher).not.toHaveBeenCalled();
     expect(localStorage.getItem(privacyKey)).toBeNull();
@@ -92,7 +92,7 @@ it("publishes a new withdrawal to older tabs and stops collection when an older 
         const denial=JSON.stringify({choice:"deny",version:privacyRevision,chosenAt:now,retentionDays:30});
         localStorage.setItem(legacyPrivacyKey,denial);
         window.dispatchEvent(new StorageEvent("storage",{key:legacyPrivacyKey,newValue:denial,storageArea:localStorage}));
-        trackAction("payment_open","payment");
+        trackCopyFailure("payment");
         await Promise.resolve();
     });
     expect(consent()).toBe("deny");expect(reports()).toHaveLength(before);
@@ -114,7 +114,7 @@ it.each([privacyKey, legacyPrivacyKey, null])("keeps a newer explicit choice aft
     const before=reports().length;
     await act(async()=>{
         window.dispatchEvent(new StorageEvent("storage",{key:removedKey,newValue:null,storageArea:localStorage}));
-        trackAction("payment_open","payment");await Promise.resolve();
+        trackCopyFailure("payment");await Promise.resolve();
     });
     expect(consent()).toBe("allow");
     expect(localStorage.getItem(privacyKey)).toBe(newest);
@@ -133,7 +133,7 @@ it.each([privacyKey, legacyPrivacyKey, null])("ignores session storage deletion 
     const before=reports().length;
     await act(async()=>{
         window.dispatchEvent(new StorageEvent("storage",{key:removedKey,newValue:null,storageArea:sessionStorage}));
-        trackAction("payment_open","payment");await Promise.resolve();
+        trackCopyFailure("payment");await Promise.resolve();
     });
     expect(consent()).toBe("allow");
     expect(localStorage.getItem(privacyKey)).toBe(choice);
@@ -160,7 +160,7 @@ it("stops collection conservatively if consent storage becomes unreadable during
     });
     await act(async()=>{
         window.dispatchEvent(new StorageEvent("storage",{key:privacyKey,newValue:null,storageArea:localStorage}));
-        trackAction("payment_open","payment");await Promise.resolve();
+        trackCopyFailure("payment");await Promise.resolve();
     });
     expect(consent()).toBeNull();expect(reports()).toHaveLength(before);
 });
@@ -199,7 +199,7 @@ it("withdraws through an existing legacy key when new-key persistence is full, w
     expect(toggle.getAttribute("aria-checked")).toBe("false");expect(consent()).toBe("deny");
     expect(localStorage.getItem(privacyKey)).toBeNull();
     expect(JSON.parse(localStorage.getItem(legacyPrivacyKey)!).choice).toBe("deny");
-    trackAction("payment_open","payment");await Promise.resolve();
+    trackCopyFailure("payment");await Promise.resolve();
     expect(fetcher.mock.calls.filter(([url])=>String(url).endsWith("/events"))).toHaveLength(0);
 });
 
@@ -234,22 +234,20 @@ it("requires renewed permission for previous allows while preserving prior refus
     expect(consent()).toBe("deny");
     expect(privacyRevision).toBe(5);
 });
-it("does not report views, guide actions or API observations without permission", async () => {
+it("does not report views, copy failures or API observations without permission", async () => {
     render(<Page />);
     setCollection(true);
-    trackAction("download");
-    trackAction("payment_open", "payment");
+    trackCopyFailure();
+    trackCopyFailure("payment");
     observeApi({ duration: 100, failure: "api_error" });
     await Promise.resolve();
     expect(fetcher).not.toHaveBeenCalled();
 });
-it("sends only named actions and numeric document samples, never link or error contents", async () => {
+it("sends copy failures and numeric document samples without link or error contents", async () => {
     savePrivacyChoice("allow", 30);
     render(<Page />);
     setCollection(true);
-    trackAction("copy_success");
-    trackAction("import_start");
-    trackAction("help_open");
+    trackCopyFailure();
     await waitFor(() => expect(vital.lcp).toHaveBeenCalled());
     const report = vital.lcp.mock.calls[0][0];
     report({ value: 1234, entries: [{ url: "private-subscription-token" }] });
@@ -259,7 +257,7 @@ it("sends only named actions and numeric document samples, never link or error c
     );
     expect(events().filter((e) => e.event === "lcp")).toHaveLength(1);
     expect(events().find((e) => e.event === "lcp").value).toBe(1234);
-    expect(events().some((e) => e.event === "copy_success")).toBe(true);
+    expect(events().some((e) => e.event === "copy_failed")).toBe(true);
     expect(JSON.stringify(events())).not.toContain(
         "private-subscription-token",
     );
@@ -270,7 +268,7 @@ it("sends only named actions and numeric document samples, never link or error c
         ),
     ).toBe(true);
 });
-it("revocation prevents further action and error reporting", async () => {
+it("revocation prevents further copy failure and error reporting", async () => {
     savePrivacyChoice("allow", 30);
     render(<Page />);
     setCollection(true);
@@ -278,8 +276,8 @@ it("revocation prevents further action and error reporting", async () => {
     savePrivacyChoice("deny", 30);
     setCollection(false);
     const before = fetcher.mock.calls.length;
-    trackAction("download");
-    trackAction("payment_open", "payment");
+    trackCopyFailure();
+    trackCopyFailure("payment");
     observeApi({ duration: 20, failure: "network_error" });
     window.dispatchEvent(new ErrorEvent("error", { message: "secret-stack" }));
     await Promise.resolve();
@@ -290,8 +288,8 @@ it("honors DNT even after allowing analytics", async () => {
     vi.spyOn(navigator, "doNotTrack", "get").mockReturnValue("1");
     render(<Page />);
     setCollection(true);
-    trackAction("download");
-    trackAction("payment_open", "payment");
+    trackCopyFailure();
+    trackCopyFailure("payment");
     await Promise.resolve();
     expect(fetcher).not.toHaveBeenCalled();
 });
@@ -312,35 +310,29 @@ it("bounds API sampling and reports only error categories", async () => {
     );
 });
 
-it("guide actions remain consent gated and do not include the handoff URL or raw UA", async () => {
-    trackAction("guide_continue", "browser_prompt");
+it("browser guide copy failures remain consent gated and exclude the handoff URL and raw UA", async () => {
+    trackCopyFailure("browser_prompt");
     await Promise.resolve();
     expect(fetcher).not.toHaveBeenCalled();
     savePrivacyChoice("allow", 30);
     setCollection(true);
-    trackAction("guide_manual", "browser_guide");
+    trackCopyFailure("browser_guide");
     await waitFor(() =>
-        expect(events().some((e) => e.event === "guide_manual")).toBe(true),
+        expect(events().some((e) => e.event === "copy_failed")).toBe(true),
     );
-    const event = events().find((e) => e.event === "guide_manual");
+    const event = events().find((e) => e.event === "copy_failed");
     expect(event.page).toBe("browser_guide");
     expect(event).not.toHaveProperty("url");
     expect(event).not.toHaveProperty("userAgent");
     expect(event).not.toHaveProperty("ip");
 });
 
-it("records explicit payment entry clicks and copy results without reporting a payment result or private contents", async () => {
+it("reports a payment copy failure without including payment results or private contents", async () => {
     savePrivacyChoice("allow", 30);
     setCollection(true);
-    trackAction("payment_open", "payment");
-    trackAction("copy_success", "payment");
-    trackAction("copy_failed", "payment");
-    await waitFor(() => expect(events()).toHaveLength(3));
-    expect(events().map((event) => event.event)).toEqual([
-        "payment_open",
-        "copy_success",
-        "copy_failed",
-    ]);
+    trackCopyFailure("payment");
+    await waitFor(() => expect(events()).toHaveLength(1));
+    expect(events().map((event) => event.event)).toEqual(["copy_failed"]);
     for (const event of events()) {
         expect(event.page).toBe("payment");
         expect(Object.keys(event).sort()).toEqual(

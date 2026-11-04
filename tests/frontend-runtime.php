@@ -21,25 +21,20 @@ try {
         $key='browser_policy_'.$browser;
         foreach (['allow','prompt','guide','invalid','',null] as $value) $assert(validator([$key=>$value],[$key=>$rules[$key]])->passes()===in_array($value,['allow','prompt','guide'],true),'Browser policy accepts only enum: '.$key.' '.json_encode($value));
     }
-    foreach ([['Mozilla/5.0 (Linux; Android 14; wv) Chrome/123.0 MicroMessenger/8','chrome',123,'android','wechat'],['Mozilla/5.0 (iPhone) Version/17.2 Safari/605.1 QQ/8','safari',17,'ios','qq'],['Mozilla/5.0 Chrome/120.0 Edg/121.1','edge',121,'unknown','none'],['Weibo','unknown',null,'unknown','weibo'],['Instagram','unknown',null,'unknown','other'],[str_repeat('x',1024).' MicroMessenger','unknown',null,'unknown','none']] as [$ua,$browser,$major,$os,$embedded]) {
-        $assert(App\Services\BrowserAccess::classify($ua)===['browser'=>$browser,'browser_major'=>$major,'os'=>$os,'embedded'=>$embedded],'Bounded UA classification: '.$browser.' '.$embedded);
-    }
+    $logCategory=fn ($ua) => Illuminate\Support\Facades\DB::selectOne('SELECT '.App\Services\BrowserAccess::logCategorySql().' AS category FROM (SELECT ? AS user_agent) AS sample',[$ua])->category;
     foreach (['XiaoHongShu'=>'xiaohongshu','Aweme'=>'douyin','BiliApp'=>'bilibili','AlipayClient'=>'alipay','DingTalk'=>'dingtalk','MicroMessenger wxwork'=>'wecom'] as $ua=>$expected) {
-        $assert(App\Services\BrowserAccess::classify($ua)['embedded']===$expected,'Application UA: '.$expected);
+        $assert($logCategory($ua)===$expected,'Existing-log application category: '.$expected);
         $assert(App\Services\BrowserAccess::policies()[$expected]===($expected==='wecom'?'guide':'allow'),'Platform default follows its configured entry policy');
     }
-    foreach ([['MicroMessenger/8 wxwork/4','wecom'],['DingTalk MicroMessenger wxwork/4','wecom'],['XiaoHongShu/9 MicroMessenger/8','xiaohongshu'],['MICROMESSENGER/8','wechat'],['Mobile QQ/9.0 MQQBrowser/15.0','qq'],['Mozilla Android;wv) Chrome/130','other'],['Mozilla Android;  wv; Chrome/130','other'],['[FB_IAB/FB4A;]','other'],['Instagram 300','other'],['MQQBrowser/15.0','none'],['NotQQ/9.0','none'],['NotInstagram/300','none'],['Mozilla iPhone AppleWebKit/605.1 Version/18.0 Mobile Safari/605.1','none'],['Mozilla Android Chrome/130 Mobile Safari/537.36','none'],[str_repeat('x',1024).' MicroMessenger/8','none']] as [$ua,$expected]) {
-        $classified=App\Services\BrowserAccess::classify($ua);
-        $assert($classified['embedded']===$expected,'Embedded attribution preserves marker boundaries and precedence: '.$expected);
-        $sqlCategory=Illuminate\Support\Facades\DB::selectOne('SELECT '.App\Services\BrowserAccess::logCategorySql().' AS category FROM (SELECT ? AS user_agent) AS sample',[$ua])->category;
-        $expectedCategory=$expected==='none' ? $classified['browser'] : ($expected==='other' ? 'embedded_other' : $expected);
-        $assert($sqlCategory===$expectedCategory,'Existing-log category agrees with bounded attribution: '.$expectedCategory);
-    }
-    foreach ([['Chrome/120.0 360SE','360',null],['Chrome/120.0 360EE','360',null],['Chrome/120.0 SE 2.X MetaSr 1.0','sogou',null],['Chrome/120.0 SogouMobileBrowser/6.2','sogou',6],['Chrome/120.0 QQBrowser/12.1','qqbrowser',12],['Chrome/120.0 UCBrowser/17.2','uc',17],['Chrome/117.0 SamsungBrowser/24.0','samsung',24],['Chrome/120.0','chrome',120],['EdgiOS/120.0','edge',120]] as [$ua,$family,$major]) {
-        $classified=App\Services\BrowserAccess::classify($ua);
-        $assert($classified['browser']===$family && $classified['browser_major']===$major,'Browser family and own version: '.$family);
-        $sqlFamily=Illuminate\Support\Facades\DB::selectOne('SELECT '.App\Services\BrowserAccess::logCategorySql().' AS category FROM (SELECT ? AS user_agent) AS sample',[$ua])->category;
-        $assert($sqlFamily===$family,'Existing-log SQL agrees with browser category: '.$family);
+    foreach ([['MicroMessenger/8 wxwork/4','wecom'],['DingTalk MicroMessenger wxwork/4','wecom'],['XiaoHongShu/9 MicroMessenger/8','xiaohongshu'],
+        ['MICROMESSENGER/8','wechat'],['Mobile QQ/9.0 MQQBrowser/15.0','qq'],['Weibo','weibo'],['Mozilla Android;wv) Chrome/130','embedded_other'],
+        ['Mozilla Android;  wv; Chrome/130','embedded_other'],['[FB_IAB/FB4A;]','embedded_other'],['Instagram 300','embedded_other'],
+        ['MQQBrowser/15.0','qqbrowser'],['NotQQ/9.0','unknown'],['NotInstagram/300','unknown'],
+        ['Mozilla iPhone AppleWebKit/605.1 Version/18.0 Mobile Safari/605.1','safari'],['Mozilla Android Chrome/130 Mobile Safari/537.36','chrome'],
+        [str_repeat('x',1024).' MicroMessenger/8','unknown'],['Chrome/120.0 360SE','360'],['Chrome/120.0 360EE','360'],
+        ['Chrome/120.0 SE 2.X MetaSr 1.0','sogou'],['Chrome/120.0 SogouMobileBrowser/6.2','sogou'],['Chrome/120.0 QQBrowser/12.1','qqbrowser'],
+        ['Chrome/120.0 UCBrowser/17.2','uc'],['Chrome/117.0 SamsungBrowser/24.0','samsung'],['Chrome/120.0','chrome'],['EdgiOS/120.0','edge']] as [$ua,$expected]) {
+        $assert($logCategory($ua)===$expected,'Existing-log category preserves marker boundaries and precedence: '.$expected);
     }
     $user = App\Support\FrontendRuntime::config('user', false);
     $admin = App\Support\FrontendRuntime::config('admin');

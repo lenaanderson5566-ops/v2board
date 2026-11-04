@@ -41,6 +41,7 @@
     {"id": "credit-access", "file": "tests/credit-access.php", "suite": "integration"},
     {"id": "credit-expiry", "file": "tests/credit-expiry.php", "suite": "integration"},
     {"id": "dashboard-revenue", "file": "tests/dashboard-revenue.php", "suite": "integration"},
+    {"id": "dashboard-telemetry-retirement", "file": "tests/dashboard-telemetry-retirement.php", "suite": "regression", "profile": "empty"},
     {"id": "default-ua-install", "file": "tests/default-ua-install.php", "suite": "regression"},
     {"id": "email-invitations", "file": "tests/email-invitations.php", "suite": "integration"},
     {"id": "fastai-browser-login", "file": "tests/fastai-browser-login.php", "suite": "security"},

@@ -2,6 +2,7 @@ import { formatNumber, formatPercent } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
+import { AdminSubscriptionExpiry } from "./AdminSubscriptionExpiry";
 import { languageCodes } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -300,7 +301,7 @@ export const resources: Record<string, Resource> = {
                     {r.alive_ip || 0} / {r.device_limit || "不限"}
                 </span>,
             ],
-            ["expired_at", "到期时间", (r) => date(r.expired_at)],
+            ["expired_at", "订阅到期", (r) => <AdminSubscriptionExpiry user={r} />],
             ["currency", "账号币种", (r) => r.currency || "CNY"],
             ["balance", "余额", (r) => money(r.balance, r.currency)],
             [
@@ -329,7 +330,10 @@ export const resources: Record<string, Resource> = {
                 scale: 100,
                 step: 0.01,
             },
-            field("expired_at", "到期时间", "datetime-local"),
+            {
+                ...field("expired_at", "订阅到期", "datetime-local"),
+                hint: "仅填写订阅的到期日期。只改余额时会保留原到期值。流量额度包的到期日在用户详情的「流量额度包」中查看。",
+            },
             field("device_limit", "设备限制", "number"),
             field("speed_limit", "速率限制", "number"),
             toggle("banned", "禁用账户"),

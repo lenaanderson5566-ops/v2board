@@ -436,6 +436,9 @@ grep -q 'All approved migrations completed' "$TMP/output"
 grep -q 'migrate --path=database/migrations/2026_10_18_000001_drop_retired_staff_role.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000001_create_analytics_measurements.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000003_add_analytics_browsers.php --force --no-interaction' calls.log
+awk '/migrate --path=database\/migrations\/2026_10_19_000003_add_analytics_browsers.php --force --no-interaction/ { browser=NR }
+     /migrate --path=database\/migrations\/2026_11_04_000004_retire_dashboard_telemetry.php --force --no-interaction/ { retirement=NR }
+     END { exit !(browser && retirement > browser) }' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000004_add_account_deletion.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_19_000002_create_passkeys.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_20_000001_create_node_dictionary.php --force --no-interaction' calls.log
@@ -462,6 +465,16 @@ git push -q origin HEAD:missing-plan-translation-migration
 ARGS+=(--branch missing-plan-translation-migration)
 reject --check
 grep -q 'Target lacks the plan translation source migration' "$TMP/output"
+[[ ! -e storage/framework/down ]]
+
+new_site missingdashboardtelemetrymigration
+git checkout -q codex/payment-icon-picker
+git rm -q database/migrations/2026_11_04_000004_retire_dashboard_telemetry.php
+git -c user.email=test@example.test -c user.name='Updater Test' commit -qm 'Incomplete dashboard telemetry retirement fixture'
+git push -q origin HEAD:missing-dashboard-telemetry-migration
+ARGS+=(--branch missing-dashboard-telemetry-migration)
+reject --check
+grep -q 'Target lacks dashboard telemetry retirement migration' "$TMP/output"
 [[ ! -e storage/framework/down ]]
 
 # A target can remove an old production package and move a tool to require-dev

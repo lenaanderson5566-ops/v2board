@@ -27,9 +27,11 @@ class LogController extends Controller
 {
     public function getSummary(Request $request)
     {
-        $params = $request->validate(['window' => 'nullable|in:today,7d,30d']);
+        $params = $request->validate(['window' => 'nullable|in:today,7d,30d', 'view' => 'sometimes|in:dashboard']);
+        $statistics = app(RiskStatisticsService::class);
+        $window = $params['window'] ?? 'today';
 
-        return response(['data' => app(RiskStatisticsService::class)->summary($params['window'] ?? 'today')]);
+        return response(['data' => isset($params['view']) ? $statistics->dashboard($window) : $statistics->summary($window)]);
     }
 
     public function getOverview(Request $request)
@@ -344,6 +346,13 @@ class LogController extends Controller
         $pageSize = min(max((int)$request->input('page_size', 10), 1), 100);
 
         $builder = RiskRuleHit::query();
+        if ($request->boolean('review_queue')) {
+            app(RiskStatisticsService::class)->pendingReview($builder, time());
+            $total = $builder->count();
+            $data = $builder->orderBy('hit_at')->orderBy('id')->forPage($current, $pageSize)->get();
+            $this->decorateLogRows($data);
+            return response(['data' => $data, 'total' => $total]);
+        }
         $this->filterLogSearch($request, $builder, ['email', 'ip', 'rule_key', 'status', 'scene'], 'hit_at');
         if ($request->filled('scene')) {
             $builder->where('scene', $request->input('scene'));
@@ -727,7 +736,7 @@ class LogController extends Controller
     {
         $params = $request->validate(['user_id' => 'required|integer|min:1']);
         $id = $params['user_id'];
-        $user = User::query()->find($id, ['id', 'email', 'expired_at', 'banned', 'u', 'd', 'credit_balance']);
+        $user = User::query()->find($id, ['id', 'email', 'expired_at', 'banned', 'u', 'd', 'transfer_enable', 'credit_balance']);
         $events = collect();
         foreach ([[LoginLog::class, 'created_at', '登录'], [SubscribeLog::class, 'created_at', '订阅'],
             [UserConnectionLog::class, 'connected_at', '连接'], [RiskRuleHit::class, 'hit_at', '风控']] as [$model, $time, $kind]) {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { ArrowUpRight } from "lucide-react";
-import { trackAction } from "./product-analytics";
 import { HelpGuides, ContactSupport } from "./HelpGuides";
 import { tx, locale, languages } from "../shared/i18n";
 import { rows, query } from "../shared/api";
@@ -65,7 +64,7 @@ export function Knowledge() {
                                         <button
                                             className="article-link"
                                             key={item.id}
-                                            onClick={() => { trackAction("help_open","knowledge"); setId(item.id); }}
+                                            onClick={() => setId(item.id)}
                                         >
                                             <span>{item.title}</span>
                                             <ArrowUpRight size={16} aria-hidden="true" />

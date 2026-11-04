@@ -18,6 +18,7 @@ export function adminPageFixture(path: string) {
         settings: { enabled: false, sampleRate: 100, retentionDays: 30 }, ready: true,
         timeZone: "Asia/Shanghai", from: "2026-10-01", to: "2026-10-19", effectiveFrom: "2026-10-01", latestEventAt: null, collectionStartedAt: null,
         sessions: 0, views: 0, daily: [], pages: [], devices: [], funnel: [], previous: null,
+        sourceCoverage: { known: 0, unknown: 0, historical: 0 }, sources: [],
         cohort: { from: "2026-10-01", to: "2026-10-19", windowDays: 7, registered: 0, ordered: 0, paid: 0, completed: 0 }
     };
     else if (path.includes("analytics/settings")) data = {settings:{enabled:false,sampleRate:100,retentionDays:30},ready:true};

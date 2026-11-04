@@ -13,6 +13,8 @@ use Illuminate\Support\Facades\DB;
 class RiskLogService
 {
     public const CONFIG_CHECK_REASON = 'config_check';
+    public const IP_BLACKLIST_REASON = 'subscription_ip_blacklisted';
+    public const UA_BLACKLIST_REASON = 'subscription_ua_blacklisted';
     private static $ruleConfigMap = null;
     private const MAX_REASON_LENGTH = 190;
 
@@ -94,7 +96,7 @@ class RiskLogService
                 'ip' => $request->ip(),
                 'ua_hash' => $uaHash,
                 'status' => 'failed',
-                'reason' => $uaHash === null ? 'subscription_ip_blacklisted' : 'subscription_ua_blacklisted',
+                'reason' => $uaHash === null ? self::IP_BLACKLIST_REASON : self::UA_BLACKLIST_REASON,
             ]);
             if ($uaHash !== null) {
                 $rule = $this->getRule('subscribe_ua_hash_blacklist_hit');

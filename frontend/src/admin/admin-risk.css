@@ -5,8 +5,11 @@
 .risk-toolbar .admin-choice-group {
     margin: 0 auto 0 0;
 }
-.risk-workspace .metrics {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+.risk-workspace .risk-block-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.risk-review-queue {
+    margin-top: 16px;
 }
 .risk-trend {
     display: flex;

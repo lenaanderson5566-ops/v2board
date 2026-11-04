@@ -160,11 +160,14 @@ it("shows core income and lazily switches to risk without removed dashboard bloc
     expect(window.location.hash).toBe("#/overview-risk");
     await waitFor(() =>
         expect(
-            api.request.mock.calls.some(([path]) =>
-                path.includes("risk/summary"),
-            ),
+            api.request.mock.calls.some(([path]) => {
+                const [route, search] = path.split("?");
+                const params = new URLSearchParams(search);
+                return route.endsWith("/risk/summary/fetch") && params.get("window") === "today" && params.get("view") === "dashboard";
+            }),
         ).toBe(true),
     );
+    expect(api.request.mock.calls.some(([path]) => path.includes("analytics/operations"))).toBe(false);
 });
 it("renders horizontal bars with full identities available", () => {
     render(
@@ -1136,20 +1139,25 @@ it.each([
     expect(api.request).toHaveBeenCalledWith(`test-admin/user/${endpoint}`, expect.objectContaining({scope_token:"scope-2"}));
 });
 
-it("submits only the modified account field and its version", async () => {
-    const account = {id:7,email:"guest@example.com",balance:450,u:1073741824,banned:0,is_admin:0,remarks:"old note"};
+it.each([
+    {expiry:0, label:"未设置到期（默认值）", field:"备注", value:"new note", update:{remarks:"new note", edit_versions:{remarks:"note-version"}}},
+    {expiry:null, label:"未设置到期（空值）", field:"余额（账号币种）", value:"12.34", update:{balance:1234, edit_versions:{balance:"balance-version"}}},
+])("shows $label and submits only the modified account field and its version", async ({expiry,label,field,value,update}) => {
+    const account = {id:7,email:"guest@example.com",balance:450,u:1073741824,banned:0,is_admin:0,remarks:"old note",expired_at:expiry,transfer_enable:0};
     api.request.mockImplementation(async (path: string) => {
         if (path.includes("user/getUserInfoById")) return {data:{...account,edit_versions:{remarks:"note-version",balance:"balance-version"}}};
         if (path.includes("user/fetch")) return {data:[account],total:1};
         return {data:[]};
     });
     render(<UsersPage />);
+    expect(await screen.findByText(label)).toBeTruthy();
     fireEvent.click(await screen.findByRole("button", {name:"编辑"}));
     const dialog = within(await screen.findByRole("dialog", {name:"编辑 · 用户管理"}));
-    fireEvent.change(dialog.getByLabelText("备注"), {target:{value:"new note"}});
+    expect(dialog.getByText(/只改余额时会保留原到期值/)).toBeTruthy();
+    fireEvent.change(dialog.getByLabelText(field), {target:{value}});
     fireEvent.click(dialog.getByRole("button", {name:"保存"}));
     await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/user/update", {
-        id:7, remarks:"new note", edit_versions:{remarks:"note-version"},
+        id:7, ...update,
     }));
 });
 
@@ -1287,7 +1295,11 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(false);
     fireEvent.mouseDown(screen.getByRole("tab", {name: "访问与转化"}), {button: 0, ctrlKey: false});
     expect(window.location.hash).toBe("#/overview-analytics");
-    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("analytics/report"))).toBe(true));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => {
+        const [route, search] = path.split("?");
+        return route.endsWith("/analytics/report") && new URLSearchParams(search).get("view") === "traffic";
+    })).toBe(true));
+    expect(api.request.mock.calls.some(([path]) => path.includes("analytics/journey") || path.includes("view=conversion"))).toBe(false);
 });
 
 it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist","node-forwarding","server-lightsail"])("opens relocated route %s directly", async current => {
@@ -1619,7 +1631,7 @@ it("keeps localized h23 risk bucket axes in the business zone when the display p
     setDisplayTimeZone("America/New_York");
     setAdminDisplayTimeZone("America/New_York");
     await i18n.changeLanguage("fa-IR");
-    api.request.mockResolvedValue({ data: { trend: [{ at: Date.parse(instant) / 1000, hits: 2 }] } });
+    api.request.mockResolvedValue({ data: { blacklist: { trend: [{ at: Date.parse(instant) / 1000, ip: 2, ua: 0 }] } } });
     try {
         const view = render(<RiskOverview />);
         const hour = new Intl.DateTimeFormat("fa-IR", {hour: "2-digit", hourCycle: "h23", timeZone: "UTC"}).format(new Date(instant));

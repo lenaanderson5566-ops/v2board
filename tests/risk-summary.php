@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 $checks=0;
 $assert=function ($ok) use (&$checks) { if (!$ok) throw new RuntimeException('Check failed: '.($checks+1)); $checks++; };
 $controller=new App\Http\Controllers\V1\Risk\LogController;
+$originalZone = config('fastai.system_timezone');
 DB::beginTransaction();
 try {
     // All changes are rolled back; existing local fixture records are excluded temporarily.
@@ -52,6 +53,43 @@ try {
     $uaDetails=collect($overview['ua_raw_details_30d'])->keyBy('client_type');
     $assert(count($uaDetails['mihomo']['ua_rows'])===1 && $uaDetails['mihomo']['ua_rows'][0]['hits_24h']===1);
 
+    // Dashboard data is independent of the legacy chart payload and raw grouped logs.
+    RiskRuleHit::query()->delete();
+    config(['fastai.system_timezone'=>'Asia/Kathmandu']);
+    $boundary = (new DateTimeImmutable('2 days ago midnight', new DateTimeZone('Asia/Kathmandu')))->getTimestamp();
+    $person = App\Models\User::create(['email'=>uniqid('risk-dash-').'@example.test','password'=>'test',
+        'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid()]);
+    $makeHit = fn (int $at, ?int $uid, ?string $state = null, string $risk = 'high', string $rule = 'subscribe_high_pull_low_traffic_24h')
+        => RiskRuleHit::create(['scene'=>'subscribe','rule_key'=>$rule,'risk_level'=>$risk,'user_id'=>$uid,
+            'payload'=>$state === null ? ['source_log_id'=>1] : ['review'=>['state'=>$state]],'hit_at'=>$at]);
+    $pendingOld = $makeHit($now-40*86400, $person->id, 'pending');
+    $pendingNew = $makeHit($now-5, $person->id);
+    foreach (['confirmed','false_positive','ignored'] as $state) $makeHit($now-20, $person->id, $state);
+    $makeHit($now-20, $person->id, null, 'low');
+    $makeHit($now-20, $person->id, null, 'high', 'subscribe_ua_hash_blacklist_hit');
+    $makeHit($now-20, null);
+    $makeHit($now+3600, $person->id);
+    foreach ([[$now-3, RiskLogService::IP_BLACKLIST_REASON, 'failed'], [$boundary-1, RiskLogService::UA_BLACKLIST_REASON, 'failed'],
+        [$boundary, RiskLogService::IP_BLACKLIST_REASON, 'failed'], [$now-3, RiskLogService::UA_BLACKLIST_REASON, 'success'],
+        [$now-3,'client_disabled','failed'], [$now+3600,RiskLogService::IP_BLACKLIST_REASON,'failed']] as [$at,$reason,$status]) {
+        App\Models\SubscribeLog::create(['reason'=>$reason,'status'=>$status,'created_at'=>$at,'updated_at'=>$at]);
+    }
+    $dashboard = fn ($window) => json_decode($controller->getSummary(Request::create('/?view=dashboard&window='.$window))->getContent(), true)['data'];
+    $dayReport = $dashboard('today');
+    $weekReport = $dashboard('7d');
+    $assert($dayReport['review_queue'] === ['total'=>2,'accounts'=>1,'oldest_at'=>$now-40*86400]
+        && $dayReport['review_queue'] === $weekReport['review_queue']);
+    $assert($dayReport['blacklist']['ip']===1 && $dayReport['blacklist']['ua']===0
+        && $weekReport['blacklist']['ip']===2 && $weekReport['blacklist']['ua']===1);
+    $buckets = collect($weekReport['blacklist']['trend'])->keyBy('at');
+    $assert($buckets[$boundary]['ip']===1 && $buckets[$boundary]['ua']===0 && $buckets[$boundary-86400]['ua']===1);
+    $assert($weekReport['rules'] === [['name'=>'高拉取低流量','hits'=>6,'accounts'=>1,'confirmed'=>1,'false_positives'=>1]]);
+    $queue = fn ($page) => json_decode($controller->getRuleHits(Request::create('/?review_queue=1&page_size=1&current='.$page))->getContent(),true);
+    $assert($queue(1)['total']===2 && $queue(1)['data'][0]['id']===$pendingOld->id && $queue(2)['data'][0]['id']===$pendingNew->id);
+    $controller->reviewRuleHit(Request::create('/', 'POST', ['id'=>$pendingOld->id,'state'=>'confirmed']));
+    $assert($dashboard('today')['review_queue']['total']===1 && $queue(1)['data'][0]['id']===$pendingNew->id);
+    config(['fastai.system_timezone'=>$originalZone]);
+
     App\Models\RiskBlacklistIp::query()->delete();
     App\Models\RiskBlacklistUaHash::query()->delete();
     $ipResult=json_decode($controller->updateIpBlacklist(Request::create('/','POST',['value'=>'198.51.100.4','remark'=>'keep','is_enabled'=>true]))->getContent(),true)['data'];
@@ -94,5 +132,5 @@ try {
     }
     $assert($empty['flag_client_ranking']===[] && $empty['ua_raw_details_30d']===[]);
     $assert($blacklistReads<=1);
-} finally { DB::rollBack(); RiskLogService::clearRuleCache(); }
+} finally { DB::rollBack(); RiskLogService::clearRuleCache(); config(['fastai.system_timezone'=>$originalZone]); }
 echo "PASS: {$checks} risk summary / validation / authorization checks\n";

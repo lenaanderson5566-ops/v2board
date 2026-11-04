@@ -11,7 +11,7 @@ import {
 } from "@testing-library/react";
 const mock = vi.hoisted(() => ({
     request: vi.fn(),
-    trackAction: vi.fn(),
+    trackCopyFailure: vi.fn(),
     methods: [
         { id: 1, name: "Alipay", handling_fee_fixed: 0 },
         {
@@ -61,7 +61,7 @@ vi.mock("../shared/ui", () => ({
 vi.mock("./pricing-copy", () => ({ pricingCopy: (key: string) => key }));
 vi.mock("./product-analytics", () => ({
     useAnalyticsPage: vi.fn(),
-    trackAction: mock.trackAction,
+    trackCopyFailure: mock.trackCopyFailure,
 }));
 vi.mock("./PurchaseSteps", () => ({ PurchaseSteps: () => null }));
 vi.mock("./OrderHelp", () => ({ OrderHelp: () => null }));
@@ -860,12 +860,7 @@ it("opens an existing mobile redirect payment without starting another checkout"
     const action = await screen.findByRole("link", { name: "openPayment" });
     expect(action.getAttribute("href")).toBe(target);
     for (let i = 0; i < 3; i++) clickSyntheticPaymentLink(action);
-    expect(
-        mock.trackAction.mock.calls.filter(
-            ([event]) => event === "payment_open",
-        ),
-    ).toHaveLength(3);
-    expect(mock.trackAction).toHaveBeenCalledWith("payment_open", "payment");
+    expect(mock.trackCopyFailure).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
     expect(reload).toHaveBeenCalled();
     expect(
@@ -893,7 +888,7 @@ it("offers a mobile action for an official supported Alipay QR while retaining i
     clickSyntheticPaymentLink(action);
     clickSyntheticPaymentLink(action);
     expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
-    expect(mock.trackAction).toHaveBeenCalledWith("payment_open", "payment");
+    expect(mock.trackCopyFailure).not.toHaveBeenCalled();
     expect(
         mock.request.mock.calls.filter(
             ([path]) => path === "user/order/checkout",
@@ -923,11 +918,7 @@ it.each([
         });
         expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
         if (type === 0) expect(screen.getByDisplayValue(value)).toBeTruthy();
-        expect(
-            mock.trackAction.mock.calls.filter(
-                ([event]) => event === "payment_open",
-            ),
-        ).toHaveLength(0);
+        expect(mock.trackCopyFailure).not.toHaveBeenCalled();
         expect(
             mock.request.mock.calls.filter(
                 ([path]) => path === "user/order/checkout",
@@ -936,7 +927,7 @@ it.each([
     },
 );
 it.each([true, false])(
-    "keeps copying unknown mobile QR data available and records its result: %s",
+    "keeps copying unknown mobile QR data available and reports only failures: %s",
     async (succeeds) => {
         const content = "TQsyntheticWalletAddress";
         const copy = succeeds
@@ -956,12 +947,12 @@ it.each([true, false])(
             name: "copyPayment",
         });
         fireEvent.click(action);
-        await waitFor(() =>
-            expect(mock.trackAction).toHaveBeenCalledWith(
-                succeeds ? "copy_success" : "copy_failed",
-                "payment",
-            ),
-        );
+        if (succeeds) {
+            expect(await screen.findByText("paymentCopied")).toBeTruthy();
+            expect(mock.trackCopyFailure).not.toHaveBeenCalled();
+        } else {
+            await waitFor(() => expect(mock.trackCopyFailure).toHaveBeenCalledExactlyOnceWith("payment"));
+        }
         expect(copy).toHaveBeenCalledWith(content);
         expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
         expect(

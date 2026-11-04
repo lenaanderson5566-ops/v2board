@@ -1,5 +1,4 @@
 import { useId, useState } from "react";
-import { trackAction } from "./product-analytics";
 import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { AccountList } from "./AppleAccounts";
 import { useTranslation } from "react-i18next";
@@ -87,7 +86,6 @@ export function ClientDownload({
                 {officialUrl ? (
                     <a
                         className="download-source"
-                        onClick={() => trackAction("download")}
                         href={officialUrl}
                         target="_blank"
                         rel="noopener noreferrer"
@@ -137,7 +135,6 @@ export function ClientDownload({
                     (mirror ? (
                         <a
                             className="download-source"
-                            onClick={() => trackAction("download")}
                             href={mirror}
                             target="_blank"
                             rel="noopener noreferrer"

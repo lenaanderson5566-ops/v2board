@@ -2,6 +2,7 @@ import { adminWorkspace, settingSections } from "./admin-navigation";
 import { AdminTabs } from "./AdminChoices";
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
+import { OperationsDetails } from "./OperationsAnalytics";
 import { lazy, Suspense } from "react";
 const AdminDictionary = lazy(() =>
     import("./AdminDictionary").then((m) => ({ default: m.AdminDictionary })),
@@ -177,6 +178,10 @@ function AdminPageBody({ current }: { current: string }) {
             />
         );
     if (current === "coupons") return <AdminCoupons />;
+    if (current === "access-logs-subscriptions") return <>
+        <ResourcePage key={current} resource={resources[current]} />
+        <OperationsDetails section="security" />
+    </>;
     if (resources[current])
         return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {

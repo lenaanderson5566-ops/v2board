@@ -1,4 +1,4 @@
-import { trackAction, useAnalyticsPage } from "./product-analytics";
+import { trackCopyFailure, useAnalyticsPage } from "./product-analytics";
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
 import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
@@ -546,9 +546,8 @@ export function PaymentCheckout({
         try {
             await navigator.clipboard.writeText(qr || paymentLink);
             setCopied(true);
-            trackAction("copy_success", "payment");
         } catch {
-            trackAction("copy_failed", "payment");
+            trackCopyFailure("payment");
             setCopyError(tx("复制失败，请手动复制链接"));
         }
     }
@@ -978,10 +977,7 @@ export function PaymentCheckout({
                                     className="button primary checkout-open-link"
                                     href={openUrl}
                                     rel="noreferrer"
-                                    onClick={() => {
-                                        trackAction("payment_open", "payment");
-                                        setPollRun((run) => run + 1);
-                                    }}
+                                    onClick={() => setPollRun((run) => run + 1)}
                                 >
                                     {pc("openPayment")}
                                 </a>

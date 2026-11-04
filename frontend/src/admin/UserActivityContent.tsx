@@ -3,6 +3,7 @@ import { AdminChoiceGroup } from "./AdminChoices";
 import { RiskEvidence } from "./RiskEvidence";
 import { IpLocation } from "../shared/IpLocation";
 import { AdminStatus } from "../shared/admin-status";
+import { AdminSubscriptionExpiry } from "./AdminSubscriptionExpiry";
 import { useState } from "react";
 import { ops, bytes, rows, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
@@ -26,7 +27,7 @@ export function UserActivityContent({ row }: { row: Row }) {
                 {user && <section className="user-activity-summary" aria-label="账户概况">
                     <dl>
                         <div><dt>账户状态</dt><dd>{Number(user.banned) === 1 ? "已封禁" : "正常"}</dd></div>
-                        <div><dt>到期时间</dt><dd>{user.expired_at == null ? "无到期限制" : date(user.expired_at)}</dd></div>
+                        <div><dt>订阅到期</dt><dd><AdminSubscriptionExpiry user={user} /></dd></div>
                         <div><dt>流量包剩余</dt><dd>{formatBytes(user.credit_balance)}</dd></div>
                         <div><dt>累计上传 / 下载</dt><dd>{formatBytes(user.u)} / {formatBytes(user.d)}</dd></div>
                     </dl>

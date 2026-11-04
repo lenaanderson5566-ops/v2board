@@ -27,24 +27,6 @@ final class BrowserAccess
         }
         return $result;
     }
-    public static function classify(?string $input): array {
-        $ua=substr($input ?? '',0,1024);
-        $embedded='none';
-        foreach (self::EMBEDDED_PATTERNS as $key=>$pattern) {
-            if (preg_match('~'.$pattern.'~i',$ua)) { $embedded=$key; break; }
-        }
-        $os=preg_match('/iPhone|iPad|iPod/i',$ua) ? 'ios' : (stripos($ua,'Android')!==false ? 'android' : (stripos($ua,'Windows')!==false ? 'windows' : (stripos($ua,'Macintosh')!==false ? 'macos' : (stripos($ua,'Linux')!==false ? 'linux' : 'unknown'))));
-        $browser='unknown'; $major=null;
-        foreach (['samsung'=>'SamsungBrowser','uc'=>'UCBrowser','qqbrowser'=>'M?QQBrowser','edge'=>'Edg(?:e|A|iOS)?','opera'=>'OPR|OPiOS','firefox'=>'Firefox|FxiOS','chrome'=>'Chrome|CriOS','safari'=>'Version'] as $family=>$pattern) {
-            if ($family==='safari' && stripos($ua,'Safari')===false) continue;
-            if (preg_match('~(?:'.$pattern.')/([0-9]{1,3})(?:[. /]|$)~i',$ua,$m)) {$browser=$family;$major=(int)$m[1];break;}
-        }
-        // Brand-only tokens do not supply a reliable application version.
-        if (preg_match('/\b360(?:SE|EE)\b/i',$ua)) {$browser='360';$major=null;}
-        elseif (preg_match('/SogouMobileBrowser\/([0-9]{1,3})(?:[. \/]|$)/i',$ua,$match)) {$browser='sogou';$major=(int)$match[1];}
-        elseif (preg_match('/SE[ \/][0-9.]+.*MetaSr|Sogou/i',$ua)) {$browser='sogou';$major=null;}
-        return ['browser'=>$browser,'browser_major'=>$major,'os'=>$os,'embedded'=>$embedded];
-    }
     /** Fixed SQL categories: raw user-agent strings never leave the database. */
     public static function logCategorySql(): string {
         $ua='LOWER(LEFT(user_agent,1024))';

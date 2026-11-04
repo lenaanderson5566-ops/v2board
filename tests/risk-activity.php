@@ -53,8 +53,10 @@ try {
  $assert($group['data'][0]['first_hit_at']===$at);
  $raw=$decode($c->getRuleHits(Request::create('/','GET',['email'=>'activity-test@example.com'])));
  $assert($raw['total']===2);
+ $u->expired_at=null; $u->transfer_enable=1073741824; $u->save();
  $activity=$decode($c->getUserActivity(Request::create('/','GET',['user_id'=>$u->id])))['data'];
  $assert($activity['user']['id']===$u->id && !isset($activity['user']['token']));
+ $assert($activity['user']['expired_at']===null && (int)$activity['user']['transfer_enable']===1073741824);
  $assert(count(array_filter($activity['events'],fn($r)=>($r['rule_key']??'')==='test_activity'))===2);
  $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/risk/user-activity/fetch?user_id='.$u->id);
  $r->headers->set('Accept','application/json');

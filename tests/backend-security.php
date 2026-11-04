@@ -125,19 +125,24 @@ try {
     $hash=hash_hmac('sha256',$event['sessionId'],(string)config('app.key'));
     $session=DB::table('v2_analytics_session')->where('session_hash',$hash)->first();
     $assert($session && $session->stage===3 && $session->session_hash!==$event['sessionId'],'Analytics hashes identity and advances ordered funnel');
-    $assert(!array_intersect(['ip','email','user_id','ua','url'],array_keys((array)$session)),'Analytics persists no account/network identity');
+    $assert(!array_intersect(['ip','email','user_id','ua','url','language','browser','browser_major','embedded','os'],array_keys((array)$session)),
+        'Analytics stores only the session fields required by current reports');
     $controller=app(App\Http\Controllers\V10\ProductAnalyticsController::class);
     foreach ([['https://evil.example',[],403],['https://panel.example',['email'=>'private@example.com'],422]] as [$origin,$extra,$expected]) {
         $request=Illuminate\Http\Request::create('/api/v10/public/analytics/events','POST',[],[],[],['HTTP_ORIGIN'=>$origin,'CONTENT_TYPE'=>'application/json'],json_encode($event+$extra));
         $app->instance('request',$request);
         $assert($status(fn()=>$controller->store($request,$analytics))===$expected,'Analytics rejects foreign origin or unexpected personal fields');
     }
+    $analytics->record(array_replace($event,['page'=>'payment','event'=>'copy_failed']));
+    $assert(DB::table('v2_analytics_measurement')->where('session_id',$session->id)->where('event','copy_failed')->exists(),
+        'Failed-copy measurements remain available for diagnosing subscription and payment issues');
     $event['sessionId']=(string)Illuminate\Support\Str::uuid();
     $request=Illuminate\Http\Request::create('/api/v10/public/analytics/events','POST',[],[],[],['HTTP_ORIGIN'=>'https://panel.example','CONTENT_TYPE'=>'application/json','HTTP_SEC_GPC'=>'1'],json_encode($event));
     $app->instance('request',$request);
     $assert($controller->store($request,$analytics)->getStatusCode()===204 && DB::table('v2_analytics_session')->count()===$before+1,'GPC suppresses analytics recording');
     DB::table('v2_analytics_session')->where('id',$session->id)->update(['created_at'=>time()-8*86400]);
-    $assert($analytics->prune()>=1 && !DB::table('v2_analytics_page')->where('session_id',$session->id)->exists(),'Retention prunes sessions and page records');
+    $assert($analytics->prune()>=1 && !DB::table('v2_analytics_session')->where('id',$session->id)->exists()
+        && !DB::table('v2_analytics_measurement')->where('session_id',$session->id)->exists(),'Retention prunes sessions and their experience measurements');
     $analytics->save(['enabled'=>false,'retentionDays'=>30]);
     $p=Plan::create(['name'=>'Audit fixture','group_id'=>1,'transfer_enable'=>10,'month_price'=>-100,'show'=>1,'renew'=>1]);
     $r=App\Http\Requests\User\OrderSave::create('/api/v10/me/orders','POST',['plan_id'=>$p->id,'period'=>'month_price']);$r->user=['id'=>$u->id];$app->instance('request',$r);

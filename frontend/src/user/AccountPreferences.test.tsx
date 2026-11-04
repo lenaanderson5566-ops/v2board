@@ -69,7 +69,7 @@ import { AnalyticsPrivacy } from "./AnalyticsPrivacy";
 import {
     privacyKey,
     savePrivacyChoice,
-    trackAction,
+    trackCopyFailure,
 } from "./product-analytics";
 import { AccountSessions } from "./AccountSessions";
 afterEach(() => {
@@ -277,15 +277,15 @@ it("only renders an inline settings switch and collects after explicit opt-in", 
     expect(toggle.getAttribute("aria-checked")).toBe("false");
     expect(container.querySelector(".analytics-privacy")).toBeNull();
     expect(toggle.closest(".settings-row")).not.toBeNull();
-    trackAction("download", "subscribe");
+    trackCopyFailure("subscribe");
     expect(fetcher).toHaveBeenCalledTimes(1);
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-checked")).toBe("true");
-    trackAction("download", "subscribe");
+    trackCopyFailure("subscribe");
     await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2));
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-checked")).toBe("false");
-    trackAction("download", "subscribe");
+    trackCopyFailure("subscribe");
     expect(fetcher).toHaveBeenCalledTimes(2);
 });
 it.each([privacyKey,"v2board.analytics.consent.v2.%2Fapi%2Fv10",null])("revokes collection across tabs after removing %s without opening a banner", async (removedKey) => {

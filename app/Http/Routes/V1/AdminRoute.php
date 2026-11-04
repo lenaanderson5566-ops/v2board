@@ -149,6 +149,7 @@ class AdminRoute
             $router->post('/user/usageResetPreview', 'V1\\Admin\\UserController@usageResetGrantPreview')->middleware('throttle:20,1');
             $router->post('/user/usageReset', 'V1\\Admin\\UserController@usageReset')->middleware('throttle:10,1');
             $router->get ('/user/fetch', 'V1\\Admin\\UserController@fetch');
+            $router->get('/user/creditBatches', 'V1\\Admin\\UserCreditBatchController@index');
             $router->post('/user/update', 'V1\\Admin\\UserController@update');
             $router->get ('/user/getUserInfoById', 'V1\\Admin\\UserController@getUserInfoById');
             $router->get('/mail-campaigns/fetch', 'V1\\Admin\\MailCampaignController@fetch');

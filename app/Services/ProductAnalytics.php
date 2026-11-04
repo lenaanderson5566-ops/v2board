@@ -58,78 +58,20 @@ final class ProductAnalytics {
         foreach ((clone $inWindow)->selectRaw($method.' AS funding, COUNT(*) AS accounts')->groupBy('funding')->get() as $row) {
             $funding[$row->funding]=(int)$row->accounts;
         }
-        $accounts = array_sum($funding);
-        $observed = function($orders) use($cohort) {
-            return (clone $cohort)->whereExists(function($q) use($orders) {
-                $q->selectRaw('1')->fromSub($orders->select('o.user_id','o.paid_at'),'p')->whereColumn('p.user_id','u.id')
-                    ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');
-            })->count();
-        };
-        $withoutNewPayment = $this->recurringOrders()->where('o.total_amount',0)->whereRaw('COALESCE(o.balance_amount,0)=0');
-        $entitlementCredit = 'COALESCE(o.surplus_amount,0)-COALESCE(o.refund_amount,0)';
+        $credits = $this->confirmedOrders()->where('o.credit_bytes','>',0)
+            ->whereRaw("COALESCE(o.callback_no,'') <> 'manual_operation'")
+            ->whereRaw('COALESCE(o.balance_amount,0) >= 0')
+            ->whereRaw("((o.total_amount=0 AND COALESCE(o.balance_amount,0)>0)
+                OR (o.total_amount>0 AND o.payment_id>0 AND COALESCE(TRIM(o.callback_no),'')<>''))");
+        $creditAccounts = (clone $cohort)->whereExists(function($q) use($credits) {
+            $q->selectRaw('1')->fromSub($credits->select('o.user_id','o.paid_at'),'p')->whereColumn('p.user_id','u.id')
+                ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');
+        })->count();
         return ['available'=>true,'from'=>gmdate('c',$from),'to'=>gmdate('c',$to),'windowDays'=>7,'registered'=>$registered,
-            'paidRecurringAccounts'=>$accounts,'paidRecurringRate'=>OperationsAnalytics::rate($accounts,$registered),'funding'=>$funding,
-            'zeroValueRecurringAccounts'=>$observed((clone $withoutNewPayment)->whereRaw($entitlementCredit.' <= 0')),
-            'creditOnlyRecurringAccounts'=>$observed((clone $withoutNewPayment)->whereRaw($entitlementCredit.' > 0')),
-            'otherPurchases'=>[
-                'depositAccounts'=>$observed($this->confirmedOrders()->where('o.period','deposit')),
-                'independentCreditAccounts'=>$observed($this->confirmedOrders()->where('o.credit_bytes','>',0)),
-                'resetAccounts'=>$observed($this->confirmedOrders()->where('o.period','reset_price')),
-                'legacyOneTimeAccounts'=>$observed($this->confirmedOrders()->where('o.plan_id','>',0)
-                    ->where(function($q) { $q->whereNull('o.credit_bytes')->orWhere('o.credit_bytes',0); })->where('o.period','onetime_price')),
-            ]];
+            'funding'=>$funding,'verifiedRecurringAccounts'=>$funding['externalOnly']+$funding['mixed']+$funding['walletOnly'],
+            'verifiedCreditAccounts'=>$creditAccounts];
     }
 
-    private function receipts(int $from, int $to): array {
-        $paid = $this->confirmedOrders()->where('o.paid_at','>=',$from)->where('o.paid_at','<=',$to);
-        $manual = "COALESCE(o.callback_no,'')='manual_operation'";
-        $counts = (clone $paid)->selectRaw("SUM(CASE WHEN $manual THEN 1 ELSE 0 END) AS manual,
-            SUM(CASE WHEN NOT ($manual) AND o.total_amount=0 AND COALESCE(o.balance_amount,0)>0 THEN 1 ELSE 0 END) AS wallet,
-            SUM(CASE WHEN NOT ($manual) AND o.total_amount=0 AND COALESCE(o.balance_amount,0)=0 THEN 1 ELSE 0 END) AS zero,
-            SUM(CASE WHEN NOT ($manual) AND o.total_amount>0 THEN 1 ELSE 0 END) AS external")->first();
-        $available = Schema::hasColumn('v2_order','payment_snapshot');
-        $report = ['available'=>$available,'from'=>gmdate('c',$from),'to'=>gmdate('c',$to),'complete'=>false,'byCurrency'=>[],
-            'unresolvedExternalOrders'=>(int)$counts->external,'manualOrders'=>(int)$counts->manual,'walletOnlyOrders'=>(int)$counts->wallet,'zeroExternalOrders'=>(int)$counts->zero,
-            // refund_amount is an entitlement exchange returned to a wallet. It is
-            // not a provider refund ledger; there is no settlement or fee ledger.
-            'refundAmount'=>null,'providerFeeAmount'=>null,'netAmount'=>null,'settlementAmount'=>null];
-        if (!$available) return $report;
-        $sqlite = DB::connection()->getDriverName()==='sqlite';
-        $extract = fn($key) => $sqlite ? "json_extract(o.payment_snapshot,'$.".$key."')" : "JSON_UNQUOTE(JSON_EXTRACT(o.payment_snapshot,'$.".$key."'))";
-        $type = fn($key) => $sqlite ? "json_type(o.payment_snapshot,'$.".$key."')" : "LOWER(JSON_TYPE(JSON_EXTRACT(o.payment_snapshot,'$.".$key."')))";
-        $amount=$extract('payment_amount'); $currency=$extract('payment_currency');
-        // A checkout quote is not a receipt. Only a positive externally-confirmed
-        // order with the flat, settled immutable snapshot has known currency/amount.
-        // Missing legacy snapshots remain explicitly unresolved, never FX-estimated.
-        $valid = "CASE WHEN JSON_VALID(o.payment_snapshot) THEN ".$type('payment_amount')."='integer' AND $amount>0
-            AND ".$type('payment_currency')."='text' AND $currency IN ('CNY','USD')
-            AND ".$type('provider')."='text' AND ".$extract('provider')."<>''
-            AND ".$type('uuid')."='text' AND ".$extract('uuid')."<>''
-            AND ".$extract('channels')." IS NULL ELSE 0 END";
-        if (!$sqlite) $valid = str_replace("='text'","='string'",$valid);
-        $kind = "CASE WHEN o.period='deposit' THEN 'deposit'
-            WHEN o.credit_bytes>0 THEN 'independentCredits'
-            WHEN o.period='reset_price' THEN 'reset'
-            WHEN o.plan_id>0 AND COALESCE(o.credit_bytes,0)=0 AND o.period IN ('".implode("','",self::RECURRING_PERIODS)."') THEN 'recurring'
-            WHEN o.plan_id>0 AND COALESCE(o.credit_bytes,0)=0 AND o.period='onetime_price' THEN 'legacyOneTime' ELSE 'other' END";
-        $known = (clone $paid)->where('o.total_amount','>',0)->where('o.payment_id','>',0)
-            ->whereRaw("NOT ($manual) AND COALESCE(TRIM(o.callback_no),'')<>''")->whereRaw($valid)
-            ->selectRaw("$currency AS receipt_currency, $kind AS kind, $amount AS amount");
-        $groups=DB::query()->fromSub($known,'receipts')->select('receipt_currency','kind')->selectRaw('COUNT(*) AS orders, SUM(amount) AS amount')
-            ->groupBy('receipt_currency','kind')->orderBy('receipt_currency')->orderBy('kind')->get();
-        $currencies=[]; $resolved=0;
-        foreach ($groups as $row) {
-            $currencies[$row->receipt_currency] ??= ['currency'=>$row->receipt_currency,'grossAmount'=>0,'orders'=>0,'kinds'=>[]];
-            $currencies[$row->receipt_currency]['grossAmount']+=(int)$row->amount;
-            $currencies[$row->receipt_currency]['orders']+=(int)$row->orders;
-            $currencies[$row->receipt_currency]['kinds'][]=['kind'=>$row->kind,'grossAmount'=>(int)$row->amount,'orders'=>(int)$row->orders];
-            $resolved+=(int)$row->orders;
-        }
-        $report['byCurrency']=array_values($currencies);
-        $report['unresolvedExternalOrders']-=$resolved;
-        $report['complete']=$report['unresolvedExternalOrders']===0;
-        return $report;
-    }
     public function settings(): array {
         return Cache::remember('PRODUCT_ANALYTICS_SETTINGS', 60, function () {
             $values = RiskSetting::whereIn('key', ['analytics_enabled','analytics_retention_days'])->pluck('value','key');
@@ -137,9 +79,7 @@ final class ProductAnalytics {
             return ['enabled'=>($values['analytics_enabled'] ?? '0') === '1', 'retentionDays'=>in_array($days,[7,30,90],true) ? $days : 30];
         });
     }
-    public function ready(): bool { return Schema::hasTable('v2_analytics_session') && Schema::hasTable('v2_analytics_page'); }
-    public function sourcesReady(): bool { return Schema::hasColumn('v2_analytics_session', 'attribution_version'); }
-    public function browsersReady(): bool { return Schema::hasColumn('v2_analytics_session','browser_major') && Schema::hasColumn('v2_analytics_session','embedded'); }
+    public function ready(): bool { return Schema::hasTable('v2_analytics_session'); }
     public function save(array $values): array {
         abort_unless($this->ready(),409,'请先执行数据库迁移，再开启访问统计。');
         DB::transaction(function () use ($values) {
@@ -150,22 +90,27 @@ final class ProductAnalytics {
         Cache::forget('PRODUCT_ANALYTICS_SETTINGS');
         return $this->settings();
     }
-    public function record(array $event, ?string $userAgent = null): void {
-        if (!$this->settings()['enabled']) return;
+    public function record(array $event): void {
+        $kind = $event['event'] ?? 'view';
+        if (!ExperienceMeasurements::tracks($kind) || !$this->settings()['enabled']) return;
         $now = time();
         // No IP, user ID, raw UA, full referrer or URL is persisted. Hash is scoped to this deployment.
         $hash = hash_hmac('sha256', $event['sessionId'], (string)config('app.key'));
-        DB::transaction(function () use ($event, $now, $hash, $userAgent) {
-            $attribution = $this->browsersReady() ? BrowserAccess::classify($userAgent) : [];
-            if ($this->sourcesReady() && (int)($event['attributionVersion'] ?? 0) === 1) {
-                $attribution += ['attribution_version'=>1,'source_domain'=>$event['sourceDomain'] ?? null];
-            }
+        $columns = Schema::getColumnListing('v2_analytics_session');
+        $initial = ['session_hash'=>$hash,'created_at'=>$now,'last_at'=>$now,'device'=>$event['device'],'stage'=>0];
+        // Accept legacy payloads without saving their language, including before the retirement migration.
+        if (in_array('language', $columns, true)) $initial['language'] = '';
+        if (in_array('attribution_version', $columns, true) && in_array('source_domain', $columns, true)
+            && (int)($event['attributionVersion'] ?? 0) === 1) {
+            $initial += ['attribution_version'=>1,'source_domain'=>$event['sourceDomain'] ?? null];
+        }
+        DB::transaction(function () use ($event, $kind, $now, $hash, $initial) {
             // Attribution is fixed on first insert; later events cannot overwrite it.
-            DB::table('v2_analytics_session')->insertOrIgnore(array_merge(['session_hash'=>$hash,'created_at'=>$now,'last_at'=>$now,'device'=>$event['device'],'language'=>$event['language'],'stage'=>0], $attribution));
+            DB::table('v2_analytics_session')->insertOrIgnore($initial);
             $session = DB::table('v2_analytics_session')->where('session_hash',$hash)->lockForUpdate()->first();
             // A browser identifier cannot extend a session indefinitely.
             if ($now-(int)$session->last_at > 1800 || $now-(int)$session->created_at >= 86400) return;
-            if (($event['event'] ?? 'view') !== 'view') {
+            if ($kind !== 'view') {
                 DB::table('v2_analytics_session')->where('id',$session->id)->update(['last_at'=>$now]);
                 app(ExperienceMeasurements::class)->record((int)$session->id,$event);
                 return;
@@ -178,9 +123,6 @@ final class ProductAnalytics {
                 $changes['stage']=$next;
             }
             DB::table('v2_analytics_session')->where('id',$session->id)->update($changes);
-            $q = DB::table('v2_analytics_page')->where('session_id',$session->id)->where('page',$page);
-            if ($q->exists()) $q->where('views','<',1000)->increment('views');
-            else DB::table('v2_analytics_page')->insert(['session_id'=>$session->id,'page'=>$page,'views'=>1,'created_at'=>$now]);
         }, 3);
     }
     public function prune(): int {
@@ -190,11 +132,10 @@ final class ProductAnalytics {
         if ($ids->isEmpty()) return 0;
         return DB::transaction(function () use ($ids) {
             if (app(ExperienceMeasurements::class)->ready()) DB::table('v2_analytics_measurement')->whereIn('session_id',$ids)->delete();
-            DB::table('v2_analytics_page')->whereIn('session_id',$ids)->delete();
             return DB::table('v2_analytics_session')->whereIn('id',$ids)->delete();
         });
     }
-    public function report(int $days, string $device): array {
+    public function report(int $days, string $device, ?string $view = null): array {
         $zone = new \DateTimeZone(TimeZones::system());
         $now = time();
         $end = new \DateTimeImmutable('tomorrow', $zone);
@@ -205,88 +146,74 @@ final class ProductAnalytics {
         if ($device!=='all') $sessions->where('device',$device);
         $effectiveStart=max($start,$now-$settings['retentionDays']*86400);
         $started=(int)RiskSetting::where('key','analytics_started_at')->value('value');
-        $daily=[]; $previous=null; $sources=[]; $sourceGroups=0; $sourcesReady=$ready && $this->sourcesReady();
-        $pages=[]; $funnel=[0,0,0]; $visits=0; $views=0; $devices=[]; $latest=null;
-        $hours=array_fill(0,24,0); $weekdays=array_fill(0,7,0);
-        if ($ready) {
-            // UTC quarter-hour buckets support current half/quarter-hour offsets without MySQL timezone tables.
-            $slots=(clone $sessions)->selectRaw('FLOOR(created_at / 900) AS slot, COUNT(*) AS count')->groupBy('slot')->get();
-            foreach ($slots as $slot) {
-                $local=(new \DateTimeImmutable('@'.((int)$slot->slot*900)))->setTimezone($zone);
-                $hours[(int)$local->format('G')]+=(int)$slot->count;
-                $weekdays[(int)$local->format('N')-1]+=(int)$slot->count;
-            }
-            if ($sourcesReady) {
-                $grouped=(clone $sessions)->select('attribution_version','source_domain')
-                    ->selectRaw('COUNT(*) AS sessions, SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS plans, SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmations, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payments')
-                    ->groupBy('attribution_version','source_domain');
-                $sourceGroups=DB::query()->fromSub(clone $grouped,'groups')->count();
-                $sources=(clone $grouped)->orderByDesc('sessions')->orderBy('source_domain')->limit(50)->get()->map(fn($r)=>[
-                    'kind'=>(int)$r->attribution_version===0 ? 'historical' : ($r->source_domain ? 'referral' : 'unknown'),
-                    'domain'=>$r->source_domain,
-                    'sessions'=>(int)$r->sessions,'plans'=>(int)$r->plans,'confirmations'=>(int)$r->confirmations,'payments'=>(int)$r->payments])->all();
-            }
-            $visits=(clone $sessions)->count();
-            $latest=(clone $sessions)->max('last_at');
-            $devices=(clone $sessions)->select('device')->selectRaw('COUNT(*) AS sessions')->groupBy('device')->get()->map(fn($r)=>['device'=>$r->device,'sessions'=>(int)$r->sessions])->all();
-            $pages=DB::table('v2_analytics_page as p')->joinSub((clone $sessions)->select('id'),'s','s.id','=','p.session_id')
-                ->select('page')->selectRaw('SUM(p.views) AS views, COUNT(*) AS sessions')->groupBy('page')->orderByDesc('views')->get()
-                ->map(fn($r)=>['page'=>$r->page,'views'=>(int)$r->views,'sessions'=>(int)$r->sessions])->all();
-            $views=array_sum(array_column($pages,'views'));
-            $counts=(clone $sessions)->selectRaw('SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS entered, SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmed, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payment')->first();
-            $funnel=[(int)$counts->entered,(int)$counts->confirmed,(int)$counts->payment];
-            // Calendar buckets use PHP timezone rules; no dependency on MySQL timezone tables.
-            $cursor=$end->modify('-'.$days.' days'); $cases=[]; $bindings=[];
-            for ($i=0;$i<$days;$i++) {
-                $next=$cursor->modify('+1 day'); $date=$cursor->format('Y-m-d');
-                $cases[]='WHEN s.created_at >= ? AND s.created_at < ? THEN ?';
-                array_push($bindings,$cursor->getTimestamp(),$next->getTimestamp(),$date);
-                $daily[$date]=['date'=>$date,'sessions'=>0,'views'=>0,'available'=>$next->getTimestamp()>$effectiveStart && (!$started || $next->getTimestamp()>$started)];
-                $cursor=$next;
-            }
-            $rows=DB::query()->fromSub((clone $sessions)->select('id','created_at'),'s')
-                ->leftJoin('v2_analytics_page as p','p.session_id','=','s.id')
-                ->selectRaw('CASE '.implode(' ',$cases).' END AS day', $bindings)
-                ->selectRaw('COUNT(DISTINCT s.id) AS sessions, COALESCE(SUM(p.views),0) AS views')->groupBy('day')->get();
-            foreach ($rows as $row) if (isset($daily[$row->day])) {
-                $daily[$row->day]['sessions']=(int)$row->sessions; $daily[$row->day]['views']=(int)$row->views;
-            }
-            $previousStart=$end->modify('-'.($days*2).' days')->getTimestamp();
-            $previousEnd=(new \DateTimeImmutable('@'.$now))->setTimezone($zone)->modify('-'.$days.' days')->getTimestamp();
-            // Do not turn missing retention history into a misleading zero baseline.
-            if ($started>0 && $started<=$previousStart && $now-$settings['retentionDays']*86400<=$previousStart) {
-                $prior=DB::table('v2_analytics_session')->whereBetween('created_at',[$previousStart,$previousEnd]);
-                if ($device!=='all') $prior->where('device',$device);
-                $previous=['sessions'=>$prior->count(),'from'=>gmdate('c',$previousStart),'to'=>gmdate('c',$previousEnd)];
-            }
+        $window = ['settings'=>$settings,'ready'=>$ready,'timeZone'=>$zone->getName(),'from'=>gmdate('c',$start),'to'=>gmdate('c',$now),
+            'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null];
+        if ($view !== 'conversion') {
+            $window += $this->dashboardTraffic($sessions, $ready, $end, $days, $now, $effectiveStart, $started, $device, $settings);
+        }
+        if ($view !== 'traffic') {
+            [$cohort,$cohortStart,$cohortEnd]=$this->registrationCohort($days,$now,$zone);
+            $window += ['funnel'=>$ready ? $this->visitFunnel($sessions) : [],
+                'firstPurchase'=>$this->firstPurchase($cohort,$cohort->count(),$cohortStart,$cohortEnd)];
+        }
+        return $window;
+    }
 
+    private function dashboardTraffic($sessions, bool $ready, \DateTimeImmutable $end, int $days, int $now, int $effectiveStart, int $started, string $device, array $settings): array {
+        $daily=$ready ? $this->visitTrend($sessions,$end,$days,$effectiveStart,$started) : [];
+        $previous=$ready && $settings['enabled'] ? $this->previousVisits($end,$days,$now,$started,$settings['retentionDays'],$device) : null;
+        $sourcesReady=$ready && Schema::hasColumns('v2_analytics_session', ['attribution_version', 'source_domain']);
+        $coverage=null; $sources=[];
+        if ($sourcesReady) {
+            $known="attribution_version > 0 AND source_domain IS NOT NULL AND source_domain <> ''";
+            $counts=(clone $sessions)->selectRaw("SUM(CASE WHEN $known THEN 1 ELSE 0 END) AS known,
+                SUM(CASE WHEN attribution_version > 0 AND NOT ($known) THEN 1 ELSE 0 END) AS unknown,
+                SUM(CASE WHEN attribution_version=0 THEN 1 ELSE 0 END) AS historical")->first();
+            $coverage=['known'=>(int)$counts->known,'unknown'=>(int)$counts->unknown,'historical'=>(int)$counts->historical];
+            $sources=(clone $sessions)->whereRaw($known)->select('source_domain')
+                ->selectRaw('COUNT(*) AS sessions, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payment_entries')
+                ->groupBy('source_domain')->orderByDesc('sessions')->orderBy('source_domain')->limit(50)->get()
+                ->map(fn($row)=>['domain'=>$row->source_domain,'sessions'=>(int)$row->sessions,'paymentEntries'=>(int)$row->payment_entries])->all();
         }
-        // Cohort includes only registrations with a full seven-day observation window.
-        // Orders are authoritative; browser events cannot manufacture a conversion.
-        [$cohort,$cohortStart,$cohortEnd]=$this->registrationCohort($days,$now,$zone);
-        $registered=(clone $cohort)->count();
-        $converted=function(string $stage) use($cohort) {
-            return (clone $cohort)->whereExists(function($q) use($stage) {
-                $q->selectRaw('1')->from('v2_order as o')->whereColumn('o.user_id','u.id')->where('o.plan_id','>',0)
-                    ->whereIn('o.period',['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price','onetime_price'])
-                    ->whereColumn('o.created_at','>=','u.created_at')->whereRaw('o.created_at < u.created_at + 604800');
-                if ($stage!=='ordered') $q->where('o.paid_at','>',0)->whereRaw('o.paid_at < u.created_at + 604800');
-                if ($stage==='completed') $q->whereIn('o.status',[3,4]);
-            })->count();
-        };
-        $browsers=[]; $browsersReady=$ready && $this->browsersReady();
-        if ($browsersReady) {
-            $browsers=(clone $sessions)->select('browser','browser_major','os','embedded')->selectRaw('COUNT(*) AS sessions')
-                ->groupBy('browser','browser_major','os','embedded')->orderByDesc('sessions')->orderBy('browser')->orderBy('browser_major')->orderBy('os')->orderBy('embedded')->limit(100)->get()
-                ->map(fn($r)=>['browser'=>$r->browser ?? 'historical','major'=>$r->browser_major===null ? null : (int)$r->browser_major,'os'=>$r->os ?? 'historical','embedded'=>$r->embedded ?? 'historical','sessions'=>(int)$r->sessions])->all();
+        return ['sessions'=>array_sum(array_column($daily,'sessions')),'daily'=>$daily,'previous'=>$previous,
+            'sourceCoverage'=>$coverage,'sources'=>$sources];
+    }
+
+    private function visitFunnel($sessions): array {
+        $counts=$sessions ? (clone $sessions)->selectRaw('SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS entered,
+            SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmed, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payment')->first() : null;
+        return [
+            ['step'=>'plan','sessions'=>(int)($counts->entered ?? 0)],
+            ['step'=>'confirmation','sessions'=>(int)($counts->confirmed ?? 0)],
+            ['step'=>'payment','sessions'=>(int)($counts->payment ?? 0)],
+        ];
+    }
+
+    private function visitTrend($sessions, \DateTimeImmutable $end, int $days, int $effectiveStart, int $started): array {
+        // Calendar buckets use PHP timezone rules; no dependency on MySQL timezone tables.
+        $cursor=$end->modify('-'.$days.' days'); $daily=[]; $cases=[]; $bindings=[];
+        for ($i=0;$i<$days;$i++) {
+            $next=$cursor->modify('+1 day'); $date=$cursor->format('Y-m-d');
+            $cases[]='WHEN created_at >= ? AND created_at < ? THEN ?';
+            array_push($bindings,$cursor->getTimestamp(),$next->getTimestamp(),$date);
+            $daily[$date]=['date'=>$date,'sessions'=>0,'available'=>$next->getTimestamp()>$effectiveStart && (!$started || $next->getTimestamp()>$started)];
+            $cursor=$next;
         }
-        return ['browsersReady'=>$browsersReady,'browsers'=>$browsers,'settings'=>$settings,'ready'=>$ready,'timeZone'=>TimeZones::system(),'from'=>gmdate('c',$start),'to'=>gmdate('c',$now),
-            'hours'=>$hours,'weekdays'=>$weekdays,'sourcesReady'=>$sourcesReady,'sources'=>$sources,'sourceGroups'=>$sourceGroups,'daily'=>array_values($daily),'previous'=>$previous,'effectiveFrom'=>gmdate('c',max($effectiveStart,$started)),'collectionStartedAt'=>$started ? gmdate('c',$started) : null,
-            'latestEventAt'=>$latest ? gmdate('c',$latest) : null,'sessions'=>$visits,'views'=>$views,'pages'=>$pages,'devices'=>$devices,
-            'funnel'=>array_map(fn($id,$count)=>['step'=>$id,'sessions'=>$count],['plan','confirmation','payment'],$funnel),
-            'firstPurchase'=>$this->firstPurchase($cohort,$registered,$cohortStart,$cohortEnd),
-            'receipts'=>$this->receipts($start,$now),
-            'cohort'=>['from'=>gmdate('c',$cohortStart),'to'=>gmdate('c',$cohortEnd),'windowDays'=>7,'registered'=>$registered,
-                'ordered'=>$converted('ordered'),'paid'=>$converted('paid'),'completed'=>$converted('completed')]];
+        $rows=(clone $sessions)->selectRaw('CASE '.implode(' ',$cases).' END AS day, COUNT(*) AS sessions',$bindings)
+            ->groupBy('day')->get();
+        foreach ($rows as $row) if (isset($daily[$row->day])) {
+            $daily[$row->day]['sessions']=(int)$row->sessions;
+        }
+        return array_values($daily);
+    }
+
+    private function previousVisits(\DateTimeImmutable $end, int $days, int $now, int $started, int $retentionDays, string $device): ?array {
+        $previousStart=$end->modify('-'.($days*2).' days')->getTimestamp();
+        $previousEnd=(new \DateTimeImmutable('@'.$now))->setTimezone($end->getTimezone())->modify('-'.$days.' days')->getTimestamp();
+        // Do not turn missing retention history into a misleading zero baseline.
+        if (!$started || $started>$previousStart || $now-$retentionDays*86400>$previousStart) return null;
+        $prior=DB::table('v2_analytics_session')->whereBetween('created_at',[$previousStart,$previousEnd]);
+        if ($device!=='all') $prior->where('device',$device);
+        return ['sessions'=>$prior->count(),'from'=>gmdate('c',$previousStart),'to'=>gmdate('c',$previousEnd)];
     }
 }

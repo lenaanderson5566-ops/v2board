@@ -134,7 +134,7 @@ TLS 字段兼容复用 `node-v10` 和节点已有消费者测试：从实际管�
 | 后台与子窗口 | AdminApp、admin-shell、admin-workspaces、Editor、UXResilience、Banners、AdminRiskReview、AdminDictionary、Payments、AdminClients/Mirrors/MailCampaigns：搜索直达、列表/筛选、草稿、提交锁、关闭/焦点保护、429 退避及危险操作不重试。 |
 | 名称与协议 | Nodes、AdminDiagnostics、ServerTrafficBudgets、admin-user-label、AdminCouponIssue：协议中性回退、关系名优先和目录复用、未知选择保留、名称显示仍提交 ID、失败不推断删除。 |
 | 内置浏览器与懒加载 | user-experience、EmbeddedBrowserNotice、AdminBrowserPreview、admin-fields、现有构建边界与 navigation-intent：缺省/显式策略、识别不误拦、预览无副作用、安全交接、工作区和词库不进入公开初始依赖。 |
-| 记录与隐私统计 | ConfigurationUpdates、AccountControls、QuickStart、JourneyAnalytics、OperationsAnalytics、AnalyticsCollectionSettings、product-analytics：入口不预取、分页失败/迟到响应、脱敏、只读刷新、匿名字段和同意/GPC/DNT/采样，payment_open 不作为付款或新增 PV。 |
+| 记录与隐私统计 | ConfigurationUpdates、AccountControls、QuickStart、JourneyAnalytics、OperationsAnalytics、AnalyticsCollectionSettings、product-analytics：入口不预取、分页失败/迟到响应、脱敏、只读刷新、匿名字段和同意/GPC/DNT/采样。旧客户端的退役动作可提交，服务端丢弃；保留复制失败、错误和性能样本。 |
 | 时间与数量 | timezone、api、localization、UsageBilling/Chart、usage-data、NodeList、Editor、AdminLogFilters、user-filters、AdminEntrypoints/FastaiDownloads：非法/空日期、秒级往返和 DST 重复小时、统计日不移动、时区偏好隔离、数值边界与原始计费值不变。 |
 
 账单筛选由 `UsageBilling`、`v10-api` 和后端 `api-v10` 验证完整历史分页、组合条件、UTC 包含/排除和毫秒边界、所有者隔离、无效输入及只读不变性。数量格式覆盖二进制单位进位、负零、极小倍率、百分比边界、ms/s 和十四语言；帮助搜索同时保留旧 GB 与新 GiB 关键词。CSV 响应头及正文读取都计入超时，失败不自动重放生成/导出。下载账户时间解析覆盖不同 PHP 默认时区及 V10 投影，CSV 保留明确偏移、秒、无期限空单元格和列顺序，不泄露码明文。

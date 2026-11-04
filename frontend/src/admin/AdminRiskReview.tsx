@@ -8,7 +8,7 @@ import { AdminDetails } from "./admin-section";
 const states: Record<string, string> = { pending: "待处理", confirmed: "已确认", false_positive: "误报", ignored: "已忽略" };
 const requestResults: Record<string, string> = { success: "成功", failed: "失败" };
 const evidence: Record<string, string> = { threshold: "命中阈值", window_seconds: "统计窗口（秒）", failed_count: "失败次数", distinct_ip_count: "不同 IP 数", request_count: "请求次数", subscribe_count: "成功订阅次数", subscribe_threshold: "订阅次数阈值", traffic_growth_bytes: "流量增长（字节）", traffic_growth_threshold_bytes: "流量增长上限（字节）", distinct_client_type_count: "客户端类型数", ip: "命中 IP", ua_hash: "命中 UA 哈希" };
-export function AdminRiskReview({ row }: { row: Row }) {
+export function AdminRiskReview({ row, grouped = true, onSaved }: { row: Row; grouped?: boolean; onSaved?: () => void }) {
     const [open, setOpen] = useState(false);
     const [review, setReview] = useState(row.payload?.review || {});
     const [state, setState] = useState(review.state || "pending");
@@ -35,6 +35,7 @@ export function AdminRiskReview({ row }: { row: Row }) {
             await request(ops("log/rule-hit/review"), { id: row.id, state, note });
             setReview({ state, note });
             setOpen(false);
+            onSaved?.();
         } catch (reason) {
             setError((reason as Error).message);
         } finally {
@@ -47,7 +48,7 @@ export function AdminRiskReview({ row }: { row: Row }) {
         {open && <Modal title="命中证据与人工复核" close={dismiss} dismissible={!busy}>
             <div className="pad">
                 <p>{adminUserLabel(row)}</p><p>{row.rule_name || "历史规则"} · {date(row.hit_at)}</p>
-                <p className="muted">复核仅针对这组中最新一条原始记录（#{row.id}），不封禁用户、不修改其他命中。IP 或客户端类型数量不等于设备数量。</p>
+                <p className="muted">复核仅针对{grouped ? "这组中最新一条" : "当前"}原始记录（#{row.id}），不封禁用户、不修改其他命中。IP 或客户端类型数量不等于设备数量。</p>
                 {row.scene === "subscribe" && <AdminDetails items={[
                     { label: "原订阅请求结果", value: requestResults[row.status] || row.status || "—" },
                     ...(row.reason === "config_check" ? [{ label: "请求类型", value: "配置修订检查" }] : []),

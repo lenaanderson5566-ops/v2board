@@ -17,7 +17,7 @@ export function BrowserNoticeView({
     device,
     address,
     title,
-    onAction = () => {},
+    onCopyFailure,
     copy = async (value: string) => navigator.clipboard.writeText(value),
     languagePicker,
     translations,
@@ -37,11 +37,7 @@ export function BrowserNoticeView({
     device: string;
     address: string;
     title: string;
-    onAction?: (
-        action:
-            "copy_success" | "copy_failed" | "guide_manual" | "guide_continue",
-        page: "browser_prompt" | "browser_guide",
-    ) => void;
+    onCopyFailure?: (page: "browser_prompt" | "browser_guide") => void;
     copy?: (value: string) => Promise<void>;
     languagePicker?: ReactNode;
 }) {
@@ -113,11 +109,6 @@ export function BrowserNoticeView({
     const mobile = device === "ios" || device === "android";
     const Container = compact || preview ? "div" : "main";
     const Heading = compact || preview ? "h2" : "h1";
-    function track(action: Parameters<NonNullable<typeof onAction>>[0]) {
-        if (preview) return;
-        // Telemetry must not interrupt copying or the user's navigation.
-        try { onAction(action, page); } catch {}
-    }
     function update(values: Partial<typeof initial>) {
         setFeedback(previous => ({ ...(previous.scope === scope ? previous : initial), ...values }));
     }
@@ -132,12 +123,11 @@ export function BrowserNoticeView({
             if (!preview) await copy(address);
             if (!current()) return;
             update({ copied: true, busy: false });
-            track("copy_success");
         } catch {
             if (!current()) return;
             if (document.activeElement === focusBefore) focusRequested.current = scope;
             update({ failed: true, manual: true, busy: false });
-            track("copy_failed");
+            try { onCopyFailure?.(page); } catch { /* Reporting must not block the copy fallback. */ }
         } finally {
             if (copying.current?.attempt === attempt) copying.current = null;
         }
@@ -180,15 +170,11 @@ export function BrowserNoticeView({
                         {!address && <p className="browser-copy-error">{e("browserCopyUnavailable")}</p>}
                     </div>
                     {onContinue && (
-                        <button type="button" className="browser-continue" onClick={() => {
-                            track("guide_continue");
-                            onContinue();
-                        }}>{e("browserContinue")}</button>
+                        <button type="button" className="browser-continue" onClick={onContinue}>{e("browserContinue")}</button>
                     )}
                     {address && !manual && <button type="button" className="browser-manual" onClick={() => {
                         focusRequested.current = scope;
                         update({ manual: true });
-                        track("guide_manual");
                     }}>{e("browserManual")}</button>}
                     {address && manual && <label className="browser-manual-address">
                         <span>{e("copyAddress")}</span>

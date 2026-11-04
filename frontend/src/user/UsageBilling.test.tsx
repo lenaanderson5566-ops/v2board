@@ -537,11 +537,13 @@ it("requires typed confirmation for global scope, ignores current filters", asyn
     expect(body.filter).toBeUndefined();
 });
 it("grants banked credits to the exact selected user filter", async () => {
-    mocks.request.mockResolvedValue({ data: { affected: 1 } });
+    const filter = [{ key: "id", condition: "=", value: 42 }];
+    mocks.request.mockResolvedValueOnce({ data: { scope_token: "checked-scope", total: 1, sample: [] } });
+    mocks.request.mockResolvedValueOnce({ data: { affected: 1 } });
     render(
         <AdminUsageReset
             single
-            filters={[{ key: "id", condition: "=", value: 42 }]}
+            filters={filter}
             count={1}
             onComplete={vi.fn()}
         />,
@@ -550,7 +552,11 @@ it("grants banked credits to the exact selected user filter", async () => {
     fireEvent.change(screen.getByLabelText("每人发放次数"), {
         target: { value: 3 },
     });
-    fireEvent.click(screen.getByRole("checkbox"));
+    fireEvent.click(screen.getByRole("button", { name: "检查发放对象" }));
+    expect(mocks.request).toHaveBeenCalledWith("admin/user/usageResetPreview", { filter, expected_count: 1 });
+    const checked = screen.getByRole<HTMLInputElement>("checkbox");
+    await waitFor(() => expect(checked.disabled).toBe(false));
+    fireEvent.click(checked);
     fireEvent.click(screen.getByRole("button", { name: "确认发放" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith(
@@ -560,7 +566,8 @@ it("grants banked credits to the exact selected user filter", async () => {
                 quantity: 3,
                 expected_count: 1,
                 expires_at: null,
-                filter: [{ key: "id", condition: "=", value: 42 }],
+                filter,
+                scope_token: "checked-scope",
             }),
         ),
     );

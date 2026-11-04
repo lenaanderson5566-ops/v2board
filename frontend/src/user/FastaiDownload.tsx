@@ -1,5 +1,4 @@
 import { useId, useState } from "react";
-import { trackAction } from "./product-analytics";
 import { useTranslation } from "react-i18next";
 import { boot } from "../shared/api";
 import { currentDevice } from "../shared/user-experience";
@@ -99,7 +98,6 @@ export function FastaiDownload() {
                     <a
                         className="button primary"
                         href={safeDownloadUrl(selected.downloadUrl)!}
-                        onClick={() => trackAction("download")}
                         target="_blank"
                         rel="noopener noreferrer"
                     >

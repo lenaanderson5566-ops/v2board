@@ -65,20 +65,9 @@ let apiSamples = 0;
 let budgetStart = 0;
 let budgetUsed = 0;
 const currentPage = () => [...screens.values()].at(-1) ?? null;
-export function trackAction(
-    event:
-        | "download"
-        | "copy_success"
-        | "copy_failed"
-        | "import_start"
-        | "help_open"
-        | "guide_manual"
-        | "guide_continue"
-        | "payment_open",
-    page?: V10AnalyticsEvent["page"],
-) {
+export function trackCopyFailure(page?: V10AnalyticsEvent["page"]) {
     const target = page ?? currentPage();
-    if (target) send(target, { event });
+    if (target) send(target, { event: "copy_failed" });
 }
 function beginMonitoring() {
     setTelemetrySink((sample) => {

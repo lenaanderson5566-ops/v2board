@@ -37,7 +37,7 @@ vi.mock("../shared/experience-copy", () => ({
 }));
 vi.mock("./product-analytics", () => ({
     useAnalyticsPage: vi.fn(),
-    trackAction: mocks.action,
+    trackCopyFailure: mocks.action,
 }));
 vi.mock("../shared/LanguagePicker", () => ({ LanguagePicker: () => null }));
 vi.mock("react-i18next", () => ({ useTranslation: () => ({}) }));
@@ -153,10 +153,7 @@ it("does not mount business effects before continuing a prompt", () => {
     fireEvent.click(screen.getByRole("button", { name: "browserContinue" }));
     expect(screen.getByText("account content")).toBeTruthy();
     expect(started).toHaveBeenCalledTimes(1);
-    expect(mocks.action).toHaveBeenCalledWith(
-        "guide_continue",
-        "browser_prompt",
-    );
+    expect(mocks.action).not.toHaveBeenCalled();
 });
 it("guide has no continue button and admin entry is never blocked", () => {
     const view = render(
@@ -203,7 +200,7 @@ it("copies a clean deep link without authentication proofs", async () => {
             location.origin + "/app#/login?code=invite",
         ),
     );
-    expect(mocks.action).toHaveBeenCalledWith("copy_success", "browser_guide");
+    expect(mocks.action).not.toHaveBeenCalled();
     expect(
         browserHandoffUrl(
             "https://example.test/app#/client-authorize?authorizationId=secret",
@@ -226,7 +223,7 @@ it("handles missing clipboard APIs with manual copy", async () => {
     render(<EmbeddedBrowserNotice />);
     fireEvent.click(screen.getByRole("button", { name: "copyAddress" }));
     expect(await screen.findByRole("textbox")).toBeTruthy();
-    expect(mocks.action).toHaveBeenCalledWith("copy_failed", "browser_guide");
+    expect(mocks.action).toHaveBeenCalledExactlyOnceWith("browser_guide");
 });
 
 it.each(["windows", "macos", "linux", "unknown"])("gives copy-and-paste guidance without guessing app menus on %s", device => {
@@ -298,7 +295,7 @@ it("ignores a late clipboard result after the address changes", async () => {
     fireEvent.click(screen.getByRole("button", {name:"copyAddress"}));
     await screen.findByRole("button", {name:"已复制"});
     await act(async () => {finish();});
-    expect(mocks.action.mock.calls.filter(([event])=>event==="copy_success")).toHaveLength(1);
+    expect(mocks.action).not.toHaveBeenCalled();
     expect(screen.getByRole("status").textContent).toBe("browserCopied");
 });
 
@@ -354,7 +351,7 @@ it("reuses the guidance in a form without submitting or claiming a mandatory res
 it("keeps preview copying and actions separate from real clipboard and analytics", async () => {
     const continuePreview=vi.fn();
     render(<BrowserNoticeView preview embedded="WeChat" device="ios" title="Preview"
-        address="https://example.test/#/login" copy={mocks.copy} onAction={mocks.action} onContinue={continuePreview}/>);
+        address="https://example.test/#/login" copy={mocks.copy} onCopyFailure={mocks.action} onContinue={continuePreview}/>);
     fireEvent.click(screen.getByRole("button",{name:"copyAddress"}));
     await waitFor(()=>expect(screen.getByRole("status").textContent).toBe("browserPreviewCopied"));
     expect(screen.queryByRole("button",{name:"已复制"})).toBeNull();
@@ -399,7 +396,7 @@ it("opens and closes contextual browser help without remounting the business pag
     expect(screen.getByText("current business content")).toBe(business);
     expect(started).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(entry);
-    expect(mocks.action.mock.calls.some(([event])=>event==="guide_continue")).toBe(false);
+    expect(mocks.action).not.toHaveBeenCalled();
 });
 
 it("does not open contextual guidance while disabled or in an ordinary browser", () => {

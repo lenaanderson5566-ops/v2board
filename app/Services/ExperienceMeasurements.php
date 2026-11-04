@@ -6,11 +6,19 @@ use Illuminate\Support\Facades\Schema;
 
 final class ExperienceMeasurements
 {
+    // The public contract still accepts old clients' retired action events.
     public const EVENTS=['view','download','copy_success','copy_failed','import_start','help_open','api_request','api_error','network_error','js_error','lcp','inp','cls','guide_manual','guide_continue','payment_open'];
     public const METRICS=['api_request','lcp','inp','cls'];
+    private const ISSUES=['copy_failed','api_error','network_error','js_error'];
+    private const STORED_EVENTS=[...self::METRICS,...self::ISSUES];
     public const BUCKETS=[0,10,50,100,200,250,500,1000,2500,4000,10000,30000,60000,600000];
 
     public function ready(): bool { return Schema::hasTable('v2_analytics_measurement') && Schema::hasTable('v2_analytics_session'); }
+
+    public static function tracks(string $event): bool
+    {
+        return $event==='view' || in_array($event,self::STORED_EVENTS,true);
+    }
 
     // Caller holds the session row lock, bounding both concurrent writes and storage per session.
     public function record(int $session, array $event): void
@@ -32,7 +40,8 @@ final class ExperienceMeasurements
         $from=(new \DateTimeImmutable('tomorrow',new \DateTimeZone(TimeZones::system())))->modify('-'.$days.' days')->getTimestamp();
         $sessions=DB::table('v2_analytics_session')->where('created_at','>=',max($from,$now-$settings['retentionDays']*86400))->where('created_at','<=',$now);
         if ($device!=='all') $sessions->where('device',$device);
-        $q=DB::table('v2_analytics_measurement as m')->joinSub($sessions->select('id'),'s','s.id','=','m.session_id');
+        $q=DB::table('v2_analytics_measurement as m')->joinSub($sessions->select('id'),'s','s.id','=','m.session_id')
+            ->whereIn('m.event',self::STORED_EVENTS);
         $counts=(clone $q)->select('m.page','m.event')->selectRaw('SUM(m.samples) AS samples, SUM(m.value_sum) AS value_sum, COUNT(DISTINCT m.session_id) AS sessions')->groupBy('m.page','m.event')->orderBy('m.page')->orderBy('m.event')->get();
         $buckets=(clone $q)->select('m.page','m.event','m.bucket')->selectRaw('SUM(m.samples) AS samples')->groupBy('m.page','m.event','m.bucket')->orderBy('m.bucket')->get()->groupBy(fn($r)=>$r->page.':'.$r->event);
         return ['available'=>true,'effectiveFrom'=>gmdate('c',max($from,$now-$settings['retentionDays']*86400)),'retentionDays'=>$settings['retentionDays'],'enabled'=>$settings['enabled'],

@@ -1,5 +1,5 @@
 import { iosDownloads, ClientDownload } from "./ClientDownload";
-import { trackAction } from "./product-analytics";
+import { trackCopyFailure } from "./product-analytics";
 import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -122,12 +122,11 @@ export function SubscriptionImport({
         try {
             await navigator.clipboard.writeText(raw);
             if (attempt !== copyRequest.current) return;
-            trackAction("copy_success");
             setCopied(true);
             setError("");
         } catch {
             if (attempt !== copyRequest.current) return;
-            trackAction("copy_failed");
+            trackCopyFailure();
             setError(tx("复制失败，请使用一键导入或扫码。"));
         }
     }
@@ -271,10 +270,7 @@ export function SubscriptionImport({
                         <a
                             className="button primary import-open"
                             href={link}
-                            onClick={() => {
-                                trackAction("import_start");
-                                setAttempted(true);
-                            }}
+                            onClick={() => setAttempted(true)}
                         >
                             {tx("在 {{client}} 中打开", {
                                 client: clients.find(
@@ -318,7 +314,7 @@ export function SubscriptionImport({
                         {t("finishSetup", { defaultValue: "Setup complete — view usage" })}
                     </a>
                     <button type="button" aria-expanded={helpOpen} aria-controls={helpId}
-                        onClick={() => { setHelpOpen((value) => !value); if (!helpOpen) trackAction("help_open"); }}>
+                        onClick={() => setHelpOpen((value) => !value)}>
                         {t("needHelp", { defaultValue: "Having trouble?" })}
                     </button>
                 </div>
@@ -344,10 +340,7 @@ export function SubscriptionImport({
                 <a
                     className="import-guide"
                     href="#/knowledge"
-                    onClick={() => {
-                        trackAction("help_open");
-                        setOpen(false);
-                    }}
+                    onClick={() => setOpen(false)}
                 >
                     <BookOpen size={16} />
                     {tx("使用文档")}

@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 final class UpdateDefaultNodeLine {
     public const FIELDS=['name','group_id','rate','region_code','city_code','display_label','tags'];
     public const PRESERVED_FIELDS=['name','group_id','rate','region_code','city_code','display_label','tags','show','sort','host','port'];
+    public const RATE_RULE='required|numeric|min:0|max:10000|decimal:0,2';
     public static function resource($node): array {
         $values=$node->only(self::FIELDS);
         return ['values'=>$values,'revision'=>hash('sha256',json_encode($values)),

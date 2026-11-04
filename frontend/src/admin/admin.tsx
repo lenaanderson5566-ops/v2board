@@ -189,6 +189,7 @@ export const resources: Record<string, Resource> = {
             ["id", "组ID"],
             ["name", "组名称"],
             ["user_count", "用户数量"],
+            ["plan_count", "套餐数量"],
             ["server_count", "节点数量"],
         ],
         fields: [field("name", "权限组名称", "text", true)],
@@ -680,14 +681,15 @@ export const resources: Record<string, Resource> = {
         columns: [
             ["id", "ID"],
             ["value", "IP / CIDR"],
-            ["reason", "原因"],
+            ["remark", "原因"],
+            ["expires_at", "到期时间", (r) => r.expires_at ? date(r.expires_at) : "永久"],
             ["is_enabled", "启用"],
         ],
         fields: [
             field("value", "IP 地址或 CIDR", "text", true),
-            field("reason", "原因"),
+            field("remark", "原因"),
             toggle("is_enabled", "启用"),
-            field("expired_at", "到期时间", "datetime-local"),
+            field("expires_at", "到期时间", "datetime-local"),
         ],
         defaults: { type: "ip", is_enabled: 1 },
     },
@@ -700,13 +702,16 @@ export const resources: Record<string, Resource> = {
             ["id", "ID"],
             ["ua_raw", "原始 UA"],
             ["value", "UA 哈希"],
+            ["remark", "原因"],
+            ["expires_at", "到期时间", (r) => r.expires_at ? date(r.expires_at) : "永久"],
             ["is_enabled", "启用"],
         ],
         fields: [
             field("ua_raw", "原始 UA", "textarea"),
             field("value", "UA 哈希（可选）"),
-            field("reason", "原因"),
+            field("remark", "原因"),
             toggle("is_enabled", "启用"),
+            field("expires_at", "到期时间", "datetime-local"),
         ],
         defaults: { type: "ua_hash", is_enabled: 1 },
     },
@@ -764,6 +769,8 @@ export const resources: Record<string, Resource> = {
                 (r) => {
                     const labels: Record<string, string> = {
                         client_ua_not_allowed: "客户端 UA 未被允许",
+                        subscription_ip_blacklisted: "订阅 IP 黑名单拦截",
+                        subscription_ua_blacklisted: "订阅 UA 黑名单拦截",
                         client_format_not_allowed: "客户端与配置格式不兼容",
                         client_disabled: "客户端已禁用",
                         client_version_too_low: "客户端版本过低",
@@ -1556,6 +1563,7 @@ export function ResourcePage({
                                     ) || "",
                                 )}
                                 initial={editing}
+                                onlyChanged={resource === resources.users}
                                 submit={resource === resources.plans && (planTextChanged || !editing[key]) ? "保存并检查翻译" : undefined}
                                 onValuesChange={resource === resources.plans ? values => setPlanTextChanged(
                                     ["name", "content"].some(field => String(values[field] || "") !== String(editing[field] || "")),
@@ -1596,7 +1604,17 @@ export function ResourcePage({
                                             clean[field.key] = body[field.key];
                                     });
                                     if (editing[key]) clean[key] = editing[key];
-                                    if (resource.title === "用户管理")
+                                    if (resource === resources.users) {
+                                        const keys = Object.keys(clean).filter(field => field !== key);
+                                        if (!keys.length) {
+                                            setEditing(null);
+                                            return;
+                                        }
+                                        const versions = editing.edit_versions;
+                                        if (!versions || keys.some(field => !versions[field])) {
+                                            throw new Error("请重新打开用户编辑窗口，再提交修改。");
+                                        }
+                                        clean.edit_versions = Object.fromEntries(keys.map(field => [field, versions[field]]));
                                         ["transfer_enable", "u", "d"].forEach(
                                             (field) => {
                                                 if (clean[field] != null)
@@ -1606,6 +1624,7 @@ export function ResourcePage({
                                                     );
                                             },
                                         );
+                                    }
                                     if (resource === resources.routes) clean.backend = "v2box";
                                     if (resource.defaults)
                                         Object.entries(

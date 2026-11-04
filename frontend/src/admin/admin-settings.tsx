@@ -57,7 +57,7 @@ const groupDescriptions: Record<string, string> = {
     browser: "内置浏览器访问规则与引导预览",
     safe: "注册、登录与账户保护",
     subscribe: "订阅交付、试用与额度权限",
-    invite: "邀请奖励和佣金规则",
+    invite: "邀请奖励和直属邀请人佣金规则",
     deposit: "账户充值与奖励规则",
     ticket: "工单提交与服务支持",
     email: "发送通道、投递回调与测试",
@@ -139,10 +139,11 @@ export function Settings({ section }: { section?: string } = {}) {
     if (d.data && schema.data && (group !== "site" || plans.data) && (group !== "subscribe" || creditGroups.data))
         loadedGroup.current = group;
     const raw: Row = Object.fromEntries(
-        Object.entries(source).filter(([key]) =>
-            group === "browser"
-                ? key.startsWith("browser_policy_")
-                : group !== "safe" || !key.startsWith("browser_policy_"),
+        Object.entries(source).filter(
+            ([key]) => !key.startsWith("commission_distribution_") &&
+                (group === "browser"
+                    ? key.startsWith("browser_policy_")
+                    : group !== "safe" || !key.startsWith("browser_policy_")),
         ),
     );
     const fields = settingsPresentation(
@@ -158,6 +159,9 @@ export function Settings({ section }: { section?: string } = {}) {
                     !/^email_.*_key_configured$/.test(k) &&
                     k !== "invite_never_expire" &&
                     k !== "fastai_releases" &&
+                    k !== "fastai_releases_revision" &&
+                    k !== "fastai_release_min_version" &&
+                    k !== "fastai_release_targets" &&
                     k !== "fastai_enabled" &&
                     !k.startsWith("fastai_entrypoint"),
             )
@@ -379,12 +383,30 @@ export function Settings({ section }: { section?: string } = {}) {
                         )}
                         {group === "app" && (
                             <AdminFastaiDownloads
-                                key={JSON.stringify(raw.fastai_releases)}
                                 initial={raw.fastai_releases || []}
-                                save={async (releases) => {
+                                initialRevision={raw.fastai_releases_revision}
+                                globalMinimum={raw.fastai_release_min_version}
+                                targets={raw.fastai_release_targets}
+                                save={async (releases, revision) => {
+                                    if (typeof revision !== "string" || !revision) {
+                                        throw Object.assign(new Error("发布目录修订号不可用"), { status: 409 });
+                                    }
                                     await request(admin("config/save"), {
                                         fastai_releases: releases,
+                                        fastai_releases_revision: revision,
                                     });
+                                }}
+                                reload={async () => {
+                                    const { data } = await request(admin("config/fetch"));
+                                    const app = data?.app;
+                                    if (!Array.isArray(app?.fastai_releases) || typeof app.fastai_releases_revision !== "string") {
+                                        throw new Error("无法读取发布目录与修订号");
+                                    }
+                                    return {
+                                        releases: app.fastai_releases,
+                                        revision: app.fastai_releases_revision,
+                                        globalMinimum: app.fastai_release_min_version,
+                                    };
                                 }}
                             />
                         )}

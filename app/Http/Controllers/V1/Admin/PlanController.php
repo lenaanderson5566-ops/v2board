@@ -6,12 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\PlanSave;
 use App\Http\Requests\Admin\PlanSort;
 use App\Http\Requests\Admin\PlanUpdate;
+use App\Models\Giftcard;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\PlanTranslation;
 use App\Models\User;
 use App\Services\PlanService;
 use App\Services\PlanTranslationState;
+use App\Support\SiteConfiguration;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -85,17 +87,24 @@ class PlanController extends Controller
 
     public function drop(Request $request)
     {
-        $request->validate(['id'=>'required|integer|min:1']);
-        $plan = Plan::findOrFail($request->input('id'));
-        if (Order::where('plan_id', $request->input('id'))->first()) {
-            abort(500, '该订阅下存在订单无法删除');
-        }
-        if (User::where('plan_id', $request->input('id'))->first()) {
-            abort(500, '该订阅下存在用户无法删除');
-        }
-        return response([
-            'data' => $plan->delete()
-        ]);
+        $data = $request->validate(['id'=>'required|integer|min:1']);
+        $deleted = SiteConfiguration::withWriteLock(fn () => DB::transaction(function () use ($data) {
+            // Order creation and gift card issuance take the same plan lock before writing references.
+            $plan = Plan::whereKey($data['id'])->lockForUpdate()->firstOrFail();
+            $settings = SiteConfiguration::read();
+            $trialPlan = (int) ($settings['try_out_plan_id'] ?? config('fastai.try_out_plan_id', 0));
+            abort_if($trialPlan === $plan->id, 409, '该套餐正在用于注册试用，请先修改站点设置。');
+            abort_if(Order::where('plan_id', $plan->id)->exists(), 409, '该套餐已有订单，无法删除。');
+            abort_if(User::where('plan_id', $plan->id)->exists(), 409, '该套餐已有用户，无法删除。');
+
+            $usableGiftcard = Giftcard::where('type', 5)->where('plan_id', $plan->id)
+                ->where(fn ($cards) => $cards->whereNull('limit_use')->orWhere('limit_use', '>', 0))
+                ->where(fn ($cards) => $cards->where('ended_at', 0)->orWhere('ended_at', '>=', time()))
+                ->exists();
+            abort_if($usableGiftcard, 409, '该套餐仍有可兑换的礼品卡，请先停止兑换。');
+            return $plan->delete();
+        }, 3));
+        return response(['data' => $deleted]);
     }
 
     public function update(PlanUpdate $request)

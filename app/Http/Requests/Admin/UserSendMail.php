@@ -15,6 +15,8 @@ class UserSendMail extends FormRequest
     {
         return [
             'request_key' => 'required|uuid',
+            'audience_token' => 'required|string|regex:/\A[a-f0-9]{64}\z/',
+            'expected_count' => 'nullable|integer|min:1',
             'purpose' => 'required|in:service,marketing',
             'subject' => 'required|string|max:200',
             'content' => 'required|string|max:100000',
@@ -30,6 +32,7 @@ class UserSendMail extends FormRequest
     {
         return [
             'subject.required' => '主题不能为空',
+            'audience_token.required' => '请先检查收件范围',
             'content.required' => '发送内容不能为空'
         ];
     }

@@ -6,6 +6,7 @@ namespace App\Services\Actions\Passport;
 use App\Http\Requests\Passport\AuthForget;
 use App\Http\Requests\Passport\AuthLogin;
 use App\Http\Requests\Passport\AuthRegister;
+use App\Services\EmailAddress;
 use App\Services\EmailInvitationService;
 use App\Models\Plan;
 use App\Models\User;
@@ -14,21 +15,16 @@ use App\Services\RiskLogService;
 use App\Utils\CacheKey;
 use App\Utils\Dict;
 use App\Utils\Helper;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class AuthActions
 {
     public function register(AuthRegister $request)
     {
-        if ((int)config('fastai.register_limit_by_ip_enable', 0)) {
-            $registerCountByIP = Cache::get(CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip())) ?? 0;
-            if ((int)$registerCountByIP >= (int)config('fastai.register_limit_count', 3)) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Register frequently, please try again after :minute minute', [
-                    'minute' => config('fastai.register_limit_expire', 60)
-                ]));
-            }
-        }
+        $email = $request->input('email');
         if ((int)config('fastai.email_whitelist_enable', 0)) {
             if (!Helper::emailSuffixVerify(
                 $request->input('email'),
@@ -37,11 +33,8 @@ class AuthActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Email suffix is not in the Whitelist'));
             }
         }
-        if ((int)config('fastai.email_gmail_limit_enable', 0)) {
-            $prefix = explode('@', $request->input('email'))[0];
-            if (strpos($prefix, '.') !== false || strpos($prefix, '+') !== false) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
-            }
+        if ((int)config('fastai.email_gmail_limit_enable', 0) && EmailAddress::isGmailAlias($email)) {
+            abort($request->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
         }
         if ((int)config('fastai.stop_register', 0)) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Registration has closed'));
@@ -51,7 +44,6 @@ class AuthActions
                 abort(422, __('An email invitation is required to register.'));
             }
         }
-        $email = $request->input('email');
         if ((int)config('fastai.email_verify', 0)) {
             \App\Services\RegistrationEmailVerification::verify($email, $request->input('email_code'), $request->is('api/v10/*'));
         }
@@ -68,26 +60,7 @@ class AuthActions
         $user->token = Helper::guid();
         if ($request->input('invite_code')) abort(410, __('Public invite codes are no longer supported. Use an email invitation.'));
 
-        // try out
-        if ((int)config('fastai.try_out_plan_id', 0)) {
-            $plan = Plan::find(config('fastai.try_out_plan_id'));
-            if ($plan) {
-                $user->transfer_enable = $plan->transfer_enable * 1073741824;
-                $user->device_limit = $plan->device_limit;
-                $user->plan_id = $plan->id;
-                $user->group_id = $plan->group_id;
-                $user->expired_at = time() + (config('fastai.try_out_hour', 1) * 3600);
-                $user->speed_limit = $plan->speed_limit;
-            }
-        }
-
-        if ($request->filled('invitation')) {
-            $user = (new EmailInvitationService())->register($request->input('invitation'), $email, function ($inviterId) use ($user) {
-                $user->invite_user_id = $inviterId;
-                if (!$user->save()) abort(request()->is('api/v10/*') ? 409 : 500, __('Register failed'));
-                return $user;
-            });
-        } elseif (!$user->save()) abort(request()->is('api/v10/*') ? 409 : 500, __('Register failed'));
+        $user = $this->persistRegistration($request, $user);
         if ((int)config('fastai.email_verify', 0)) {
             \App\Services\RegistrationEmailVerification::consume($email);
         }
@@ -95,14 +68,6 @@ class AuthActions
         $user->last_login_at = time();
         $user->last_login_ip = $this->encodeIp($request->ip());
         $user->save();
-
-        if ((int)config('fastai.register_limit_by_ip_enable', 0)) {
-            Cache::put(
-                CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip()),
-                (int)$registerCountByIP + 1,
-                (int)config('fastai.register_limit_expire', 60) * 60
-            );
-        }
 
         try {
             (new \App\Services\InvitationReviewService())->record($user, $request);
@@ -114,6 +79,56 @@ class AuthActions
         return response()->json([
             'data' => $authService->generateAuthData($request)
         ]);
+    }
+
+    private function persistRegistration(AuthRegister $request, User $user): User
+    {
+        $failureStatus = $request->is('api/v10/*') ? 409 : 500;
+        $trialPlanId = (int)config('fastai.try_out_plan_id', 0);
+        $persist = function () use ($request, $user, $failureStatus, $trialPlanId) {
+            if ($trialPlanId > 0) {
+                $plan = Plan::query()->sharedLock()->find($trialPlanId);
+                if ($plan) {
+                    $user->transfer_enable = $plan->transfer_enable * 1073741824;
+                    $user->device_limit = $plan->device_limit;
+                    $user->plan_id = $plan->id;
+                    $user->group_id = $plan->group_id;
+                    $user->expired_at = time() + (config('fastai.try_out_hour', 1) * 3600);
+                    $user->speed_limit = $plan->speed_limit;
+                }
+            }
+            if ($request->filled('invitation')) {
+                return (new EmailInvitationService())->register($request->input('invitation'), $user->email, function ($inviterId) use ($user, $failureStatus) {
+                    $user->invite_user_id = $inviterId;
+                    abort_unless($user->save(), $failureStatus, __('Register failed'));
+                    return $user;
+                });
+            }
+            abort_unless($user->save(), $failureStatus, __('Register failed'));
+            return $user;
+        };
+        if (!(int)config('fastai.register_limit_by_ip_enable', 0)) {
+            return $trialPlanId > 0 ? DB::transaction($persist) : $persist();
+        }
+
+        $key = CacheKey::get('REGISTER_IP_RATE_LIMIT', $request->ip());
+        $limit = max(1, min(10000, (int)config('fastai.register_limit_count', 3)));
+        $minutes = max(1, min(525600, (int)config('fastai.register_limit_expire', 60)));
+        try {
+            return Cache::lock($key.':lock', 120)->block(1, function () use ($key, $limit, $minutes, $persist, $failureStatus) {
+                $count = (int)Cache::get($key, 0);
+                abort_if($count >= $limit, $failureStatus, __('Register frequently, please try again after :minute minute', [
+                    'minute' => $minutes,
+                ]));
+                return DB::transaction(function () use ($persist, $key, $count, $minutes) {
+                    $user = $persist();
+                    abort_unless(Cache::put($key, $count + 1, $minutes * 60), 503, __('Register failed'));
+                    return $user;
+                });
+            });
+        } catch (LockTimeoutException $exception) {
+            abort(429, __('Too many requests, please try again later.'), ['Retry-After'=>'1']);
+        }
     }
 
     public function login(AuthLogin $request)

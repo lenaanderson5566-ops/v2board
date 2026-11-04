@@ -24,10 +24,11 @@ class CommActions
                 'withdraw_close' => (int)config('fastai.withdraw_close_enable', 0),
                 'currency' => (\App\Models\User::find(request()->input('user.id',0))->currency ?? 'CNY'),
                 'currency_symbol' => (\App\Models\User::find(request()->input('user.id',0))->currency ?? 'CNY'),
-                'commission_distribution_enable' => (int)config('fastai.commission_distribution_enable', 0),
-                'commission_distribution_l1' => config('fastai.commission_distribution_l1'),
-                'commission_distribution_l2' => config('fastai.commission_distribution_l2'),
-                'commission_distribution_l3' => config('fastai.commission_distribution_l3')
+                // Keep the existing preference response compatible with older clients.
+                'commission_distribution_enable' => 0,
+                'commission_distribution_l1' => null,
+                'commission_distribution_l2' => null,
+                'commission_distribution_l3' => null,
             ]
         ]);
     }

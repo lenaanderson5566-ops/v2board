@@ -32,7 +32,6 @@ describe("admin dependency behavior", () => {
         ["email_whitelist_enable", "email_whitelist_suffix"],
         ["register_limit_by_ip_enable", "register_limit_count"],
         ["password_limit_enable", "password_limit_expire"],
-        ["commission_distribution_enable", "commission_distribution_l2"],
         ["telegram_bot_enable", "telegram_bot_token"],
         ["plan_change_enable", "surplus_enable"],
     ])("%s controls %s without changing the stored value", (toggle, child) => {
@@ -99,13 +98,6 @@ describe("admin dependency behavior", () => {
             validateSettings({
                 email_whitelist_enable: 1,
                 email_whitelist_suffix: "[]",
-            }),
-        ).toBeTruthy();
-        expect(
-            validateSettings({
-                commission_distribution_enable: 1,
-                commission_distribution_l1: 80,
-                commission_distribution_l2: 30,
             }),
         ).toBeTruthy();
     });

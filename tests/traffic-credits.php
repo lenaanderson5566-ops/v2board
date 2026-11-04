@@ -24,8 +24,8 @@ $call=function($path,$body,$token=null)use($kernel,&$index){
 };
 DB::beginTransaction();
 try {
- $plan=Plan::create(['name'=>'Credit test','group_id'=>1,'transfer_enable'=>10,'onetime_price'=>1000,'show'=>1,'renew'=>1,'device_limit'=>4,'speed_limit'=>100]);
- $recurring=Plan::create(['name'=>'Recurring test','group_id'=>2,'transfer_enable'=>100,'month_price'=>1000,'show'=>1,'renew'=>1,'reset_traffic_method'=>0]);
+ $plan=Plan::create(['name'=>'Credit test','group_id'=>1,'transfer_enable'=>10,'onetime_price'=>1000,'reset_price'=>100,'show'=>1,'renew'=>1,'device_limit'=>4,'speed_limit'=>100]);
+ $recurring=Plan::create(['name'=>'Recurring test','group_id'=>2,'transfer_enable'=>100,'month_price'=>1000,'reset_price'=>200,'show'=>1,'renew'=>1,'speed_limit'=>700,'reset_traffic_method'=>0]);
  $make=function($fields=[])use($plan){return User::create(array_merge(['email'=>'credit-'.Str::uuid().'@example.com','password'=>'test-only','token'=>Str::random(32),'uuid'=>(string)Str::uuid(),'plan_id'=>$plan->id,'group_id'=>1,'device_limit'=>4,'speed_limit'=>100,'transfer_enable'=>1000,'u'=>200,'d'=>300,'expired_at'=>null],$fields));};
  $user=$make();$service=new TrafficCreditService();$identity=$user->only(['plan_id','group_id','device_limit','speed_limit','expired_at','token','uuid','password']);
  $service->migrateUser($user);$user->save();
@@ -45,6 +45,25 @@ try {
  $r=$call('me/orders',['planId'=>$plan->id,'billingPeriod'=>'credits'],$token);$assert($r->getStatusCode()===201,'Credit order save failed: '.$r->getContent());
  $order=Order::where('trade_no',json_decode($r->getContent(),true)['data']['orderNumber'])->firstOrFail();
  $assert($order->type===5 && $order->credit_bytes===10*1073741824 && !$order->surplus_amount,'Credit order converted subscription');
+
+ $admin = $make(['is_admin'=>1]);
+ $adminAuth = new App\Services\AuthService($admin); $auths[] = $adminAuth;
+ $adminToken = $adminAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+ $adminPath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+ $adminOrder = function (string $action, array $body) use ($kernel, $adminPath, $adminToken, &$index) {
+   $request = Illuminate\Http\Request::create('/api/v1/'.$adminPath.'/order/'.$action, 'POST', $body, [], [], ['REMOTE_ADDR'=>'192.0.2.'.(++$index)]);
+   $request->headers->set('Accept', 'application/json');
+   $request->headers->set('Authorization', $adminToken);
+   return $kernel->handle($request);
+ };
+ $assigned = $make(['plan_id'=>$recurring->id,'group_id'=>2,'expired_at'=>time()+86400*60,'speed_limit'=>19]);
+ $assignment = ['email'=>$assigned->email, 'plan_id'=>$plan->id, 'period'=>'onetime_price', 'total_amount'=>321];
+ $creditResponse = $adminOrder('assign', $assignment);
+ $assert($creditResponse->getStatusCode()===200, 'Admin credit assignment failed: '.$creditResponse->getContent());
+ $manualCredit = Order::where('trade_no', json_decode($creditResponse->getContent(), true)['data'])->firstOrFail();
+ $assert($manualCredit->status===0 && $manualCredit->type===5 && $manualCredit->credit_bytes===10*1073741824
+   && $manualCredit->total_amount===321 && $manualCredit->credit_snapshot['group_id']===1, 'Admin assignment did not snapshot the credit while preserving manual price');
+
  $before=$active->fresh()->only(['u','d','transfer_enable','expired_at','plan_id','group_id','device_limit','speed_limit','token']);
  $plan->update(['transfer_enable'=>50]);$order->status=1;$order->save();
  (new OrderService($order))->open();$active->refresh();
@@ -52,6 +71,31 @@ try {
  $assert($active->only(array_keys($before))===$before,'Credits replaced subscription');
  (new OrderService($order))->open();$assert($active->refresh()->credit_balance===500+10*1073741824,'Retry doubled credits');
  (new OrderService($order))->paid('stale-callback');$assert($order->fresh()->status===3,'Stale payment callback reopened a completed order');
+
+ $manualBefore = $assigned->fresh()->only(array_keys($before));
+ $assert($adminOrder('paid', ['trade_no'=>$manualCredit->trade_no])->getStatusCode()===200, 'Admin could not mark credit order as paid');
+ (new OrderService($manualCredit->fresh()))->open();
+ (new OrderService($manualCredit->fresh()))->open();
+ $assert($assigned->refresh()->credit_balance===10*1073741824 && $assigned->only(array_keys($manualBefore))===$manualBefore,
+   'Manual credit changed the subscription, used the changed plan allowance, or was granted twice');
+
+ $reset = array_replace($assignment, ['period'=>'reset_price', 'total_amount'=>456]);
+ $assert($adminOrder('assign', $reset)->getStatusCode()===422, 'Admin could assign a reset from an unrelated plan');
+ $reset['plan_id'] = $recurring->id;
+ $assigned->update(['banned'=>1]);
+ $assert($adminOrder('assign', $reset)->getStatusCode()===422, 'Admin could assign reset to banned account');
+ $assigned->update(['banned'=>0, 'expired_at'=>time()-1]);
+ $assert($adminOrder('assign', $reset)->getStatusCode()===422, 'Admin could assign reset after subscription expired');
+ $assigned->update(['expired_at'=>$manualBefore['expired_at']]);
+ $resetResponse = $adminOrder('assign', $reset);
+ $assert($resetResponse->getStatusCode()===200, 'Current-plan reset assignment failed: '.$resetResponse->getContent());
+ $manualReset = Order::where('trade_no', json_decode($resetResponse->getContent(), true)['data'])->firstOrFail();
+ $assert($manualReset->type===4 && $manualReset->total_amount===456 && $manualReset->credit_bytes===null, 'Reset assignment changed amount or order kind');
+ $assert($adminOrder('paid', ['trade_no'=>$manualReset->trade_no])->getStatusCode()===200, 'Admin could not mark reset order as paid');
+ (new OrderService($manualReset->fresh()))->open();
+ $assert($manualReset->fresh()->status===3 && $assigned->refresh()->only(array_keys($manualBefore))===array_replace($manualBefore, ['u'=>0,'d'=>0])
+   && $assigned->credit_balance===10*1073741824, 'Manual reset failed to clear usage or changed subscription, limits or credits');
+
  $active->update(['credit_balance'=>500]);
  $report=function($u,$d)use($active){
   $redis=Redis::getFacadeRoot();

@@ -151,7 +151,7 @@ class LightsailController extends \App\Http\Controllers\Controller
             }
             $data = array_intersect_key($v, array_flip(['name', 'region', 'instance', 'node_type', 'node_id']));
             if ($targetChanged || $abandon) {
-                $data += ['status' => 'ready', 'phase' => 'idle', 'operation' => 'rotate', 'old_name' => null, 'new_name' => null, 'current_ip' => null, 'error_code' => null, 'operation_at' => 0];
+                $data += ['status' => 'ready', 'phase' => 'idle', 'operation' => 'rotate', 'old_name' => null, 'new_name' => null, 'current_ip' => null, 'error_code' => null, 'operation_at' => 0, 'operation_attempt' => null];
             }
             $credentialId = $v['credential_id'] ?? $row->credential_id ?? null;
             $credential = $credentialId ? DB::table('v2_lightsail_credential')->where('id', $credentialId)->lockForUpdate()->first() : null;
@@ -196,7 +196,7 @@ class LightsailController extends \App\Http\Controllers\Controller
                 if (!in_array($row->status, ['ready', 'completed', 'restored'], true)) {
                     abort(409, '请先继续或恢复上次操作');
                 }
-            $data = ['operation' => 'rotate', 'phase' => 'idle', 'old_name' => null, 'new_name' => 'fastai-' . Str::uuid(), 'error_code' => null];
+                $data = ['operation' => 'rotate', 'phase' => 'idle', 'old_name' => null, 'new_name' => 'fastai-' . Str::uuid(), 'error_code' => null];
             } elseif ($v['action'] === 'restore') {
                 if (!$recoverable || !$row->old_name) {
                     abort(409, '没有可恢复的操作');
@@ -210,8 +210,15 @@ class LightsailController extends \App\Http\Controllers\Controller
             }
             $data['status'] = 'queued';
             $data['operation_at'] = time();
-            DB::table('v2_lightsail_server')->where('id', $row->id)->update($data);
-            RotateLightsailIpJob::dispatch($row->id)->afterCommit();
+            $data['operation_attempt'] = (string) Str::uuid();
+            $lock = LightsailService::operationLock($row);
+            abort_unless($lock->get(), 409, 'IP 操作仍在执行，请稍后重试');
+            try {
+                DB::table('v2_lightsail_server')->where('id', $row->id)->update($data);
+            } finally {
+                $lock->release();
+            }
+            RotateLightsailIpJob::dispatch($row->id, $data['operation_attempt'])->afterCommit();
         }, 3);
         return response(['data' => true], 202);
     }

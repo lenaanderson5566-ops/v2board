@@ -106,11 +106,14 @@ try {
     $html=$renderer->data($unsafe)['contentHtml'];
     $assert(strpos($html,'script')===false && strpos($html,'onclick')===false && strpos($html,'<img')===false && strpos($html,'<strong>safe</strong>')!==false && strpos($html,'https://safe.example')!==false,'Announcement sanitization failed');
     $config=new App\Http\Requests\Admin\UserSendMail;
-    $assert(validator(['purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y','translations'=>['ja-JP'=>['subject'=>'x']]],$config->rules())->fails(),'Incomplete translation accepted');
-    $assert(validator(['purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y','translations'=>['xx'=>['subject'=>'x','content'=>'y']]],$config->rules())->fails(),'Unknown locale accepted');
-    $assert(!validator(['purpose'=>'service','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y','translations'=>['ja-JP'=>['subject'=>'x','content'=>'y']]],$config->rules())->fails(),'Valid translation rejected');
-    $assert(validator(['subject'=>'x','content'=>'y'],$config->rules())->fails(),'Unclassified campaign accepted');
-    $assert(validator(['purpose'=>'other','request_key'=>(string)Illuminate\Support\Str::uuid(),'subject'=>'x','content'=>'y'],$config->rules())->fails(),'Unknown campaign purpose accepted');
+    $campaignInput = ['purpose'=>'service', 'request_key'=>(string)Illuminate\Support\Str::uuid(),
+        'audience_token'=>str_repeat('a', 64), 'subject'=>'x', 'content'=>'y'];
+    $assert(validator($campaignInput + ['translations'=>['ja-JP'=>['subject'=>'x']]], $config->rules())->fails(), 'Incomplete translation accepted');
+    $assert(validator($campaignInput + ['translations'=>['xx'=>['subject'=>'x','content'=>'y']]], $config->rules())->fails(), 'Unknown locale accepted');
+    $assert(!validator($campaignInput + ['translations'=>['ja-JP'=>['subject'=>'x','content'=>'y']]], $config->rules())->fails(), 'Valid translation rejected');
+    $assert(validator(array_diff_key($campaignInput, ['purpose'=>true]), $config->rules())->fails(), 'Unclassified campaign accepted');
+    $assert(validator(array_replace($campaignInput, ['purpose'=>'other']), $config->rules())->fails(), 'Unknown campaign purpose accepted');
+    $assert(validator(array_diff_key($campaignInput, ['audience_token'=>true]), $config->rules())->fails(), 'Campaign accepted without audience preview');
     config(['mail.host'=>'isolated-'.bin2hex(random_bytes(8)), 'mail.username'=>'test','mail.from.address'=>'test@example.com']);
     $limiter=new MailRateLimiter;
     $scope='mail-rate:'.hash('sha256',config('fastai.email_provider', 'smtp').'|'.config('fastai.email_mailgun_domain').'|'.config('mail.host').'|test|test@example.com');
@@ -224,7 +227,9 @@ try {
     if ($testDatabase) {
         $token=bin2hex(random_bytes(8));$ids=[];
         for($i=0;$i<3;$i++) $ids[]=App\Models\User::create(['email'=>"queue-$token-$i@example.test",'password'=>'not-a-login','uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),'announcement_email'=>1])->id;
-        $campaign=App\Services\Mail\MailCampaign::create(App\Models\User::whereIn('id',$ids),['request_key'=>(string)Illuminate\Support\Str::uuid(),'purpose'=>'service','subject'=>'Queue test','content'=>'Queue test','translations'=>[]],1);
+        $audience = App\Models\User::whereIn('id', $ids);
+        $preview = App\Services\Mail\MailCampaign::preview($audience, 'service', 1);
+        $campaign=App\Services\Mail\MailCampaign::create($audience,['request_key'=>(string)Illuminate\Support\Str::uuid(),'purpose'=>'service','subject'=>'Queue test','content'=>'Queue test','translations'=>[],'audience_token'=>$preview['audience_token']],1);
         $testRedis=new Illuminate\Redis\RedisManager($app,config('database.redis.client'),['options'=>['prefix'=>"mail-queue-test:$token:"],'default'=>config('database.redis.default')]);
         $realQueue=new Illuminate\Queue\RedisQueue($testRedis,'send_email_mass','default',90,null);
         $realQueue->setContainer($app);$realQueue->setConnectionName('redis');

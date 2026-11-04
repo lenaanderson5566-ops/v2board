@@ -36,7 +36,8 @@ final class NodeDomainController extends Controller
             if (!empty($v['entry_id'])) {
                 abort_unless($v['node_type']==='v2box' && !empty($v['entry_port']),422,'中转需要 V2Box 节点和入口端口');
                 $entry=DB::table('v2_node_ddns')->find($v['entry_id']);
-                abort_unless($entry && $entry->purpose==='entry' && $entry->enabled,422,'请选择有效入口域名');
+                abort_unless($entry && $entry->purpose==='entry' && $entry->enabled && $entry->server_id,422,'请选择有效入口域名');
+                \App\Services\NodeListenerGuard::assertForwardingPort((int)$entry->server_id,(int)$v['entry_port']);
                 $entryIds=DB::table('v2_node_ddns')->where('purpose','entry')->where('server_id',$entry->server_id)->pluck('id');
                 abort_if(DB::table('v2_node_connection')->where(function($q)use($entryIds,$v){
                     $q->where(fn($q)=>$q->whereIn('entry_id',$entryIds)->where('entry_port',$v['entry_port']))
@@ -109,7 +110,10 @@ final class NodeDomainController extends Controller
     public function retry(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1']);
         return NodeDnsLifecycle::locked(function()use($v){
-            DB::table('v2_node_ddns')->where('id',$v['id'])->where('managed',true)->update(['next_run'=>0,'status'=>'awaiting_report']);
+            $binding=DB::table('v2_node_ddns')->find($v['id']);
+            abort_unless($binding,404,'域名绑定已不存在，请刷新列表');
+            abort_unless($binding->managed && $binding->enabled,409,'请先启用自动域名管理，再重试同步');
+            DB::table('v2_node_ddns')->where('id',$binding->id)->update(['next_run'=>0,'status'=>'awaiting_report']);
             // Credential-wide limits are never reset here.
             return ['data'=>true];
         });

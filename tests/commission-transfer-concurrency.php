@@ -98,6 +98,83 @@ try {
     if((int)$inviter->fresh()->commission_balance!==200 || (int)$walletPaid->fresh()->commission_status!==2 || (int)$offsetPaid->fresh()->commission_status!==2
         || App\Models\CommissionLog::whereIn('trade_no',[$walletPaid->trade_no,$offsetPaid->trade_no])->count()!==2)
         throw new RuntimeException('Internal-transfer protection rejected a legitimate zero-external-due historical subscription');
+
+    $upstream = User::create([
+        'email'=>uniqid('commission-upstream-').'@example.test', 'password'=>'fixture',
+        'uuid'=>App\Utils\Helper::guid(true), 'token'=>App\Utils\Helper::guid(),
+        'currency'=>'CNY', 'commission_balance'=>0,
+    ]);
+    $rewardUsers[] = $upstream->id;
+    $inviter->update(['invite_user_id'=>$upstream->id]);
+    $deletedInviter = User::create([
+        'email'=>uniqid('commission-deleted-inviter-').'@example.test', 'password'=>'fixture',
+        'uuid'=>App\Utils\Helper::guid(true), 'token'=>App\Utils\Helper::guid(),
+        'invite_user_id'=>$upstream->id, 'account_deleted_at'=>time(), 'banned'=>1,
+    ]);
+    $rewardUsers[] = $deletedInviter->id;
+
+    // A site upgraded from multi-level settings still settles the full stored commission to the direct inviter.
+    config([
+        'fastai.commission_distribution_enable'=>1,
+        'fastai.commission_distribution_l1'=>0,
+        'fastai.commission_distribution_l2'=>50,
+        'fastai.commission_distribution_l3'=>50,
+    ]);
+    $paidOrder = fn (int $status, array $overrides = []) => $historical($status, $overrides + [
+        'plan_id'=>1, 'type'=>1, 'period'=>'month_price', 'total_amount'=>1000,
+        'surplus_amount'=>0, 'paid_at'=>time()-4*86400, 'callback_no'=>'fixture-paid',
+    ]);
+    $logsFor = fn (Order $order) => App\Models\CommissionLog::where('trade_no', $order->trade_no)->orderBy('id')->get();
+    $recipients = [$inviter, $upstream, $referrer, $deletedInviter];
+    $wallets = fn () => array_map(fn (User $user) => (int)$user->fresh()->commission_balance, $recipients);
+    $settled = $paidOrder(2, ['actual_commission_balance'=>100]);
+    foreach ([$inviter, $upstream] as $historicRecipient) {
+        $historicRecipient->increment('commission_balance', 50);
+        App\Models\CommissionLog::create([
+            'invite_user_id'=>$historicRecipient->id, 'user_id'=>$referrer->id, 'trade_no'=>$settled->trade_no,
+            'order_amount'=>1000, 'get_amount'=>50, 'currency'=>'CNY', 'order_currency'=>'CNY',
+        ]);
+    }
+    $stateOf = fn (Order $order) => [$order->fresh()->getAttributes(), $logsFor($order)->toArray()];
+    $settledState = $stateOf($settled);
+
+    $settle = function (int $expectedWalletAmount, array $overrides = [], int $commissionStatus = 1) use ($paidOrder, $logsFor, $recipients, $wallets, $inviter) {
+        $order = $paidOrder($commissionStatus, $overrides);
+        $before = $wallets();
+        (new App\Console\Commands\CheckCommission())->handle();
+        $order->refresh();
+        $logs = $logsFor($order)->map(fn ($log) => [(int)$log->invite_user_id, (int)$log->get_amount, $log->currency, $log->order_currency])->all();
+        $expected = $expectedWalletAmount ? [[(int)$inviter->id, $expectedWalletAmount, 'CNY', $order->currency]] : [];
+        $expectedActual = $expectedWalletAmount ? (int)$order->commission_balance : 0;
+        if ($logs !== $expected || (int)$order->commission_status !== 2 || (int)$order->actual_commission_balance !== $expectedActual) {
+            throw new RuntimeException('Commission settlement did not match the fixed direct-inviter policy');
+        }
+        $after = $wallets();
+        foreach ($recipients as $index => $recipient) {
+            if ($after[$index] - $before[$index] !== ($recipient->is($inviter) ? $expectedWalletAmount : 0)) {
+                throw new RuntimeException('Commission credited the wrong wallet or amount');
+            }
+        }
+        return $order;
+    };
+    $pending = $settle(100, [], 0);
+    $crossCurrency = $settle(800, ['currency'=>'USD', 'fx_snapshot'=>['usdCnyMicros'=>8000000]]);
+    $upstream->update(['invite_user_id'=>$inviter->id]);
+    $cycle = $settle(100);
+    $inviter->update(['invite_user_id'=>$referrer->id]);
+    $settle(100);
+    $settle(0, ['invite_user_id'=>$referrer->id]);
+    $settle(0, ['invite_user_id'=>$deletedInviter->id]);
+    $settle(0, ['invite_user_id'=>2147483647]);
+    $walletsBeforeReplay = $wallets();
+    $ordersToReplay = [$pending, $crossCurrency, $cycle];
+    $beforeReplay = array_map($stateOf, $ordersToReplay);
+    (new App\Console\Commands\CheckCommission())->handle();
+    if ($wallets() !== $walletsBeforeReplay || array_map($stateOf, $ordersToReplay) !== $beforeReplay
+        || $stateOf($settled) !== $settledState) {
+        throw new RuntimeException('Replayed settlement changed paid orders, wallets or historical commission records');
+    }
+    echo "Commission settlement: direct inviter only, immutable historical payouts, and no duplicate credits.\n";
     echo "Commission transfer concurrency: one success, one conflict, one ledger record, conserved balance.\n";
 } finally {
     while(DB::transactionLevel())DB::rollBack();

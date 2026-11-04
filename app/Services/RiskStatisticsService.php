@@ -92,7 +92,7 @@ final class RiskStatisticsService
 
     private function windowMetrics(int $cutoff, string $label): array
     {
-        $activeBuilder = SubscribeLog::query()->where('created_at', '>=', $cutoff);
+        $activeBuilder = SubscribeLog::query()->whereNotNull('user_id')->where('created_at', '>=', $cutoff);
         $activeUsers = (clone $activeBuilder)->distinct('user_id')->count('user_id');
         $activeHits = (clone $activeBuilder)->count();
 

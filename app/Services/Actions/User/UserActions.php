@@ -130,12 +130,20 @@ class UserActions
         DB::beginTransaction();
 
         try {
+            // Read the candidate first so plan deletion and redemption can lock the plan before any user or card.
+            $giftcardInput = $request->giftcard;
+            $candidate = Giftcard::where('code', $giftcardInput)->first(['id', 'type', 'plan_id']);
+            $plan = (int) $candidate?->type === 5
+                ? Plan::whereKey($candidate->plan_id)->sharedLock()->first()
+                : null;
+
             $user = User::where('id', $request->user['id'])->lockForUpdate()->first();
             if (!$user) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('The user does not exist'));
             }
-            $giftcard_input = $request->giftcard;
-            $giftcard = Giftcard::where('code', $giftcard_input)->lockForUpdate()->first();
+            $giftcard = $candidate
+                ? Giftcard::whereKey($candidate->id)->where('code', $giftcardInput)->lockForUpdate()->first()
+                : null;
 
             if (!$giftcard) {
                 abort(request()->is('api/v10/*') ? 409 : 500, __('The gift card does not exist'));
@@ -167,27 +175,34 @@ class UserActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('The gift card has already been used by this user'));
             }
 
+            abort_if((int) $giftcard->value < 0 && in_array((int) $giftcard->type, [1, 2, 3, 5], true),
+                request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
             $usedUserIds[] = $user->id;
             $giftcard->used_user_ids = $usedUserIds;
 
             switch ($giftcard->type) {
                 case 1:
                     abort_unless(($user->currency ?? 'CNY') === 'CNY', 422, __('This gift card is only valid for CNY accounts.'));
+                    abort_if($user->balance > 2147483647 - $giftcard->value,
+                        request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
                     $user->balance += $giftcard->value;
                     break;
                 case 2:
                     if ($user->expired_at !== null) {
-                        if ($user->expired_at <= $currentTime) {
-                            $user->expired_at = $currentTime + $giftcard->value * 86400;
-                        } else {
-                            $user->expired_at += $giftcard->value * 86400;
-                        }
+                        $expiry = max($user->expired_at, $currentTime);
+                        $duration = $giftcard->value * 86400;
+                        abort_if($expiry > PHP_INT_MAX - $duration,
+                            request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
+                        $user->expired_at = $expiry + $duration;
                     } else {
                         abort(request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
                     }
                     break;
                 case 3:
-                    $user->transfer_enable += $giftcard->value * 1073741824;
+                    $bytes = $giftcard->value * 1073741824;
+                    abort_if($user->transfer_enable > PHP_INT_MAX - $bytes,
+                        request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
+                    $user->transfer_enable += $bytes;
                     break;
                 case 4:
                     $user->u = 0;
@@ -195,12 +210,14 @@ class UserActions
                     break;
                 case 5:
                     if ($user->plan_id == null || ($user->expired_at !== null && $user->expired_at < $currentTime)) {
-                        $plan = Plan::where('id', $giftcard->plan_id)->first();
-                        if (!$plan) abort(request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
+                        if (!$plan || (int) $plan->id !== (int) $giftcard->plan_id) {
+                            abort(request()->is('api/v10/*') ? 409 : 500, __('Not suitable gift card type'));
+                        }
                         $user->plan_id = $plan->id;
                         $user->group_id = $plan->group_id;
                         $user->transfer_enable = $plan->transfer_enable * 1073741824;
                         $user->device_limit = $plan->device_limit;
+                        $user->speed_limit = $plan->speed_limit;
                         $user->u = 0;
                         $user->d = 0;
                         if($giftcard->value == 0) {

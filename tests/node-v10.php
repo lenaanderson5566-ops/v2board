@@ -69,7 +69,28 @@ try {
     $base=['group_id'=>[999997],'name'=>'V10 node test','host'=>'example.test','port'=>'443','server_port'=>443,'listen_ip'=>'0.0.0.0','protocol'=>'vless','tls'=>0,'network'=>'tcp','network_settings'=>[],'encryption_settings'=>[],'disable_sni'=>0,'zero_rtt_handshake'=>0,'rate'=>'1','show'=>1];
     $native=['dns'=>['servers'=>[['type'=>'https','tag'=>'resolver','server'=>'1.1.1.1']],'final'=>'resolver'],'route'=>['rule_set'=>[['type'=>'inline','tag'=>'private','rules'=>[['ip_cidr'=>['127.0.0.0/8']]]]],'rules'=>[['rule_set'=>['private'],'action'=>'reject']],'final'=>'direct']];
     $profile=App\Models\ServerRoute::create(['backend'=>'v2box','remarks'=>'V10 native test','match'=>'[]','action'=>'sing_box','sing_box'=>$native]);
-    $admin=new V2boxController();$admin->save(Request::create('/','POST',$base+['route_id'=>[$profile->id]]));
+    $admin=new V2boxController();
+    foreach ([
+        ['server_port', 65536], ['server_port', 0], ['server_port', '443.5'],
+        ['port', '65536'], ['port', '9000-8000'],
+        ['rate', -1], ['rate', 'unknown'], ['rate', 10001], ['rate', '0.001'],
+    ] as [$field, $value]) {
+        try {
+            $admin->save(Request::create('/', 'POST', array_replace($base, [$field=>$value])));
+            $assert(false, 'Manual node create should reject invalid '.$field);
+        } catch (Illuminate\Validation\ValidationException $error) {
+            $assert(isset($error->errors()[$field]), 'Manual node create should identify invalid '.$field);
+        }
+    }
+    $rangeNode = $admin->save(Request::create('/', 'POST', array_replace($base, [
+        'name'=>'Valid V10 port range', 'port'=>'443-444', 'server_port'=>65535, 'rate'=>'1.25',
+    ])));
+    $rangeNodeId = json_decode($rangeNode->getContent(), true)['data']['id'];
+    $rangeNode = ServerV2box::findOrFail($rangeNodeId);
+    $assert($rangeNode->port==='443-444' && (int)$rangeNode->server_port===65535 && (float)$rangeNode->rate===1.25,
+        'Manual node create preserves valid client port range and decimal rate');
+    $rangeNode->delete();
+    $admin->save(Request::create('/','POST',$base+['route_id'=>[$profile->id]]));
     $node=ServerV2box::where('name',$base['name'])->firstOrFail();
     $assert(App\Services\NodeRouteService::forNode($node)===$native,'Native config persisted');
     $nodeId=$node->id;
@@ -425,11 +446,14 @@ try {
             $assert((int)$subscriber->group_id===999996 && $subscriber->uuid===$uuid,'Plan switch preserves UUID while changing the stored access group');
 
             $edit=function(array $changes) use ($subscriber,$assert) {
+                $controller=new App\Http\Controllers\V1\Admin\UserController();
+                $detail=$controller->getUserInfoById(Request::create('/','GET',['id'=>$subscriber->id]));
+                $versions=json_decode($detail->getContent(),true)['data']['edit_versions'];
                 $request=App\Http\Requests\Admin\UserUpdate::create('/','POST',$changes+[
-                    'id'=>$subscriber->id,'email'=>$subscriber->email,'banned'=>0,'is_admin'=>0]);
+                    'id'=>$subscriber->id,'edit_versions'=>array_intersect_key($versions,$changes)]);
                 $validator=Illuminate\Support\Facades\Validator::make($request->all(),$request->rules());
                 $validator->validate();$request->setValidator($validator);
-                $assert((new App\Http\Controllers\V1\Admin\UserController())->update($request)->getStatusCode()===200,'Validated administrator edit succeeds');
+                $assert($controller->update($request)->getStatusCode()===200,'Validated administrator edit succeeds');
                 $subscriber->refresh();
             };
             $edit(['banned'=>1]);
@@ -754,9 +778,26 @@ try {
     }
     try { $credentials::authenticate($key['secret'],'v2box',$nodeId,false); $assert(false,'Query credential rejected'); }
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===401,'Query credential rejected');}
+    $credentialCall=function($action,$body,$authorization=null)use($kernel,$adminPath,$token) {
+        Illuminate\Support\Facades\RateLimiter::clear('node-credentials:'.sha1('|127.0.0.1'));
+        return $kernel->handle(Request::create($adminPath.'/server/credentials/'.$action,'POST',[],[],[],
+            ['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization??$token],json_encode($body)));
+    };
+    $params=['type'=>'v2box','id'=>$nodeId];
+    $lost=$credentials::issue('v2box',$nodeId,(int)$user->id);
+    $assert($credentials::listing('v2box',$nodeId)['cancellableCredentialId']===$lost['id'],'Lost unused replacement can be cancelled');
+    $assert($credentialCall('cancel-rotation',$params+['credentialId'=>$lost['id']],'')->getStatusCode()===403,'Anonymous cannot cancel a rotation');
+    $assert($credentialCall('cancel-rotation',$params+['credentialId'=>$key['id']])->getStatusCode()===409,'A stale cancellation must not revoke the working key');
+    $assert($credentialCall('cancel-rotation',$params+['credentialId'=>$lost['id']])->getStatusCode()===200,'Administrator can cancel an unused replacement');
+    $assert(DB::table('v2_node_credential')->where('id',$key['id'])->value('expires_at')===null
+        && $call('GET',$root.'/users',[],$headers)->getStatusCode()===200,'Cancellation restores working old key without an expiry');
+    $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$lost['secret']])->getStatusCode()===401,'Cancelled replacement cannot authenticate');
     $next=$credentials::issue('v2box',$nodeId,(int)$user->id);
     $assert($call('GET',$root.'/users',[],$headers)->getStatusCode()===200,'Old key works during manual grace period');
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$next['secret']])->getStatusCode()===200,'New key works during grace period');
+    $assert($credentials::listing('v2box',$nodeId)['cancellableCredentialId']===null,'Authenticated replacement is no longer cancellable');
+    $assert($credentialCall('cancel-rotation',$params+['credentialId'=>$next['id']])->getStatusCode()===409,
+        'A replacement already used by the node cannot be cancelled');
     try { $credentials::issue('v2box',$nodeId,(int)$user->id); $assert(false,'Concurrent rotation blocked'); }
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Concurrent rotation blocked');}
     DB::table('v2_node_credential')->where('id',$key['id'])->update(['expires_at'=>time()-1]);
@@ -765,11 +806,6 @@ try {
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$next['secret']])->getStatusCode()===401,'Revocation effective on next request');
     $assert($call('GET',$root.'/users')->getStatusCode()===401,'Revoking all keys cannot restore global authentication');
     $user->password=password_hash('test-admin-credential-password',PASSWORD_DEFAULT);$user->save();
-    $credentialCall=function($action,$body,$authorization=null)use($kernel,$adminPath,$token) {
-        return $kernel->handle(Request::create($adminPath.'/server/credentials/'.$action,'POST',[],[],[],
-            ['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$authorization??$token],json_encode($body)));
-    };
-    $params=['type'=>'v2box','id'=>$nodeId];
     $assert($credentialCall('issue',$params,'')->getStatusCode()===403,'Anonymous cannot generate credentials');
     $user->is_admin=0;$user->save();
     $assert($credentialCall('issue',$params)->getStatusCode()===403,'Ordinary user cannot generate credentials');

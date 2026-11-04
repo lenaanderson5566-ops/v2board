@@ -55,11 +55,9 @@ class InviteActions
             $commission_rate = $user->commission_rate;
         }
         $uncheck_commission_balance = 0;
-        foreach (Order::where('status',3)->where('commission_status',0)->where('invite_user_id',$user->id)->get() as $order) {
+        foreach (Order::where('status',3)->where('commission_status',0)->where('invite_user_id',$user->id)
+            ->where('user_id', '<>', $user->id)->get() as $order) {
             $uncheck_commission_balance += \App\Services\ExchangeRate::convert((int)$order->commission_balance, $order->currency ?: 'CNY', $user->currency ?: 'CNY', $order->fx_snapshot ?? []);
-        }
-        if (config('fastai.commission_distribution_enable', 0)) {
-            $uncheck_commission_balance = $uncheck_commission_balance * (config('fastai.commission_distribution_l1') / 100);
         }
         $stat = [
             //已注册用户数

@@ -162,6 +162,9 @@ $legacy=json_decode($controller->fetch(Request::create('/','GET',['status'=>'leg
 $assert($legacy['total']===1 && !str_contains(json_encode($legacy),'PRIVATE_OLD'),'Legacy error leaked');
 MailLog::where('status','accepted')->first()->update(['status'=>'sending','created_at'=>time()-300]);
 $assert(json_decode($controller->fetch(Request::create('/','GET',['status'=>'uncertain']))->getContent(),true)['total']===2,'Stuck attempt not shown as uncertain');
+$health = json_decode($controller->health()->getContent(), true)['data'];
+$assert(collect($health['counts'])->where('status', 'uncertain')->sum('count')===2,
+    'Mail health did not classify the stuck attempt as uncertain');
 try { $controller->fetch(Request::create('/','GET',['page_size'=>1000])); throw new RuntimeException('Pagination unbounded'); }
 catch (Illuminate\Validation\ValidationException $e) { $checks++; }
 $reject(fn()=>$controller->fetch(Request::create('/','GET',['from'=>20,'to'=>10])),422);

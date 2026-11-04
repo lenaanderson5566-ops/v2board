@@ -64,6 +64,27 @@ class UsageResetService
         }, 3);
     }
 
+    public function previewGrant($users, int $actorId, int $expectedCount): array
+    {
+        $scope = $this->grantScope($actorId);
+        $sample = [];
+        $total = 0;
+        foreach ($users->select(['id', 'email'])->orderBy('id')->cursor() as $user) {
+            hash_update($scope, $user->id."\n");
+            if ($total < 10) $sample[] = ['id' => $user->id, 'email' => $user->email];
+            $total++;
+        }
+        if ($total !== $expectedCount) $this->fail('reset_count_changed');
+        return ['scope_token' => hash_final($scope), 'total' => $total, 'sample' => $sample];
+    }
+
+    private function grantScope(int $actorId): \HashContext
+    {
+        $scope = hash_init('sha256', HASH_HMAC, (string)config('app.key'));
+        hash_update($scope, "usage-reset-grant-v1:$actorId\n");
+        return $scope;
+    }
+
     public function batch($users, int $actorId, array $data): array
     {
         return DB::transaction(function () use ($users, $actorId, $data) {
@@ -78,12 +99,15 @@ class UsageResetService
             if ($batch->affected > 0) return ['affected' => $batch->affected, 'replayed' => true];
             if ((clone $users)->count() !== (int)$data['expected_count']) $this->fail('reset_count_changed');
             $affected = 0;
-            $users->orderBy('id')->lockForUpdate()->chunkById(500, function ($chunk) use (&$affected, $actorId, $data, $batch) {
+            $scope = $data['kind'] === 'grant' ? $this->grantScope($actorId) : null;
+            if ($scope && empty($data['scope_token'])) $this->fail('reset_scope_changed');
+            $users->orderBy('id')->lockForUpdate()->chunkById(500, function ($chunk) use (&$affected, $actorId, $data, $batch, $scope) {
                 foreach ($chunk as $user) {
                     $beforeU = $user->u;
                     $beforeD = $user->d;
                     $creditId = null;
                     if ($data['kind'] === 'grant') {
+                        hash_update($scope, $user->id."\n");
                         $creditId = DB::table('v2_usage_reset_credit')->insertGetId([
                             'user_id' => $user->id, 'batch_id' => $batch->id, 'quantity' => $data['quantity'],
                             'remaining' => $data['quantity'], 'expires_at' => $data['expires_at'] ?? null, 'created_at' => time(),
@@ -100,6 +124,7 @@ class UsageResetService
                 }
             });
             if ($affected !== (int)$data['expected_count']) $this->fail('reset_count_changed');
+            if ($scope && !hash_equals(hash_final($scope), $data['scope_token'])) $this->fail('reset_scope_changed');
             DB::table('v2_usage_reset_batch')->where('id', $batch->id)->update(['affected' => $affected]);
             return ['affected' => $affected, 'replayed' => false];
         }, 3);

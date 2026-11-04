@@ -90,6 +90,13 @@ try {
     $registered=User::where('email',$recipient)->firstOrFail(); $users[]=$registered;
     $tokens[]=json_decode($response->getContent(),true)['data']['accessToken'];
     $assert($registered->invite_user_id===$sender->id && $record->fresh()->accepted_user_id===$registered->id,'Affiliate or accepted recipient missing');
+    $review = DB::table('v2_invitation_review')->where('user_id', $registered->id)->where('inviter_id', $sender->id)->first();
+    $adminResponse = app(App\Http\Controllers\V1\Admin\InvitationEmailController::class)->fetch(
+        Illuminate\Http\Request::create('/', 'GET', ['recipient'=>$recipient])
+    );
+    $adminInvites = json_decode($adminResponse->getContent(), true, 512, JSON_THROW_ON_ERROR);
+    $assert($review && $adminInvites['total']===1 && (int)$adminInvites['data'][0]['review_id']===(int)$review->id,
+        'Admin invitation email links to the matching review without duplicating rows');
     $assert($service->history($sender->id,90)[0]['status']==='accepted','Accepted history incorrect');
     $reject(fn()=>$service->register($job->token,$recipient,fn()=>throw new RuntimeException('Replay callback ran')),422);
     config(['fastai.invite_force'=>0]);

@@ -32,6 +32,15 @@ try {
     $other = Payment::create(['name'=>'Second channel','payment'=>'Paytaro','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['pid'=>'test','key'=>'test-secret'],'handling_fee_fixed'=>30]);
     $request=Request::create('/', 'POST',['trade_no'=>$order->trade_no,'method'=>$other->id]); $request->user=['id'=>$order->user_id];
     (new OrderActions())->checkout($request);
+    $deleteChannel = fn ($channel) => (new App\Http\Controllers\V1\Admin\PaymentController())->drop(
+        Request::create('/', 'POST', ['id'=>$channel->id])
+    );
+    foreach ([$payment, $other] as $pendingChannel) {
+        $blocked = false;
+        try { $deleteChannel($pendingChannel); }
+        catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $blocked = $e->getStatusCode() === 409; }
+        $assert($blocked && Payment::find($pendingChannel->id), 'Pending order protects every selected channel, including prior choices');
+    }
     $notify = function ($channel, $callback) use ($order) {
         $params=['out_trade_no'=>$order->trade_no,'trade_no'=>$callback,'trade_status'=>'TRADE_SUCCESS','money'=>number_format((1000 + $channel->handling_fee_fixed)/100,2,'.','')];
         ksort($params); $pairs=[]; foreach($params as $k=>$v) $pairs[]=$k.'='.$v;
@@ -44,7 +53,7 @@ try {
     $notify($other,'second-paid');
     $assert($order->fresh()->callback_no==='first-paid','Later callback cannot overwrite settlement');
     $assert(!isset($order->toArray()['payment_snapshot']), 'Internal data not exposed to user');
-    $payment->delete();
+    $assert(json_decode($deleteChannel($payment)->getContent(), true)['data'] === true, 'A settled order does not block channel deletion');
     $assert(OrderPaymentHistory::display($order)==='Original Alipay','Deletion preserves historical name');
     $legacy=new Order(['total_amount'=>1000,'payment_id'=>$other->id]);
     $assert(strpos(OrderPaymentHistory::display($legacy,$other),'当前渠道信息')!==false,'Legacy label is explicit');

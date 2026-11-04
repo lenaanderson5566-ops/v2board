@@ -12,9 +12,9 @@ class KnowledgeController extends Controller
 {
     public function fetch(Request $request)
     {
-        if ($request->input('id')) {
-            $knowledge = Knowledge::find($request->input('id'));
-            if (!$knowledge) abort(500, '知识不存在');
+        $params = $request->validate(['id' => 'nullable|integer|min:1']);
+        if (isset($params['id'])) {
+            $knowledge = Knowledge::findOrFail($params['id']);
             return response([
                 'data' => $knowledge
             ]);
@@ -36,17 +36,15 @@ class KnowledgeController extends Controller
     public function save(KnowledgeSave $request)
     {
         $params = $request->validated();
+        $id = $params['id'] ?? null;
+        unset($params['id']);
 
-        if (!$request->input('id')) {
+        if ($id === null) {
             if (!Knowledge::create($params)) {
                 abort(500, '创建失败');
             }
         } else {
-            try {
-                Knowledge::find($request->input('id'))->update($params);
-            } catch (\Exception $e) {
-                abort(500, '保存失败');
-            }
+            Knowledge::findOrFail($id)->update($params);
         }
 
         return response([
@@ -56,13 +54,8 @@ class KnowledgeController extends Controller
 
     public function show(Request $request)
     {
-        if (empty($request->input('id'))) {
-            abort(500, '参数有误');
-        }
-        $knowledge = Knowledge::find($request->input('id'));
-        if (!$knowledge) {
-            abort(500, '知识不存在');
-        }
+        $params = $request->validate(['id' => 'required|integer|min:1']);
+        $knowledge = Knowledge::findOrFail($params['id']);
         $knowledge->show = $knowledge->show ? 0 : 1;
         if (!$knowledge->save()) {
             abort(500, '保存失败');
@@ -83,13 +76,8 @@ class KnowledgeController extends Controller
 
     public function drop(Request $request)
     {
-        if (empty($request->input('id'))) {
-            abort(500, '参数有误');
-        }
-        $knowledge = Knowledge::find($request->input('id'));
-        if (!$knowledge) {
-            abort(500, '知识不存在');
-        }
+        $params = $request->validate(['id' => 'required|integer|min:1']);
+        $knowledge = Knowledge::findOrFail($params['id']);
         if (!$knowledge->delete()) {
             abort(500, '删除失败');
         }

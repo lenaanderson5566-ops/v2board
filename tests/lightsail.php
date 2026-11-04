@@ -323,16 +323,41 @@ try {
     $state->calls = [];
     $service->run($row->id);
     $assert(DB::table('v2_lightsail_server')->find($row->id)->error_code === 'old_ip_in_use' && !in_array('ReleaseStaticIp', $state->calls, true), 'Never release an IP moved to another instance');
-    $lock = Cache::lock('lightsail:' . hash('sha256', 'ap-southeast-1:test-instance'), 300);
+    $resume = fn () => $admin->operate(Request::create('/', 'POST', ['id'=>$row->id, 'action'=>'resume', 'confirmInstance'=>'test-instance']));
+    $readOperation = fn () => DB::table('v2_lightsail_server')->find($row->id);
+    $assert($resume()->getStatusCode() === 202 && $readOperation()->operation_attempt !== null, 'Resume dispatch has an attempt fence');
+    $oldAttempt = $readOperation()->operation_attempt;
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['operation_at'=>time()-400]);
+    $calls = $state->calls;
+    $lock = LightsailService::operationLock($readOperation());
     $lock->get();
     try {
-        $service->run($row->id);
-        throw new RuntimeException('Lock bypassed');
-    } catch (RuntimeException $e) {
-        $assert($e->getMessage() === 'instance_busy', 'Same-instance concurrency is locked');
+        $service->run($row->id, $oldAttempt);
+        $assert($state->calls === $calls && $readOperation()->status === 'queued', 'Busy worker leaves the existing attempt untouched');
+        try {
+            $resume();
+            throw new RuntimeException('Stale operation bypassed the active instance lock');
+        } catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
+            $assert($e->getStatusCode() === 409 && $readOperation()->operation_attempt === $oldAttempt, 'Resume cannot supersede an instance with a held lock');
+        }
     } finally {
         $lock->release();
     }
+    $assert($resume()->getStatusCode() === 202, 'Stale operation can be resumed once its instance lock is free');
+    $activeAttempt = $readOperation()->operation_attempt;
+    Queue::assertPushed(App\Jobs\RotateLightsailIpJob::class, fn ($job) => $job->serverId === $row->id && $job->attempt === $activeAttempt && $job->afterCommit);
+    $assert($activeAttempt !== $oldAttempt, 'Resuming generated a new attempt identifier');
+    $service->run($row->id, $oldAttempt);
+    (new App\Jobs\RotateLightsailIpJob($row->id, $oldAttempt))->failed(new RuntimeException('delayed-worker'));
+    (new App\Jobs\RotateLightsailIpJob($row->id))->failed(new RuntimeException('legacy-worker'));
+    $assert($state->calls === $calls && $readOperation()->status === 'queued' && $readOperation()->error_code === null,
+        'Old job, failure callback or legacy payload affected the current attempt');
+    $service->run($row->id, $activeAttempt);
+    $assert($state->calls !== $calls && $readOperation()->error_code === 'old_ip_in_use',
+        'Current fenced attempt can run and report its actual provider outcome');
+    DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status'=>'queued', 'error_code'=>null]);
+    (new App\Jobs\RotateLightsailIpJob($row->id, $activeAttempt))->failed(new RuntimeException('worker-stopped'));
+    $assert($readOperation()->status === 'failed' && $readOperation()->error_code === 'worker_failed', 'Current worker failure remains visible');
     DB::table('v2_lightsail_server')->where('id', $row->id)->update(['status' => 'queued', 'operation_at' => time() - 400]);
     $public = json_decode($admin->fetch()->getContent(), true)['data'];
     $assert(collect($public)->firstWhere('id', $row->id)['recoverable'] === true, 'Lost queue dispatch can be resumed after bounded waiting');

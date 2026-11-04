@@ -44,6 +44,19 @@ try {
         'filter'=>[['key'=>'id', 'condition'=>'=', 'value'=>$user->id]]];
     $assert($call('/api/v10/me/usage-resets', null)->getStatusCode()===401, 'Anonymous access accepted');
     $assert($call($endpoint, $grant, $token)->getStatusCode()===403, 'User could grant credits');
+    $assert($call($endpoint, $grant, $adminToken)->getStatusCode()===422, 'Grant accepted without a confirmed user set');
+    $preview = $call($endpoint.'Preview', ['filter'=>$grant['filter'], 'expected_count'=>1], $adminToken);
+    $grant['scope_token'] = json_decode($preview->getContent(), true)['data']['scope_token'];
+    $assert($preview->getStatusCode()===200 && is_string($grant['scope_token']), 'Grant preview failed');
+    $user->update(['remarks'=>'scope-fixture']);
+    $changedScope = array_replace($grant, ['request_key'=>(string)Str::uuid(), 'filter'=>[['key'=>'remarks','condition'=>'=','value'=>'scope-fixture']]]);
+    $changedScope['scope_token'] = json_decode($call($endpoint.'Preview',
+        ['filter'=>$changedScope['filter'], 'expected_count'=>1], $adminToken)->getContent(), true)['data']['scope_token'];
+    $user->update(['remarks'=>null]);
+    $other->update(['remarks'=>'scope-fixture']);
+    $conflict = $call($endpoint, $changedScope, $adminToken);
+    $assert($conflict->getStatusCode()===422 && json_decode($conflict->getContent(), true)['code']==='reset_scope_changed'
+        && $service->summary($other->id)['available']===0, 'A different same-count grant target received credits');
     $r = $call($endpoint, $grant, $adminToken);
     $assert($r->getStatusCode()===200, 'Grant failed: '.$r->getContent());
     $assert($service->summary($user->id)['available']===2, 'Grant count wrong');
@@ -55,6 +68,7 @@ try {
     $assert($call($endpoint, $grant, $adminToken)->getStatusCode()===422 && $service->summary($user->id)['available']===2, 'Count mismatch partially granted: '.json_encode($service->summary($user->id)));
     $before = $user->refresh()->only(['expired_at','transfer_enable','plan_id','token','uuid','balance','credit_balance']);
     $soonGrant = ['kind'=>'grant','request_key'=>(string)Str::uuid(),'expected_count'=>1,'quantity'=>1,'expires_at'=>time()+3600];
+    $soonGrant['scope_token'] = $grant['scope_token'];
     $service->batch(User::where('id',$user->id),$admin->id,$soonGrant);
     $soon = DB::table('v2_usage_reset_credit')->where('user_id',$user->id)->whereNotNull('expires_at')->first();
     $key=(string)Str::uuid();

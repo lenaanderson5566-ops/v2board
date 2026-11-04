@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\Payment;
 use App\Services\PaymentService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 
 class PaymentController extends Controller
@@ -112,11 +114,17 @@ class PaymentController extends Controller
 
     public function drop(Request $request)
     {
-        $payment = Payment::find($request->input('id'));
-        if (!$payment) abort(500, '支付方式不存在');
-        return response([
-            'data' => $payment->delete()
-        ]);
+        $values = $request->validate(['id' => 'required|integer|min:1']);
+        $deleted = DB::transaction(function () use ($values) {
+            $payment = Payment::query()->lockForUpdate()->findOrFail($values['id']);
+            $pending = Order::where('status', 0)
+                ->where(fn ($orders) => $orders->where('payment_id', $payment->id)
+                    ->orWhereNotNull('payment_snapshot->channels->'.$payment->id))
+                ->exists();
+            abort_if($pending, 409, '该支付渠道仍有待确认付款的订单，请先核对订单状态。');
+            return $payment->delete();
+        }, 3);
+        return response(['data' => $deleted]);
     }
 
 

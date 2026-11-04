@@ -70,6 +70,10 @@ class ConfigController extends Controller
     public function fetch(Request $request)
     {
         $key = $request->input('key');
+        $siteSettings = \App\Support\SiteConfiguration::read();
+        $releases = $siteSettings === null
+            ? config('fastai.fastai_releases', [])
+            : ($siteSettings['fastai_releases'] ?? []);
         $data = [
             'ticket' => [
                 'ticket_status' => config('fastai.ticket_status', 0)
@@ -90,10 +94,6 @@ class ConfigController extends Controller
                 'commission_withdraw_limit' => config('fastai.commission_withdraw_limit', 100),
                 'commission_withdraw_method' => config('fastai.commission_withdraw_method', Dict::WITHDRAW_METHOD_WHITELIST_DEFAULT),
                 'withdraw_close_enable' => config('fastai.withdraw_close_enable', 0),
-                'commission_distribution_enable' => config('fastai.commission_distribution_enable', 0),
-                'commission_distribution_l1' => config('fastai.commission_distribution_l1'),
-                'commission_distribution_l2' => config('fastai.commission_distribution_l2'),
-                'commission_distribution_l3' => config('fastai.commission_distribution_l3')
             ],
             'site' => [
                 'system_timezone' => \App\Services\TimeZones::system(),
@@ -181,7 +181,9 @@ class ConfigController extends Controller
                 'subscription_user_minute_limit' => (int) config('fastai.subscription_user_minute_limit', 30),
                 'subscription_user_day_limit' => (int) config('fastai.subscription_user_day_limit', 240),
                 'fastai_enabled' => config('fastai.fastai_enabled', 1),
-                'fastai_releases' => config('fastai.fastai_releases', []),
+                'fastai_releases' => $releases,
+                'fastai_releases_revision' => \App\Services\FastaiReleaseService::catalogRevision($releases),
+                'fastai_release_targets' => \App\Services\FastaiReleaseService::PUBLISH_TARGETS,
                 'client_primary_ios' => config('fastai.client_primary_ios', ''),
                 'client_primary_android' => config('fastai.client_primary_android', ''),
                 'client_secondary_android' => config('fastai.client_secondary_android', ''),
@@ -226,6 +228,9 @@ class ConfigController extends Controller
             ]
         ];
         $data['email']=array_merge($data['email'], \App\Services\Mail\MailChannel::settings());
+        if ($key === 'app' || !$key || !isset($data[$key])) {
+            $data['app']['fastai_release_min_version'] = \App\Services\FastaiReleaseService::globalMinimum();
+        }
         if ($key && isset($data[$key])) {
             return response([
                 'data' => [
@@ -255,8 +260,6 @@ class ConfigController extends Controller
     public function save(ConfigSave $request)
     {
         $data = $request->validated();
-        if (!empty($data['passkey_enable'])) abort_unless(app(\App\Services\PasskeyService::class)->available(),409,'请先通过更新流程安装 Passkey 数据表和依赖。');
-        if (!empty($data['passkey_enable'])) app(\App\Services\PasskeyService::class)->assertConfigured();
         if (($data['new_user_currency'] ?? null) === 'USD') {
             abort_unless(\App\Models\Plan::where('show',1)->whereNotNull('usd_prices')->get()->contains(fn($p)=>collect($p->usd_prices)->contains(fn($v)=>$v !== null)),422,'请先为至少一个在售套餐配置美元价格。');
             abort_unless(\App\Models\Payment::where('enable',1)->whereIn('payment',['EPay','Paytaro','PaytaroQR','StripeCheckout'])->exists(),422,'请先启用支付方式。');
@@ -273,14 +276,6 @@ class ConfigController extends Controller
             if (empty($data[$key])) unset($data[$key]);
             else $data[$key]=\Illuminate\Support\Facades\Crypt::encryptString($data[$key]);
         }
-        $announcement=array_merge(config('fastai'),$data);
-        if (!empty($announcement['email_announcement_separate'])) {
-            $provider=$announcement['email_announcement_provider'] ?? 'smtp';
-            $required=match($provider) { 'smtp'=>['host','port'], 'mailgun'=>['mailgun_domain','mailgun_api_key'], 'resend'=>['resend_api_key'], 'ses'=>['ses_region'], default=>['provider'] };
-            if ($provider==='ses' && ($announcement['email_announcement_ses_auth'] ?? 'role')==='key') $required=array_merge($required,['ses_access_key','ses_secret_key']);
-            foreach ($required as $field) if (empty($announcement['email_announcement_'.$field])) throw \Illuminate\Validation\ValidationException::withMessages(['email_announcement_'.$field=>'请完成公告独立通道配置。']);
-            if (validator(['email'=>$announcement['email_announcement_from_address'] ?? null],['email'=>'required|email:rfc'])->fails()) throw \Illuminate\Validation\ValidationException::withMessages(['email_announcement_from_address'=>'请填写公告发件地址。']);
-        }
         if (!empty($data['email_ses_access_key']) xor !empty($data['email_ses_secret_key'])) {
             throw \Illuminate\Validation\ValidationException::withMessages(['email_ses_access_key'=>'轮换 AWS 密钥时请同时填写 Access Key ID 和 Secret Access Key。']);
         }
@@ -289,37 +284,40 @@ class ConfigController extends Controller
             else $data[$secret] = \Illuminate\Support\Facades\Crypt::encryptString($data[$secret]);
         }
         if (isset($data['email_password'])) $data['email_password_encrypted'] = true;
-        $effective = array_merge(config('fastai'), $data);
-        $provider = $effective['email_provider'] ?? 'smtp';
-        if (in_array($provider, ['ses','resend'], true)) {
-            $invalid = validator(['email'=>$effective['email_from_address'] ?? null], ['email'=>'required|email:rfc'])->fails();
-            if ($provider === 'resend') $invalid = $invalid || empty($effective['email_resend_api_key']);
-            if ($provider === 'ses' && ($effective['email_ses_auth'] ?? 'role') === 'key') $invalid = $invalid || empty($effective['email_ses_access_key']) || empty($effective['email_ses_secret_key']);
-            if ($invalid) throw \Illuminate\Validation\ValidationException::withMessages(['email_provider'=>'请填写有效发件人邮箱及所选通道的必要凭据。']);
-        }
-        if (($data['email_provider'] ?? config('fastai.email_provider', 'smtp')) === 'mailgun') {
-            $effective = array_merge(config('fastai'), $data);
-            if (empty($effective['email_mailgun_domain']) || empty($effective['email_mailgun_api_key'])
-                || validator(['email'=>$effective['email_from_address'] ?? null], ['email'=>'required|email:rfc'])->fails()) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['email_provider'=>'使用 Mailgun 前请填写发送域名、API Key 和有效发件人邮箱。']);
-            }
-        }
         $previousTimezone = \App\Services\TimeZones::system();
         if (isset($data['fastai_entrypoints'])) {
             $data['fastai_entrypoints'] = \App\Services\FastaiEntrypoints::validate($data['fastai_entrypoints']);
             app(\App\Services\FastaiEntrypoints::class)->requireVerified($data['fastai_entrypoints']);
-        }
-        if (isset($data['fastai_releases'])) {
-            \App\Services\FastaiReleaseService::validateCatalog($data['fastai_releases']);
-            foreach ($data['fastai_releases'] as $release) app(\App\Services\FastaiInstallerService::class)->validateRelease($release);
         }
         if (isset($data['apple_account_url'])) {
             try { $data['apple_account_url'] = \App\Services\AppleAccountService::normalizeOrigin($data['apple_account_url']); }
             catch (\InvalidArgumentException $e) { throw \Illuminate\Validation\ValidationException::withMessages(['apple_account_url' => $e->getMessage()]); }
         }
         if (empty($data['apple_account_token'])) unset($data['apple_account_token']);
-        $config = config('fastai');
-        $config['custom_footer_html'] = \App\Support\FrontendConfig::footer();
+        $config = \App\Support\SiteConfiguration::withWriteLock(fn ($configPath) => $this->persistSettings($data, $configPath));
+        if ($previousTimezone !== ($config['system_timezone'] ?? $previousTimezone)) {
+            \Log::info('System business time zone changed', ['previous_timezone'=>$previousTimezone,'timezone'=>$config['system_timezone']]);
+        }
+        return response(['data' => true]);
+    }
+
+    private function persistSettings(array $data, string $configPath): array
+    {
+        clearstatcache(true, $configPath);
+        $config = \App\Support\SiteConfiguration::read() ?? config('fastai');
+        $trialPlanId = (int)($data['try_out_plan_id'] ?? 0);
+        if ($trialPlanId !== 0 && !\App\Models\Plan::whereKey($trialPlanId)->exists()) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['try_out_plan_id'=>'试用套餐不存在，请刷新后重新选择。']);
+        }
+        if (array_key_exists('fastai_releases', $data)) {
+            $current = $config['fastai_releases'] ?? [];
+            $revision = \App\Services\FastaiReleaseService::catalogRevision($current);
+            abort_unless(hash_equals($revision, $data['fastai_releases_revision'] ?? ''), 409, '发布目录已被修改，请重新加载后核对。');
+            \App\Services\FastaiReleaseService::validatePublication($data['fastai_releases'], \App\Services\FastaiReleaseService::globalMinimum(), $current);
+            foreach ($data['fastai_releases'] as $release) app(\App\Services\FastaiInstallerService::class)->validateRelease($release);
+        }
+        unset($data['fastai_releases_revision']);
+        $config['custom_footer_html'] = \App\Support\FrontendConfig::footer($config);
         foreach (['frontend_theme', 'frontend_theme_sidebar', 'frontend_theme_header', 'frontend_theme_color', 'frontend_background_url', 'recaptcha_enable', 'recaptcha_key', 'recaptcha_site_key', 'frontend_theme_google_analytics', 'google_analytics', 'allow_new_period'] as $legacyKey) {
             unset($config[$legacyKey]);
         }
@@ -329,9 +327,14 @@ class ConfigController extends Controller
             }
         }
         foreach (['email_password_encrypted','email_announcement_password_encrypted'] as $flag) if (isset($data[$flag])) $config[$flag]=$data[$flag];
+        if (!empty($config['passkey_enable']) && (array_key_exists('passkey_enable', $data) || array_key_exists('app_url', $data))) {
+            $passkeys = app(\App\Services\PasskeyService::class);
+            abort_unless($passkeys->available(), 409, '请先通过更新流程安装 Passkey 数据表和依赖。');
+            $passkeys->assertConfigured((string)($config['app_url'] ?? ''));
+        }
+        $this->validateMailSettings($config);
         if (isset($data['fastai_entrypoints'])) $config['fastai_entrypoints_version'] = max((int)($config['fastai_entrypoints_version'] ?? 1)+1,(int)floor(microtime(true)*1000));
         $data = var_export($config, 1);
-        $configPath = \App\Support\SiteConfiguration::path();
         $permissionSource = is_file($configPath) ? $configPath : \App\Support\SiteConfiguration::readPath();
         $mode = is_file($permissionSource) ? fileperms($permissionSource) & 0777 : 0640;
         try {
@@ -345,11 +348,41 @@ class ConfigController extends Controller
             }
         }
         Artisan::call('config:cache');
-        if ($previousTimezone !== ($config['system_timezone'] ?? $previousTimezone)) {
-            \Log::info('System business time zone changed', ['previous_timezone'=>$previousTimezone,'timezone'=>$config['system_timezone']]);
+        return $config;
+    }
+
+    private function validateMailSettings(array $config): void
+    {
+        if (!empty($config['email_announcement_separate'])) {
+            $provider = $config['email_announcement_provider'] ?? 'smtp';
+            $required = match ($provider) {
+                'smtp' => ['host', 'port'],
+                'mailgun' => ['mailgun_domain', 'mailgun_api_key'],
+                'resend' => ['resend_api_key'],
+                'ses' => ['ses_region'],
+                default => ['provider'],
+            };
+            if ($provider === 'ses' && ($config['email_announcement_ses_auth'] ?? 'role') === 'key') {
+                $required = array_merge($required, ['ses_access_key', 'ses_secret_key']);
+            }
+            foreach ($required as $field) {
+                $key = 'email_announcement_'.$field;
+                if (empty($config[$key])) throw \Illuminate\Validation\ValidationException::withMessages([$key=>'请完成公告独立通道配置。']);
+            }
+            if (validator(['email'=>$config['email_announcement_from_address'] ?? null], ['email'=>'required|email:rfc'])->fails()) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['email_announcement_from_address'=>'请填写公告发件地址。']);
+            }
         }
-        return response([
-            'data' => true
-        ]);
+        $provider = $config['email_provider'] ?? 'smtp';
+        if ($provider === 'smtp') return;
+        $invalidAddress = validator(['email'=>$config['email_from_address'] ?? null], ['email'=>'required|email:rfc'])->fails();
+        if ($provider === 'mailgun' && ($invalidAddress || empty($config['email_mailgun_domain']) || empty($config['email_mailgun_api_key']))) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['email_provider'=>'使用 Mailgun 前请填写发送域名、API Key 和有效发件人邮箱。']);
+        }
+        if ($provider === 'resend' && ($invalidAddress || empty($config['email_resend_api_key']))
+            || $provider === 'ses' && ($invalidAddress || (($config['email_ses_auth'] ?? 'role') === 'key'
+                && (empty($config['email_ses_access_key']) || empty($config['email_ses_secret_key']))))) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['email_provider'=>'请填写有效发件人邮箱及所选通道的必要凭据。']);
+        }
     }
 }

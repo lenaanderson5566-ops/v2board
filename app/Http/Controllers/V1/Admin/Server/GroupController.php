@@ -21,6 +21,7 @@ class GroupController extends Controller
         }
         $serverGroups = ServerGroup::get();
         $users = User::select('group_id')->selectRaw('COUNT(*) AS total')->groupBy('group_id')->pluck('total', 'group_id');
+        $plans = Plan::select('group_id')->selectRaw('COUNT(*) AS total')->groupBy('group_id')->pluck('total', 'group_id');
         $counts = [];
         foreach ([ServerV2box::class] as $model) {
             foreach ($model::select('group_id')->get() as $node) {
@@ -29,6 +30,7 @@ class GroupController extends Controller
         }
         foreach ($serverGroups as $group) {
             $group['user_count'] = (int)$users->get($group->id, 0);
+            $group['plan_count'] = (int)$plans->get($group->id, 0);
             $group['server_count'] = $counts[$group->id] ?? 0;
         }
         return response([
@@ -58,10 +60,10 @@ class GroupController extends Controller
         }
 
         if (Plan::where('group_id', $serverGroup->id)->exists()) {
-            abort(500, '该组已被订阅所使用，无法删除');
+            abort(422, '该组已被套餐使用，请先更换套餐的权限组');
         }
         if (User::where('group_id', $serverGroup->id)->exists()) {
-            abort(500, '该组已被用户所使用，无法删除');
+            abort(422, '该组已被用户使用，请先更换用户的权限组');
         }
         return response([
             'data' => $serverGroup->delete()

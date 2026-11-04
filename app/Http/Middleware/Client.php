@@ -29,12 +29,7 @@ class Client
             case 0:
                 break;
             case 1:
-                if (!Cache::has("otpn_{$token}")) {
-                    abort(403, 'token is error');
-                }
-                $usertoken = Cache::pull("otpn_{$token}");
-                Cache::forget("otp_{$usertoken}");
-                $token = $usertoken;
+                $token = \App\Services\OneTimeSubscriptionToken::consume($token);
                 break;
             case 2:
                 $usertoken = Cache::get("totp_{$token}");

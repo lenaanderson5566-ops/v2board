@@ -15,6 +15,7 @@ class ConfigSave extends FormRequest
         'fastai_enabled' => 'in:0,1',
         'fastai_entrypoints' => 'sometimes|array|max:16',
         'fastai_releases' => 'sometimes|array|max:32',
+        'fastai_releases_revision' => ['string', 'regex:/\A[a-f0-9]{64}\z/'],
         'apple_account_url' => 'sometimes|required|string|url|max:2048',
         'apple_account_enable' => 'in:0,1',
         'apple_account_token' => 'nullable|string|max:256',
@@ -38,10 +39,6 @@ class ConfigSave extends FormRequest
         'commission_withdraw_limit' => 'nullable|numeric',
         'commission_withdraw_method' => 'nullable|array',
         'withdraw_close_enable' => 'in:0,1',
-        'commission_distribution_enable' => 'in:0,1',
-        'commission_distribution_l1' => 'nullable|numeric',
-        'commission_distribution_l2' => 'nullable|numeric',
-        'commission_distribution_l3' => 'nullable|numeric',
         // site
         'logo' => 'nullable|url',
         'force_https' => 'in:0,1',
@@ -148,8 +145,8 @@ class ConfigSave extends FormRequest
         'email_verify' => 'in:0,1',
         'safe_mode_enable' => 'in:0,1',
         'register_limit_by_ip_enable' => 'in:0,1',
-        'register_limit_count' => 'integer',
-        'register_limit_expire' => 'integer',
+        'register_limit_count' => 'integer|min:1|max:10000',
+        'register_limit_expire' => 'integer|min:1|max:525600',
         'secure_path' => 'min:8|regex:/^[\w-]*$/',
         'password_limit_enable' => 'in:0,1',
         'password_limit_count' => 'integer',
@@ -190,6 +187,7 @@ class ConfigSave extends FormRequest
     public function rules()
     {
         $rules = self::allRules();
+        $rules['fastai_releases_revision'][] = \Illuminate\Validation\Rule::requiredIf($this->has('fastai_releases'));
         // Older consoles may still submit this retired setting.
         $rules['allow_new_period'] = 'exclude';
 

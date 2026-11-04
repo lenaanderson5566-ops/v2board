@@ -77,6 +77,7 @@ export function Editor({
     onDirtyChange,
     onBusyChange,
     onValuesChange,
+    onlyChanged = false,
     draftKey,
     warnUnsaved = boot.mode === "admin",
 }: {
@@ -93,6 +94,7 @@ export function Editor({
     onDirtyChange?: (dirty: boolean) => void;
     onBusyChange?: (busy: boolean) => void;
     onValuesChange?: (values: Row) => void;
+    onlyChanged?: boolean;
     draftKey?: string;
     warnUnsaved?: boolean;
 }) {
@@ -232,13 +234,19 @@ export function Editor({
         onBusyChange?.(true);
         let validatingField: Field | undefined;
         try {
-            const body = { ...value };
+            const baseline = onlyChanged ? JSON.parse(cleanValue) as Row : null;
+            const fieldsToSave = baseline
+                ? activeFields.filter((field) => JSON.stringify(value[field.key]) !== JSON.stringify(baseline[field.key]))
+                : activeFields;
+            const body = baseline
+                ? Object.fromEntries(fieldsToSave.map((field) => [field.key, value[field.key]]))
+                : { ...value };
             for (const field of fields)
                 if (!activeFields.some((f) => f.key === field.key))
                     delete body[field.key];
             const validationError = validate?.(value);
             if (validationError) throw new Error(validationError);
-            for (const f of activeFields) {
+            for (const f of fieldsToSave) {
                 validatingField = f;
                 if (
                     f.markdown &&

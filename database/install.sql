@@ -557,6 +557,17 @@ CREATE TABLE IF NOT EXISTS `v2_traffic_credit_log` (
 ALTER TABLE `v2_order` ADD COLUMN `payment_snapshot` json NULL;
 
 
+CREATE TABLE IF NOT EXISTS `v2_risk_blacklist_ip` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `value` varchar(45) NOT NULL,
+  `remark` varchar(255) NULL,
+  `is_enabled` tinyint NOT NULL DEFAULT 1,
+  `expires_at` bigint unsigned NULL,
+  `created_at` int NULL,
+  `updated_at` int NULL,
+  PRIMARY KEY (`id`), UNIQUE KEY (`value`), KEY (`is_enabled`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 /* Default exact-match UA blacklist. Hex strings keep UA semicolons compatible with the installer SQL splitter. */
 CREATE TABLE IF NOT EXISTS `v2_risk_blacklist_ua_hash` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
@@ -564,6 +575,7 @@ CREATE TABLE IF NOT EXISTS `v2_risk_blacklist_ua_hash` (
   `ua_raw` text NULL,
   `remark` varchar(255) NULL,
   `is_enabled` tinyint NOT NULL DEFAULT 1,
+  `expires_at` bigint unsigned NULL,
   `created_at` int NULL,
   `updated_at` int NULL,
   PRIMARY KEY (`id`), UNIQUE KEY (`value`), KEY (`is_enabled`)

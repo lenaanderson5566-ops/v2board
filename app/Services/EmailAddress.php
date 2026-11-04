@@ -6,6 +6,16 @@ use App\Models\User;
 
 final class EmailAddress
 {
+    public static function isGmailAlias(string $email): bool
+    {
+        $email = trim($email);
+        $separator = strrpos($email, '@');
+        if ($separator === false) return false;
+        $domain = strtolower(substr($email, $separator + 1));
+        $local = substr($email, 0, $separator);
+        return in_array($domain, ['gmail.com', 'googlemail.com'], true) && strpbrk($local, '.+') !== false;
+    }
+
     public static function key(string $email): string
     {
         $email = trim($email);

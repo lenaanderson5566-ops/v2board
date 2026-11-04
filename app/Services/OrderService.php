@@ -102,7 +102,9 @@ class OrderService
                 break;
         }
 
-        $this->setSpeedLimit($plan->speed_limit);
+        if ($order->period !== 'reset_price') {
+            $this->setSpeedLimit($plan->speed_limit);
+        }
 
         if (!$this->user->save()) {
             abort(500, '开通失败');
@@ -116,6 +118,12 @@ class OrderService
         if (!$this->user->save()) abort(500, '开通失败');
     }
 
+
+    public static function canPurchaseTrafficReset(User $user, Plan $plan): bool
+    {
+        return !$user->banned && (int)$user->plan_id === (int)$plan->id
+            && TrafficCreditService::hasPeriod($user);
+    }
 
     public function setOrderType(User $user)
     {
@@ -163,7 +171,7 @@ class OrderService
         if ($user->invite_user_id && ($order->total_amount <= 0)) return;
         $order->invite_user_id = $user->invite_user_id;
         $inviter = User::find($user->invite_user_id);
-        if (!$inviter) return;
+        if (!$inviter || $inviter->account_deleted_at || (int)$inviter->id === (int)$user->id) return;
         $isCommission = false;
         switch ((int)$inviter->commission_type) {
             case 0:
@@ -179,15 +187,10 @@ class OrderService
         }
 
         if (!$isCommission) return;
-        $cursor = $inviter; $visited = [];
-        $levels = (int)config('fastai.commission_distribution_enable', 0) ? 3 : 1;
-        for ($level=0; $cursor && $level<$levels; $level++) {
-            if (in_array($cursor->id, $visited, true)) break;
-            $visited[] = $cursor->id;
-            if (BillingCurrency::account($cursor) !== ($order->currency ?: 'CNY')) $order->fx_snapshot = ExchangeRate::snapshot();
-            $cursor = User::find($cursor->invite_user_id);
+        if (BillingCurrency::account($inviter) !== ($order->currency ?: 'CNY')) {
+            $order->fx_snapshot = ExchangeRate::snapshot();
         }
-        if ($inviter && $inviter->commission_rate) {
+        if ($inviter->commission_rate) {
             $order->commission_balance = $order->total_amount * ($inviter->commission_rate / 100);
         } else {
             $order->commission_balance = $order->total_amount * (config('fastai.invite_commission', 10) / 100);

@@ -146,7 +146,7 @@ export function configField(
                 : type === "number"
                   ? 0
                   : undefined,
-        max: /commission_distribution_l|invite_commission/.test(key)
+        max: key === "invite_commission"
             ? 100
             : key === "email_port"
               ? 65535

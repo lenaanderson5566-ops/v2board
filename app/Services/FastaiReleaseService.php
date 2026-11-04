@@ -7,6 +7,49 @@ use Illuminate\Validation\ValidationException;
 
 final class FastaiReleaseService
 {
+    public const PUBLISH_TARGETS = [
+        'windows' => ['x64', 'arm64'],
+        'android' => ['x64', 'arm64', 'arm'],
+        'macos' => ['x64', 'arm64'],
+        'linux' => ['x64', 'arm64'],
+    ];
+
+    public static function catalogRevision(array $catalog): string
+    {
+        return hash('sha256', json_encode($catalog, JSON_THROW_ON_ERROR));
+    }
+
+    public static function globalMinimum(): ?string
+    {
+        return \App\Models\ClientStrategy::query()->where('client_type', 'fastai')->value('min_version');
+    }
+
+    public static function validatePublication(array $catalog, ?string $globalMinimum, array $current = []): void
+    {
+        self::validateCatalog($catalog);
+        $normalize = static function (array $release): array {
+            $release += ['releaseNotes' => null];
+            if (isset($release['latestBuild'])) $release['latestBuild'] = (int)$release['latestBuild'];
+            ksort($release);
+            return $release;
+        };
+        $previous = array_map($normalize, array_filter($current, 'is_array'));
+        foreach ($catalog as $release) {
+            $platform = $release['platform'];
+            $architecture = $release['architecture'];
+            $target = "$platform / $architecture";
+            if (!in_array($architecture, self::PUBLISH_TARGETS[$platform], true)) {
+                if (in_array($normalize($release), $previous, true)) continue;
+                throw ValidationException::withMessages(['fastai_releases' => "构建流程不支持发布 {$target}。"]);
+            }
+            if (!ClientIdentity::allowsVersion($globalMinimum, $release['latestVersion'])) {
+                throw ValidationException::withMessages([
+                    'fastai_releases' => "$target 的待发布版本 {$release['latestVersion']} 低于客户端访问策略最低版本 {$globalMinimum}。",
+                ]);
+            }
+        }
+    }
+
     public function publicDownloads(): array
     {
         $policy = new ClientStrategyService();

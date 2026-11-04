@@ -25,7 +25,14 @@ final class NodeCredentialController extends Controller {
     }
     public function issue(Request $r) {
         $p=$this->identity($r); $actor=$this->verify($r);
-        return response()->json(['data'=>NodeCredentials::issue($p['type'],(int)$p['id'],$actor)],201);
+        return response()->json(['data'=>NodeCredentials::issue($p['type'],(int)$p['id'],$actor)],201)
+            ->header('Cache-Control','private, no-store');
+    }
+    public function cancelRotation(Request $r) {
+        $p=$this->identity($r); $actor=$this->verify($r);
+        $v=$r->validate(['credentialId'=>'required|string|size:32|regex:/^[a-f0-9]+$/D']);
+        NodeCredentials::cancelRotation($p['type'],(int)$p['id'],$v['credentialId'],$actor);
+        return response()->json(['data'=>true]);
     }
     public function revoke(Request $r) {
         $p=$this->identity($r); $actor=$this->verify($r);

@@ -98,31 +98,43 @@ final class NodeDeployment
         });
     }
 
-    public static function createServer(int $id, int $actor): array
+    public static function createServer(int $id, int $actor, bool $reset = false): array
     {
         $host = self::host();
         abort_unless(in_array(parse_url($host, PHP_URL_PATH), [null,'','/'], true), 422, '服务器上报地址不能包含路径');
-        $server = DB::table('v2_network_server')->find($id);
-        abort_unless($server && $server->enabled, 422, '请选择已启用的服务器');
-        $token = 'ns_'.bin2hex(random_bytes(32));
-        $hash = hash('sha256', $token);
-        $expires = time() + self::TTL;
-        return self::cache()->lock('server:'.$id, 15)->block(3, function () use ($server, $id, $actor, $host, $token, $hash, $expires) {
-            if ($old = self::cache()->get('latest-server:'.$id)) {
-                self::cache()->forget('server-grant:'.$old);
-            }
-            abort_unless(self::cache()->put('server-grant:'.$hash, [
-                'id' => $id,
-                'actor' => $actor,
-                'actorProof' => hash('sha256', (string) User::findOrFail($actor)->password),
-                'family' => $server->family,
-                'reportHash' => $server->report_hash,
-                'host' => $host,
-                'expires' => $expires,
-            ], self::TTL), 503);
-            abort_unless(self::cache()->put('latest-server:'.$id, $hash, self::TTL), 503);
-            return ['command' => self::bootstrapCommand($host).' --server-id '.$id.' --api-host '.self::quote($host).' --deploy-token '.self::quote($token),'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires)];
-        });
+        $cache = self::cache();
+        // Keep revocation uncommitted until grant creation and cache lock release both succeed.
+        return DB::transaction(fn () => $cache->lock('server:'.$id, 15)->block(3, function () use ($cache, $id, $actor, $host, $reset) {
+            $createGrant = function () use ($cache, $id, $actor, $host, $reset) {
+                $server = DB::table('v2_network_server')->where('id', $id)->lockForUpdate()->first();
+                abort_unless($server && $server->enabled, 422, '请选择已启用的服务器');
+                $actorProof = hash('sha256', (string) User::findOrFail($actor)->password);
+                $token = 'ns_'.bin2hex(random_bytes(32));
+                $hash = hash('sha256', $token);
+                $expires = time() + self::TTL;
+                if ($reset) {
+                    DB::table('v2_network_server')->where('id', $id)->update(['report_hash'=>null, 'report_secret'=>null]);
+                    DB::table('v2_node_ddns')->where('server_id', $id)->update(['report_hash'=>null]);
+                }
+                abort_unless($cache->put('server-grant:'.$hash, [
+                    'id' => $id,
+                    'actor' => $actor,
+                    'actorProof' => $actorProof,
+                    'family' => $server->family,
+                    'reportHash' => $reset ? null : $server->report_hash,
+                    'host' => $host,
+                    'expires' => $expires,
+                ], self::TTL), 503);
+                // Only the grant in the index can be redeemed. Leave superseded keys to expire.
+                abort_unless($cache->put('latest-server:'.$id, $hash, self::TTL), 503);
+                return [
+                    'command' => self::bootstrapCommand($host).' --server-id '.$id.' --api-host '.self::quote($host).' --deploy-token '.self::quote($token),
+                    'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires),
+                ];
+            };
+            // Match redemption's server-then-lifecycle lock order.
+            return $reset ? NodeDnsLifecycle::locked($createGrant) : $createGrant();
+        }));
     }
 
     private static function redeemServer(string $token): array

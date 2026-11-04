@@ -28,8 +28,15 @@ class MailFeedback
                 if (in_array($event->state,['bounced','complained'],true)) {
                     DB::table('v2_mail_suppression')->insertOrIgnore(['recipient_hash'=>$row->recipient_hash,'email'=>$row->email,'reason'=>$event->state,'created_at'=>time(),'updated_at'=>$event->occurred_at]);
                     $suppression=DB::table('v2_mail_suppression')->where('recipient_hash',$row->recipient_hash)->lockForUpdate()->first();
-                    if ((!$suppression->released_at || $event->occurred_at>$suppression->released_at) && $event->occurred_at>=$suppression->updated_at) {
-                        DB::table('v2_mail_suppression')->where('recipient_hash',$row->recipient_hash)->update(['reason'=>$suppression->reason==='complained' ? 'complained' : $event->state,'released_at'=>null,'updated_at'=>$event->occurred_at]);
+                    $complaint = $event->state === 'complained';
+                    $newerBounce = (!$suppression->released_at || $event->occurred_at > $suppression->released_at)
+                        && $event->occurred_at >= $suppression->updated_at;
+                    if ($complaint || $newerBounce) {
+                        DB::table('v2_mail_suppression')->where('recipient_hash', $row->recipient_hash)->update([
+                            'reason' => $suppression->reason === 'complained' || $complaint ? 'complained' : 'bounced',
+                            'released_at' => null,
+                            'updated_at' => max($suppression->updated_at, $event->occurred_at),
+                        ]);
                     }
                 }
                 if ($event->state==='unsubscribed' && $row->user_id) {

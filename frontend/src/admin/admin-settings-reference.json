@@ -337,8 +337,8 @@
       "line": 6073
     },
     "invite_commission": {
-      "label": "邀请佣金百分比",
-      "hint": "默认全局的佣金分配比例，你可以在用户管理单独配置单个比例。",
+      "label": "直推佣金比例（%）",
+      "hint": "订单按佣金比例计算后，全部应发佣金归直属邀请人。可在用户管理为邀请人单独设置比例。",
       "placeholder": "请输入",
       "child": false,
       "line": 6082
@@ -387,30 +387,6 @@
       "hint": "关闭后将禁止用户申请提现，且邀请佣金将会直接进入用户余额。",
       "child": false,
       "line": 6133
-    },
-    "commission_distribution_enable": {
-      "label": "三级分销",
-      "hint": "开启后将佣金将按照设置的3成比例进行分成，三成比例合计请不要>100%。",
-      "child": false,
-      "line": 6139
-    },
-    "commission_distribution_l1": {
-      "label": "一级邀请人比例",
-      "placeholder": "请输入比例如：50",
-      "child": true,
-      "line": 6148
-    },
-    "commission_distribution_l2": {
-      "label": "二级邀请人比例",
-      "placeholder": "请输入比例如：30",
-      "child": true,
-      "line": 6157
-    },
-    "commission_distribution_l3": {
-      "label": "三级邀请人比例",
-      "placeholder": "请输入比例如：20",
-      "child": true,
-      "line": 6166
     },
     "invite_registration_gb": {
       "label": "受邀注册奖励（GiB）",

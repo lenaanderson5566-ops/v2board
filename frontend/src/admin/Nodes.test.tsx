@@ -155,6 +155,34 @@ it("blocks a second rotation and preserves revoked state on failed requests", as
     expect(await screen.findByRole("alert")).toHaveProperty("textContent","拒绝操作");
     expect(screen.getByText("宽限期")).toBeTruthy();
 });
+it("can cancel an unused replacement and re-enable generation with the old credential", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    let cancelled = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/cancel-rotation")) {
+            cancelled = true;
+            return { data: true };
+        }
+        return { data: {
+            migrated: true, legacyEnabled: false,
+            cancellableCredentialId: cancelled ? null : "replacement",
+            keys: [
+                {id:"working", fingerprint:"old", status:cancelled ? "active" : "retiring", createdAt:1, lastUsedAt:2},
+                {id:"replacement", fingerprint:"new", status:cancelled ? "revoked" : "active", createdAt:3},
+            ],
+        } };
+    });
+    render(<NodeCredentials node={{type:"v2box",id:1,name:"A"}} close={()=>{}} />);
+    const cancel = await screen.findByRole("button", {name:"取消轮换并恢复旧密钥"});
+    const issue = screen.getByRole("button", {name:"生成 / 手动轮换密钥"}) as HTMLButtonElement;
+    expect(issue.disabled).toBe(true);
+    fireEvent.click(cancel);
+    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("/cancel-rotation"),
+        {type:"v2box",id:1,credentialId:"replacement"});
+    await waitFor(() => expect(issue.disabled).toBe(false));
+    expect(screen.queryByRole("button", {name:"取消轮换并恢复旧密钥"})).toBeNull();
+    expect(screen.getByText("已撤销")).toBeTruthy();
+});
 it("shows group names across numeric/string IDs and remembers selected node columns", async () => {
     api.request.mockImplementation(async (path: string) => {
         if(path.endsWith("dictionary/fetch")) return adminPageFixture(path);

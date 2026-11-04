@@ -75,7 +75,7 @@ foreach ($entries as $entry) {
             config(['database.connections.suite'=>array_merge($mysql, ['database'=>$database]), 'database.default'=>'suite']);
             Illuminate\Support\Facades\DB::purge('suite');
             Illuminate\Support\Facades\DB::unprepared(file_get_contents(database_path('install.sql')));
-            foreach (glob(database_path('migrations/2026_10*.php')) as $file) {
+            foreach (array_merge(glob(database_path('migrations/2026_10*.php')), glob(database_path('migrations/2026_11_04*.php'))) as $file) {
                 if (!isset($migrations[$file])) {
                     $migration = require_once $file;
                     if (!is_object($migration)) {

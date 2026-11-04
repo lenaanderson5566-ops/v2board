@@ -25,14 +25,21 @@ final class NodeCredentials
         }
         if (str_starts_with($token,'nk_')) {
             abort_unless($bearer && preg_match('/^nk_([a-f0-9]{32})\.([a-f0-9]{64})$/D',$token,$m),401);
+            $now = time();
             $key=DB::table('v2_node_credential')->where('id',$m[1])->first();
-            abort_unless($key && !$key->revoked_at && (!$key->expires_at || $key->expires_at>time())
+            abort_unless($key && !$key->revoked_at && (!$key->expires_at || $key->expires_at>$now)
                 && hash_equals($key->secret_hash,hash('sha256',$m[2])),401);
             abort_unless($key->node_type===$type && (int)$key->node_id===$id,403);
             // Auth reads authoritative state on every request; usage writes are at most once/minute.
-            DB::table('v2_node_credential')->where('id',$key->id)
-                ->where(function($q){$q->whereNull('last_used_at')->orWhere('last_used_at','<',time()-60);})
-                ->update(['last_used_at'=>time()]);
+            if (!$key->last_used_at || $key->last_used_at < $now - 60) {
+                $valid = DB::table('v2_node_credential')->where('id',$key->id)->whereNull('revoked_at')
+                    ->where(fn ($q) => $q->whereNull('expires_at')->orWhere('expires_at', '>', $now));
+                $recorded = (clone $valid)
+                    ->where(fn ($q) => $q->whereNull('last_used_at')->orWhere('last_used_at', '<', $now - 60))
+                    ->update(['last_used_at'=>$now]);
+                // If cancellation won the race against a new key's first use, reject that use.
+                abort_unless($recorded || $valid->useWritePdo()->exists(), 401);
+            }
             return;
         }
         $global=(string)config('fastai.server_token');
@@ -45,14 +52,35 @@ final class NodeCredentials
     }
     public static function listing(string $type,int $id): array {
         $model=self::model($type); abort_unless($model::find($id),404);
-        $keys=self::keys($type,$id)->orderByDesc('created_at')->get()->map(function($k){
+        $now = time();
+        $records = self::keys($type,$id)->orderByDesc('created_at')->get();
+        $rotation = self::cancellableRotation($records, $now);
+        $keys=$records->map(function($k) use ($now) {
             return ['id'=>$k->id,'fingerprint'=>substr($k->id,0,12),
-                'status'=>$k->revoked_at ? 'revoked' : ($k->expires_at && $k->expires_at<=time() ? 'expired' : ($k->expires_at ? 'retiring' : 'active')),
+                'status'=>$k->revoked_at ? 'revoked' : ($k->expires_at && $k->expires_at<=$now ? 'expired' : ($k->expires_at ? 'retiring' : 'active')),
                 'createdAt'=>$k->created_at,'createdBy'=>$k->created_by,'lastUsedAt'=>$k->last_used_at,
                 'expiresAt'=>$k->expires_at,'revokedAt'=>$k->revoked_at,'revokedBy'=>$k->revoked_by];
         })->all();
         return ['migrated'=>self::migrated($type,$id),'legacyEnabled'=>self::legacyEnabled(),'keys'=>$keys,
+            'cancellableCredentialId'=>$rotation['replacement']->id ?? null,
             'legacyNodes'=>self::legacyNodes()];
+    }
+
+    private static function cancellableRotation(iterable $keys, int $now): ?array
+    {
+        $replacement = null;
+        $previous = null;
+        foreach ($keys as $key) {
+            if ($key->revoked_at || ($key->expires_at && $key->expires_at <= $now)) continue;
+            if ($key->expires_at === null) {
+                if ($replacement || $key->last_used_at) return null;
+                $replacement = $key;
+            } else {
+                if ($previous || !$key->last_used_at) return null;
+                $previous = $key;
+            }
+        }
+        return $replacement && $previous ? ['replacement'=>$replacement, 'previous'=>$previous] : null;
     }
     public static function legacyNodes(): array {
         $states=DB::table('v2_node_credential_state')->get()->keyBy(fn($s)=>$s->node_type.':'.$s->node_id);
@@ -92,6 +120,23 @@ final class NodeCredentials
             DB::table('v2_node_credential')->insert(['id'=>$keyId,'node_type'=>$type,'node_id'=>$id,
                 'secret_hash'=>hash('sha256',$secret),'created_at'=>$now,'created_by'=>$actor]);
             return ['id'=>$keyId,'secret'=>'nk_'.$keyId.'.'.$secret,'graceSeconds'=>1800];
+        });
+    }
+
+    public static function cancelRotation(string $type, int $id, string $credentialId, int $actor): void
+    {
+        DB::transaction(function () use ($type, $id, $credentialId, $actor) {
+            $model = self::model($type);
+            $service = $model::whereKey($id)->lockForUpdate()->first();
+            abort_unless($service, 404);
+            abort_if($service->service_id, 422, '接入线路使用关联代理服务的部署凭据');
+            $keys = self::keys($type, $id)->whereNull('revoked_at')->lockForUpdate()->get();
+            $now = time();
+            $rotation = self::cancellableRotation($keys, $now);
+            abort_unless($rotation && $rotation['replacement']->id === $credentialId, 409,
+                '当前轮换无法取消。请刷新并确认新密钥尚未认证、旧密钥仍在宽限期内。');
+            self::keys($type, $id)->where('id', $credentialId)->update(['revoked_at'=>$now, 'revoked_by'=>$actor]);
+            self::keys($type, $id)->where('id', $rotation['previous']->id)->update(['expires_at'=>null]);
         });
     }
     public static function revoke(string $type,int $id,string $keyId,int $actor): void {

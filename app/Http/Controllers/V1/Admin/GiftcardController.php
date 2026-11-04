@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\GiftcardGenerate;
 use App\Models\Giftcard;
+use App\Models\Plan;
 use App\Utils\Helper;
 use App\Utils\Csv;
 use App\Services\TimeZones;
@@ -32,61 +33,58 @@ class GiftcardController extends Controller
 
     public function generate(GiftcardGenerate $request)
     {
-        if ($request->input('generate_count')) {
-            return $this->multiGenerate($request);
-        }
-
         $params = $request->validated();
-        if (!$request->input('id')) {
-            if (!isset($params['code'])) {
-                $params['code'] = Helper::randomChar(16);
-            }
-            if (!Giftcard::create($params)) {
-                abort(500, '礼品卡创建失败');
-            }
-        } else {
-            $giftcard = Giftcard::find($request->input('id'));
-            if (!$giftcard) {
-                abort(404, '礼品卡不存在');
-            }
-            try {
-                $giftcard->update($params);
-            } catch (\Exception $e) {
-                abort(500, '礼品卡保存失败');
-            }
-        }
+        $id = $params['id'] ?? null;
+        $count = (int) ($params['generate_count'] ?? 0);
+        unset($params['id'], $params['generate_count']);
+        $params['plan_id'] = $params['plan_id'] ?? null;
 
-        return response([
-            'data' => true
-        ]);
+        $giftcards = DB::transaction(function () use ($params, $id, $count) {
+            if ((int) $params['type'] === 5) {
+                abort_unless(Plan::whereKey($params['plan_id'])->sharedLock()->first(['id']), 409, '该套餐已被删除，请重新选择');
+            }
+            if ($count) return $this->multiGenerate($params, $count);
+
+            if ($id === null) {
+                $params['code'] ??= Helper::randomChar(16);
+                abort_unless(Giftcard::create($params)->exists, 500, '礼品卡创建失败');
+            } else {
+                $giftcard = Giftcard::whereKey($id)->lockForUpdate()->first();
+                abort_unless($giftcard, 404, '礼品卡不存在');
+                // An omitted or empty code on edit keeps the distributed code.
+                if (!isset($params['code'])) unset($params['code']);
+                abort_unless($giftcard->update($params), 500, '礼品卡保存失败');
+            }
+            return [];
+        }, 3);
+
+        if ($count === 0) return response(['data' => true]);
+        if ($request->expectsJson() && $request->input('format') !== 'csv') {
+            return response(['data' => true, 'generated_count' => count($giftcards)]);
+        }
+        return $this->export($giftcards);
     }
 
-    private function multiGenerate(GiftcardGenerate $request)
+    private function multiGenerate(array $giftcard, int $count): array
     {
         $giftcards = [];
-        $giftcard = $request->validated();
         $giftcard['created_at'] = $giftcard['updated_at'] = time();
-        unset($giftcard['generate_count']);
-        
-        for ($i = 0; $i < $request->input('generate_count'); $i++) {
+
+        for ($i = 0; $i < $count; $i++) {
             do {
                 $giftcard['code'] = Helper::randomChar(16);
             } while (Giftcard::where('code', $giftcard['code'])->exists());
-            array_push($giftcards, $giftcard);
+            $giftcards[] = $giftcard;
         }
-        DB::beginTransaction();
-        try {
-            if (!Giftcard::insert($giftcards)) {
-                throw new \Exception('礼品卡批量生成失败');
-            }
-            DB::commit();
-        } catch (\Exception $e) {
-            DB::rollBack();
-            abort(500, $e->getMessage());
-        }
-        $giftcardvalue = $giftcard['value'] ?? 0;
+        abort_unless(Giftcard::insert($giftcards), 500, '礼品卡批量生成失败');
+        return $giftcards;
+    }
+
+    private function export(array $giftcards)
+    {
         $rows = [];
         foreach ($giftcards as $giftcard) {
+            $giftcardvalue = $giftcard['value'] ?? 0;
             $type = ['', '金额 (CNY)', '时长', '流量', '重置', '套餐'][$giftcard['type']];
             $value = ['', round($giftcardvalue/100, 2), $giftcardvalue . '天', $giftcardvalue . 'GB', '-', $giftcardvalue . '天'][$giftcard['type']];
             $startTime = TimeZones::iso8601($giftcard['started_at'] ?: null);
@@ -96,26 +94,19 @@ class GiftcardController extends Controller
             $rows[] = [$giftcard['name'], $type, $value, $startTime, $endTime, $limitUse, $giftcard['code'], $createTime];
         }
 
-        // Return the CSV data as a response
-        if ($request->expectsJson() && $request->input('format') !== 'csv') return response(['data' => true, 'generated_count' => count($giftcards)]);
         return Csv::response(['名称', '类型', '数值', '开始时间', '结束时间', '可用次数', '礼品卡卡密', '生成时间'], $rows, 'giftcards.csv');
     }
 
     public function drop(Request $request)
     {
-        $giftcardId = $request->input('id');
-        if (empty($giftcardId)) {
-            abort(400, '未找到礼品卡');
-        }
-
-        $giftcard = Giftcard::find($giftcardId);
-        if (!$giftcard) {
-            abort(404, '礼品卡不存在');
-        }
-
-        if (!$giftcard->delete()) {
-            abort(500, '删除失败');
-        }
+        $params = $request->validate(['id'=>'required|integer|min:1']);
+        DB::transaction(function () use ($params) {
+            $giftcard = Giftcard::whereKey($params['id'])->lockForUpdate()->firstOrFail();
+            $used = $giftcard->used_user_ids;
+            if (is_string($used)) $used = json_decode($used, true) ?? $used;
+            abort_if(!empty($used), 409, '礼品卡已有兑换记录，请编辑结束时间以停止继续兑换。');
+            abort_unless($giftcard->delete(), 500, '删除失败');
+        }, 3);
 
         return response([
             'data' => true

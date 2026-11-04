@@ -5,6 +5,21 @@ use App\Services\{NodeDnsLifecycle,ProxyService};
 use Illuminate\Support\Facades\DB;
 
 final class UpdateManualNodeAddress {
+    public static function validatePort(string $attribute, mixed $value, \Closure $fail): void {
+        if ((!is_string($value) && !is_int($value)) || strlen((string)$value) > 11
+            || !preg_match('/^[0-9]+(?:[-,][0-9]+)*$/D', (string)$value)) {
+            $fail('请输入有效端口或端口范围');
+            return;
+        }
+        foreach (explode(',', (string)$value) as $part) {
+            $ports = array_map('intval', explode('-', $part));
+            if (count($ports) > 2 || min($ports) < 1 || max($ports) > 65535 || $ports[0] > end($ports)) {
+                $fail('端口必须为 1–65535，范围必须从小到大');
+                return;
+            }
+        }
+    }
+
     public static function resource(string $type,$node): array {
         $binding=DB::table('v2_node_ddns')->where('node_type',$type)->where('node_id',$node->id)->first();
         $managed=$binding && $binding->status!=='manual';

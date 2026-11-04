@@ -15,23 +15,25 @@ class UserUpdate extends FormRequest
     {
         return [
             'id' => 'required|integer|min:1',
+            'edit_versions' => 'required|array',
+            'edit_versions.*' => 'required|string|regex:/\A[a-f0-9]{64}\z/',
             'invite_user_email' => 'nullable|email:rfc|max:254',
-            'email' => 'required|email:strict',
+            'email' => 'sometimes|required|email:strict',
             'password' => 'nullable|string|min:8|max:1024',
             'transfer_enable' => 'numeric',
             'device_limit' => 'nullable|integer',
             'expired_at' => 'nullable|integer',
-            'banned' => 'required|in:0,1',
+            'banned' => 'sometimes|required|in:0,1',
             'plan_id' => 'nullable|integer',
             'commission_rate' => 'nullable|integer|min:0|max:100',
             'discount' => 'nullable|integer|min:0|max:100',
-            'is_admin' => 'required|in:0,1',
+            'is_admin' => 'sometimes|required|in:0,1',
             'u' => 'integer',
             'd' => 'integer',
             'balance' => 'integer',
             'commission_type' => 'integer',
             'commission_balance' => 'integer',
-            'remarks' => 'nullable',
+            'remarks' => 'nullable|string',
             'speed_limit' => 'nullable|integer'
         ];
     }
@@ -39,6 +41,7 @@ class UserUpdate extends FormRequest
     public function messages()
     {
         return [
+            'edit_versions.required' => '请重新打开用户编辑窗口，再提交修改',
             'email.required' => '邮箱不能为空',
             'email.email' => '邮箱格式不正确',
             'transfer_enable.numeric' => '流量格式不正确',

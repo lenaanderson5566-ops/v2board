@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Admin;
 
+use App\Support\KnowledgeAccess;
 use Illuminate\Foundation\Http\FormRequest;
 
 class KnowledgeSave extends FormRequest
@@ -14,10 +15,15 @@ class KnowledgeSave extends FormRequest
     public function rules()
     {
         return [
+            'id' => 'nullable|integer|min:1',
             'category' => 'required',
             'language' => 'required',
             'title' => 'required',
-            'body' => 'required',
+            'body' => ['bail', 'required', 'string', function ($attribute, $value, $fail) {
+                if (KnowledgeAccess::publicBody($value) === null) {
+                    $fail('内容中的订阅可见区域标记必须成对。');
+                }
+            }],
             'sort' => 'nullable|integer|min:0'
         ];
     }

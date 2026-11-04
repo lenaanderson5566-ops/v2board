@@ -6,6 +6,7 @@ namespace App\Services\Actions\User;
 use App\Models\Knowledge;
 use App\Models\User;
 use App\Services\UserService;
+use App\Support\KnowledgeAccess;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 
@@ -22,7 +23,8 @@ class KnowledgeActions
             $user = User::find($request->user['id']);
             $userService = new UserService();
             if (!$userService->isAvailable($user)) {
-                $this->formatAccessData($knowledge['body']);
+                $placeholder = '<div class="fastai-no-access">'.__('You must have a valid subscription to view content in this area').'</div>';
+                $knowledge['body'] = KnowledgeAccess::publicBody($knowledge['body'], $placeholder) ?? $placeholder;
             }
             $subscribeUrl = Helper::getSubscribeUrl($user['token']);
             $knowledge['body'] = str_replace('{{siteName}}', \App\Support\Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))), $knowledge['body']);
@@ -68,19 +70,4 @@ class KnowledgeActions
             ->orderBy('category')->distinct()->pluck('category')]);
     }
 
-    private function getBetween($input, $start, $end)
-    {
-        $substr = substr($input, strlen($start) + strpos($input, $start), (strlen($input) - strpos($input, $end)) * (-1));
-        return $start . $substr . $end;
-    }
-
-    private function formatAccessData(&$body)
-    {
-        while (strpos($body, '<!--access start-->') !== false) {
-            $accessData = $this->getBetween($body, '<!--access start-->', '<!--access end-->');
-            if ($accessData) {
-            $body = str_replace($accessData, '<div class="fastai-no-access">'. __('You must have a valid subscription to view content in this area') .'</div>', $body);
-            }
-        }
-    }
 }

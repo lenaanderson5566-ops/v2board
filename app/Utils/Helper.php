@@ -119,16 +119,7 @@ class Helper
                 return url($path);
                 break;
             case 1:
-                $newtoken = Cache::get("otp_{$token}");
-                if (!$newtoken) {
-                    $newtoken = self::base64EncodeUrlSafe(random_bytes(24));
-                    $added = Cache::add("otp_{$token}", $newtoken, 86400);
-                    if ($added) {
-                        Cache::put("otpn_{$newtoken}", $token, 86400);
-                    } else {
-                        $newtoken = Cache::get("otp_{$token}");
-                    }
-                }
+                $newtoken = \App\Services\OneTimeSubscriptionToken::issue($token);
                 $path = $v10 ? "/api/v10/subscriptions/" . rawurlencode($newtoken) : "{$path}?token={$newtoken}";
                 if ($subscribeUrl) return $subscribeUrl . $path;
                 return url($path);

@@ -426,6 +426,11 @@ function BulkUsers({
         [audience, setAudience] = useState<Row | null>(null),
         [previewError, setPreviewError] = useState(""),
         [previewBusy, setPreviewBusy] = useState(false);
+    const [sendBusy, setSendBusy] = useState(false);
+    const mail = operation.kind === "mail";
+    const audienceToken = audience?.audience_token;
+    const scopeToken = audience?.scope_token;
+    const canConfirm = Boolean(mail ? audienceToken : scopeToken) && !previewBusy;
     useEffect(() => {
         setAudience(null);
         setConfirmed(false);
@@ -436,6 +441,33 @@ function BulkUsers({
             : operation.kind === "ban"
               ? admin("user/ban")
               : admin("user/allDel");
+    async function checkScope() {
+        setPreviewBusy(true);
+        setPreviewError("");
+        setAudience(null);
+        setConfirmed(false);
+        try {
+            const result = await request(
+                admin(mail ? "user/previewMailAudience" : "user/previewBulk"),
+                {
+                    ...(mail ? { purpose } : { operation: operation.kind }),
+                    filter: operation.filters,
+                    expected_count: operation.count,
+                },
+            );
+            setAudience(result.data);
+        } catch (error) {
+            setPreviewError((error as Error).message);
+        } finally {
+            setPreviewBusy(false);
+        }
+    }
+    function resetOnScopeConflict(error: unknown) {
+        if ((error as { status?: number })?.status === 409) {
+            setAudience(null);
+            setConfirmed(false);
+        }
+    }
     return (
         <div className="pad">
             <p>
@@ -449,12 +481,12 @@ function BulkUsers({
                       ? "账户将被封禁，已有登录会话会被注销。"
                       : "必要服务通知仅用于维护、故障及影响现有服务的调整；优惠与推广请选择活动与推广。所有用途都遵守退信和投诉停发规则。"}
             </p>
-            {operation.kind === "mail" && (
-                <div className="pad">
+            <div className="pad">
+                {mail && (
                     <label>
                         邮件用途
                         <select
-                            disabled={previewBusy}
+                            disabled={previewBusy || sendBusy}
                             value={purpose}
                             onChange={(e) => setPurpose(e.target.value)}
                         >
@@ -464,35 +496,12 @@ function BulkUsers({
                             </option>
                         </select>
                     </label>
-                    <button
-                        type="button"
-                        disabled={previewBusy}
-                        onClick={async () => {
-                            setPreviewBusy(true);
-                            setPreviewError("");
-                            setAudience(null);
-                            setConfirmed(false);
-                            try {
-                                const r = await request(
-                                    admin("user/previewMailAudience"),
-                                    {
-                                        purpose,
-                                        filter: operation.filters,
-                                        expected_count: operation.count,
-                                    },
-                                );
-                                setAudience(r.data);
-                            } catch (e) {
-                                setPreviewError((e as Error).message);
-                            } finally {
-                                setPreviewBusy(false);
-                            }
-                        }}
-                    >
-                        检查收件范围
-                    </button>
-                    {previewError && <p role="alert">{previewError}</p>}
-                    {audience && (
+                )}
+                <button type="button" disabled={previewBusy || sendBusy} onClick={checkScope}>
+                    {mail ? "检查收件范围" : "检查受影响用户"}
+                </button>
+                {previewError && <p role="alert">{previewError}</p>}
+                {audience && (mail ? (
                         <p>
                             预计发送 {audience.eligible} 人；未订阅推广{" "}
                             {audience.not_subscribed} 人，人工禁发{" "}
@@ -502,29 +511,46 @@ function BulkUsers({
                             人。实际发送前还会重新检查。记录可在「邮件日志 →
                             群发记录」查看。
                         </p>
-                    )}
-                </div>
-            )}
+                ) : (
+                    <>
+                        <p>已核对 {audience.total} 名用户，以下显示最多 10 名。</p>
+                        <ul>
+                            {(audience.sample || []).map((user: Row) => (
+                                <li key={user.id}>#{user.id} {user.email}</li>
+                            ))}
+                        </ul>
+                    </>
+                ))}
+            </div>
             <label>
                 <input
                     type="checkbox"
                     checked={confirmed}
-                    disabled={operation.kind === "mail" && (previewBusy || !audience)}
+                    disabled={!canConfirm || sendBusy}
                     onChange={(e) => setConfirmed(e.target.checked)}
                 />{" "}
                 我已确认操作范围和人数
             </label>
-            {operation.kind === "mail" ? (
+            {mail ? (
                 <AdminMailComposer
-                    confirmed={confirmed && Boolean(audience) && !previewBusy}
+                    confirmed={confirmed && canConfirm}
                     onSave={async (body) => {
-                        await request(endpoint, {
-                            ...body,
-                            purpose,
-                            request_key: mailRequestKey.current,
-                            filter: operation.filters,
-                            expected_count: operation.count,
-                        });
+                        setSendBusy(true);
+                        try {
+                            await request(endpoint, {
+                                ...body,
+                                purpose,
+                                request_key: mailRequestKey.current,
+                                filter: operation.filters,
+                                expected_count: operation.count,
+                                audience_token: audienceToken,
+                            });
+                        } catch (error) {
+                            resetOnScopeConflict(error);
+                            throw error;
+                        } finally {
+                            setSendBusy(false);
+                        }
                         onComplete();
                     }}
                 />
@@ -532,22 +558,25 @@ function BulkUsers({
                 <Editor
                     fields={[]}
                     initial={{}}
+                    onBusyChange={setSendBusy}
                     validate={() =>
-                        confirmed ? undefined : "请先确认操作范围和人数"
+                        confirmed && canConfirm ? undefined : "请先检查受影响用户并确认"
                     }
                     submit={
-                        operation.kind === "mail"
-                            ? "加入发送队列"
-                            : operation.kind === "ban"
-                              ? "确认封禁"
-                              : "确认永久删除"
+                        operation.kind === "ban" ? "确认封禁" : "确认永久删除"
                     }
                     onSave={async (body) => {
-                        await request(endpoint, {
-                            ...body,
-                            filter: operation.filters,
-                            expected_count: operation.count,
-                        });
+                        try {
+                            await request(endpoint, {
+                                ...body,
+                                filter: operation.filters,
+                                expected_count: operation.count,
+                                scope_token: scopeToken,
+                            });
+                        } catch (error) {
+                            resetOnScopeConflict(error);
+                            throw error;
+                        }
                         onComplete();
                     }}
                 />
@@ -562,7 +591,7 @@ const periods: [string, string][] = [
     ["year_price", "年付"],
     ["two_year_price", "两年付"],
     ["three_year_price", "三年付"],
-    ["onetime_price", "一次性"],
+    ["onetime_price", "一次性额度包"],
     ["reset_price", "重置流量"],
 ];
 export function AssignOrder({
@@ -577,6 +606,8 @@ export function AssignOrder({
     error: string;
 }) {
     const [trade, setTrade] = useState("");
+    const resetEligible = !Number(row.banned) && Number(row.transfer_enable) > 0
+        && (row.expired_at === null || Number(row.expired_at) > Date.now() / 1000);
     const eligible = plans
         .map((p) =>
             row.currency === "USD"
@@ -591,8 +622,13 @@ export function AssignOrder({
                   }
                 : p,
         )
+        .map((p): Row => ({
+            ...p,
+            onetime_price: Number(p.transfer_enable) > 0 && p.group_id != null ? p.onetime_price : null,
+            reset_price: resetEligible && String(p.id) === String(row.plan_id) ? p.reset_price : null,
+        }))
         .filter((p) => periods.some(([key]) => p[key] != null));
-    const first = eligible.find((p) => p.id === row.plan_id) || eligible[0];
+    const first = eligible.find((p) => String(p.id) === String(row.plan_id)) || eligible[0];
     const period = periods.find(([key]) => first?.[key] != null)?.[0];
     return (
         <State loading={loading} error={error}>
@@ -608,7 +644,7 @@ export function AssignOrder({
             ) : (
                 <>
                     <p className="pad muted">
-                        为此用户创建待支付订单，不会自动付款或立即开通套餐。
+                        为此用户创建待支付订单，不会自动付款。一次性额度包到账后会保留已有套餐，流量重置仅适用于当前有效套餐。
                     </p>
                     <Editor
                         fields={[
@@ -700,11 +736,11 @@ export function AssignOrder({
                                     : {}),
                             };
                         }}
-                        validate={() =>
-                            eligible.length
-                                ? undefined
-                                : "请先创建含有效价格周期的套餐"
-                        }
+                        validate={(values) => {
+                            if (values.period === "reset_price" && String(values.email).trim().toLowerCase() !== String(row.email).toLowerCase()) {
+                                return "请在接收用户的页面重新分配流量重置订单";
+                            }
+                        }}
                         onSave={async (body) => {
                             setTrade(
                                 String(

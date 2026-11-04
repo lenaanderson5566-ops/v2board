@@ -13,6 +13,7 @@ class RiskBlacklistUaHash extends Model
     protected $guarded = ['id'];
     protected $casts = [
         'is_enabled' => 'boolean',
+        'expires_at' => 'integer',
         'ua_raw' => 'string',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',

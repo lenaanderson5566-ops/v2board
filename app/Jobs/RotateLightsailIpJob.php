@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\LightsailService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 #[\Illuminate\Queue\Attributes\Connection("redis-infrastructure")]
@@ -11,15 +12,19 @@ use Illuminate\Foundation\Queue\Queueable;
 class RotateLightsailIpJob implements ShouldQueue
 {
     use Queueable;
-    public function __construct(public int $serverId)
+    // Old serialized jobs have no attempt and can only handle legacy rows.
+    public ?string $attempt = null;
+
+    public function __construct(public int $serverId, ?string $attempt = null)
     {
+        $this->attempt = $attempt;
     }
     public function handle(): void
     {
-        (new \App\Services\LightsailService())->run($this->serverId);
+        (new LightsailService())->run($this->serverId, $this->attempt);
     }
     public function failed(?\Throwable $e): void
     {
-        \Illuminate\Support\Facades\DB::table('v2_lightsail_server')->where('id', $this->serverId)->whereIn('status', ['queued', 'running'])->update(['status' => 'failed', 'error_code' => 'worker_failed']);
+        if ($this->attempt !== null) LightsailService::markWorkerFailed($this->serverId, $this->attempt);
     }
 }

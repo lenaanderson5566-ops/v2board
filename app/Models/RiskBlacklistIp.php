@@ -13,6 +13,7 @@ class RiskBlacklistIp extends Model
     protected $guarded = ['id'];
     protected $casts = [
         'is_enabled' => 'boolean',
+        'expires_at' => 'integer',
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
     ];

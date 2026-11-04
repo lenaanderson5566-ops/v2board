@@ -3,10 +3,19 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Order;
+use App\Models\Plan;
 use Illuminate\Support\Facades\DB;
 
 class TrafficCreditService
 {
+    public static function snapshotPurchase(Order $order, Plan $plan): void
+    {
+        $bytes = (int) round($plan->transfer_enable * 1073741824);
+        abort_if($bytes <= 0 || $plan->group_id === null, 422, __('Current product is sold out'));
+        $order->credit_bytes = $bytes;
+        $order->credit_snapshot = $plan->only(['name', 'group_id', 'speed_limit', 'device_limit']);
+    }
+
     // A null expiry is the legacy permanent, non-resetting traffic entitlement.
     // Keep its access profile and credentials; move only its unspent bytes.
     public function migrateUser(User $user): void

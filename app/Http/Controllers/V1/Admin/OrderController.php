@@ -10,8 +10,9 @@ use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\BillingCurrency;
 use App\Services\OrderService;
-use App\Services\UserService;
+use App\Services\TrafficCreditService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -149,53 +150,42 @@ class OrderController extends Controller
 
     public function assign(OrderAssign $request)
     {
-        $plan = Plan::find($request->input('plan_id'));
-        $user = User::where('email', $request->input('email'))->first();
+        $tradeNo = DB::transaction(function () use ($request) {
+            // Match the plan → user lock order used by customer checkout.
+            $plan = Plan::query()->lockForUpdate()->findOrFail($request->input('plan_id'));
+            $user = User::where('email', $request->input('email'))->lockForUpdate()->firstOrFail();
+            $pending = Order::where('user_id', $user->id)->whereIn('status', [0, 1])->lockForUpdate()->first(['id']);
+            abort_if($pending, 409, '该用户还有待支付或处理中的订单，无法分配');
 
-        if (!$user) {
-            abort(500, '该用户不存在');
-        }
-
-        if (!$plan) {
-            abort(500, '该订阅不存在');
-        }
-
-        $userService = new UserService();
-        if ($userService->isNotCompleteOrderByUserId($user->id)) {
-            abort(500, '该用户还有待支付的订单，无法分配');
-        }
-
-        DB::beginTransaction();
-        $order = new Order();
+            $order = new Order();
             $order->currency = $user->currency ?: 'CNY';
-        $orderService = new OrderService($order);
-        $order->user_id = $user->id;
-        $order->plan_id = $plan->id;
-        $order->period = $request->input('period');
-        $order->trade_no = Helper::guid();
-        $order->total_amount = $request->input('total_amount');
+            $order->user_id = $user->id;
+            $order->plan_id = $plan->id;
+            $order->period = $request->input('period');
+            $order->trade_no = Helper::guid();
+            $order->total_amount = $request->input('total_amount');
 
-        if ($order->period === 'reset_price') {
-            $order->type = 4;
-        } else if ($user->plan_id !== NULL && $order->plan_id !== $user->plan_id) {
-            $order->type = 3;
-        } else if ($user->expired_at > time() && $order->plan_id == $user->plan_id) {
-            $order->type = 2;
-        } else {
-            $order->type = 1;
-        }
+            if ($order->period === 'onetime_price') {
+                TrafficCreditService::snapshotPurchase($order, $plan);
+                $order->type = 5;
+            } elseif ($order->period === 'reset_price') {
+                abort_unless(OrderService::canPurchaseTrafficReset($user, $plan), 422, '流量重置仅适用于用户当前有效的套餐');
+                $price = BillingCurrency::price($plan, $order->period, $order->currency);
+                abort_if($price === null || $price < 0, 422, '该套餐未设置此币种的流量重置价格');
+                $order->type = 4;
+            } elseif ($user->plan_id !== null && $order->plan_id !== $user->plan_id) {
+                $order->type = 3;
+            } elseif ($user->expired_at > time() && $order->plan_id == $user->plan_id) {
+                $order->type = 2;
+            } else {
+                $order->type = 1;
+            }
 
-        $orderService->setInvite($user);
+            (new OrderService($order))->setInvite($user);
+            abort_unless($order->save(), 500, '订单创建失败');
+            return $order->trade_no;
+        }, 3);
 
-        if (!$order->save()) {
-            DB::rollback();
-            abort(500, '订单创建失败');
-        }
-
-        DB::commit();
-
-        return response([
-            'data' => $order->trade_no
-        ]);
+        return response(['data' => $tradeNo]);
     }
 }

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use Aws\Lightsail\LightsailClient;
 use Aws\Exception\AwsException;
+use Illuminate\Contracts\Cache\LockTimeoutException;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
@@ -131,35 +133,55 @@ class LightsailService
         }
         throw new \RuntimeException('operation_pending');
     }
-    public function run(int $id): void
+    private static function activeOperation(int $id, ?string $attempt): Builder
     {
-        $row = DB::table('v2_lightsail_server')->find($id);
+        return DB::table('v2_lightsail_server')->where('id', $id)
+            ->where('operation_attempt', $attempt)->whereIn('status', ['queued', 'running']);
+    }
+
+    public static function markWorkerFailed(int $id, string $attempt): void
+    {
+        self::activeOperation($id, $attempt)->update(['status'=>'failed', 'error_code'=>'worker_failed']);
+    }
+
+    public function run(int $id, ?string $attempt = null): void
+    {
+        $operation = self::activeOperation($id, $attempt);
+        $row = $operation->first();
         if (!$row) {
             return;
         }
         $lock = self::operationLock($row);
-        if (!$lock->get()) {
-            throw new \RuntimeException('instance_busy');
+        try {
+            // Allow a concurrent stale job time to recheck its fence and release.
+            $lock->block(1);
+        } catch (LockTimeoutException $error) {
+            // Another worker owns the instance. Let it finish without writing a failure.
+            return;
         }
         try {
-            $row = DB::table('v2_lightsail_server')->find($id);
-            if (!$row || !in_array($row->status, ['queued', 'running'], true)) {
-                return;
-            }
-            $this->diagnosticContext = ['server_id' => $id, 'attempt_id' => bin2hex(random_bytes(8)), 'phase' => $row->phase];
+            // Recheck under a row lock to observe any administrator requeue that just committed.
+            $row = DB::transaction(function () use ($operation) {
+                $row = (clone $operation)->lockForUpdate()->first();
+                if ($row) $operation->update(['status'=>'running', 'error_code'=>null, 'operation_at'=>time()]);
+                return $row;
+            }, 3);
+            if (!$row) return;
+            $this->diagnosticContext = ['server_id' => $id, 'attempt_id' => $attempt ?? bin2hex(random_bytes(8)), 'phase' => $row->phase];
             $node = (new ServerService())->getServer($row->node_id, $row->node_type);
             if (!$node || $node->service_id) {
                 throw new \RuntimeException("node_missing");
             }
             $client = $this->client($row);
-            $update = function (array $values) use ($id, $row) {
-                DB::table('v2_lightsail_server')->where('id', $id)->update($values);
+            $update = function (array $values) use ($operation, $row) {
+                if (!$operation->update($values) && !$operation->exists()) {
+                    throw new \RuntimeException('operation_superseded');
+                }
                 foreach ($values as $k => $v) {
                     $row->{$k} = $v;
                 }
                 $this->diagnosticContext['phase'] = $row->phase;
             };
-            $update(['status' => 'running', 'error_code' => null, 'operation_at' => time()]);
             if ($row->operation === 'rotate' && !in_array($row->phase, ['idle', 'allocate', 'attach', 'publish', 'release', 'complete'], true)) throw new \RuntimeException('invalid_operation_state');
             if ($row->operation === 'restore') {
                 $old = $row->old_name ? $this->staticIp($client, $row->old_name) : null;
@@ -263,7 +285,7 @@ class LightsailService
             if ($code === 'old_ip_unavailable' && ($row->operation ?? null) === 'restore' && $row->phase !== 'restored') {
                 $failure['operation'] = 'rotate';
             }
-            DB::table('v2_lightsail_server')->where('id', $id)->update($failure);
+            $operation->update($failure);
             if ($e instanceof AwsException) $this->logAwsDiagnostic('lightsail.operation_failed', $e);
         } finally {
             $this->diagnosticContext = [];

@@ -18,6 +18,27 @@ it("shows numeric evidence and saves a review for the selected event",async()=>{
  await waitFor(()=>expect(screen.queryByRole("dialog")).toBeNull());
 });
 
+it("shows subscription evidence and offers manual navigation without adding a block", async () => {
+    render(<AdminRiskReview row={{
+        id: 9, scene: "subscribe", status: "success", reason: "config_check", ip: "192.0.2.12",
+        payload: { source_log_id: 42, request_count: 6, threshold: 5, window_seconds: 600 },
+    }} />);
+    fireEvent.click(screen.getByRole("button", { name: /证据/ }));
+    expect(screen.getByText("原订阅日志 ID")).toBeTruthy();
+    expect(screen.getByText("42")).toBeTruthy();
+    expect(screen.getByText("192.0.2.12")).toBeTruthy();
+    expect(screen.getByText("成功")).toBeTruthy();
+    expect(screen.getByText("配置修订检查")).toBeTruthy();
+    expect(screen.getByText(/含成功和失败/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: "打开订阅 IP 黑名单" }).getAttribute("href")).toBe("#/access-blacklist");
+    expect(screen.getByRole("link", { name: "打开订阅 UA 黑名单" }).getAttribute("href")).toBe("#/access-blacklist-ua");
+    expect(request).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "confirmed" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存复核" }));
+    await waitFor(() => expect(request).toHaveBeenCalledWith("log/rule-hit/review", { id: 9, state: "confirmed", note: "" }));
+    expect(request).toHaveBeenCalledTimes(1);
+});
+
 it("confirms discarding a review and reopens the saved values",()=>{
  const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
  render(<AdminRiskReview row={{id:7,payload:{}}}/>);

@@ -2,6 +2,13 @@ import { useState } from "react";
 import { admin, date, query, request, type Row } from "../shared/api";
 import { Modal, State, Table, useData } from "../shared/ui";
 
+const confirmations = {
+    issue: "首次生成后，此节点将立即拒绝全局密钥；轮换时旧独立密钥保留 30 分钟。确认继续？",
+    "cancel-rotation": "确认撤销尚未认证的新密钥并恢复旧密钥？恢复后可重新生成。",
+    revoke: "撤销后不可恢复，节点可能失去面板访问权限。确认继续？",
+    "disable-legacy": "确认永久关闭全局节点密钥认证？请确保所有节点已成功使用独立密钥。",
+};
+
 export function NodeCredentials({
     node,
     close,
@@ -20,17 +27,8 @@ export function NodeCredentials({
     const [secret, setSecret] = useState("");
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState("");
-    async function act(action: string, credentialId?: string) {
-        if (
-            !window.confirm(
-                action === "issue"
-                    ? "首次生成后，此节点将立即拒绝全局密钥；轮换时旧独立密钥保留 30 分钟。确认继续？"
-                    : action === "revoke"
-                      ? "撤销后不可恢复，节点可能失去面板访问权限。确认继续？"
-                      : "确认永久关闭全局节点密钥认证？请确保所有节点已成功使用独立密钥。",
-            )
-        )
-            return;
+    async function act(action: keyof typeof confirmations, credentialId?: string) {
+        if (!window.confirm(confirmations[action])) return;
         setBusy(true);
         onBusyChange?.(true);
         setError("");
@@ -45,6 +43,7 @@ export function NodeCredentials({
             onChanged?.();
         } catch (e) {
             setError((e as Error).message);
+            if (action === "cancel-rotation") report.reload();
         } finally {
             setBusy(false);
             onBusyChange?.(false);
@@ -53,7 +52,7 @@ export function NodeCredentials({
     const content = (
         <>
             <p className="muted">
-                凭据仅授权此节点。生成后完整密钥只显示一次，请保存到节点配置；遗失请重新生成。此处不会自动轮换。
+                凭据仅授权此节点。生成后完整密钥只显示一次，请保存到节点配置。如果遗失的新密钥尚未认证，且旧密钥仍在宽限期内，可先取消本次轮换，再重新生成。
             </p>
             <State {...report} retry={report.reload}>
                 {report.data && (
@@ -129,6 +128,15 @@ export function NodeCredentials({
                             >
                                 生成 / 手动轮换密钥
                             </button>
+                            {report.data.cancellableCredentialId && (
+                                <button
+                                    type="button"
+                                    disabled={busy || report.loading}
+                                    onClick={() => act("cancel-rotation", report.data?.cancellableCredentialId)}
+                                >
+                                    取消轮换并恢复旧密钥
+                                </button>
+                            )}
                         </div>
                         {report.data.legacyEnabled && (
                             <details>

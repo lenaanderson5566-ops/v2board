@@ -11,24 +11,44 @@ class MailCampaign
         if ($purpose==='marketing' && !$user->announcement_email) return 'not_subscribed';
         return null;
     }
-    private static function audience($builder,string $purpose,callable $consume): void {
-        (clone $builder)->chunkById(500,function($users) use($purpose,$consume){
-            $hashes=$users->map(fn($u)=>MailDeliveryLog::recipientHash($u->email));
-            $manual=DB::table('v2_mail_blocklist')->whereIn('recipient_hash',$hashes)->whereNull('released_at')->pluck('recipient_hash')->flip();
-            $blocked=DB::table('v2_mail_suppression')->whereIn('recipient_hash',$hashes)->whereNull('released_at')->pluck('recipient_hash')->flip();
-            $rows=[];
-            foreach($users as $user) {
-                $hash=MailDeliveryLog::recipientHash($user->email);
-                $reason=isset($manual[$hash]) ? 'manual_blocklist' : ($user->banned ? 'account_disabled' : (isset($blocked[$hash]) ? 'suppressed' : ($purpose==='marketing' && !$user->announcement_email ? 'not_subscribed':null)));
-                $rows[]=['user_id'=>$user->id,'recipient_hash'=>$hash,'reason'=>$reason];
-            }
-            $consume($rows);
-        });
+    private static function audience($builder, string $purpose, int $administratorId, callable $consume): string
+    {
+        $fingerprint = hash_init('sha256', HASH_HMAC, (string)config('app.key'));
+        hash_update($fingerprint, "mail-audience-v1:$administratorId:$purpose\n");
+        (clone $builder)->select(['id', 'email', 'banned', 'announcement_email'])
+            ->chunkById(500, function ($users) use ($purpose, $consume, $fingerprint) {
+                $hashes = $users->mapWithKeys(fn ($user) => [$user->id => MailDeliveryLog::recipientHash($user->email)]);
+                $manual = DB::table('v2_mail_blocklist')->whereIn('recipient_hash', $hashes)->whereNull('released_at')->pluck('recipient_hash')->flip();
+                $blocked = DB::table('v2_mail_suppression')->whereIn('recipient_hash', $hashes)->whereNull('released_at')->pluck('recipient_hash')->flip();
+                $rows = [];
+                foreach ($users as $user) {
+                    $hash = $hashes[$user->id];
+                    $reason = match (true) {
+                        isset($manual[$hash]) => 'manual_blocklist',
+                        (bool)$user->banned => 'account_disabled',
+                        isset($blocked[$hash]) => 'suppressed',
+                        $purpose === 'marketing' && !$user->announcement_email => 'not_subscribed',
+                        default => null,
+                    };
+                    $rows[] = ['user_id' => $user->id, 'recipient_hash' => $hash, 'reason' => $reason];
+                    hash_update($fingerprint, "{$user->id}:$hash:$reason\n");
+                }
+                $consume($rows);
+            });
+        return hash_final($fingerprint);
     }
-    public static function preview($builder,string $purpose): array {
-        $counts=['total'=>0,'eligible'=>0,'account_disabled'=>0,'suppressed'=>0,'not_subscribed'=>0,'manual_blocklist'=>0];
-        self::audience($builder,$purpose,function($rows) use(&$counts){foreach($rows as $row){$counts['total']++;$counts[$row['reason'] ?: 'eligible']++;}});
-        return $counts;
+    public static function preview($builder, string $purpose, int $administratorId): array
+    {
+        return DB::transaction(function () use ($builder, $purpose, $administratorId) {
+            $counts = ['total'=>0,'eligible'=>0,'account_disabled'=>0,'suppressed'=>0,'not_subscribed'=>0,'manual_blocklist'=>0];
+            $token = self::audience($builder, $purpose, $administratorId, function ($rows) use (&$counts) {
+                foreach ($rows as $row) {
+                    $counts['total']++;
+                    $counts[$row['reason'] ?: 'eligible']++;
+                }
+            });
+            return $counts + ['audience_token' => $token];
+        });
     }
     public static function create($builder,array $data,int $administratorId): int {
         $mail=app(ProductMail::class); $data['content']=$mail->safeHtml($data['content']);
@@ -41,10 +61,16 @@ class MailCampaign
             foreach($values as $key=>$value) abort_unless((string)$campaign->$key===(string)$value,409,'该发送请求已使用，请重新打开群发窗口。');
             $id=(int)$campaign->id;
             if(!$inserted) return $id;
-            self::audience($builder,$data['purpose'],function($rows) use($id){
+            $total = 0;
+            $token = self::audience($builder, $data['purpose'], $administratorId, function ($rows) use ($id, &$total) {
                 $records=[]; foreach($rows as $row) $records[]=$row+['campaign_id'=>$id,'status'=>$row['reason'] ? 'skipped':'queued','available_at'=>time(),'updated_at'=>time()];
                 DB::table('v2_mail_campaign_recipient')->insert($records);
+                $total += count($rows);
             });
+            // Verify the exact rows written above. An outdated preview rolls back the entire campaign.
+            abort_unless(hash_equals($token, $data['audience_token'])
+                && (!isset($data['expected_count']) || $total === (int)$data['expected_count']),
+                409, '收件范围或发送资格已变化，请重新检查收件范围后确认。');
             return $id;
         });
     }

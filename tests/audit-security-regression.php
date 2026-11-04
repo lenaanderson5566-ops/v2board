@@ -66,6 +66,8 @@ try {
      $beforeChange=$userAuth->generateAuthData(Request::create('/'))['auth_data'];
      $params=['id'=>$user->id,'email'=>$user->fresh()->email,'banned'=>0,'is_admin'=>0];
      $params[$changed]=$changed==='password'?'Admin-reset-test-123':'admin-updated-'.bin2hex(random_bytes(5)).'@example.com';
+     $detail=$as($adminPath.'/user/getUserInfoById',$adminToken,['id'=>$user->id]);
+     $params['edit_versions']=array_intersect_key(json_decode($detail->getContent(),true)['data']['edit_versions'],$params);
      $r=$kernel->handle(Request::create($adminPath.'/user/update','POST',$params,[],[],['HTTP_AUTHORIZATION'=>$adminToken,'HTTP_ACCEPT'=>'application/json']));
      $assert($r->getStatusCode()===200 && !App\Services\AuthService::decryptAuthData($beforeChange),'Administrative '.$changed.' change revokes previous user sessions');
  }

@@ -36,9 +36,23 @@ class SendEmailJob implements ShouldQueue
     public function backoff() { return ($this->params['template_name'] ?? '') === 'verify' ? [5, 15, 30, 60] : [60, 180, 600, 900]; }
     public function handle()
     {
-        if (!empty($this->params['user_id'])) {
-            $account = \App\Models\User::find($this->params['user_id']);
+        $userId = $this->params['user_id'] ?? null;
+        $ticketReply = ($this->params['template_name'] ?? '') === 'ticketReply';
+        if ($ticketReply) {
+            $ticketId = (int)($this->params['template_value']['ticket_id'] ?? 0);
+            // Older jobs can still verify the owner using the ticket rather than a serialized user ID.
+            $ownerId = \App\Models\Ticket::whereKey($ticketId)->value('user_id');
+            if (!$ownerId || ($userId && (int)$userId !== (int)$ownerId)) {
+                return ['skipped'=>true,'reason'=>'TICKET_RECIPIENT_UNVERIFIED'];
+            }
+            $userId = $ownerId;
+        }
+        if ($userId) {
+            $account = \App\Models\User::find($userId);
             if (!$account || $account->account_deleted_at) return ['skipped'=>true,'reason'=>'ACCOUNT_DELETED'];
+            if ($ticketReply && (string)$account->email !== ($this->params['email'] ?? null)) {
+                return ['skipped'=>true,'reason'=>'TICKET_RECIPIENT_CHANGED'];
+            }
         }
         $announcement=(($this->params['template_name'] ?? '')==='notify' && ($this->params['mail_purpose'] ?? 'marketing')==='marketing') || (($this->params['template_name'] ?? '')==='test' && ($this->params['test_stream'] ?? '')==='announcement');
         return \App\Services\Mail\MailChannel::run($announcement, fn()=>$this->deliver($announcement));

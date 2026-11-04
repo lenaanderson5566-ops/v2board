@@ -136,7 +136,12 @@ class SystemController extends Controller
         if (isset($params['from'])) $builder->where('created_at','>=',$params['from']);
         if (isset($params['to'])) $builder->where('created_at','<=',$params['to']);
         $total=(clone $builder)->count();
-        $rows=$builder->select(['id','title','level','method','route_template','request_id','http_status','duration_ms','created_at'])->forPage($params['current'] ?? 1,$params['page_size'] ?? 20)->get();
+        $page=(int)($params['current'] ?? 1);
+        $pageSize=(int)($params['page_size'] ?? 20);
+        if ($total === 0 || $page - 1 > intdiv($total - 1, $pageSize)) {
+            return response(['data'=>[],'total'=>$total]);
+        }
+        $rows=$builder->select(['id','title','level','method','route_template','request_id','http_status','duration_ms','created_at'])->forPage($page,$pageSize)->get();
         return response(['data'=>$rows->map(fn($row)=>\App\Services\SystemLogService::resource($row)),'total'=>$total]);
     }
     public function getLogRetention(\App\Services\LogRetentionService $service) {

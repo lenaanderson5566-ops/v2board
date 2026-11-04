@@ -28,6 +28,32 @@ try {
     ]);
     $auth = new App\Services\AuthService($user);
     $token = $auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $userDetail = function (int $id) use ($call, $securePath, $token): array {
+        return json_decode($call('/api/v1/'.$securePath.'/user/getUserInfoById?id='.$id, null, $token)->getContent(), true)['data'];
+    };
+    $editPayload = fn (array $data) => $data + ['edit_versions'=>array_intersect_key($userDetail($data['id'])['edit_versions'], $data)];
+    $confirmBulk = function (string $operation, array $filters, int $count) use ($call, $securePath, $token, $assert) {
+        $payload = ['filter'=>$filters, 'expected_count'=>$count];
+        $response = $call('/api/v1/'.$securePath.'/user/previewBulk', $payload + ['operation'=>$operation], $token);
+        $data = json_decode($response->getContent(), true)['data'] ?? [];
+        $assert($response->getStatusCode()===200 && ($data['total'] ?? null)===$count
+            && is_string($data['scope_token'] ?? null), 'Bulk preview must capture the matching user set');
+        return $payload + ['scope_token'=>$data['scope_token']];
+    };
+    $adminScope = [['key'=>'id', 'condition'=>'=', 'value'=>$user->id]];
+    $adminFields = ['id'=>$user->id, 'email'=>$user->email, 'banned'=>0, 'is_admin'=>1];
+    foreach ([
+        ['update', $editPayload(array_replace($adminFields, ['is_admin'=>0]))],
+        ['update', $editPayload(array_replace($adminFields, ['banned'=>1]))],
+        ['ban', $confirmBulk('ban', $adminScope, 1)],
+        ['delUser', ['id'=>$user->id]],
+        ['allDel', $confirmBulk('delete', $adminScope, 1)],
+    ] as [$action, $payload]) {
+        $response = $call('/api/v1/'.$securePath.'/user/'.$action, $payload, $token);
+        $assert($response->getStatusCode()===409 && $user->fresh()?->is_admin
+            && !$user->fresh()->banned && App\Services\AuthService::decryptAuthData($token)!==false,
+            'Last administrator must retain access after a rejected '.$action);
+    }
     $subject = App\Models\User::create([
         'email' => 'console-subject-' . bin2hex(random_bytes(5)) . '@example.com',
         'password' => password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
@@ -63,23 +89,38 @@ try {
     $journeyReport=$call($journeyUrl.'?days=7&device=mobile',null,$token);
     $assert($journeyReport->getStatusCode()===200 && isset(json_decode($journeyReport->getContent(),true)['data']['business']['activation']) && str_contains($journeyReport->headers->get('Cache-Control'),'no-store'),'Journey analytics accepts administrator filters with private response');
     $assert($call($journeyUrl.'?days=8',null,$token)->getStatusCode()===422,'Journey report rejects unsupported date ranges');
-    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['is_staff'=>1], $token);
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editPayload($editUser + ['is_staff'=>1]), $token);
     $subject->refresh();
     $assert($response->getStatusCode() === 200 && $subject->u == 536870912 && $subject->d == 1073741824 && $subject->commission_type == 2, 'User traffic and commission fields did not persist');
     $assert($subject->invite_user_id == $user->id, 'Unrelated user update cleared the inviter');
-    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['invite_user_email' => ''], $token);
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editPayload($editUser + ['invite_user_email' => '']), $token);
     $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id === null, 'Explicit inviter removal failed');
-    $response = $call('/api/v1/' . $securePath . '/user/update', $editUser + ['invite_user_email' => $user->email], $token);
+    $response = $call('/api/v1/' . $securePath . '/user/update', $editPayload($editUser + ['invite_user_email' => $user->email]), $token);
     $assert($response->getStatusCode() === 200 && $subject->refresh()->invite_user_id == $user->id, 'Inviter email assignment failed');
     $originalGroup=$subject->group_id;
     $subject->group_id=98765;$subject->save();
-    $response=$call('/api/v1/'.$securePath.'/user/update',$editUser,$token);
+    $response=$call('/api/v1/'.$securePath.'/user/update',$editPayload($editUser),$token);
     $assert($response->getStatusCode()===200 && $subject->fresh()->group_id===98765,'Unrelated edits preserve access group without an explicit plan change');
     foreach ([$subject->email,'missing-inviter@example.invalid'] as $email) {
-        $response=$call('/api/v1/'.$securePath.'/user/update',$editUser+['invite_user_email'=>$email],$token);
+        $response=$call('/api/v1/'.$securePath.'/user/update',$editPayload($editUser+['invite_user_email'=>$email]),$token);
         $assert($response->getStatusCode()===422 && $subject->fresh()->invite_user_id===$user->id,'Invalid inviter edits preserve the current inviter');
     }
     $subject->group_id=$originalGroup;$subject->save();
+    $updatePath = '/api/v1/'.$securePath.'/user/update';
+    $staleVersions = $userDetail($subject->id)['edit_versions'];
+    $subject->update(['balance'=>731, 'u'=>601295421, 'banned'=>1]);
+    $assert($call($updatePath, ['id'=>$subject->id, 'remarks'=>'Independent note',
+        'edit_versions'=>['remarks'=>$staleVersions['remarks']]], $token)->getStatusCode()===200,
+        'Changes to untouched fields should not invalidate an independent edit');
+    $assert($subject->refresh()->balance===731 && $subject->u===601295421 && $subject->banned===1,
+        'Remarks-only update restored stale balance, usage, or access');
+    $assert($call($updatePath, ['id'=>$subject->id, 'balance'=>1, 'banned'=>0,
+        'edit_versions'=>array_intersect_key($staleVersions, ['balance'=>true, 'banned'=>true])], $token)->getStatusCode()===409
+        && $subject->refresh()->balance===731 && $subject->banned===1,
+        'Stale edit to a balance or permission must roll back the entire update');
+    $assert($call($updatePath, ['id'=>$subject->id, 'banned'=>0], $token)->getStatusCode()===422,
+        'An old full-form client must reload before submitting user edits');
+    $subject->update(['balance'=>0, 'u'=>536870912, 'banned'=>0]);
     // Disposable users and orders remain inside the surrounding rollback transaction.
     $scope = [['key' => 'id', 'condition' => '=', 'value' => $subject->id]];
     $subject->device_limit = 7;
@@ -97,11 +138,17 @@ try {
     $assert(App\Models\User::count() === $beforeCount, 'Retired generation changed user count');
     foreach (['ban', 'allDel'] as $method) {
         $assert($call('/api/v1/' . $securePath . '/user/' . $method, [], $token)->getStatusCode() === 422, 'Unfiltered destructive operation accepted: ' . $method);
-        $assert($call('/api/v1/' . $securePath . '/user/' . $method, ['filter' => $scope, 'expected_count' => 2], $token)->getStatusCode() === 409, 'Changed operation scope accepted: ' . $method);
+        $assert($call('/api/v1/' . $securePath . '/user/' . $method, ['filter' => $scope, 'expected_count' => 1], $token)->getStatusCode() === 422, 'Count-only destructive operation accepted: ' . $method);
+        $assert($call('/api/v1/' . $securePath . '/user/' . $method, ['filter' => $scope, 'expected_count' => 2, 'scope_token'=>str_repeat('a', 64)], $token)->getStatusCode() === 409, 'Changed operation scope accepted: ' . $method);
     }
     $assert($subject->refresh()->banned === 0 && App\Models\User::find($subject->id), 'Rejected operation changed the user');
     Illuminate\Support\Facades\Bus::fake();
-    $response = $call('/api/v1/' . $securePath . '/user/sendMail', ['filter' => $scope, 'expected_count' => 1, 'request_key' => (string) Illuminate\Support\Str::uuid(), 'purpose' => 'service', 'subject' => 'test', 'content' => '<p>test</p>'], $token);
+    $mailScope = ['filter' => $scope, 'expected_count' => 1, 'purpose' => 'service'];
+    $preview = $call('/api/v1/'.$securePath.'/user/previewMailAudience', $mailScope, $token);
+    $previewToken = json_decode($preview->getContent(), true)['data']['audience_token'] ?? null;
+    $assert($preview->getStatusCode()===200 && is_string($previewToken), 'Scoped mail preview did not return an audience token');
+    $response = $call('/api/v1/'.$securePath.'/user/sendMail', $mailScope + ['audience_token' => $previewToken,
+        'request_key' => (string) Illuminate\Support\Str::uuid(), 'subject' => 'test', 'content' => '<p>test</p>'], $token);
     $campaignId = json_decode($response->getContent(), true)['data']['campaign_id'] ?? null;
     $recipients = Illuminate\Support\Facades\DB::table('v2_mail_campaign_recipient')->where('campaign_id', $campaignId)->get();
     $assert($response->getStatusCode() === 202 && $recipients->count() === 1 && (int) $recipients->first()->user_id === $subject->id && $recipients->first()->status === 'queued', 'Scoped mail did not reach the campaign queue');
@@ -109,7 +156,7 @@ try {
     $response = $call('/api/v1/' . $securePath . '/user/resetSecret', ['id' => $subject->id], $token);
     $subject->refresh();
     $assert($response->getStatusCode() === 200 && $subject->uuid !== $oldUuid && $subject->token !== $oldToken, 'Reset did not replace both credentials');
-    $response = $call('/api/v1/' . $securePath . '/user/ban', ['filter' => $scope, 'expected_count' => 1], $token);
+    $response = $call('/api/v1/' . $securePath . '/user/ban', $confirmBulk('ban', $scope, 1), $token);
     $assert($response->getStatusCode() === 200 && $subject->refresh()->banned === 1 && $user->refresh()->banned === 0, 'Scoped ban changed unrelated users');
     $subject->banned = 0; $subject->save();
     $plan = App\Models\Plan::create(['name' => 'console-user-order', 'group_id' => 1, 'transfer_enable' => 10, 'month_price' => 1000]);
@@ -125,13 +172,29 @@ try {
     $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['total'] === 1, 'User traffic records failed');
     // Build disposable records directly; the retired generation endpoint must stay absent.
     $suffix='bulk-'.bin2hex(random_bytes(6)).'.example.test';
-    for ($i=0;$i<3;$i++) App\Models\User::create([
+    $batchUsers = [];
+    for ($i=0;$i<3;$i++) $batchUsers[] = App\Models\User::create([
         'email'=>'delete-'.$i.'@'.$suffix,'password'=>'test-only-unusable-hash',
         'uuid'=>App\Utils\Helper::guid(true),'token'=>App\Utils\Helper::guid(),
     ]);
     $batchScope = [['key' => 'email', 'condition' => '模糊', 'value' => '@' . $suffix]];
-    $response = $call('/api/v1/' . $securePath . '/user/allDel', ['filter' => $batchScope, 'expected_count' => 3], $token);
+    $banScope = $confirmBulk('ban', $batchScope, 3);
+    $deleteScope = $confirmBulk('delete', $batchScope, 3);
+    $assert($call('/api/v1/'.$securePath.'/user/allDel', $banScope, $token)->getStatusCode()===409,
+        'A ban preview must not authorize deletion');
+    $originalEmail = $batchUsers[0]->email;
+    $batchUsers[0]->update(['email'=>'moved@outside-'.$suffix]);
+    $substitute = App\Models\User::create([
+        'email'=>$originalEmail, 'password'=>'test-only-unusable-hash',
+        'uuid'=>App\Utils\Helper::guid(true), 'token'=>App\Utils\Helper::guid(),
+    ]);
+    $assert($call('/api/v1/'.$securePath.'/user/ban', $banScope, $token)->getStatusCode()===409
+        && !$substitute->refresh()->banned, 'Same-count member swap must reject bulk ban');
+    $assert($call('/api/v1/'.$securePath.'/user/allDel', $deleteScope, $token)->getStatusCode()===409
+        && $substitute->fresh() && $batchUsers[1]->fresh(), 'Same-count member swap must reject bulk deletion');
+    $response = $call('/api/v1/' . $securePath . '/user/allDel', $confirmBulk('delete', $batchScope, 3), $token);
     $assert($response->getStatusCode() === 200 && App\Models\User::where('email', 'like', '%@' . $suffix)->count() === 0 && App\Models\User::find($subject->id), 'Scoped deletion changed unrelated users');
+    $assert($batchUsers[0]->fresh() !== null, 'User outside the newly confirmed scope was deleted');
     $response = $call('/api/v1/' . $securePath . '/user/delUser', ['id' => $subject->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\User::find($subject->id) && !App\Models\Order::find($order->id), 'Single-user deletion did not clean up the assigned order');
     foreach (['/', '/app', '/' . $securePath] as $path) {
@@ -253,15 +316,28 @@ try {
     $permissionSettings=config('fastai');
     $legacyPermissionSettings=$permissionSettings;
     $legacyPermissionSettings['legacy_only_setting']='preserved';
+    $legacyPermissionSettings = array_replace($legacyPermissionSettings, [
+        'email_announcement_separate'=>0, 'email_announcement_provider'=>'smtp',
+        'email_announcement_host'=>'smtp.example.test', 'email_announcement_port'=>587,
+        'email_announcement_from_address'=>'announcement@example.test',
+    ]);
+    $release = ['platform'=>'windows', 'architecture'=>'x64', 'channel'=>'stable', 'latestVersion'=>'1.1.0',
+        'latestBuild'=>1, 'minimumVersion'=>'1.0.0', 'downloadUrl'=>'https://example.invalid/fastai.exe',
+        'sha256'=>str_repeat('a',64), 'publishedAt'=>'2026-10-06T00:00:00Z'];
+    $legacyRelease = array_replace($release, ['architecture'=>'x86']);
+    $legacyPermissionSettings['fastai_releases']=[$legacyRelease];
     $legacyPermissionBytes='<?php return '.var_export($legacyPermissionSettings,true).';';
     file_put_contents($permissionDirectory.'/v2board.php',$legacyPermissionBytes);
     chmod($permissionDirectory.'/v2board.php',0600);
     $artisan=Illuminate\Support\Facades\Artisan::getFacadeRoot();
+    $fastaiStrategy=App\Models\ClientStrategy::query()->firstOrNew(['client_type'=>'fastai']);
+    $previousMinimum=$fastaiStrategy->min_version;
+    $strategyExisted=$fastaiStrategy->exists;
     try {
         $app->useConfigPath($permissionDirectory);
         config(['fastai'=>$legacyPermissionSettings]);
         // Other cases exercise real config:cache; this fixture isolates the actual file write.
-        Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')->andReturn(0);
+        Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->times(4)->with('config:cache')->andReturn(0);
         $permissionResponse=$call('/api/v1/'.$securePath.'/config/save',['app_name'=>'Permission fixture'],$token);
         clearstatcache(true,$permissionDirectory.'/fastai.php');
         $assert($permissionResponse->getStatusCode()===200 && is_file($permissionDirectory.'/fastai.php')
@@ -270,11 +346,53 @@ try {
         $assert(($permissionPersisted['legacy_only_setting']??null)==='preserved'
             && file_get_contents($permissionDirectory.'/v2board.php')===$legacyPermissionBytes,
             'Canonical settings must retain existing values without modifying the legacy file');
+        if (!$strategyExisted) $fastaiStrategy->client_name='FastAI';
+        $fastaiStrategy->min_version='1.0.0';
+        $fastaiStrategy->save();
+        $settings = json_decode($call('/api/v1/'.$securePath.'/config/fetch', null, $token)->getContent(), true)['data']['app'];
+        $revision = $settings['fastai_releases_revision'];
+        $assert($settings['fastai_release_min_version']==='1.0.0'
+            && $settings['fastai_release_targets']['windows']===['x64','arm64'], 'Publication metadata exposes effective inputs');
+        $saveCatalog = fn (array $payload) => $call('/api/v1/'.$securePath.'/config/save', $payload, $token);
+        $assert($saveCatalog(['fastai_releases'=>[]])->getStatusCode()===422, 'Removing all releases still requires a revision');
+        $unsupported = $saveCatalog(['fastai_releases'=>[array_replace($legacyRelease,['latestBuild'=>2])], 'fastai_releases_revision'=>$revision]);
+        $unsupportedMessage = json_decode($unsupported->getContent(), true)['message'] ?? '';
+        $assert($unsupported->getStatusCode()===422 && str_contains($unsupportedMessage, '构建流程不支持'),
+            'Unsupported targets cannot be republished with changed metadata (HTTP '.$unsupported->getStatusCode().' '.$unsupportedMessage.')');
+        $blocked = $saveCatalog(['fastai_releases'=>[array_replace($release,['latestVersion'=>'0.9.0','minimumVersion'=>'0.9.0'])], 'fastai_releases_revision'=>$revision]);
+        $assert($blocked->getStatusCode()===422 && str_contains(json_decode($blocked->getContent(), true)['message'] ?? '', '客户端访问策略最低版本'),
+            'Publish rejects versions below the global access policy');
+        $catalog = [$legacyRelease, $release];
+        $assert($saveCatalog(['fastai_releases'=>$catalog, 'fastai_releases_revision'=>$revision, 'custom_footer_html'=>'<p>Published footer</p>'])->getStatusCode()===200,
+            'Supported releases publish alongside an unchanged legacy target');
+        $assert($saveCatalog(['fastai_releases'=>[$legacyRelease], 'fastai_releases_revision'=>$revision])->getStatusCode()===409,
+            'Stale release draft cannot overwrite the saved catalog');
+        $freshSettings = json_decode($call('/api/v1/'.$securePath.'/config/fetch', null, $token)->getContent(), true)['data']['app'];
+        $assert($freshSettings['fastai_releases']===$catalog && $freshSettings['fastai_releases_revision']!==$revision,
+            'Reload uses the saved catalog even when the worker config cache is stale');
+        $assert($saveCatalog(['app_name'=>'Another settings writer'])->getStatusCode()===200, 'Independent settings update succeeds');
+        $persisted = App\Support\SiteConfiguration::read();
+        $assert($persisted['fastai_releases']===$catalog && $persisted['custom_footer_html']==='<p>Published footer</p>',
+            'Independent save uses current disk settings rather than the stale worker snapshot');
+        $assert(!isset($persisted['fastai_releases_revision']), 'The computed revision is not stored as a setting');
+        $assert($saveCatalog(['email_announcement_host'=>null])->getStatusCode()===200,
+            'Disabled independent announcement SMTP can clear its host');
+        $invalidAnnouncement = $saveCatalog(['email_announcement_separate'=>1]);
+        $announcementErrors = json_decode($invalidAnnouncement->getContent(), true)['errors'] ?? [];
+        $assert($invalidAnnouncement->getStatusCode()===422 && isset($announcementErrors['email_announcement_host'])
+            && !App\Support\SiteConfiguration::read()['email_announcement_separate'],
+            'Enabling SMTP with a stale worker snapshot cannot save a missing host');
     } finally {
+        if ($strategyExisted) {
+            $fastaiStrategy->min_version=$previousMinimum;
+            $fastaiStrategy->save();
+        } elseif ($fastaiStrategy->exists) {
+            $fastaiStrategy->delete();
+        }
         Illuminate\Support\Facades\Artisan::swap($artisan);
         $app->useConfigPath($originalPermissionDirectory);
         config(['fastai'=>$permissionSettings]);
-        foreach (['fastai.php','v2board.php'] as $file) if (is_file($permissionDirectory.'/'.$file)) unlink($permissionDirectory.'/'.$file);
+        foreach (['fastai.php','fastai.php.lock','v2board.php'] as $file) if (is_file($permissionDirectory.'/'.$file)) unlink($permissionDirectory.'/'.$file);
         rmdir($permissionDirectory);
     }
 
@@ -296,7 +414,7 @@ try {
     config(['fastai.app_url'=>'https://site.example.test']);
     foreach (['https://api-old.example.test/', 'https://api-new.example.test:8443/', null] as $nodeApiUrl) {
         $assert(App\Services\AuthService::decryptAuthData($token)!==false, 'Settings test administrator session remains valid before saving '.($nodeApiUrl ?? 'fallback'));
-        $saved = $call('/api/v1/'.$securePath.'/config/save', ['server_api_url'=>$nodeApiUrl], $token);
+        $saved = $call('/api/v1/'.$securePath.'/config/save', ['server_api_url'=>$nodeApiUrl, 'app_url'=>'https://site.example.test'], $token);
         // config:cache boots a separate application; keep this transaction's test container.
         Illuminate\Container\Container::setInstance($app);
         Illuminate\Support\Facades\Facade::setFacadeApplication($app);
@@ -352,6 +470,18 @@ try {
     $assert($response->getStatusCode() === 200 && $tempGroup, 'Group creation failed');
     $response = $call('/api/v1/' . $securePath . '/server/group/save', ['id' => $tempGroup->id, 'name' => 'console-button-group-edited'], $token);
     $assert($response->getStatusCode() === 200 && $tempGroup->refresh()->name === 'console-button-group-edited', 'Group edit failed');
+    $groupPlan = App\Models\Plan::create(['name'=>'Permission group fixture', 'group_id'=>$tempGroup->id, 'transfer_enable'=>5, 'month_price'=>500]);
+    $groups = json_decode($call('/api/v1/'.$securePath.'/server/group/fetch', null, $token)->getContent(), true)['data'];
+    $groupRow = collect($groups)->firstWhere('id', $tempGroup->id);
+    $assert(($groupRow['plan_count'] ?? null) === 1, 'Group list shows how many plans depend on the group');
+    $response = $call('/api/v1/'.$securePath.'/server/group/drop', ['id'=>$tempGroup->id], $token);
+    $assert($response->getStatusCode()===422 && str_contains(json_decode($response->getContent(), true)['message'] ?? '', '套餐') && $tempGroup->fresh(), 'Group referenced by a plan is preserved with an actionable message');
+    $groupPlan->delete();
+    $previousGroupId = $user->refresh()->group_id;
+    $user->update(['group_id'=>$tempGroup->id]);
+    $response = $call('/api/v1/'.$securePath.'/server/group/drop', ['id'=>$tempGroup->id], $token);
+    $assert($response->getStatusCode()===422 && str_contains(json_decode($response->getContent(), true)['message'] ?? '', '用户') && $tempGroup->fresh(), 'Group referenced by a user is preserved with an actionable message');
+    $user->update(['group_id'=>$previousGroupId]);
     $response = $call('/api/v1/' . $securePath . '/server/group/drop', ['id' => $tempGroup->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\ServerGroup::find($tempGroup->id), 'Group deletion failed');
     $routeBody = ['remarks' => 'console-button-route', 'action' => 'sing_box', 'sing_box' => ['route'=>['rules'=>[['domain_suffix'=>['example.invalid'],'action'=>'reject']]]]];
@@ -361,6 +491,11 @@ try {
     $routeBody['id'] = $tempRoute->id; $routeBody['sing_box'] = ['dns'=>['servers'=>[['type'=>'udp','tag'=>'resolver','server'=>'8.8.8.8']],'final'=>'resolver']];
     $response = $call('/api/v1/' . $securePath . '/server/route/save', $routeBody, $token);
     $assert($response->getStatusCode() === 200 && $tempRoute->refresh()->sing_box['dns']['final'] === 'resolver', 'Native route edit failed');
+    $invalidRouteBody = array_replace($routeBody, ['id'=>[$tempRoute->id]]);
+    $assert($call('/api/v1/'.$securePath.'/server/route/save', $invalidRouteBody, $token)->getStatusCode()===422, 'Route save requires a scalar ID');
+    foreach ([[], ['id'=>[$tempRoute->id]]] as $invalidRouteDrop) {
+        $assert($call('/api/v1/'.$securePath.'/server/route/drop', $invalidRouteDrop, $token)->getStatusCode()===422 && $tempRoute->fresh(), 'Invalid route deletion is rejected without changing the saved route');
+    }
     $response = $call('/api/v1/' . $securePath . '/server/route/drop', ['id' => $tempRoute->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\ServerRoute::find($tempRoute->id), 'Route deletion failed');
     $noticeBody = ['title' => 'console-button-notice', 'content' => '<p>notice</p>', 'tags' => ['test-only']];
@@ -374,6 +509,8 @@ try {
     $assert($response->getStatusCode() === 200 && $notice->refresh()->show == 1, 'Notice visibility failed');
     $response = $call('/api/v1/' . $securePath . '/notice/drop', ['id' => $notice->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\Notice::find($notice->id), 'Notice deletion failed');
+    $assert($call('/api/v1/'.$securePath.'/notice/show', ['id'=>$notice->id], $token)->getStatusCode()===404
+        && $call('/api/v1/'.$securePath.'/notice/drop', ['id'=>[$notice->id]], $token)->getStatusCode()===422, 'Notice actions distinguish missing records from invalid IDs');
     // Invalid management input must not mutate records or leak an open transaction.
     foreach (['save','drop'] as $operation) {
         $invalid=$call('/api/v1/'.$securePath.'/server/group/'.$operation,[], $token);
@@ -457,8 +594,55 @@ try {
     $assert($response->getStatusCode() === 200 && $knowledge[1]->refresh()->sort == 1 && $knowledge[0]->refresh()->sort == 2, 'Knowledge ordering failed');
     $response = $call('/api/v1/' . $securePath . '/knowledge/show', ['id' => $knowledge[0]->id], $token);
     $assert($response->getStatusCode() === 200 && $knowledge[0]->refresh()->show == 1, 'Knowledge visibility failed');
+    $knowledgeEdit = ['id'=>$knowledge[0]->id,'title'=>$knowledge[0]->title,'category'=>$knowledge[0]->category,'language'=>'ja-JP'];
+    $knowledgeSave = '/api/v1/'.$securePath.'/knowledge/save';
+    $articlePath = '/api/v10/knowledge-articles/'.$knowledge[0]->id;
+    $limitedReader = App\Models\User::create([
+        'email'=>'knowledge-reader-'.bin2hex(random_bytes(5)).'@example.invalid',
+        'password'=>password_hash(bin2hex(random_bytes(16)), PASSWORD_DEFAULT),
+        'uuid'=>App\Utils\Helper::guid(true), 'token'=>App\Utils\Helper::guid(),
+    ]);
+    $limitedAuth = new App\Services\AuthService($limitedReader);
+    $subscriberAuth = new App\Services\AuthService($subscriber);
+    $subscriberExpiry = $subscriber->expired_at;
+    try {
+        $subscriber->update(['expired_at'=>time()+3600]);
+        $assert((new App\Services\UserService())->isAvailable($subscriber->fresh()),
+            'Knowledge fixture subscriber must have an active term');
+        $limitedBearer = 'Bearer '.$limitedAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $subscriberBearer = 'Bearer '.$subscriberAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+        $balancedBody = 'public start<!--access start-->outer secret<!--access start-->inner secret<!--access end-->protected tail<!--access end-->public middle<!--access start-->another secret<!--access end-->public end';
+        $assert($call($knowledgeSave, $knowledgeEdit + ['body'=>$balancedBody], $token)->getStatusCode()===200,
+            'Balanced nested knowledge access blocks can be saved');
+        $limitedArticle = $call($articlePath, null, $limitedBearer);
+        $limitedBody = json_decode($limitedArticle->getContent(), true)['data']['body'] ?? '';
+        $assert($limitedArticle->getStatusCode()===200 && substr_count($limitedBody, 'fastai-no-access')===2
+            && !str_contains($limitedBody, 'secret') && !str_contains($limitedBody, 'protected tail')
+            && str_contains($limitedBody, 'public start') && str_contains($limitedBody, 'public middle') && str_contains($limitedBody, 'public end'),
+            'Knowledge renders public spans and hides complete nested sections for an unsubscribed reader');
+        $fullArticle = $call($articlePath, null, $subscriberBearer);
+        $assert($fullArticle->getStatusCode()===200 && (json_decode($fullArticle->getContent(), true)['data']['body'] ?? null)===$balancedBody,
+            'Knowledge keeps protected text for an entitled reader');
+        foreach (['<!--access start-->unclosed secret', 'stray secret<!--access end-->'] as $malformedBody) {
+            $assert($call($knowledgeSave, $knowledgeEdit + ['body'=>$malformedBody], $token)->getStatusCode()===422
+                && $knowledge[0]->fresh()->body===$balancedBody, 'Admin save rejects unpaired markers without changing the article');
+        }
+        foreach (['<!--access start-->unclosed secret', 'stray secret<!--access end--><!--access start-->another secret<!--access end-->'] as $legacyBody) {
+            $knowledge[0]->update(['body'=>$legacyBody]);
+            $legacyArticle = $call($articlePath, null, $limitedBearer);
+            $legacyBody = json_decode($legacyArticle->getContent(), true)['data']['body'] ?? '';
+            $assert($legacyArticle->getStatusCode()===200 && str_contains($legacyBody, 'fastai-no-access') && !str_contains($legacyBody, 'secret'),
+                'A malformed legacy article returns a safe placeholder rather than hanging or exposing text');
+        }
+    } finally {
+        $limitedAuth->removeAllSession();
+        $subscriberAuth->removeAllSession();
+        $subscriber->update(['expired_at'=>$subscriberExpiry]);
+    }
     $response = $call('/api/v1/' . $securePath . '/knowledge/drop', ['id' => $knowledge[1]->id], $token);
     $assert($response->getStatusCode() === 200 && !App\Models\Knowledge::find($knowledge[1]->id), 'Knowledge deletion failed');
+    $assert($call('/api/v1/'.$securePath.'/knowledge/fetch?id='.$knowledge[1]->id, null, $token)->getStatusCode()===404
+        && $call('/api/v1/'.$securePath.'/knowledge/show', [], $token)->getStatusCode()===422, 'Knowledge actions distinguish missing records from invalid IDs');
     foreach (['coupon' => ['type' => 2, 'value' => 20], 'giftcard' => ['type' => 4]] as $kind => $params) {
         $params += ['format' => 'csv', 'name' => '=console,csv-' . $kind, 'generate_count' => 2, 'started_at' => time(), 'ended_at' => time() + 86400];
         $response = $call('/api/v1/' . $securePath . '/' . $kind . '/generate', $params, $token, null, 'text/csv, application/json');
@@ -473,6 +657,13 @@ try {
         }
         $response = $call('/api/v1/' . $securePath . '/' . $kind . '/drop', ['id' => $item->id], $token);
         $assert($response->getStatusCode() === 200 && !$model::find($item->id), 'Card delete failed: ' . $kind);
+        if ($kind === 'giftcard') {
+            $redeemed = $model::where('name', $params['name'])->firstOrFail();
+            $redeemed->used_user_ids = [$subscriber->id];
+            $redeemed->save();
+            $response = $call('/api/v1/'.$securePath.'/giftcard/drop', ['id'=>$redeemed->id], $token);
+            $assert($response->getStatusCode()===409 && $redeemed->fresh()?->used_user_ids===[$subscriber->id], 'Gift-card deletion preserves redemption history');
+        }
     }
     $order = App\Models\Order::create(['user_id' => $subscriber->id, 'plan_id' => $plan2->id, 'period' => 'month_price', 'trade_no' => App\Utils\Helper::guid(), 'total_amount' => 500, 'type' => 1, 'status' => 3, 'commission_balance' => 100, 'invite_user_id' => $user->id]);
     $response = $call('/api/v1/' . $securePath . '/order/update', ['trade_no' => $order->trade_no, 'commission_status' => 3], $token);
@@ -488,8 +679,40 @@ try {
     $assert(json_decode($response->getContent(), true)['total'] === 1, 'Ticket filter/pagination failed');
     $response = $call('/api/v1/' . $securePath . '/ticket/fetch?email=no-such-user@example.invalid', null, $token);
     $assert(json_decode($response->getContent(), true)['total'] === 0, 'Unknown ticket email leaked other tickets');
-    $response = $call('/api/v1/' . $securePath . '/ticket/reply', ['id' => $ticket->id, 'message' => 'fixture reply'], $token);
-    $assert($response->getStatusCode() === 200 && $ticket->refresh()->reply_status === 1, 'Ticket reply failed');
+    $missingTicket = (int) App\Models\Ticket::max('id') + 1;
+    $ticketPath = '/api/v1/'.$securePath.'/ticket/';
+    $assert($call($ticketPath.'fetch?id='.$missingTicket, null, $token)->getStatusCode()===404
+        && $call($ticketPath.'close', ['id'=>$missingTicket], $token)->getStatusCode()===404, 'A stale ticket ID returns not found');
+    $assert($call($ticketPath.'fetch?id[]=1', null, $token)->getStatusCode()===422
+        && $call($ticketPath.'close', [], $token)->getStatusCode()===422, 'Invalid ticket IDs are rejected before lookup');
+    $ticketBus = Illuminate\Support\Facades\Bus::getFacadeRoot();
+    $ticketThrottle = 'ticket_sendEmailNotify_'.$subscriber->id;
+    Illuminate\Support\Facades\Cache::forget($ticketThrottle);
+    Illuminate\Support\Facades\Bus::swap(new class($ticketBus) extends Illuminate\Support\Testing\Fakes\BusFake {
+        public function dispatch($command)
+        {
+            if ($command instanceof App\Jobs\SendEmailJob) throw new RuntimeException('Synthetic ticket queue outage');
+            return parent::dispatch($command);
+        }
+    });
+    try {
+        $response = $call($ticketPath.'reply', ['id'=>$ticket->id, 'message'=>'fixture reply'], $token);
+        $assert($response->getStatusCode()===200 && $ticket->refresh()->reply_status===1
+            && App\Models\TicketMessage::where('ticket_id', $ticket->id)->count()===1,
+            'Queue failure made a persisted ticket reply appear unsuccessful');
+        $assert(!Illuminate\Support\Facades\Cache::has($ticketThrottle), 'Failed ticket notification still blocked subsequent notifications');
+    } finally {
+        Illuminate\Support\Facades\Bus::swap($ticketBus);
+    }
+    $replyBus = Illuminate\Support\Facades\Bus::fake();
+    try {
+        $response = $call($ticketPath.'reply', ['id'=>$ticket->id, 'message'=>'follow-up reply'], $token);
+        $assert($response->getStatusCode()===200, 'Follow-up reply failed after the queue recovered');
+        $replyBus->assertDispatched(App\Jobs\SendEmailJob::class);
+    } finally {
+        Illuminate\Support\Facades\Bus::swap($ticketBus);
+        Illuminate\Support\Facades\Cache::forget($ticketThrottle);
+    }
     $assert((int) $ticket->status === 0, 'Admin reply immediately closed ticket');
     // A stale parent timestamp must not close a newly created admin message.
     App\Models\Ticket::whereKey($ticket->id)->update(['updated_at' => time() - 90000]);
@@ -562,16 +785,16 @@ try {
     $footer = '<div data-console-smoke="footer">Footer smoke test</div>';
     $siteUrl=config('fastai.app_url');
     config(['fastai.app_url'=>'http://unsafe.example.test']);
-    $assert($call('/api/v1/'.$securePath.'/config/save',['passkey_enable'=>1],$token)->getStatusCode()===503,'Passkey rejects insecure production origin');
-    config(['fastai.app_url'=>'https://passkey.example.test','fastai.recaptcha_enable'=>1,'fastai.recaptcha_key'=>'retired-test-only','fastai.frontend_theme_google_analytics'=>'retired-test-only']);
+    $assert($call('/api/v1/'.$securePath.'/config/save',['passkey_enable'=>1,'app_url'=>'http://unsafe.example.test'],$token)->getStatusCode()===503,'Passkey rejects insecure production origin');
+    config(['fastai.recaptcha_enable'=>1,'fastai.recaptcha_key'=>'retired-test-only','fastai.frontend_theme_google_analytics'=>'retired-test-only']);
     // config:cache boots a fresh container; validate with the transaction-bound user before that final save.
     $invalidPolicy=$call('/api/v1/'.$securePath.'/config/save',['browser_policy_wechat'=>'invalid'],$token);
     $assert($invalidPolicy->getStatusCode()===422,'Admin rejects invalid browser policy: '.$invalidPolicy->getStatusCode());
-    $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer,'passkey_enable'=>1,'browser_policy_wechat'=>'prompt','browser_policy_qq'=>'allow','browser_policy_weibo'=>'guide'], $token);
+    $response = $call('/api/v1/' . $securePath . '/config/save', ['custom_footer_html' => $footer,'app_url'=>'https://passkey.example.test','passkey_enable'=>1,'browser_policy_wechat'=>'prompt','browser_policy_qq'=>'allow','browser_policy_weibo'=>'guide'], $token);
     $assert($response->getStatusCode() === 200, 'Footer save failed: ' . $response->getContent());
     $saved=require $configPath;
     $assert($saved['browser_policy_wechat']==='prompt' && $saved['browser_policy_qq']==='allow' && $saved['browser_policy_weibo']==='guide','Admin API persists separate browser policy choices');
-    $assert(($saved['passkey_enable']??0)==1,'Administrator can persist Passkey switch');
+    $assert(($saved['passkey_enable']??0)==1 && $saved['app_url']==='https://passkey.example.test','Administrator can enable Passkey while saving a valid new origin');
     $assert(!array_key_exists('recaptcha_enable',$saved) && !array_key_exists('recaptcha_key',$saved) && !array_key_exists('frontend_theme_google_analytics',$saved),'Saving settings removes legacy CAPTCHA and Google Analytics configuration');
     config(['fastai.app_url'=>$siteUrl]);
     $assert(config('fastai.password_limit_enable', 1) === ($originalConfig['password_limit_enable'] ?? 1), 'Partial settings update changed an unrelated switch');
@@ -587,6 +810,10 @@ try {
     Illuminate\Database\Eloquent\Model::setConnectionResolver($app['db']);
     Illuminate\Database\Eloquent\Model::setEventDispatcher($app['events']);
     $assert(Illuminate\Support\Facades\DB::transactionLevel()>0,'Custom settings checks must remain in the existing disposable transaction');
+    $savedWithPasskey = file_get_contents($configPath);
+    $invalidPasskeyOrigin = $call('/api/v1/'.$securePath.'/config/save',['app_url'=>'http://unsafe.example.test'],$token);
+    $assert($invalidPasskeyOrigin->getStatusCode()===503 && file_get_contents($configPath)===$savedWithPasskey,
+        'Saving only an insecure URL cannot break persisted Passkey settings');
     // Preserve the complete custom tree when only one ordinary setting is saved.
     $customFixture=sys_get_temp_dir().'/custom-settings-'.bin2hex(random_bytes(8));
     foreach (['config','storage/app','storage/framework/cache/data','storage/framework/views','storage/framework/sessions','bootstrap/cache'] as $directory) mkdir($customFixture.'/'.$directory,0700,true);

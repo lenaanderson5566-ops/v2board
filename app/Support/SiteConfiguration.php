@@ -11,6 +11,19 @@ final class SiteConfiguration
         return config_path('fastai.php');
     }
 
+    public static function withWriteLock(callable $operation): mixed
+    {
+        $path = self::path();
+        $lock = @fopen($path.'.lock', 'c');
+        abort_if($lock === false, 500, '无法锁定站点配置。');
+        try {
+            abort_unless(flock($lock, LOCK_EX), 500, '无法锁定站点配置。');
+            return $operation($path);
+        } finally {
+            fclose($lock);
+        }
+    }
+
     public static function readPath(): string
     {
         $current = self::path();

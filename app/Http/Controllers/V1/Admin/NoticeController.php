@@ -31,11 +31,7 @@ class NoticeController extends Controller
                 abort(500, '保存失败');
             }
         } else {
-            try {
-                Notice::find($request->input('id'))->update($data);
-            } catch (\Exception $e) {
-                abort(500, '保存失败');
-            }
+            Notice::findOrFail($request->input('id'))->update($data);
         }
         return response([
             'data' => true
@@ -46,13 +42,8 @@ class NoticeController extends Controller
 
     public function show(Request $request)
     {
-        if (empty($request->input('id'))) {
-            abort(500, '参数有误');
-        }
-        $notice = Notice::find($request->input('id'));
-        if (!$notice) {
-            abort(500, '公告不存在');
-        }
+        $params = $request->validate(['id' => 'required|integer|min:1']);
+        $notice = Notice::findOrFail($params['id']);
         $notice->show = $notice->show ? 0 : 1;
         if (!$notice->save()) {
             abort(500, '保存失败');
@@ -65,13 +56,8 @@ class NoticeController extends Controller
 
     public function drop(Request $request)
     {
-        if (empty($request->input('id'))) {
-            abort(500, '参数错误');
-        }
-        $notice = Notice::find($request->input('id'));
-        if (!$notice) {
-            abort(500, '公告不存在');
-        }
+        $params = $request->validate(['id' => 'required|integer|min:1']);
+        $notice = Notice::findOrFail($params['id']);
         if (!$notice->delete()) {
             abort(500, '删除失败');
         }

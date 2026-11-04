@@ -359,6 +359,9 @@ try {
     $originalServer=$manualModeRow->server_id;$beforeSwitch=$portNode->fresh()->only(['host','port','tls_settings']);$recordCount=DB::table('v2_node_dns_record')->where('assignment_id',$portBind)->count();$httpBefore=Http::recorded()->count();
     $domains->manual($req($modeInput));$manualModeRow=DB::table('v2_node_ddns')->find($portBind);
     $assert($manualModeRow->status==='manual' && !$manualModeRow->enabled && !$manualModeRow->managed && $manualModeRow->server_id===$originalServer && $portNode->fresh()->only(array_keys($beforeSwitch))===$beforeSwitch,'manual mode preserves physical identity and the working endpoint and certificate');
+    $reject(fn()=>$domains->retry($req(['id'=>$portBind])),409);
+    $reject(fn()=>$domains->retry($req(['id'=>DB::table('v2_node_ddns')->max('id')+1])),404);
+    $assert(DB::table('v2_node_ddns')->find($portBind)==$manualModeRow,'rejected DNS retry preserves the manual binding');
     $reject(fn()=>App\Services\NodeConnection::plan('v2box',['service_id'=>$portNode->id,'entry_id'=>null,'group_id'=>$portNode->group_id]),422);
     $service->sync($portBind);
     $assert(DB::table('v2_node_dns_record')->where('assignment_id',$portBind)->count()===$recordCount && Http::recorded()->count()===$httpBefore,'manual mode preserves owned DNS records and stops provider synchronization');
@@ -624,6 +627,11 @@ try {
     $relay=App\Models\ServerV2box::create(array_replace($base,['host'=>'old-relay.example.test','tls'=>1,'tls_settings'=>$tls,'server_port'=>9443]));
     $relay2=App\Models\ServerV2box::create(array_replace($base,['host'=>'old-relay2.example.test','tls'=>1,'tls_settings'=>$tls,'server_port'=>9444]));
     $args=['credential_id'=>$cid,'node_type'=>'v2box','node_id'=>$relay->id,'prefix'=>'origin-a','family'=>'ipv4','server_id'=>$origin,'entry_id'=>$eid,'entry_port'=>8443];
+    $ingressProxy=App\Models\ServerV2box::create(array_replace($base,['host'=>'ingress-proxy.example.test','server_port'=>8443]));
+    $domains->bind($req(array_replace($args,['node_id'=>$ingressProxy->id,'prefix'=>'ingress-proxy','server_id'=>$ingress,'entry_id'=>null,'entry_port'=>null])));
+    $reject(fn()=>$domains->bind($req($args)),409);
+    $assert(!DB::table('v2_node_ddns')->where('node_type','v2box')->where('node_id',$relay->id)->exists(),'conflicting relay binding is not saved');
+    $ingressProxy->update(['server_port'=>10443]);
     $rid=$domains->bind($req($args))['data']['id'];
     $reject(fn()=>$domains->bind($req(array_replace($args,['node_id'=>$relay2->id,'prefix'=>'origin-b']))),409);
     $rid2=$domains->bind($req(array_replace($args,['node_id'=>$relay2->id,'prefix'=>'origin-b','entry_port'=>8444])))['data']['id'];
@@ -723,13 +731,42 @@ try {
     $direct=App\Services\Actions\NodeV10Config::build($relay->fresh());
     App\Services\NodeTlsTransition::receipt($relay->id,['hash'=>hash('sha256',json_encode($direct)),'state'=>'applied','certificateFingerprint'=>str_repeat('b',64)]);
     $assert($relay->fresh()->host==='origin-new.example.test' && (int)$relay->fresh()->port===9443,'switching back to direct restores origin listener port instead of retaining ingress port');
-    $reset=json_decode($net->reset($req(['id'=>$ingress,'confirm'=>true,'user'=>['id'=>$user->id]]))->getContent(),true)['data'];
+    $resetInput=['id'=>$ingress,'confirm'=>true,'user'=>['id'=>$user->id]];
+    $oldReport=DB::table('v2_network_server')->where('id',$ingress)->first(['report_hash','report_secret']);
+    $legacyReportHash=hash('sha256','legacy-report-fixture');
+    DB::table('v2_node_ddns')->where('id',$eid)->update(['report_hash'=>$legacyReportHash]);
+    config(['fastai.server_api_url'=>'https://panel.example.test/subpath']);
+    $reject(fn()=>$net->reset($req($resetInput)),422);
+    config(['fastai.server_api_url'=>'https://panel.example.test']);
+    $assert(DB::table('v2_network_server')->where('id',$ingress)->first(['report_hash','report_secret'])==$oldReport
+        && DB::table('v2_node_ddns')->where('id',$eid)->value('report_hash')===$legacyReportHash,'invalid report host preserves active and legacy credentials');
+    $deploymentStore=config('cache.stores.node_deployment');
+    Illuminate\Support\Facades\Cache::extend('test-failed-server-grant', fn()=>new Illuminate\Cache\Repository(new class extends Illuminate\Cache\ArrayStore {
+        public function put($key,$value,$seconds) {
+            return str_starts_with($key,'latest-server:') ? false : parent::put($key,$value,$seconds);
+        }
+    }));
+    config(['cache.stores.node_deployment'=>['driver'=>'test-failed-server-grant']]);
+    Illuminate\Support\Facades\Cache::forgetDriver('node_deployment');
+    try {
+        $reject(fn()=>$net->reset($req($resetInput)),503);
+    } finally {
+        config(['cache.stores.node_deployment'=>$deploymentStore]);
+        Illuminate\Support\Facades\Cache::forgetDriver('node_deployment');
+    }
+    $assert(DB::table('v2_network_server')->where('id',$ingress)->first(['report_hash','report_secret'])==$oldReport
+        && DB::table('v2_node_ddns')->where('id',$eid)->value('report_hash')===$legacyReportHash
+        && $call($entryToken,['ipv4'=>'1.1.1.1'])->getStatusCode()===202,'grant cache failure rolls back revocation and old key can still report');
+    $reset=json_decode($net->reset($req($resetInput))->getContent(),true)['data'];
     $assert($call($entryToken,['ipv4'=>'1.1.1.1'])->getStatusCode()===401,'explicit server credential reset revokes all old report keys');
+    $assert(DB::table('v2_node_ddns')->where('id',$eid)->value('report_hash')===null,'successful reset removes legacy domain credentials before redemption');
     preg_match('/ns_[a-f0-9]{64}/',$reset['command'],$m);$newServer=App\Services\NodeDeployment::redeem($m[0]);
     $assert($newServer['networkReport']['token']!==$entryToken && DB::table('v2_node_ddns')->find($eid)->ipv4==='1.1.1.1','reset issues a new scoped credential while retaining DNS data');
     // A service can publish direct and independent ingress connections without changing TLS identity.
     $connections=new App\Http\Controllers\V1\Admin\NodeConnectionController();
     $routeInput=['type'=>'v2box','revision'=>0,'service_id'=>$relay->id,'entry_id'=>$eid,'entry_port'=>10443,'name'=>'Via shared entry','group_id'=>[999999],'show'=>true];
+    $reject(fn()=>$connections->save($req($routeInput)),409);
+    $ingressProxy->update(['server_port'=>10442]);
     $lineId=$connections->save($req($routeInput))['data']['id'];
     $line=App\Models\ServerV2box::findOrFail($lineId);
     $assert(!$line->show && $line->service_id===$relay->id,'new connection stays unpublished and references the service');

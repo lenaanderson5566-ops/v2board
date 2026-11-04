@@ -18,6 +18,8 @@ $assert(!Helper::emailSuffixVerify('x@evilqq.com',['qq.com']),'Partial domain by
 $assert(!Helper::emailSuffixVerify('x@y@qq.com',['qq.com']),'Malformed email accepted');
 $original=config('fastai');Queue::fake();DB::beginTransaction();
 $emails=['policy-new@example.test','policy-existing@legacy.test'];
+$registrationIp='198.19.'.random_int(0,255).'.'.random_int(1,254);
+$registrationKey=App\Utils\CacheKey::get('REGISTER_IP_RATE_LIMIT',$registrationIp);
 try{
  config(['fastai.invite_force'=>1,'fastai.email_whitelist_enable'=>1,'fastai.email_whitelist_suffix'=>' Example.Test ','fastai.stop_register'=>0,'fastai.email_gmail_limit_enable'=>0]);
  $owner=User::create(['email'=>'policy-owner@example.test','password'=>'test','uuid'=>Helper::guid(true),'token'=>Helper::guid(),'banned'=>0]);
@@ -47,8 +49,8 @@ try{
  config(['fastai.invite_force'=>0,'fastai.email_whitelist_enable'=>0,'fastai.stop_register'=>0,'fastai.email_verify'=>1,
   'fastai.register_limit_by_ip_enable'=>0,'fastai.try_out_plan_id'=>0,'fastai.mfa_enable'=>0]);
  $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);$attemptIp=40;
- $invoke=function(string $path,array $body)use($app,$kernel,&$attemptIp){
-  $r=Illuminate\Http\Request::create('/api/v10/auth/'.$path,'POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>'203.0.113.'.(++$attemptIp)],json_encode($body));
+ $invoke=function(string $path,array $body,?string $ip=null)use($app,$kernel,&$attemptIp){
+  $r=Illuminate\Http\Request::create('/api/v10/auth/'.$path,'POST',[],[],[],['CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json','REMOTE_ADDR'=>$ip ?? '203.0.113.'.(++$attemptIp)],json_encode($body));
   $app->instance('request',$r);return $kernel->handle($r);
  };
  $lastCode=function(){
@@ -84,12 +86,45 @@ try{
  $recoveryCode=$lastCode();
  $assert($invoke('password-resets',['email'=>$guessed,'password'=>'AfterRecovery!2026','emailCode'=>$recoveryCode])->getStatusCode()===204
   && password_verify('AfterRecovery!2026',$recoveryUser->fresh()->password),'Purpose-bound account recovery still consumes its own valid challenge');
+
+ config(['fastai.email_gmail_limit_enable'=>1,'fastai.email_verify'=>0,'fastai.register_limit_by_ip_enable'=>1,
+  'fastai.register_limit_count'=>1,'fastai.register_limit_expire'=>1]);
+ $suffix=bin2hex(random_bytes(5));
+ $ordinaryAlias="first.last+$suffix@example.test";
+ $emails[]=$ordinaryAlias;
+ $assert($invoke('email-verifications',['email'=>$ordinaryAlias,'resetPassword'=>false])->getStatusCode()===202,
+  'Gmail-only restriction blocked a non-Gmail address requesting verification');
+ $assert($invoke('email-verifications',['email'=>"first.last+$suffix@GMAIL.COM",'resetPassword'=>false])->getStatusCode()===409,
+  'Gmail alias was accepted for verification');
+ $assert($invoke('registrations',['email'=>"first.last+$suffix@googlemail.com",'password'=>'RegistrationBudget!2026'])->getStatusCode()===409,
+  'Googlemail alias was accepted for registration');
+
+ $signup=['email'=>$ordinaryAlias,'password'=>'RegistrationBudget!2026'];
+ $registrationLock=Cache::lock($registrationKey.':lock',10);
+ $assert($registrationLock->get(),'Could not hold the registration fixture lock');
+ try {
+  $busy=$invoke('registrations',$signup,$registrationIp);
+  $assert($busy->getStatusCode()===429 && (int)$busy->headers->get('Retry-After')>0
+   && !User::where('email',$ordinaryAlias)->exists(),'A concurrent registration bypassed the IP lock');
+ } finally { $registrationLock->release(); }
+ $badInvitation=$invoke('registrations',$signup+['invitation'=>str_repeat('f',64)],$registrationIp);
+ $assert($badInvitation->getStatusCode()===422 && !Cache::has($registrationKey),'Failed registration consumed an IP slot');
+ $assert($invoke('registrations',$signup,$registrationIp)->getStatusCode()===201 && (int)Cache::get($registrationKey)===1,
+  'Successful non-Gmail registration did not consume one IP slot');
+ $extra=$invoke('registrations',array_replace($signup,['email'=>"extra-$suffix@example.test"]),$registrationIp);
+ $assert($extra->getStatusCode()===409 && (int)Cache::get($registrationKey)===1
+  && !User::where('email',"extra-$suffix@example.test")->exists(),'Exhausted IP slot allowed a second account');
+ $rules=App\Http\Requests\Admin\ConfigSave::RULES;
+ foreach (['register_limit_count','register_limit_expire'] as $field) {
+  $assert(validator([$field=>0],[$field=>$rules[$field]])->fails()
+   && validator([$field=>1],[$field=>$rules[$field]])->passes(),'Registration limit bounds are invalid');
+ }
 }finally{
  foreach(User::whereIn('email',$emails)->get() as $account){
   (new App\Services\AuthService($account))->removeAllSession();
   $key=App\Services\PasswordRecovery::challengeKey((int)$account->id);foreach([$key,$key.':sent',$key.':attempts'] as $cacheKey)Cache::forget($cacheKey);
  }
- DB::rollBack();config(['fastai'=>$original]);RateLimiter::clear('127.0.0.1');foreach($emails as $email){
+ DB::rollBack();config(['fastai'=>$original]);Cache::forget($registrationKey);RateLimiter::clear('127.0.0.1');foreach($emails as $email){
   Cache::forget(App\Utils\CacheKey::get('EMAIL_VERIFY_CODE',$email));Cache::forget(App\Utils\CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP',$email));
   if(class_exists(App\Services\RegistrationEmailVerification::class))RateLimiter::clear(App\Services\RegistrationEmailVerification::attemptKey($email));
  }

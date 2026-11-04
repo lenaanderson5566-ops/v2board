@@ -14,6 +14,7 @@ class AdminRoute
             $router->get('/server/credentials', 'V1\\Admin\\NodeCredentialController@index');
             $router->post('/server/credentials/deployment', 'V1\\Admin\\NodeCredentialController@deployment')->middleware('throttle:5,1,node-deployment:');
             $router->post('/server/credentials/issue', 'V1\\Admin\\NodeCredentialController@issue')->middleware('throttle:5,1,node-credentials:');
+            $router->post('/server/credentials/cancel-rotation', 'V1\\Admin\\NodeCredentialController@cancelRotation')->middleware('throttle:5,1,node-credentials:');
             $router->post('/server/credentials/revoke', 'V1\\Admin\\NodeCredentialController@revoke')->middleware('throttle:5,1,node-credentials:');
             $router->post('/server/credentials/disable-legacy', 'V1\\Admin\\NodeCredentialController@disableLegacy')->middleware('throttle:5,1,node-credentials:');
             $router->get('/target-statistics', 'V1\\Admin\\TargetStatisticsController@report')->middleware('throttle:30,1,target-report:');
@@ -145,12 +146,14 @@ class AdminRoute
             $router->post('/order/detail', 'V1\\Admin\\OrderController@detail');
             // User
             $router->get('/user/usageResetPreview', 'V1\\Admin\\UserController@usageResetPreview');
+            $router->post('/user/usageResetPreview', 'V1\\Admin\\UserController@usageResetGrantPreview')->middleware('throttle:20,1');
             $router->post('/user/usageReset', 'V1\\Admin\\UserController@usageReset')->middleware('throttle:10,1');
             $router->get ('/user/fetch', 'V1\\Admin\\UserController@fetch');
             $router->post('/user/update', 'V1\\Admin\\UserController@update');
             $router->get ('/user/getUserInfoById', 'V1\\Admin\\UserController@getUserInfoById');
             $router->get('/mail-campaigns/fetch', 'V1\\Admin\\MailCampaignController@fetch');
             $router->post('/user/previewMailAudience', 'V1\\Admin\\UserController@previewMailAudience')->middleware('throttle:20,1');
+            $router->post('/user/previewBulk', 'V1\\Admin\\UserController@previewBulk')->middleware('throttle:20,1');
             $router->post('/user/sendMail', 'V1\\Admin\\UserController@sendMail');
             $router->post('/user/ban', 'V1\\Admin\\UserController@ban');
             $router->post('/user/resetSecret', 'V1\\Admin\\UserController@resetSecret');

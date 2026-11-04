@@ -30,6 +30,8 @@ try {
  $assert($online['data'][0]['online_at']===$reportedAt && $online['data'][0]['alive_count']===2);
  $page=$decode($c->getOnlineUsers(Request::create('/', 'GET',['email'=>$u->email,'page_size'=>1,'current'=>2])));
  $assert($page['data'][0]['ip']==='192.0.2.2');
+ $farPage=$decode($c->getOnlineUsers(Request::create('/', 'GET',['email'=>$u->email,'page_size'=>20,'current'=>PHP_INT_MAX])));
+ $assert($farPage['data']===[] && $farPage['total']===2 && $farPage['meta']['ips']===2);
  $multi=Cache::get($key);$multi['other-node']=['aliveips'=>['192.0.2.1'],'lastupdateAt'=>$reportedAt];Cache::put($key,$multi,120);
  config(['fastai.device_limit_mode'=>1]);
  $online=$decode($c->getOnlineUsers(Request::create('/','GET',['email'=>$u->email])));

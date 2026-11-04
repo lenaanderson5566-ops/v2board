@@ -1,6 +1,6 @@
 import { parseDateTimeInput, businessTimeZone } from "../shared/timezone";
 import { useRef, useState } from "react";
-import { admin, request } from "../shared/api";
+import { admin, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { AdminBusinessTimeZoneNote } from "./admin-log-time";
 import type { UserFilter } from "./user-filters";
@@ -79,11 +79,33 @@ function ResetForm({
         [checked, setChecked] = useState(false),
         [busy, setBusy] = useState(false),
         [error, setError] = useState("");
+    const [scope, setScope] = useState<Row | null>(null);
     const lock = useRef(false),
         attempt = useRef({ payload: "", key: "" });
+    async function checkScope() {
+        if (lock.current) return;
+        lock.current = true;
+        setBusy(true);
+        setScope(null);
+        setChecked(false);
+        setError("");
+        try {
+            const result = await request(admin("user/usageResetPreview"), {
+                filter: operation.filters, expected_count: count,
+            });
+            setScope(result.data);
+        } catch (cause) {
+            const err = cause as Error & { code?: string };
+            setError(err.code === "reset_count_changed"
+                ? "用户数量已变化，请关闭窗口并刷新列表后重试。" : err.message);
+        } finally {
+            lock.current = false;
+            setBusy(false);
+        }
+    }
     async function submit(event: React.FormEvent) {
         event.preventDefault();
-        if (lock.current || !checked || !count) return;
+        if (lock.current || !checked || !count || (!global && !scope?.scope_token)) return;
         lock.current = true;
         setBusy(true);
         setError("");
@@ -99,6 +121,7 @@ function ResetForm({
                               ? parseDateTimeInput(expiry)
                               : null,
                           filter: operation.filters,
+                          scope_token: scope?.scope_token,
                       }),
             };
             const payload = JSON.stringify(body);
@@ -111,9 +134,15 @@ function ResetForm({
             complete();
         } catch (cause) {
             const err = cause as Error & { code?: string };
+            if (err.code === "reset_scope_changed" || err.code === "reset_count_changed") {
+                setChecked(false);
+                setScope(null);
+            }
             setError(
                 err.code === "reset_count_changed"
                     ? "用户数量已变化，请关闭窗口并刷新列表后重试。"
+                    : err.code === "reset_scope_changed"
+                      ? "受影响用户已变化，请重新检查后确认。"
                     : err.code === "reset_request_conflict"
                       ? "操作标识冲突，请关闭窗口后重试。"
                       : err.message,
@@ -147,6 +176,11 @@ function ResetForm({
                             向当前筛选范围内的 <strong>{count}</strong>{" "}
                             位用户发放储备次数，用户可在「使用情况」主动使用。
                         </p>
+                        <button type="button" disabled={busy} onClick={checkScope}>检查发放对象</button>
+                        {scope && <>
+                            <p>已核对 {scope.total} 名用户，以下显示最多 10 名。</p>
+                            <ul>{scope.sample.map((user: Row) => <li key={user.id}>#{user.id} {user.email}</li>)}</ul>
+                        </>}
                         <label>
                             每人发放次数
                             <input
@@ -198,7 +232,7 @@ function ResetForm({
                         type="checkbox"
                         checked={checked}
                         onChange={(event) => setChecked(event.target.checked)}
-                        disabled={busy}
+                        disabled={busy || (!global && !scope?.scope_token)}
                     />
                     我已核对影响范围和操作内容
                 </label>
@@ -217,6 +251,7 @@ function ResetForm({
                             busy ||
                             !checked ||
                             !count ||
+                            (!global && !scope?.scope_token) ||
                             (global && confirmation !== "RESET ALL USAGE")
                         }
                     >

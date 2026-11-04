@@ -203,6 +203,9 @@ export function RiskRules() {
             <p className="pad muted">
                 异常检测仅记录事件；拦截由限流与黑名单执行，客户端准入在客户端策略中管理。
             </p>
+            <div className="actions pad">
+                <a href="#/access-logs-risk">查看命中证据并人工复核</a>
+            </div>
             <AdminChoiceGroup
                 label="风控规则范围"
                 value={scene}
@@ -235,11 +238,10 @@ export function RiskRules() {
                                     ? "订阅黑名单命中记录"
                                     : "异常行为记录"}
                             </p>
-                            <p className="muted">
-                                {r.thresholds?.window_seconds
-                                    ? `观察窗口 ${r.thresholds.window_seconds} 秒；达到 ${r.thresholds.threshold ?? r.thresholds.subscribe_threshold} 次 / 个时记录。${r.thresholds.traffic_growth_threshold_bytes !== undefined ? `同时要求流量增长不超过 ${r.thresholds.traffic_growth_threshold_bytes} 字节。` : ""}`
-                                    : r.description}
-                            </p>
+                            {r.description && <p className="muted">
+                                {r.thresholds?.window_seconds ? "默认触发条件 · " : ""}
+                                {r.description}
+                            </p>}
                             <dl>
                                 {Object.entries(r.thresholds || {}).map(
                                     ([key, value]) => (

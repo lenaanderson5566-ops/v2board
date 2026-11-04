@@ -227,6 +227,24 @@ $complaint=$body; $complaint['type']='email.complained'; $complaint['created_at'
 $webhook->receive('resend',$sign($complaint,'msg_complaint'));
 $assert($receipt->fresh()->delivery_status==='complained' && MailAudience::blocked($one->email,'verify'),'Complaint ignored');
 $reject(fn()=>$logController->release($release),422);
+$delayedAddress = 'delayed-complaint@example.test';
+$delayedReceipt = MailDeliveryLog::begin($delayedAddress, 'notify', 'resend', 'announcement');
+MailDeliveryLog::finish($delayedReceipt, 'accepted', null, 'delayed-complaint-receipt', 1);
+$feedback = new MailFeedback;
+$feedback->record('resend', 'newer-bounce', 'delayed-complaint-receipt', $delayedAddress, 'bounced', time());
+$feedback->record('resend', 'older-complaint', 'delayed-complaint-receipt', $delayedAddress, 'complained', time()-60);
+$delayedHash = MailDeliveryLog::recipientHash($delayedAddress);
+$delayedSuppression = DB::table('v2_mail_suppression')->where('recipient_hash', $delayedHash);
+$delayedRelease = Illuminate\Http\Request::create('/', 'POST', ['recipient_hash'=>$delayedHash, 'verified'=>true]);
+$assert($delayedReceipt->fresh()->delivery_status==='complained' && (clone $delayedSuppression)->value('reason')==='complained',
+    'Delayed complaint did not upgrade the newer bounce suppression');
+$reject(fn()=>$logController->release($delayedRelease), 422);
+(clone $delayedSuppression)->update(['reason'=>'bounced', 'released_at'=>time()]);
+$repair = require __DIR__.'/../database/migrations/2026_11_04_000002_reconcile_mail_complaint_suppressions.php';
+$repair->up();
+$repair->up();
+$assert((clone $delayedSuppression)->value('reason')==='complained' && MailAudience::blocked($delayedAddress, 'verify'),
+    'Historical released bounce with a processed complaint was not repaired');
 
 // Mailgun HMAC and enhanced code classification, no provider body storage.
 config(['fastai.email_mailgun_webhook_key'=>Crypt::encryptString('MAILGUN_SIGNING_TEST')]);
@@ -305,8 +323,27 @@ use App\Jobs\SendCampaignMailJob;
 use Illuminate\Support\Facades\{DB,Http,Crypt,Schema};
 $serviceUser=App\Models\User::create(['email'=>'campaign@example.test','banned'=>0,'announcement_email'=>0]);
 $q=App\Models\User::where('id',$serviceUser->id);
-$assert(MailCampaign::preview($q,'service')['eligible']===1 && MailCampaign::preview($q,'marketing')['not_subscribed']===1,'Service/marketing eligibility conflated');
-$data=['request_key'=>(string)Illuminate\Support\Str::uuid(),'purpose'=>'service','subject'=>'Maintenance','content'=>'Service maintenance content','translations'=>[]];
+$servicePreview = MailCampaign::preview($q, 'service', 1);
+$assert($servicePreview['eligible']===1 && MailCampaign::preview($q,'marketing',1)['not_subscribed']===1,'Service/marketing eligibility conflated');
+$data=['request_key'=>(string)Illuminate\Support\Str::uuid(),'purpose'=>'service','subject'=>'Maintenance','content'=>'Service maintenance content','translations'=>[], 'audience_token'=>$servicePreview['audience_token']];
+$createWithFreshPreview = function ($query, array $campaignData) {
+    $campaignData['audience_token'] = MailCampaign::preview($query, $campaignData['purpose'], 1)['audience_token'];
+    return MailCampaign::create($query, $campaignData, 1);
+};
+$substitute = App\Models\User::create(['email'=>'substitute-campaign@example.test','banned'=>0]);
+$replacementQuery = App\Models\User::whereKey($substitute->id);
+$sameCounts = MailCampaign::preview($replacementQuery, 'service', 1);
+$assert($sameCounts['total'] === $servicePreview['total'] && $sameCounts['eligible'] === $servicePreview['eligible'], 'Replacement fixture must preserve preview counts');
+$recipientCount = DB::table('v2_mail_campaign_recipient')->count();
+$reject(fn () => MailCampaign::create($replacementQuery, $data, 1), 409);
+$reject(fn () => MailCampaign::create($q, $data, 2), 409);
+$serviceUser->update(['banned'=>1]);
+$reject(fn () => MailCampaign::create($q, $data, 1), 409);
+$serviceUser->update(['banned'=>0, 'email'=>'replacement-address@example.test']);
+$reject(fn () => MailCampaign::create($q, $data, 1), 409);
+$serviceUser->update(['email'=>'campaign@example.test']);
+$assert(!DB::table('v2_mail_campaign')->where('request_key', $data['request_key'])->exists()
+    && DB::table('v2_mail_campaign_recipient')->count() === $recipientCount, 'Rejected preview persisted campaign or recipients');
 $campaign=MailCampaign::create($q,$data,1);
 $recipient=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$campaign)->first();
 config(['fastai.email_provider'=>'resend','fastai.email_from_address'=>'service@example.test','fastai.email_resend_api_key'=>Crypt::encryptString('re_TEST'),'fastai.email_announcement_separate'=>1,'fastai.email_announcements_enabled'=>0]);
@@ -319,10 +356,11 @@ Http::assertSent(fn($r)=>!isset($r['headers']['List-Unsubscribe']) && str_contai
 $assert(MailCampaign::stats($campaign)['delivery_rate']===0.0,'Campaign acceptance denominator incorrect');
 (new App\Services\Mail\MailFeedback)->record('resend','campaign-delivered','campaign-message',$serviceUser->email,'delivered',time());
 $assert(MailCampaign::stats($campaign)['delivered']===1 && MailCampaign::stats($campaign)['delivery_rate']===100.0,'Campaign callback statistics missing');
-$assert(MailCampaign::create($q,$data,1)===$campaign,'Repeated submission created duplicate campaign');
-$data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='marketing';$marketing=MailCampaign::create($q,$data,1);
+$assert(MailCampaign::create($replacementQuery,$data,1)===$campaign,'Repeated submission created duplicate campaign when the audience changed');
+$reject(fn () => MailCampaign::create($q, array_replace($data, ['subject'=>'Changed draft']), 1), 409);
+$data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='marketing';$marketing=$createWithFreshPreview($q,$data);
 $assert(MailCampaign::stats($marketing)['skipped']===1,'Marketing silently enrolled unsubscribed users');
-$data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='service';$changed=MailCampaign::create($q,$data,1);$r=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$changed)->first();$serviceUser->update(['email'=>'changed@example.test']);
+$data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='service';$changed=$createWithFreshPreview($q,$data);$r=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$changed)->first();$serviceUser->update(['email'=>'changed@example.test']);
 (new SendCampaignMailJob($r->id))->handle();$assert(DB::table('v2_mail_campaign_recipient')->find($r->id)->reason==='recipient_changed','Campaign followed changed recipient address');
 DB::table('v2_mail_campaign_recipient')->where('id',$r->id)->update(['status'=>'sending','updated_at'=>time()-700]);
 (new App\Console\Commands\ProcessMailCampaigns)->handle();$assert(DB::table('v2_mail_campaign_recipient')->find($r->id)->status==='uncertain','Interrupted campaign automatically replayed');
@@ -335,7 +373,7 @@ $waitingLimiter=new class extends App\Services\Mail\MailRateLimiter {
 app()->instance(App\Services\Mail\MailRateLimiter::class,$waitingLimiter);
 Illuminate\Support\Facades\Queue::fake();
 $data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='service';
-$waitingCampaign=MailCampaign::create($q,$data,1);
+$waitingCampaign=$createWithFreshPreview($q,$data);
 $waitingRow=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$waitingCampaign)->first();
 $waitingId=$waitingRow->id;
 $waitingQuery=fn()=>DB::table('v2_mail_campaign_recipient')->where('id',$waitingId);
@@ -414,7 +452,7 @@ echo "PASS campaign purpose, recipient dedupe, feedback stats, interruption reco
 
 // Concurrent queue duplicates must claim a recipient only once.
 if($mysql && function_exists('pcntl_fork')) {
- $data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='service';$parallelId=MailCampaign::create($q,$data,1);
+ $data['request_key']=(string)Illuminate\Support\Str::uuid();$data['purpose']='service';$parallelId=$createWithFreshPreview($q,$data);
  $parallelRecipient=DB::table('v2_mail_campaign_recipient')->where('campaign_id',$parallelId)->first();
  $before=DB::table('v2_mail_log')->count();$fakeHttp(['*'=>Http::response(['id'=>'parallel-campaign'],200)]);
  DB::disconnect('notification_test');$children=[];
@@ -460,7 +498,7 @@ foreach([new App\Services\Mail\MailgunSender,new App\Services\Mail\SesSender,new
 }
 $account=App\Models\User::create(['email'=>$address,'banned'=>0,'announcement_email'=>1]);
 $q=App\Models\User::where('id',$account->id);
-$assert(MailCampaign::preview($q,'service')['manual_blocklist']===1 && MailCampaign::preview($q,'marketing')['eligible']===0,'Campaign preview ignored block');
+$assert(MailCampaign::preview($q,'service',1)['manual_blocklist']===1 && MailCampaign::preview($q,'marketing',1)['eligible']===0,'Campaign preview ignored block');
 $assert(!$account->fresh()->banned,'Mail restriction banned account');
 try { MailBlocklist::add($address,'existing account',1); throw new RuntimeException('Existing account accepted into blocklist'); }
 catch (Illuminate\Validation\ValidationException $e) { $checks++; }

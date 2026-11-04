@@ -116,18 +116,13 @@ class CouponController extends Controller
 
     public function drop(Request $request)
     {
-        if (empty($request->input('id'))) {
-            abort(500, '参数有误');
-        }
-        $coupon = Coupon::find($request->input('id'));
-        if (!$coupon) {
-            abort(500, '优惠券不存在');
-        }
-        abort_if(DB::table('v2_coupon_wallet')->where('coupon_id', $coupon->id)->exists(), 409, '已有发放记录，请停用领券入口，保留历史记录。');
-        abort_if(DB::table('v2_coupon_campaign')->where('coupon_id',$coupon->id)->where('status','queued')->exists(),409,'存在待发放批次，请先取消批次。');
-        if (!$coupon->delete()) {
-            abort(500, '删除失败');
-        }
+        $values = $request->validate(['id' => 'required|integer|min:1']);
+        DB::transaction(function () use ($values) {
+            $coupon = Coupon::query()->lockForUpdate()->findOrFail($values['id']);
+            abort_if(DB::table('v2_coupon_wallet')->where('coupon_id', $coupon->id)->exists(), 409, '已有发放记录，请停用领券入口，保留历史记录。');
+            abort_if(DB::table('v2_coupon_campaign')->where('coupon_id', $coupon->id)->where('status', 'queued')->exists(), 409, '存在待发放批次，请先取消批次。');
+            abort_unless($coupon->delete(), 500, '删除失败');
+        }, 3);
 
         return response([
             'data' => true

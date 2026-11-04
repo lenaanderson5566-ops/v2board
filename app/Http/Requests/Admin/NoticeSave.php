@@ -14,6 +14,7 @@ class NoticeSave extends FormRequest
     public function rules()
     {
         return [
+            'id' => 'nullable|integer|min:1',
             'title' => 'required|string|max:200',
             'content' => 'required|string|max:100000',
             'img_url' => 'nullable|url',

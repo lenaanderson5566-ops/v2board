@@ -3,6 +3,7 @@ namespace App\Services;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -13,7 +14,14 @@ final class SubscriptionAccessGuard
     {
         $this->consume('ip', (string) $request->ip(), 60, (int) config('fastai.subscription_ip_minute_limit', 120));
         $blacklist = new RiskBlacklistService();
-        if ($blacklist->exists('ip', $request->ip()) || $blacklist->exists('ua_hash', hash('sha256', (string) $request->userAgent()))) {
+        $ipBlocked = $blacklist->exists('ip', $request->ip());
+        $uaHash = hash('sha256', (string) $request->userAgent());
+        if ($ipBlocked || $blacklist->exists('ua_hash', $uaHash)) {
+            try {
+                (new RiskLogService())->recordSubscriptionBlacklistBlock($request, $ipBlocked ? null : $uaHash);
+            } catch (\Throwable $error) {
+                Log::warning('Subscription blacklist audit unavailable');
+            }
             abort(403, 'Subscription access denied.');
         }
     }

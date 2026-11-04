@@ -64,6 +64,7 @@ try {
     $assert($result['total']===1 && $result['data'][0]['id']===$first,'combined exact indexed filters');
     $assert(!str_contains(json_encode($result),'secret-legacy') && !array_key_exists('context',$result['data'][0]),'legacy secrets excluded from response');
     $assert($query(['request_id'=>$uuid,'status'=>200])['total']===0,'status filter applied');
+    $assert($query(['request_id'=>$uuid,'current'=>PHP_INT_MAX,'page_size'=>100]) === ['data'=>[],'total'=>1], 'Out-of-range page preserves the total without issuing an overflowing offset');
     $reject(fn()=>$query(['request_id'=>'anything%']));$reject(fn()=>$query(['from'=>100,'to'=>99]));$reject(fn()=>$query(['page_size'=>101]));
     $request=Request::create('/safe','POST',['token'=>'new-secret']);app()->instance('request',$request);
     $logger=new Monolog\Logger('test',[new App\Logging\MysqlLoggerHandler()]);

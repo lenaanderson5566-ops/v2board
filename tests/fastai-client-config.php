@@ -5,16 +5,27 @@ if (!app()->environment('local')) throw new RuntimeException('Local test only');
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $testIp = '192.0.2.'.random_int(2, 254);
-$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml', $ua = 'fastai/0.8.99') use ($app, $testIp) {
+$call = function ($path, $token = null, $method = 'GET', $accept = 'application/yaml', $ua = 'fastai/0.8.99', ?string $ip = null) use ($app, $testIp) {
     $request = Illuminate\Http\Request::create($path, $method, [], [], [], [
         'HTTP_ACCEPT'=>$accept, 'HTTP_ACCEPT_LANGUAGE'=>'en-US', 'HTTP_USER_AGENT'=>$ua,
-        'REMOTE_ADDR'=>$testIp,
+        'REMOTE_ADDR'=>$ip ?? $testIp,
     ]);
     if ($token) $request->headers->set('Authorization', 'Bearer '.$token);
     $app->instance('request', $request);
     return $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
 };
 $path = '/api/v10/me/client-config?clientVersion=0.8.99&platform=windows';
+$singboxPath = $path.'&core=sing-box';
+// Keep the extra revision probes in a separate route rate-limit bucket.
+$revisionIp = '198.51.100.'.random_int(2, 254);
+$head = fn ($token = null) => $call($singboxPath, $token, 'HEAD', 'application/json', ip: $revisionIp);
+$assertHeadDenied = function (int $status, ?string $token, string $reason) use ($head, $assert) {
+    $response = $head($token);
+    $assert($response->getStatusCode() === $status
+        && !$response->headers->has('X-FastAI-Config-Revision')
+        && $response->headers->hasCacheControlDirective('private')
+        && $response->headers->hasCacheControlDirective('no-store'), $reason);
+};
 $auth = null;
 Illuminate\Support\Facades\DB::beginTransaction();
 try {
@@ -77,10 +88,16 @@ try {
     $assert($singboxData['nodes'][0]['proxyName']===$data['nodes'][0]['proxyName'], 'Stable node identity across engines');
     $assert(in_array($singboxData['nodes'][0]['proxyName'], array_column($singboxData['configuration']['outbounds'], 'tag')), 'Metadata references emitted sing-box outbound');
     $assert($call($path.'&core=unknown', $token)->getStatusCode()===422, 'Unknown core rejected');
-    $singboxHead = $call($path.'&core=sing-box', $token, 'HEAD', 'application/json');
+    $singboxHead = $head($token);
     $revision = $singboxHead->headers->get('X-FastAI-Config-Revision');
     $assert($singboxHead->getStatusCode()===200 && $revision===($singboxData['configVersion'] ?? null)
         && preg_match('/^[a-f0-9]{64}$/', (string)$revision), 'HEAD exposes the same revision as the configuration bundle');
+    foreach ([$singbox, $singboxHead] as $nativeResponse) {
+        $assert($nativeResponse->headers->hasCacheControlDirective('private')
+            && $nativeResponse->headers->hasCacheControlDirective('no-store'), 'Native config and revision prohibit shared caching');
+    }
+    $assert($singboxHead->getContent() === '', 'Successful HEAD omits the configuration body');
+    $assertHeadDenied(401, null, 'HEAD requires a session and does not expose a revision');
     App\Models\ServerV2box::create([
         'group_id'=>[98765], 'name'=>'Naive capability node', 'rate'=>'1',
         'host'=>'naive.example.com', 'port'=>'443', 'server_port'=>443,
@@ -93,6 +110,13 @@ try {
     $changedHead = $call($path.'&core=sing-box', $token, 'HEAD', 'application/json');
     $assert($changedHead->headers->get('X-FastAI-Config-Revision')===$nativeData['configVersion']
         && $nativeData['configVersion']!==$revision, 'A node change invalidates the previous configuration revision');
+    $user->update(['uuid' => (string) Illuminate\Support\Str::uuid()]);
+    $rotated = $call($singboxPath, $token, 'GET', 'application/json', ip: $revisionIp);
+    $rotatedVersion = json_decode($rotated->getContent(), true)['data']['configVersion'] ?? null;
+    $assert($rotated->getStatusCode() === 200 && is_string($rotatedVersion)
+        && $rotatedVersion !== $nativeData['configVersion']
+        && $head($token)->headers->get('X-FastAI-Config-Revision') === $rotatedVersion,
+        'Rotating node credentials invalidates the previous revision for an existing session');
 
     $legacy = $call('/api/v10/subscriptions/'.$user->token.'?format=flclash', null, 'GET', 'application/yaml', 'FlClash/0.8.99');
     $assert($legacy->getStatusCode()===200 && str_contains($legacy->getContent(), 'proxy-groups:'), 'Token subscriptions remain compatible');
@@ -123,6 +147,7 @@ try {
     $assert($failedContext['status']===403, 'Config denial is logged with its stable reason');
     $user->update(['plan_id'=>1, 'transfer_enable'=>1073741824, 'expired_at'=>time()-1]);
     $assert($call($path, $token)->getStatusCode()===403, 'Expired subscription denied');
+    $assertHeadDenied(403, $token, 'HEAD denies an expired subscription without a revision');
     $assert($call('/api/v10/me/node-previews', $token, 'GET', 'application/json')->getStatusCode()===200, 'Expired users retain route preview');
     $user->update(['credit_balance'=>1073741824]);
     $assert($call($path, $token)->getStatusCode()===200, 'Independent traffic credit remains available');
@@ -131,12 +156,14 @@ try {
     config(['fastai.fastai_releases'=>[['platform'=>'windows','architecture'=>'x64','channel'=>'stable','latestVersion'=>'9.0.0','latestBuild'=>1,'minimumVersion'=>'9.0.0','downloadUrl'=>'https://fastdog.ws/FastAI.exe','sha256'=>str_repeat('a',64),'publishedAt'=>'2026-10-06T00:00:00Z']]]);
     $low = $call($path, $token);
     $assert($low->getStatusCode()===409 && json_decode($low->getContent(), true)['code']==='CLIENT_VERSION_TOO_LOW', 'Explicit client version policy');
+    $assertHeadDenied(409, $token, 'HEAD enforces minimum client version without a revision');
     config(['fastai.fastai_releases'=>[]]);
     App\Models\ClientStrategy::where('client_type', 'flclash')->update(['is_enabled'=>0]);
     $assert($call($path, $token)->getStatusCode()===200, 'FastAI enabled independently of FlClash');
     config(['fastai.fastai_enabled'=>0]);
     $disabled = $call($path, $token);
     $assert($disabled->getStatusCode()===403 && json_decode($disabled->getContent(), true)['code']==='CLIENT_DISABLED', 'Disabled client policy');
+    $assertHeadDenied(403, $token, 'HEAD enforces disabled client policy without a revision');
     config(['fastai.fastai_enabled'=>1]);
     $assert($call($path.'&core=sing-box', $token, 'GET', 'application/json')->getStatusCode()===200, 'Enabling FastAI restores valid users without a new login');
     $policy = new App\Services\ClientStrategyService();
@@ -154,9 +181,11 @@ try {
     $user->update(['banned'=>1]);
     $assert($call('/api/v10/me/node-previews', $token)->getStatusCode()===403, 'Banned accounts cannot preview');
     $assert($call($path, $token)->getStatusCode()===403, 'Banned session denied');
+    $assertHeadDenied(403, $token, 'HEAD rejects banned accounts without a revision');
     $user->update(['banned'=>0]);
     $auth->removeAllSession();
     $assert($call($path, $token)->getStatusCode()===401, 'Revoked session denied');
+    $assertHeadDenied(401, $token, 'HEAD rejects revoked sessions without a revision');
     echo "fastai config: {$checks} checks passed\n";
 } finally {
     if ($auth) $auth->removeAllSession();

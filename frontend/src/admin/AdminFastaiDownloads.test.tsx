@@ -11,11 +11,16 @@ const release: V10FastaiRelease = { platform: "windows", architecture: "x64", ch
 it("saves separate platform packages without changing other entries", async () => {
     const save = vi.fn().mockResolvedValue(undefined);
     render(<AdminFastaiDownloads initial={[release, { ...release, platform: "macos", architecture: "arm64", downloadUrl: "https://example.com/fastai.dmg" }]} save={save} />);
-    fireEvent.change(screen.getAllByLabelText("最新版本")[1], { target: { value: "2.0.0" } });
+    const version = screen.getAllByLabelText("最新版本")[1];
+    const form = version.closest("form");
+    expect(form?.hasAttribute("data-unsaved")).toBe(false);
+    fireEvent.change(version, { target: { value: "2.0.0" } });
+    expect(form?.getAttribute("data-unsaved")).toBe("true");
     fireEvent.click(screen.getByText("确认发布 FastAI 下载设置"));
     await waitFor(() => expect(save).toHaveBeenCalledOnce());
     expect(save.mock.calls[0][0][0]).toEqual(release);
     expect(save.mock.calls[0][0][1]).toMatchObject({ platform: "macos", architecture: "arm64", latestVersion: "2.0.0" });
+    await waitFor(() => expect(form?.hasAttribute("data-unsaved")).toBe(false));
     expect(screen.queryByRole("option", { name: "iOS" })).toBeNull();
 });
 
@@ -26,6 +31,59 @@ it("removes a package and reports server validation errors", async () => {
     fireEvent.click(screen.getByText("确认发布 FastAI 下载设置"));
     await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Duplicate release target"));
     expect(save).toHaveBeenCalledWith([]);
+});
+
+it("shows the effective version floor and blocks a package below the access policy", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<AdminFastaiDownloads initial={[release]} globalMinimum="1.10.0" save={save} />);
+    expect(screen.getByText("生效最低版本：1.10.0")).toBeTruthy();
+    expect(screen.getByRole("alert").textContent).toContain("客户端访问策略");
+    expect((screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("最新版本"), { target: { value: "1.10.0" } });
+    fireEvent.click(screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }));
+    await waitFor(() => expect(save).toHaveBeenCalledOnce());
+});
+
+it("accepts the same stable version with a padded access-policy floor", async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<AdminFastaiDownloads initial={[release]} globalMinimum="v1.2.0.0+release" save={save} />);
+    fireEvent.click(screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith([release]));
+});
+
+it("preserves a conflicting draft until the administrator explicitly reloads", async () => {
+    const other = { ...release, platform: "macos" as const, architecture: "arm64" as const };
+    const reload = vi.fn().mockResolvedValue({ releases: [release, other], revision: "new", globalMinimum: null });
+    const save = vi.fn().mockRejectedValueOnce(Object.assign(new Error("conflict"), { status: 409 })).mockResolvedValue(undefined);
+    render(<AdminFastaiDownloads initial={[release]} initialRevision="old" save={save} reload={reload} />);
+    fireEvent.change(screen.getByLabelText("最新版本"), { target: { value: "1.5.0" } });
+    fireEvent.click(screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }));
+    const reloadButton = await screen.findByRole("button", { name: "放弃当前草稿并加载最新发布目录" });
+    expect(reload).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("最新版本") as HTMLInputElement).value).toBe("1.5.0");
+    expect(save).toHaveBeenCalledWith([{ ...release, latestVersion: "1.5.0" }], "old");
+    fireEvent.click(reloadButton);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("macOS · arm64"));
+    expect((screen.getAllByLabelText("最新版本")[0] as HTMLInputElement).value).toBe(release.latestVersion);
+    fireEvent.click(screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }));
+    await waitFor(() => expect(save).toHaveBeenLastCalledWith([release, other], "new"));
+});
+
+it("lists only supported architectures and allows an unchanged legacy target", async () => {
+    const legacy = { ...release, architecture: "x86" as const };
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<AdminFastaiDownloads initial={[legacy]} targets={{ windows: ["x64", "arm64"], android: ["arm64"] }} save={save} />);
+    expect(screen.getByText("旧目标已停止支持。可以原样保留或移除。")).toBeTruthy();
+    expect(screen.queryByRole("option", { name: "macOS" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith([legacy]));
+    fireEvent.change(screen.getByLabelText("最新版本"), { target: { value: "2.0.0" } });
+    expect(screen.getByRole("alert").textContent).toContain("旧条目仅可原样保留或移除");
+    expect((screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText("平台"), { target: { value: "android" } });
+    expect((screen.getByLabelText("架构") as HTMLSelectElement).value).toBe("arm64");
+    expect((screen.getByLabelText(/下载地址（上传自动填写/) as HTMLInputElement).value).toBe("");
+    expect(screen.queryByRole("option", { name: "Intel / AMD · x64" })).toBeNull();
 });
 
 it("locks the release draft during publishing and allows editing after completion", async () => {

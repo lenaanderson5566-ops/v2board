@@ -234,10 +234,8 @@ class OrderActions
             abort(request()->is('api/v10/*') ? 409 : 500, __('This payment period cannot be purchased, please choose another period'));
         }
 
-        if ($request->input('period') === 'reset_price') {
-            if (!\App\Services\TrafficCreditService::hasPeriod($user) || $user->banned || $plan->id !== $user->plan_id) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription has expired or no active subscription, unable to purchase Data Reset Package'));
-            }
+        if ($request->input('period') === 'reset_price' && !OrderService::canPurchaseTrafficReset($user, $plan)) {
+            abort(request()->is('api/v10/*') ? 409 : 500, __('Subscription has expired or no active subscription, unable to purchase Data Reset Package'));
         }
 
         if ($request->input('period') !== 'reset_price' && !PlanService::visibleToSubscriber($plan, $user)) {
@@ -259,8 +257,7 @@ class OrderActions
         $order->total_amount = $price;
         $order->created_at = time();
         if ($isCredit) {
-            $order->credit_bytes = (int)round($plan->transfer_enable * 1073741824);
-            $order->credit_snapshot = $plan->only(['name','group_id','speed_limit','device_limit']);
+            \App\Services\TrafficCreditService::snapshotPurchase($order, $plan);
         }
 
         if ($request->filled('wallet_coupon_id')) {
@@ -320,6 +317,11 @@ class OrderActions
         $order->payment_id = $method;
         // Claim payment before contacting the provider; replacement must not cancel issued payments.
         $claimed = DB::transaction(function () use ($order, $method, $payment, $quote) {
+            // Coordinate with admin deletion before binding this channel to a pending order.
+            $currentPayment = Payment::query()->lockForUpdate()->find($payment->id);
+            abort_unless($currentPayment && $currentPayment->enable === 1
+                && $currentPayment->uuid === $payment->uuid && $currentPayment->payment === $payment->payment,
+                409, __('Payment method is not available'));
             $fresh = $this->lockCheckoutOrder($order);
             $fresh->payment_id = $method;
             $fresh->handling_amount = $order->handling_amount;

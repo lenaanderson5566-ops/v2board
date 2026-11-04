@@ -270,8 +270,11 @@ grep -q 'migrate --path=database/migrations/2026_10_11_000008_create_server_traf
 grep -q 'migrate --path=database/migrations/2026_10_11_000009_create_server_traffic_imports.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_11_000010_create_lightsail_servers.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_27_000002_share_lightsail_credentials.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_11_04_000003_fence_lightsail_operations.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_30_000001_track_plan_translation_sources.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_03_000001_add_traffic_reset_anchor.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_11_04_000001_subscription_blacklist_expiry.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_11_04_000002_reconcile_mail_complaint_suppressions.php --force --no-interaction' calls.log
 grep -q 'Missing plan translation source column' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty

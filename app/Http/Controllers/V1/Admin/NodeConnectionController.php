@@ -2,6 +2,8 @@
 namespace App\Http\Controllers\V1\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\Actions\UpdateDefaultNodeLine;
+use App\Services\Actions\UpdateManualNodeAddress;
 use App\Services\{NodeConnection,NodeDnsLifecycle,NodeRuntimeService,ProxyService};
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -19,10 +21,7 @@ final class NodeConnectionController extends Controller {
             'host'=>['required','string','max:253',function($attribute,$value,$fail){
                 if(!filter_var($value,FILTER_VALIDATE_IP) && !preg_match('/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*\.?$/Di',$value))$fail('请输入有效域名或 IP 地址');
             }],
-            'port'=>['required',function($attribute,$value,$fail){
-                if((!is_string($value) && !is_int($value)) || !preg_match('/^[0-9]+(?:[-,][0-9]+)*$/D',(string)$value) || strlen((string)$value)>11){$fail('请输入有效端口或端口范围');return;}
-                foreach(explode(',',(string)$value) as $part){$ports=explode('-',$part);if(count($ports)>2 || min(array_map('intval',$ports))<1 || max(array_map('intval',$ports))>65535 || (count($ports)===2 && (int)$ports[0]>(int)$ports[1])){$fail('端口必须为 1–65535，范围必须从小到大');break;}}
-            }],'confirm'=>'required|accepted']);
+            'port'=>['required',UpdateManualNodeAddress::validatePort(...)],'confirm'=>'required|accepted']);
         return ['data'=>\App\Services\Actions\UpdateManualNodeAddress::run($v['type'],(int)$v['id'],$v['revision'],$v)];
     }
     public function defaultLine(Request $request) {
@@ -37,7 +36,7 @@ final class NodeConnectionController extends Controller {
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
         $v=$request->validate(['type'=>'required|in:v2box','id'=>'required|integer|min:1','revision'=>'required|string|size:64',
             'name'=>'required|string|max:100','group_id'=>'present|array|max:100','group_id.*'=>'integer|min:1|distinct',
-            'rate'=>'required|numeric|min:0|max:10000','region_code'=>'nullable|string|size:2|in:'.implode(',',\App\Services\NodeDisplayService::regionCodes()),
+            'rate'=>UpdateDefaultNodeLine::RATE_RULE,'region_code'=>'nullable|string|size:2|in:'.implode(',',\App\Services\NodeDisplayService::regionCodes()),
             'city_code'=>'nullable|string|max:64|regex:/^[a-z0-9][a-z0-9-]*$/','display_label'=>'nullable|string|max:64','tags'=>'nullable|array|max:20','tags.*'=>'string|max:64']);
         return ['data'=>\App\Services\Actions\UpdateDefaultNodeLine::run($v['type'],(int)$v['id'],$v['revision'],$v)];
     }

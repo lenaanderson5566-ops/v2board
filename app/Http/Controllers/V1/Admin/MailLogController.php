@@ -5,9 +5,12 @@ use App\Http\Controllers\Controller;
 use App\Models\MailLog;
 use App\Services\Mail\MailDeliveryLog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class MailLogController extends Controller
 {
+    private const SENDING_TIMEOUT = 120;
+
     public function fetch(Request $request)
     {
         $p = $request->validate([
@@ -26,12 +29,13 @@ class MailLogController extends Controller
                 ->orWhere(function ($q) use ($p) { $q->whereNull('recipient_hash')->where('email', $p['email']); });
         });
         if (!empty($p['provider'])) $q->where('provider', $p['provider']);
+        $sendingCutoff = time() - self::SENDING_TIMEOUT;
         if (!empty($p['status'])) {
             if ($p['status'] === 'legacy') $q->whereNull('status');
-            elseif ($p['status'] === 'uncertain') $q->where(function ($q) {
-                $q->where('status', 'uncertain')->orWhere(function ($q) { $q->where('status','sending')->where('created_at','<',time()-120); });
+            elseif ($p['status'] === 'uncertain') $q->where(function ($q) use ($sendingCutoff) {
+                $q->where('status', 'uncertain')->orWhere(function ($q) use ($sendingCutoff) { $q->where('status','sending')->where('created_at','<',$sendingCutoff); });
             });
-            elseif ($p['status'] === 'sending') $q->where('status','sending')->where('created_at','>=',time()-120);
+            elseif ($p['status'] === 'sending') $q->where('status','sending')->where('created_at','>=',$sendingCutoff);
             else $q->where('status', $p['status']);
         }
         if (!empty($p['template'])) $q->whereIn('template_name', [$p['template'], 'mail.product.'.$p['template']]);
@@ -41,9 +45,9 @@ class MailLogController extends Controller
         $total = (clone $q)->count();
         $rows = $q->orderByDesc('created_at')->orderByDesc('id')->forPage($p['current'] ?? 1, $p['page_size'] ?? 20)
             ->get(['stream','delivery_status','delivery_at','transport_code','enhanced_code','user_id','id','email','template_name','provider','status','error_code','message_id','duration_ms','created_at']);
-        return response(['total'=>$total, 'data'=>$rows->map(function ($row) {
+        return response(['total'=>$total, 'data'=>$rows->map(function ($row) use ($sendingCutoff) {
             $status = $row->status ?: 'legacy';
-            if ($status === 'sending' && $row->created_at < time()-120) $status = 'uncertain';
+            if ($status === 'sending' && $row->created_at < $sendingCutoff) $status = 'uncertain';
             [$category,$advice] = \App\Services\Mail\MailDiagnosis::advice($status,$row->error_code,$row->transport_code,$row->enhanced_code);
             return ['stream'=>$row->stream, 'delivery_status'=>$row->delivery_status, 'delivery_at'=>$row->delivery_at, 'transport_code'=>$row->transport_code, 'enhanced_code'=>$row->enhanced_code, 'user_id'=>$row->user_id, 'diagnosis'=>$category, 'advice'=>$advice, 'id'=>$row->id, 'email'=>MailDeliveryLog::mask($row->email),
                 'template'=>str_replace('mail.product.', '', $row->template_name), 'provider'=>$row->provider ?: 'legacy',
@@ -53,8 +57,14 @@ class MailLogController extends Controller
     }
     public function health()
     {
-        $counts=\Illuminate\Support\Facades\DB::table('v2_mail_log')->where('created_at','>=',time()-86400)->selectRaw('provider, stream, status, delivery_status, count(*) as count')->groupBy('provider','stream','status','delivery_status')->get();
-        return response(['data'=>['window_hours'=>24,'counts'=>$counts,'suppressed'=>\Illuminate\Support\Facades\DB::table('v2_mail_suppression')->whereNull('released_at')->count(),'unmatched_events'=>\Illuminate\Support\Facades\DB::table('v2_mail_event')->whereNull('applied_at')->where('created_at','<',time()-300)->where('created_at','>=',time()-86400)->count()]]);
+        $now = time();
+        $recent = DB::table('v2_mail_log')->where('created_at', '>=', $now - 86400)
+            ->selectRaw("provider, stream, delivery_status, case when status = 'sending' and created_at < ? then 'uncertain' else status end as status",
+                [$now - self::SENDING_TIMEOUT]);
+        $counts = DB::query()->fromSub($recent, 'recent_mail')
+            ->selectRaw('provider, stream, status, delivery_status, count(*) as count')
+            ->groupBy('provider', 'stream', 'status', 'delivery_status')->get();
+        return response(['data'=>['window_hours'=>24,'counts'=>$counts,'suppressed'=>DB::table('v2_mail_suppression')->whereNull('released_at')->count(),'unmatched_events'=>DB::table('v2_mail_event')->whereNull('applied_at')->where('created_at','<',$now-300)->where('created_at','>=',$now-86400)->count()]]);
     }
     public function suppressions(Request $request)
     {

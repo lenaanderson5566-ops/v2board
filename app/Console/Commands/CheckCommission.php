@@ -119,48 +119,30 @@ class CheckCommission extends Command
     public function payHandle($inviteUserId, Order $order)
     {
         if ($this->rejectInternalTransfer($order)) return true;
-        $level = 3;
-        if ((int)config('fastai.commission_distribution_enable', 0)) {
-            $commissionShareLevels = [
-                0 => (int)config('fastai.commission_distribution_l1'),
-                1 => (int)config('fastai.commission_distribution_l2'),
-                2 => (int)config('fastai.commission_distribution_l3')
-            ];
+        $sourceCommission = (int)$order->commission_balance;
+        if (!$inviteUserId || (int)$inviteUserId === (int)$order->user_id || $sourceCommission === 0) return true;
+        $inviter = User::whereKey($inviteUserId)->lockForUpdate()->first();
+        if (!$inviter || $inviter->account_deleted_at) return true;
+
+        $commissionBalance = \App\Services\ExchangeRate::convert($sourceCommission, $order->currency ?: 'CNY',
+            $inviter->currency ?: 'CNY', $order->fx_snapshot ?? []);
+        if (!$commissionBalance) return true;
+        if ((int)config('fastai.withdraw_close_enable', 0)) {
+            $inviter->balance += $commissionBalance;
         } else {
-            $commissionShareLevels = [
-                0 => 100
-            ];
+            $inviter->commission_balance += $commissionBalance;
         }
-        for ($l = 0; $l < $level; $l++) {
-            $inviter = User::whereKey($inviteUserId)->lockForUpdate()->first();
-            if (!$inviter || $inviter->account_deleted_at) break;
-            if (!isset($commissionShareLevels[$l])) continue;
-            $sourceCommission = (int)floor($order->commission_balance * ($commissionShareLevels[$l] / 100));
-            $commissionBalance = \App\Services\ExchangeRate::convert($sourceCommission, $order->currency ?: 'CNY', $inviter->currency ?: 'CNY', $order->fx_snapshot ?? []);
-            if (!$commissionBalance) continue;
-            if ((int)config('fastai.withdraw_close_enable', 0)) {
-                $inviter->balance = $inviter->balance + $commissionBalance;
-            } else {
-                $inviter->commission_balance = $inviter->commission_balance + $commissionBalance;
-            }
-            if (!$inviter->save()) {
-                return false;
-            }
-            if (!CommissionLog::create([
-                'invite_user_id' => $inviteUserId,
-                'user_id' => $order->user_id,
-                'trade_no' => $order->trade_no,
-                'order_amount' => $order->total_amount,
-                'get_amount' => $commissionBalance,
-                'currency' => $inviter->currency ?: 'CNY',
-                'order_currency' => $order->currency ?: 'CNY'
-            ])) {
-                return false;
-            }
-            $inviteUserId = $inviter->invite_user_id;
-            // update order actual commission balance
-            $order->actual_commission_balance = $order->actual_commission_balance + $sourceCommission;
-        }
+        if (!$inviter->save()) return false;
+        if (!CommissionLog::create([
+            'invite_user_id' => $inviter->id,
+            'user_id' => $order->user_id,
+            'trade_no' => $order->trade_no,
+            'order_amount' => $order->total_amount,
+            'get_amount' => $commissionBalance,
+            'currency' => $inviter->currency ?: 'CNY',
+            'order_currency' => $order->currency ?: 'CNY',
+        ])) return false;
+        $order->actual_commission_balance += $sourceCommission;
         return true;
     }
 

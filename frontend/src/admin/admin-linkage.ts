@@ -26,9 +26,6 @@ const dependencies: Record<string, (values: Row) => boolean> = {
     register_limit_expire: (v) => on(v.register_limit_by_ip_enable),
     password_limit_count: (v) => on(v.password_limit_enable),
     password_limit_expire: (v) => on(v.password_limit_enable),
-    commission_distribution_l1: (v) => on(v.commission_distribution_enable),
-    commission_distribution_l2: (v) => on(v.commission_distribution_enable),
-    commission_distribution_l3: (v) => on(v.commission_distribution_enable),
     commission_withdraw_limit: (v) => !on(v.withdraw_close_enable),
     commission_withdraw_method: (v) => !on(v.withdraw_close_enable),
     surplus_enable: (v) => on(v.plan_change_enable),
@@ -85,14 +82,6 @@ export function validateSettings(values: Row): string | undefined {
         }
         if (!Array.isArray(suffixes) || !suffixes.length)
             return "启用邮箱白名单时至少填写一个邮箱域名";
-    }
-    if (on(values.commission_distribution_enable)) {
-        const total = [
-            "commission_distribution_l1",
-            "commission_distribution_l2",
-            "commission_distribution_l3",
-        ].reduce((sum, key) => sum + Number(values[key] || 0), 0);
-        if (total > 100) return "三级佣金分配比例合计不能超过 100%";
     }
     if (on(values.telegram_bot_enable) && !values.telegram_bot_token)
         return "启用 Telegram 机器人时必须填写 Token";

@@ -26,7 +26,8 @@ class RouteController extends Controller {
         return ['data'=>$routes];
     }
     public function save(Request $request) {
-        $route = $request->input('id') ? ServerRoute::findOrFail($request->input('id')) : new ServerRoute();
+        $identity = $request->validate(['id'=>'nullable|integer|min:1']);
+        $route = isset($identity['id']) ? ServerRoute::findOrFail($identity['id']) : new ServerRoute();
         $backend = $request->input('backend', $route->backend ?? 'v2box');
         $request->merge(['backend'=>$backend]);
         $params = $request->validate([
@@ -54,7 +55,8 @@ class RouteController extends Controller {
         return ['data'=>true];
     }
     public function drop(Request $request) {
-        $route = ServerRoute::findOrFail($request->input('id'));
+        $identity = $request->validate(['id'=>'required|integer|min:1']);
+        $route = ServerRoute::findOrFail($identity['id']);
         $model = ServerV2box::class;
         foreach ($model::cursor() as $node) {
             abort_if(in_array($route->id, $node->route_id ?? []), 422, '规则正在被节点使用，请先取消节点的规则选择');

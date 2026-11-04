@@ -35,19 +35,24 @@ class ClientActions
         if ($request->input('core') === 'sing-box') {
             $configuration = json_decode($yaml->getContent(), true, 512, JSON_THROW_ON_ERROR);
             $nodes = $request->attributes->get('client.nodes', []);
-            $revision = hash('sha256', json_encode([$configuration, $nodes]));
+            $revision = hash('sha256', json_encode([$configuration, $nodes], JSON_THROW_ON_ERROR));
+            $headers = [
+                'Content-Type' => 'application/json',
+                'X-FastAI-Config-Version' => '3',
+                'X-FastAI-Config-Revision' => $revision,
+                'Cache-Control' => 'private, no-store',
+                'Vary' => 'Accept, Accept-Language',
+            ];
+            if ($request->isMethod('HEAD')) {
+                return response('', 200, $headers);
+            }
             return response()->json(['data' => [
                 'configVersion' => $revision,
                 'core' => 'sing-box',
                 'coreVersion' => '1.14.3',
                 'configuration' => $configuration,
                 'nodes' => $nodes,
-            ]], 200, [
-                'X-FastAI-Config-Version' => '3',
-                'X-FastAI-Config-Revision' => $revision,
-                'Cache-Control' => 'private, no-store',
-                'Vary' => 'Accept, Accept-Language',
-            ]);
+            ]], 200, $headers);
         }
         if ($request->attributes->get('client.nodes') !== null) {
             $nodes = $request->attributes->get('client.nodes');
@@ -150,7 +155,8 @@ class ClientActions
                     $request->attributes->set('client.nodes', $class->nodes());
                 }
                 if (!$request->attributes->has('subscription.notice')) {
-                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $resolvedClientType, 'success'));
+                    $reason = $request->isMethod('HEAD') ? RiskLogService::CONFIG_CHECK_REASON : null;
+                    $riskLogService->createSubscribeLog($this->buildSubscribeLogPayload($request, $user, $resolvedClientType, 'success', $reason));
                 }
                 return $content;
             } catch (\Throwable $e) {

@@ -283,19 +283,21 @@ class LogController extends Controller
             if (!is_array($item)) {
                 abort(422, 'each item must be an object');
             }
+            if (!array_key_exists('remark', $item) && array_key_exists('reason', $item)) {
+                $item['remark'] = $item['reason'];
+            }
+            if (!array_key_exists('expires_at', $item) && array_key_exists('expired_at', $item)) {
+                $item['expires_at'] = $item['expired_at'];
+            }
+            validator($item, [
+                'id' => 'nullable|string|max:32',
+                'value' => 'nullable|string|max:4096',
+                'remark' => 'nullable|string|max:255',
+                'ua_raw' => 'nullable|string|max:4096',
+                'expires_at' => 'nullable|integer|min:1|max:253402300799',
+            ])->validate();
             $item['type'] = $forceType;
-            if (array_key_exists('value', $item) && !is_null($item['value']) && !is_string($item['value'])) {
-                abort(422, 'value must be string');
-            }
-            if (!array_key_exists('value', $item)) {
-                $item['value'] = '';
-            }
-            if (array_key_exists('remark', $item) && !is_null($item['remark']) && !is_string($item['remark'])) {
-                abort(422, 'remark must be string');
-            }
-            if (array_key_exists('ua_raw', $item) && !is_null($item['ua_raw']) && !is_string($item['ua_raw'])) {
-                abort(422, 'ua_raw must be string');
-            }
+            $item['value'] ??= '';
             if ($item['type'] === 'ua_hash' && empty(trim((string) $item['value'])) && empty(trim((string) ($item['ua_raw'] ?? '')))) {
                 abort(422, 'ua_raw is required when value is empty');
             }
@@ -319,10 +321,7 @@ class LogController extends Controller
 
     private function handleBlacklistDelete(Request $request, string $prefix)
     {
-        $id = (string) $request->input('id', '');
-        if (!$id) {
-            abort(422, 'id is required');
-        }
+        $id = $request->validate(['id' => 'required|string|max:32'])['id'];
         if (strpos($id, $prefix) !== 0) {
             abort(422, "id must be {$prefix}*");
         }
@@ -372,7 +371,10 @@ class LogController extends Controller
             $data = $grouped->orderByDesc('hit_at')->orderByDesc('id')->forPage($current, $pageSize)->get();
             $events = RiskRuleHit::query()->whereIn('id', $data->pluck('id'))->get()->keyBy('id');
             foreach ($data as $row) {
-                $row->payload = $events->get($row->id)->payload ?? [];
+                $event = $events->get($row->id);
+                $row->payload = $event?->payload ?? [];
+                $row->reason = $event?->reason;
+                $row->client_type = $event?->client_type;
             }
             $this->decorateLogRows($data);
             return response(['data' => $data,'total' => $total]);
@@ -400,14 +402,12 @@ class LogController extends Controller
                 $q->where('email', 'like', '%' . $request->input('email') . '%');
             });
 
-        $geoIpService = new GeoIpService();
         $rows = [];
-        $users->chunkById(200, function ($users) use (&$rows, $now, $geoIpService) {
+        $users->chunkById(200, function ($users) use (&$rows, $now) {
             $states = \App\Services\OnlineDeviceService::forUsers($users->pluck('id')->all(), $now);
             foreach ($users as $user) {
                 $state = $states[$user->id];
                 foreach ($state['connections'] as $item) {
-                    $geo = $geoIpService->lookup($item['ip']);
                     $rows[$user->id . '|' . $item['ip'] . '|' . $item['node']] = [
                         'user_id' => $user->id,
                         'email' => $user->email,
@@ -416,11 +416,6 @@ class LogController extends Controller
                         'node' => $item['node'],
                         'alive_count' => $state['count'],
                         'online_at' => $item['online_at'],
-                        'country' => $geo['country'] ?? null,
-                        'region' => $geo['region'] ?? null,
-                        'city' => $geo['city'] ?? null,
-                        'asn' => $geo['asn'] ?? null,
-                        'isp' => $geo['isp'] ?? null,
                     ];
                 }
             }
@@ -432,8 +427,19 @@ class LogController extends Controller
         $total = count($rows);
         $page = max(1, (int) $request->input('current', 1));
         $size = min(200, max(1, (int) $request->input('page_size', 20)));
+        $visible = $page - 1 > intdiv(max(0, $total - 1), $size)
+            ? [] : array_slice($rows, ($page - 1) * $size, $size);
+        $geoIpService = new GeoIpService();
+        $locations = [];
+        foreach ($visible as &$row) {
+            $geo = $locations[$row['ip']] ??= $geoIpService->lookup($row['ip']);
+            foreach (['country', 'region', 'city', 'asn', 'isp'] as $field) {
+                $row[$field] = $geo[$field] ?? null;
+            }
+        }
+        unset($row);
         return response([
-            'data' => array_slice($rows, ($page - 1) * $size, $size),
+            'data' => $visible,
             'total' => $total,
             'meta' => ['users' => count(array_unique(array_column($rows, 'user_id'))),
                 'ips' => count(array_unique(array_column($rows, 'ip'))), 'connections' => $total,

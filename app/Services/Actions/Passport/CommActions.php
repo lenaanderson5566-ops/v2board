@@ -47,11 +47,9 @@ class CommActions
             if ($request->filled('invitation')) (new \App\Services\EmailInvitationService())->validateRecipient((string)$request->input('invitation'), $email);
         }
         // 检查是否是gmail别名邮箱
-        if (!$isforget && (int)config('fastai.email_gmail_limit_enable', 0)) {
-            $prefix = explode('@', $request->input('email'))[0];
-            if (strpos($prefix, '.') !== false || strpos($prefix, '+') !== false) {
-                abort(request()->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
-            }
+        if (!$isforget && (int)config('fastai.email_gmail_limit_enable', 0)
+            && \App\Services\EmailAddress::isGmailAlias($email)) {
+            abort($request->is('api/v10/*') ? 409 : 500, __('Gmail alias is not supported'));
         }
         if ($email_exists) abort(request()->is('api/v10/*') ? 409 : 500, __('This email is registered'));
         if (Cache::get(CacheKey::get('LAST_SEND_EMAIL_VERIFY_TIMESTAMP', $cacheKeyEmail))) {

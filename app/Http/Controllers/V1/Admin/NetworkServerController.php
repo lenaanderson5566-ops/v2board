@@ -57,12 +57,7 @@ final class NetworkServerController extends Controller {
     }
     public function reset(Request $request) {
         $v=$request->validate(['id'=>'required|integer|min:1','confirm'=>'required|accepted']);
-        NodeDnsLifecycle::locked(function()use($v){
-            abort_unless(DB::table('v2_network_server')->where('id',$v['id'])->where('enabled',true)->exists(),422,'请先启用服务器');
-            DB::table('v2_network_server')->where('id',$v['id'])->update(['report_hash'=>null,'report_secret'=>null]);
-            DB::table('v2_node_ddns')->where('server_id',$v['id'])->update(['report_hash'=>null]);
-        });
-        return $this->enroll($request);
+        return response()->json(['data'=>NodeDeployment::createServer($v['id'],(int)$request->input('user.id'),reset:true)],200,['Cache-Control'=>'private, no-store']);
     }
     public function entry(Request $request) {
         $v=$request->validate(['id'=>'nullable|integer|min:1','server_id'=>'required|integer|min:1','credential_id'=>'required|integer|min:1','prefix'=>'required|string|max:63','family'=>'required|in:ipv4,ipv6,dual']);

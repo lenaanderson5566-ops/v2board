@@ -17,6 +17,35 @@ if(($argv[1]??'')==='worker') {
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e) { if($e->getStatusCode()!==409)throw $e;echo 'conflict'; }
     exit;
 }
+if(in_array($argv[1]??'', ['admin-order-worker', 'plan-delete-race-worker'], true)) {
+    if ((int)$argv[2] === 0) {
+        $request=Illuminate\Http\Request::create('/admin/plan/drop','POST',['id'=>(int)$argv[3]]);
+        try { (new App\Http\Controllers\V1\Admin\PlanController())->drop($request); echo 'deleted'; }
+        catch(Symfony\Component\HttpKernel\Exception\HttpException $e) { if($e->getStatusCode()!==409)throw $e; echo 'conflict'; }
+        exit;
+    }
+    $request=App\Http\Requests\Admin\OrderAssign::create('/admin/order/assign','POST',[
+        'email'=>User::findOrFail((int)$argv[2])->email,'plan_id'=>(int)$argv[3],'period'=>'month_price','total_amount'=>100,
+    ]);
+    try { echo 'ok:'.json_decode((new App\Http\Controllers\V1\Admin\OrderController())->assign($request)->getContent(),true)['data']; }
+    catch(Illuminate\Database\Eloquent\ModelNotFoundException) { echo 'missing'; }
+    catch(Symfony\Component\HttpKernel\Exception\HttpException $e) { if($e->getStatusCode()!==409)throw $e; echo 'conflict'; }
+    exit;
+}
+if(($argv[1]??'')==='coupon-delete-race-worker') {
+    try {
+        if ((int)$argv[2] === 0) {
+            $request=Illuminate\Http\Request::create('/admin/coupon/drop','POST',['id'=>(int)$argv[3]]);
+            (new App\Http\Controllers\V1\Admin\CouponController())->drop($request);
+            echo 'deleted';
+        } else {
+            CouponWallet::issue((int)$argv[2],(int)$argv[3]);
+            echo 'issued';
+        }
+    } catch(Illuminate\Database\Eloquent\ModelNotFoundException) { echo 'missing'; }
+    catch(Symfony\Component\HttpKernel\Exception\HttpException $e) { if($e->getStatusCode()!==409)throw $e; echo 'conflict'; }
+    exit;
+}
 if(($argv[1]??'')==='order-worker') {
     $request=$orderRequest((int)$argv[2],(int)$argv[3]);
     app()->instance('request',$request);
@@ -28,7 +57,7 @@ if(($argv[1]??'')==='order-worker') {
     exit;
 }
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage().PHP_EOL);exit(1);});
-$users=[];$coupons=[];$plan=null;
+$users=[];$coupons=[];$plan=null;$deletePlan=null;
 $run=function(array $pairs,string $worker='worker'){
     $jobs=[];
     foreach($pairs as [$user,$coupon]) {
@@ -47,7 +76,28 @@ try {
     if(DB::table('v2_coupon_wallet')->whereIn('coupon_id',$coupons)->count()!==2)throw new RuntimeException('Duplicate wallet entries');
     echo "Commerce concurrency: stock cannot oversell; duplicate claims return one wallet entry.\n";
 
+    $coupons[]=$deleteCandidate=Coupon::create(['name'=>'Deletion race fixture','code'=>uniqid(),'type'=>2,'value'=>10,'show'=>1,'public_claim'=>1,'limit_use'=>1,'started_at'=>time()-10,'ended_at'=>time()+3600])->id;
+    $out=$run([[$users[0],$deleteCandidate],[0,$deleteCandidate]],'coupon-delete-race-worker');
+    $walletExists=DB::table('v2_coupon_wallet')->where('coupon_id',$deleteCandidate)->exists();
+    if(!($out===['issued','conflict'] && $walletExists && Coupon::find($deleteCandidate))
+        && !($out===['missing','deleted'] && !$walletExists && !Coupon::find($deleteCandidate)))
+        throw new RuntimeException('Coupon deletion and issuance left inconsistent history');
+
+    $deletePlan=Plan::create(['name'=>'Plan deletion race','group_id'=>1,'transfer_enable'=>1,'month_price'=>100]);
+    $out=$run([[$users[0],$deletePlan->id],[0,$deletePlan->id]],'plan-delete-race-worker');
+    $orderExists=Order::where('plan_id',$deletePlan->id)->exists();
+    $planExists=Plan::whereKey($deletePlan->id)->exists();
+    if(!(str_starts_with($out[0],'ok:') && $out[1]==='conflict' && $orderExists && $planExists)
+        && !($out===['missing','deleted'] && !$orderExists && !$planExists))
+        throw new RuntimeException('Concurrent plan deletion and order assignment left an orphan order');
+    Order::where('plan_id',$deletePlan->id)->delete();
+
     $plan=Plan::create(['name'=>'One seat','group_id'=>1,'transfer_enable'=>1,'month_price'=>100,'onetime_price'=>100,'show'=>1,'renew'=>1,'capacity_limit'=>1]);
+    $out=$run([[$users[0],$plan->id],[$users[0],$plan->id]],'admin-order-worker');
+    if(count(array_filter($out,fn($v)=>str_starts_with($v,'ok:')))!==1 || count(array_filter($out,fn($v)=>$v==='conflict'))!==1
+        || Order::where('user_id',$users[0])->where('plan_id',$plan->id)->count()!==1)
+        throw new RuntimeException('Concurrent admin order assignments created duplicate pending orders');
+    Order::where('user_id',$users[0])->where('plan_id',$plan->id)->delete();
     User::whereIn('id',$users)->update(['plan_id'=>$plan->id,'expired_at'=>time()-86400]);
     $legacy=Order::create(['user_id'=>$users[0],'plan_id'=>$plan->id,'trade_no'=>uniqid('legacy-seat-'),
         'period'=>'onetime_price','status'=>0,'type'=>1,'total_amount'=>100]);
@@ -82,5 +132,6 @@ try {
     echo "Commerce concurrency: one order can reserve the last plan seat; cancellation releases it and fulfillment and renewal retain it.\n";
 }finally{
     if($plan){Order::where('plan_id',$plan->id)->delete();$plan->delete();}
+    if($deletePlan){Order::where('plan_id',$deletePlan->id)->delete();$deletePlan->delete();}
     DB::table('v2_coupon_wallet')->whereIn('coupon_id',$coupons)->delete();Coupon::whereIn('id',$coupons)->delete();User::whereIn('id',$users)->delete();
 }

@@ -19,7 +19,11 @@ try {
     foreach ([true,false] as $sameKey) {
         $user->update(['u'=>50,'d'=>50]);
         $grantKey=(string)Str::uuid();
-        (new UsageResetService())->batch(User::where('id',$user->id),$user->id,['kind'=>'grant','request_key'=>$grantKey,'expected_count'=>1,'quantity'=>1]);
+        $service = new UsageResetService();
+        $scope = $service->previewGrant(User::whereKey($user->id), $user->id, 1);
+        $service->batch(User::whereKey($user->id), $user->id, [
+            'kind'=>'grant','request_key'=>$grantKey,'expected_count'=>1,'quantity'=>1,'scope_token'=>$scope['scope_token'],
+        ]);
         $batchIds[]=DB::table('v2_usage_reset_batch')->where('request_key',$grantKey)->value('id');
         $key=(string)Str::uuid();$processes=[];
         DB::beginTransaction();

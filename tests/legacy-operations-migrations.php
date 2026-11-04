@@ -46,6 +46,20 @@ $indexes=new IndexLogMetadata(); $indexes->up(); $indexes->up();
 $assert(DB::table('v2_log')->value('request_id')==='preserved','partial metadata migration preserves records');
 $assert(Schema::hasColumn('v2_log','duration_ms') && Schema::hasIndex('v2_subscribe_log','v2_subscribe_log_created_id_idx'),'metadata migration completed');
 $assert(Schema::hasIndex('v2_user_online_snapshot','v2_user_online_snapshot_user_source_unique'),'online snapshot uniqueness');
+DB::table('v2_risk_blacklist_ip')->insert(['value'=>'198.51.100.3','remark'=>'existing IP policy','is_enabled'=>1]);
+DB::table('v2_risk_blacklist_ua_hash')->insert(['value'=>hash('sha256','fixture'),'remark'=>'existing UA policy','is_enabled'=>0]);
+DB::table('v2_subscribe_log')->insert(['user_id'=>1,'reason'=>'historical request']);
+$blacklistUpgrade=require __DIR__.'/../database/migrations/2026_11_04_000001_subscription_blacklist_expiry.php';
+$blacklistUpgrade->up();
+$blacklistUpgrade->up();
+$assert(DB::table('v2_risk_blacklist_ip')->whereNull('expires_at')->value('remark')==='existing IP policy'
+    && DB::table('v2_risk_blacklist_ua_hash')->whereNull('expires_at')->where('is_enabled',0)->value('remark')==='existing UA policy',
+    'Blacklist upgrade preserves existing enabled state and records');
+DB::table('v2_subscribe_log')->insert(['user_id'=>null,'status'=>'blocked','reason'=>'subscription_ip_blacklisted']);
+$assert(DB::table('v2_subscribe_log')->where('user_id',1)->count()===1
+    && DB::table('v2_subscribe_log')->whereNull('user_id')->count()===1
+    && Schema::hasIndex('v2_subscribe_log','v2_subscribe_log_created_id_idx'),
+    'Existing audit records and indexes are preserved and anonymous blocks can be recorded');
 echo "Legacy operations migrations: missing tables, existing policies, partial indexes and retries passed\n";
 
 } finally {

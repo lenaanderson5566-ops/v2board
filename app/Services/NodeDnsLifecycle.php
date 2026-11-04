@@ -106,6 +106,7 @@ final class NodeDnsLifecycle
             abort_if($a->purpose==='entry',422,'入口域名由引用它的节点分别启用');
             $target=NetworkServer::target($a);
             abort_unless(NetworkServer::ready($target),409,'入口解析尚未就绪');
+            if ($a->entry_id) NodeListenerGuard::assertForwardingPort((int)$target->server_id,(int)$a->entry_port);
             $table='v2_server_'.$a->node_type;
             $node=DB::table($table)->where('id',$a->node_id)->lockForUpdate()->first();
             abort_unless($node && ($node->host===$a->published_domain || $node->host===$target->domain),409,'节点地址已变化，请重新保存域名绑定');

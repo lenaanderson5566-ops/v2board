@@ -19,7 +19,7 @@ if (($argv[1] ?? '')==='install') {
 }
 DB::beginTransaction();
 try {
-    config(['fastai.new_user_currency'=>'CNY','fastai.telegram_bot_enable'=>0,'fastai.deposit_bounus'=>['100:10'],'fastai.invite_commission'=>10,'fastai.commission_distribution_enable'=>0,'fastai.withdraw_close_enable'=>0]);
+    config(['fastai.new_user_currency'=>'CNY','fastai.telegram_bot_enable'=>0,'fastai.deposit_bounus'=>['100:10'],'fastai.invite_commission'=>10,'fastai.withdraw_close_enable'=>0]);
     $user=User::create(['email'=>'legacy-'.uniqid().'@example.test','password'=>'test','token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'balance'=>5000,'transfer_enable'=>0,'expired_at'=>0]);
     $plan=Plan::create(['name'=>'Dual currency fixture','group_id'=>1,'transfer_enable'=>100,'month_price'=>3000,'year_price'=>30000,'show'=>1,'renew'=>1,'usd_prices'=>['month_price'=>500,'year_price'=>5000]]);
     // The plan catalog and direct detail must honor the same switching policy as orders.
@@ -296,10 +296,36 @@ try {
     [$r]=$call('me/coupon-claims',['couponId'=>-1],$auth);$assert($r->getStatusCode()===422,'Invalid coupon id accepted');
 
     DB::table('v2_exchange_rate')->where('id',1)->update(['quoted_at'=>time(),'usd_cny_micros'=>8000000]);
+    config(['fastai.commission_distribution_enable'=>1,'fastai.commission_distribution_l1'=>20,
+        'fastai.commission_distribution_l2'=>30,'fastai.commission_distribution_l3'=>50]);
+    [$preferencesResponse, $preferences] = $call('me/preferences/options', null, $auth);
+    $preferences = $preferences['data'] ?? [];
+    $assert($preferencesResponse->getStatusCode()===200 && ($preferences['commissionDistributionEnabled'] ?? null)===false
+        && array_key_exists('commissionLevelOne', $preferences) && $preferences['commissionLevelOne']===null,
+        'Existing clients must see multi-level commission disabled despite historical configuration');
+    $adminInvite = json_decode((new App\Http\Controllers\V1\Admin\ConfigController)->fetch(
+        Illuminate\Http\Request::create('/', 'GET', ['key'=>'invite']))->getContent(), true)['data']['invite'];
+    $assert(!isset($adminInvite['commission_distribution_enable'])
+        && !array_key_exists('commission_distribution_enable', App\Http\Requests\Admin\ConfigSave::allRules()),
+        'Admin configuration can still activate the retired split');
     $user->refresh();$user->commission_type=1;$user->save();$usd->refresh();$usd->invite_user_id=$user->id;$usd->save();
+    $previousInviter = $user->invite_user_id;
+    $user->update(['invite_user_id'=>$usd->id]);
+    $directBuyer = User::create(['email'=>'direct-referral-'.uniqid().'@example.test','password'=>'test',
+        'token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'invite_user_id'=>$user->id]);
+    $directQuote = new Order(['user_id'=>$directBuyer->id,'currency'=>'CNY','total_amount'=>500]);
+    (new OrderService($directQuote))->setInvite($directBuyer);
+    $assert((int)$directQuote->commission_balance===50 && $directQuote->fx_snapshot===null,
+        'A different-currency ancestor must not influence a same-currency direct referral');
+    $user->update(['invite_user_id'=>$previousInviter]);
+    [, $referralsBefore] = $call('me/referrals', null, $auth);
     $commissionOrder=new Order(['user_id'=>$usd->id,'currency'=>'USD','plan_id'=>$plan->id,'type'=>1,'period'=>'month_price','trade_no'=>'commission-'.uniqid(),'total_amount'=>500,'status'=>3]);
     (new OrderService($commissionOrder))->setInvite($usd);$commissionOrder->save();
     $assert((int)$commissionOrder->commission_balance===50 && $commissionOrder->fx_snapshot['usdCnyMicros']===8000000,'Cross-currency commission snapshot');
+    [$referralsResponse, $referrals] = $call('me/referrals', null, $auth);
+    $assert($referralsResponse->getStatusCode()===200
+        && $referrals['data']['pendingCommission']===$referralsBefore['data']['pendingCommission']+400,
+        'Pending commission must show the full direct amount in the inviter currency');
     $commissionBefore=$user->fresh()->commission_balance;
     (new App\Console\Commands\CheckCommission)->payHandle($user->id,$commissionOrder);
     $assert($user->fresh()->commission_balance===$commissionBefore+400,'USD commission was mixed into CNY wallet');

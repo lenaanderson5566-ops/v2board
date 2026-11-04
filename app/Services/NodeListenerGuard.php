@@ -5,6 +5,15 @@ use Illuminate\Support\Facades\DB;
 
 /** Administrative preflight only. A listener belongs to a physical server. */
 final class NodeListenerGuard {
+    public static function assertForwardingPort(int $server, int $port): void {
+        $nodeIds = DB::table('v2_node_ddns')->where('server_id', $server)
+            ->where('node_type', 'v2box')->select('node_id');
+        // Forwarding reserves the whole port, just as when checking a new proxy listener.
+        abort_if(DB::table('v2_server_v2box')->whereIn('id', $nodeIds)
+            ->whereNull('service_id')->where('server_port', $port)->exists(),
+            409, '入口服务器端口已被同服务器的代理服务占用，请更换入口端口');
+    }
+
     private static function transports(string $protocol): array {
         return in_array($protocol,['tuic','hysteria2'],true) ? ['udp'] : ($protocol==='shadowsocks' ? ['tcp','udp'] : ['tcp']);
     }

@@ -28,7 +28,7 @@ final class NodeConnection {
         abort_unless($origin && $origin->purpose==='node' && $origin->server_id,422,'请先为代理服务配置服务器与回源域名');
         abort_unless($origin->enabled && $origin->managed && $origin->status!=='manual',422,'请先启用原节点的自动域名管理，再新增或发布复用线路');
         $entry=empty($draft['entry_id']) ? null : DB::table('v2_node_ddns')->find($draft['entry_id']);
-        abort_if(!empty($draft['entry_id']) && (!$entry || $entry->purpose!=='entry' || !$entry->enabled),422,'请选择有效的入口域名');
+        abort_if(!empty($draft['entry_id']) && (!$entry || $entry->purpose!=='entry' || !$entry->enabled || !$entry->server_id),422,'请选择有效的入口域名');
         abort_if($entry && $entry->server_id===$origin->server_id,422,'入口和代理服务不能使用同一台服务器');
         $tls=(array)$service->tls_settings;
         if ((int)$service->tls===1) abort_unless(!empty($tls['server_name']) && !$service->disable_sni,422,'请先为代理服务设置独立的 TLS 身份域名并启用 SNI');
@@ -55,6 +55,7 @@ final class NodeConnection {
     }
     public static function assertPort(array $plan,int $except=0,string $type='v2box',int $nodeId=0): void {
         if (!$plan['entry_id']) return;
+        NodeListenerGuard::assertForwardingPort($plan['entry_server_id'], $plan['port']);
         $entries=DB::table('v2_node_ddns')->where('server_id',$plan['entry_server_id'])->where('purpose','entry')->pluck('id');
         // Reserve the whole port conservatively; no implicit TCP/UDP or SNI sharing.
         abort_if(DB::table('v2_node_ddns')->whereIn('entry_id',$entries)->where('entry_port',$plan['port'])->exists(),409,'入口服务器端口已被现有线路占用');

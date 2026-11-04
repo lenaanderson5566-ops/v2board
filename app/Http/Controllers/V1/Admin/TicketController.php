@@ -13,11 +13,11 @@ class TicketController extends Controller
 {
     public function fetch(Request $request)
     {
-        if ($request->input('id')) {
-            $ticket = Ticket::where('id', $request->input('id'))
-                ->first();
+        $params = $request->validate(['id' => 'nullable|integer|min:1']);
+        if (isset($params['id'])) {
+            $ticket = Ticket::find($params['id']);
             if (!$ticket) {
-                abort(500, '工单不存在');
+                abort(404, '工单不存在');
             }
             \App\Services\AdminUserIdentity::append(collect([$ticket]));
             $ticket['message'] = TicketMessage::where('ticket_id', $ticket->id)->get();
@@ -57,17 +57,11 @@ class TicketController extends Controller
 
     public function reply(Request $request)
     {
-        $request->validate(['id' => 'required|integer|min:1', 'message' => 'required|string|max:10000']);
-        if (empty($request->input('id'))) {
-            abort(500, '参数错误');
-        }
-        if (empty($request->input('message'))) {
-            abort(500, '消息不能为空');
-        }
+        $params = $request->validate(['id' => 'required|integer|min:1', 'message' => 'required|string|max:10000']);
         $ticketService = new TicketService();
         $ticketService->replyByAdmin(
-            $request->input('id'),
-            $request->input('message'),
+            $params['id'],
+            $params['message'],
             $request->user['id']
         );
         return response([
@@ -77,13 +71,10 @@ class TicketController extends Controller
 
     public function close(Request $request)
     {
-        if (empty($request->input('id'))) {
-            abort(500, '参数错误');
-        }
-        $ticket = Ticket::where('id', $request->input('id'))
-            ->first();
+        $params = $request->validate(['id' => 'required|integer|min:1']);
+        $ticket = Ticket::find($params['id']);
         if (!$ticket) {
-            abort(500, '工单不存在');
+            abort(404, '工单不存在');
         }
         $ticket->status = 1;
         if (!$ticket->save()) {

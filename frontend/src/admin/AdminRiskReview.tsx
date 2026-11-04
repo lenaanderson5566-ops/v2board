@@ -6,6 +6,7 @@ import { ops, request, type Row } from "../shared/api";
 import { Modal } from "../shared/ui";
 import { AdminDetails } from "./admin-section";
 const states: Record<string, string> = { pending: "待处理", confirmed: "已确认", false_positive: "误报", ignored: "已忽略" };
+const requestResults: Record<string, string> = { success: "成功", failed: "失败" };
 const evidence: Record<string, string> = { threshold: "命中阈值", window_seconds: "统计窗口（秒）", failed_count: "失败次数", distinct_ip_count: "不同 IP 数", request_count: "请求次数", subscribe_count: "成功订阅次数", subscribe_threshold: "订阅次数阈值", traffic_growth_bytes: "流量增长（字节）", traffic_growth_threshold_bytes: "流量增长上限（字节）", distinct_client_type_count: "客户端类型数", ip: "命中 IP", ua_hash: "命中 UA 哈希" };
 export function AdminRiskReview({ row }: { row: Row }) {
     const [open, setOpen] = useState(false);
@@ -47,10 +48,25 @@ export function AdminRiskReview({ row }: { row: Row }) {
             <div className="pad">
                 <p>{adminUserLabel(row)}</p><p>{row.rule_name || "历史规则"} · {date(row.hit_at)}</p>
                 <p className="muted">复核仅针对这组中最新一条原始记录（#{row.id}），不封禁用户、不修改其他命中。IP 或客户端类型数量不等于设备数量。</p>
+                {row.scene === "subscribe" && <AdminDetails items={[
+                    { label: "原订阅请求结果", value: requestResults[row.status] || row.status || "—" },
+                    ...(row.reason === "config_check" ? [{ label: "请求类型", value: "配置修订检查" }] : []),
+                    { label: "请求来源 IP", value: row.ip || "—" },
+                    ...(row.payload?.source_log_id != null
+                        ? [{ label: "原订阅日志 ID", value: String(row.payload.source_log_id) }]
+                        : []),
+                ]} />}
                 <RiskEvidence payload={row.payload} />
                 <AdminDetails items={Object.entries(row.payload || {}).filter(([key]) => evidence[key]).map(([key, value]) => ({label: evidence[key], value: String(value)}))} />
                 {!Object.keys(row.payload || {}).some(key => evidence[key]) && <p>此历史记录没有可展示的命中数值。</p>}
                 {row.payload?.review_history?.length > 0 && <details><summary>复核历史</summary>{row.payload.review_history.map((entry: Row, index: number) => <p key={index}>{date(entry.at)} · 管理员 #{entry.admin_id ?? "—"} · {states[entry.state] || entry.state}：{entry.note || "无备注"}</p>)}</details>}
+                {row.scene === "subscribe" && <section aria-label="人工处置入口">
+                    <p className="muted">确认异常并需要拦截时，请到订阅黑名单核对范围后另行添加。共享 IP 可能影响其他账号。</p>
+                    <div className="actions">
+                        <a href="#/access-blacklist" target="_blank" rel="noopener noreferrer">打开订阅 IP 黑名单</a>
+                        <a href="#/access-blacklist-ua" target="_blank" rel="noopener noreferrer">打开订阅 UA 黑名单</a>
+                    </div>
+                </section>}
                 <form className="admin-dialog-form" aria-busy={busy} data-unsaved={dirty ? "true" : undefined} onSubmit={save}>
                     <label>复核状态<select disabled={busy} value={state} onChange={event => setState(event.target.value)}>{Object.entries(states).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></label>
                     <label>备注<textarea disabled={busy} maxLength={1000} value={note} onChange={event => setNote(event.target.value)} /></label>

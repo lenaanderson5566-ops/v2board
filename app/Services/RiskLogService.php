@@ -7,10 +7,12 @@ use App\Models\RiskRuleConfig;
 use App\Models\RiskRuleHit;
 use App\Models\SubscribeLog;
 use App\Services\RiskBlacklistService;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class RiskLogService
 {
+    public const CONFIG_CHECK_REASON = 'config_check';
     private static $ruleConfigMap = null;
     private const MAX_REASON_LENGTH = 190;
 
@@ -84,6 +86,25 @@ class RiskLogService
         $this->evaluateSubscribeRules($log);
     }
 
+    public function recordSubscriptionBlacklistBlock(Request $request, ?string $uaHash): void
+    {
+        DB::transaction(function () use ($request, $uaHash) {
+            // The guard runs before authentication. Record no account, token or raw UA.
+            $log = SubscribeLog::create([
+                'ip' => $request->ip(),
+                'ua_hash' => $uaHash,
+                'status' => 'failed',
+                'reason' => $uaHash === null ? 'subscription_ip_blacklisted' : 'subscription_ua_blacklisted',
+            ]);
+            if ($uaHash !== null) {
+                $rule = $this->getRule('subscribe_ua_hash_blacklist_hit');
+                if ($rule['enabled']) {
+                    $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, ['ua_hash' => $uaHash], 'blocked');
+                }
+            }
+        }, 3);
+    }
+
     public function getRuleDefinitions(): array
     {
         $map = $this->getRuleConfigMap();
@@ -141,29 +162,30 @@ class RiskLogService
                 }
             }
 
+            $download = $log->status === 'success' && $log->reason !== self::CONFIG_CHECK_REASON;
+            $successfulDownloads = SubscribeLog::query()
+                ->where('user_id', $log->user_id)
+                ->where('status', 'success')
+                ->where(fn ($query) => $query->whereNull('reason')->orWhere('reason', '<>', self::CONFIG_CHECK_REASON));
+
             $rule = $this->getRule('subscribe_high_pull_low_traffic_24h');
-            if ($rule['enabled']) {
+            if ($rule['enabled'] && $download) {
                 $windowSeconds = $this->thresholdInt($rule, 'window_seconds', 86400);
                 $subscribeThreshold = $this->thresholdInt($rule, 'subscribe_threshold', 20);
                 $trafficThresholdBytes = $this->thresholdInt($rule, 'traffic_growth_threshold_bytes', 50 * 1024 * 1024);
 
-                $subscribeSuccess = SubscribeLog::query()
-                    ->where('user_id', $log->user_id)
-                    ->where('status', 'success')
+                $subscribeSuccess = (clone $successfulDownloads)
                     ->whereNotNull('traffic_u')
                     ->whereNotNull('traffic_d')
                     ->where('created_at', '>=', $now - $windowSeconds);
 
-                $subscribeCount = (clone $subscribeSuccess)->count();
-                $trafficUsageMax = (clone $subscribeSuccess)
-                    ->selectRaw('MAX(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as traffic_usage')
-                    ->value('traffic_usage');
-                $trafficUsageMin = (clone $subscribeSuccess)
-                    ->selectRaw('MIN(COALESCE(traffic_u, 0) + COALESCE(traffic_d, 0)) as traffic_usage')
-                    ->value('traffic_usage');
-                $trafficGrowth = max((int) $trafficUsageMax - (int) $trafficUsageMin, 0);
+                $snapshot = $subscribeSuccess->toBase()
+                    ->selectRaw('COUNT(*) as request_count, MIN(traffic_u + traffic_d) as minimum_usage, MAX(traffic_u + traffic_d) as maximum_usage')
+                    ->first();
+                $subscribeCount = (int) $snapshot->request_count;
+                $trafficGrowth = max((int) $snapshot->maximum_usage - (int) $snapshot->minimum_usage, 0);
 
-                if ($log->status === 'success' && $subscribeCount >= max(2, $subscribeThreshold) && $trafficGrowth <= $trafficThresholdBytes) {
+                if ($subscribeCount >= max(2, $subscribeThreshold) && $trafficGrowth <= $trafficThresholdBytes) {
                     $this->recordRuleHit('subscribe', $rule['rule_key'], $rule['risk_level'], $log, [
                         'subscribe_threshold' => $subscribeThreshold,
                         'traffic_growth_threshold_bytes' => $trafficThresholdBytes,
@@ -175,13 +197,13 @@ class RiskLogService
             }
 
             $rule = $this->getRule('subscribe_client_type_spread_24h');
-            if ($rule['enabled']) {
+            if ($rule['enabled'] && $download && $log->client_type) {
                 $windowSeconds = $this->thresholdInt($rule, 'window_seconds', 86400);
                 $threshold = $this->thresholdInt($rule, 'threshold', 5);
-                $distinctClientType = SubscribeLog::query()
-                    ->where('user_id', $log->user_id)
+                $distinctClientType = (clone $successfulDownloads)
                     ->where('created_at', '>=', $now - $windowSeconds)
                     ->whereNotNull('client_type')
+                    ->where('client_type', '<>', '')
                     ->distinct('client_type')
                     ->count('client_type');
 
@@ -248,7 +270,7 @@ class RiskLogService
                 'rule_key' => 'subscribe_high_frequency_by_user_10m',
                 'name' => '订阅高频拉取',
                 'risk_level' => 'medium',
-                'description' => '同一用户 10 分钟内订阅拉取次数 >= 20',
+                'description' => '统计同一账号在检测窗口内的订阅请求，包括成功、失败和配置检查。',
                 'thresholds' => [
                     'threshold' => 20,
                     'window_seconds' => 600,
@@ -261,7 +283,7 @@ class RiskLogService
                 'rule_key' => 'subscribe_high_pull_low_traffic_24h',
                 'name' => '高拉取低流量',
                 'risk_level' => 'high',
-                'description' => '同一用户 24 小时内订阅成功次数 >= 20 且上下行总流量增长 <= 50MB',
+                'description' => '比较成功下载次数和同一窗口内的上下行流量变化，排除失败请求和配置检查。',
                 'thresholds' => [
                     'subscribe_threshold' => 20,
                     'traffic_growth_threshold_bytes' => 50 * 1024 * 1024,
@@ -275,7 +297,7 @@ class RiskLogService
                 'rule_key' => 'subscribe_client_type_spread_24h',
                 'name' => '客户端类型扩散',
                 'risk_level' => 'low',
-                'description' => '同一用户 24 小时内订阅客户端类型数量 >= 5',
+                'description' => '统计同一账号在检测窗口内成功下载过订阅的客户端类型，排除失败请求和配置检查。',
                 'thresholds' => [
                     'threshold' => 5,
                     'window_seconds' => 86400,
@@ -314,7 +336,7 @@ class RiskLogService
         return (new RiskBlacklistService())->exists($type, $value);
     }
 
-    private function recordRuleHit(string $scene, string $ruleKey, string $riskLevel, $log, array $payload): void
+    private function recordRuleHit(string $scene, string $ruleKey, string $riskLevel, $log, array $payload, ?string $status = null): void
     {
         $hitAt = (int) ($log->created_at ?? time());
 
@@ -339,9 +361,9 @@ class RiskLogService
             'email' => $log->email,
             'ip' => $log->ip,
             'client_type' => $log->client_type ?? null,
-            'status' => $log->status ?? null,
+            'status' => $status ?? $log->status ?? null,
             'reason' => $this->normalizeReason($log->reason ?? null),
-            'payload' => $payload,
+            'payload' => ['source_log_id' => $log->getKey()] + $payload,
             'hit_at' => $hitAt,
         ]);
     }

@@ -4,6 +4,8 @@ namespace App\Http\Controllers\V1\Admin\Server;
 
 use App\Http\Controllers\Controller;
 use App\Models\ServerV2box;
+use App\Services\Actions\UpdateDefaultNodeLine;
+use App\Services\Actions\UpdateManualNodeAddress;
 use Illuminate\Http\Request;
 use ParagonIE_Sodium_Compat as SodiumCompat;
 use App\Utils\Helper;
@@ -24,7 +26,7 @@ class V2boxController extends Controller
             'host' => 'required',
             'listen_ip' => 'nullable',
             'port' => 'required',
-            'server_port' => 'required',
+            'server_port' => 'required|integer|between:1,65535',
             'protocol' => self::RULES['protocol'],
             'tls' => 'required|in:0,1,2',
             'tls_settings' => 'nullable|array',
@@ -48,7 +50,7 @@ class V2boxController extends Controller
             'region_code' => 'nullable|string|size:2|in:' . implode(',', \App\Services\NodeDisplayService::regionCodes()),
             'city_code' => 'nullable|string|max:64|regex:/^[a-z0-9][a-z0-9-]*$/',
             'display_label' => 'nullable|string|max:64',
-            'rate' => 'required',
+            'rate' => UpdateDefaultNodeLine::RATE_RULE,
             'show' => 'nullable|in:0,1',
             'sort' => 'nullable'
         ], array_filter(self::RULES, fn($key) => !str_contains($key, '.'), ARRAY_FILTER_USE_KEY));
@@ -130,7 +132,9 @@ class V2boxController extends Controller
             }
         }
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
-        $params = $request->validate(self::saveRules(), \App\Services\NodeDisplayService::validationMessages());
+        $rules = self::saveRules();
+        $rules['port'] = [$rules['port'], UpdateManualNodeAddress::validatePort(...)];
+        $params = $request->validate($rules, \App\Services\NodeDisplayService::validationMessages());
         if (!empty($params['tls_settings']['dns_credential_id'])) {
             abort_unless((int)$params['tls']===1,422,'证书 DNS 凭据仅用于普通 TLS');
             $params['tls_settings']=\App\Services\NodeCertificateCredential::normalize($params['tls_settings']);

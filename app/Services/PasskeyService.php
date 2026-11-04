@@ -12,7 +12,7 @@ final class PasskeyService
 {
     public function available(): bool { return Schema::hasTable('v2_passkey') && class_exists(WebAuthn::class); }
     public function enabled(): bool { return (bool)config('fastai.passkey_enable',0) && $this->available(); }
-    public function assertConfigured(): void { $this->origin(); }
+    public function assertConfigured(string $siteUrl): void { $this->origin($siteUrl); }
     public static function encode(string $bytes): string { return rtrim(strtr(base64_encode($bytes),'+/','-_'),'='); }
     public static function decode(string $value): string {
         abort_unless($value!=='' && preg_match('/^[A-Za-z0-9_-]+$/D',$value),422,'Invalid Passkey response.');
@@ -20,19 +20,19 @@ final class PasskeyService
         abort_unless(is_string($bytes) && self::encode($bytes)===$value,422,'Invalid Passkey response.');
         return $bytes;
     }
-    private function origin(): array {
-        $p=parse_url((string)config('fastai.app_url'));
+    private function origin(string $siteUrl): array {
+        $p=parse_url($siteUrl);
         $host=strtolower($p['host'] ?? ''); $scheme=strtolower($p['scheme'] ?? '');
         $local=app()->environment('local') && $host==='localhost' && $scheme==='http';
         abort_unless($p && !isset($p['user']) && !isset($p['pass']) && $host!=='' && (bool)filter_var($host,FILTER_VALIDATE_DOMAIN,FILTER_FLAG_HOSTNAME)
             && !filter_var($host,FILTER_VALIDATE_IP) && ($scheme==='https' || $local),503,'请先配置 HTTPS 站点 URL，再启用 Passkey。');
-        return [$host,\App\Http\Middleware\BrowserOrigins::canonical((string)config('fastai.app_url'))];
+        return [$host,\App\Http\Middleware\BrowserOrigins::canonical($siteUrl)];
     }
     private function browser(Request $request, bool $enabled=true): array {
         abort_unless($enabled ? $this->enabled() : $this->available(),409,'Passkey 当前未开启或尚未安装。');
         $session=$request->attributes->get('browser.session');
         abort_unless(is_array($session) && in_array($session['scope'] ?? '',['user','admin'],true),403,'Passkey 仅支持本站浏览器会话。');
-        [$rp,$origin]=$this->origin();
+        [$rp,$origin]=$this->origin((string)config('fastai.app_url'));
         if (!$request->isMethod('GET')) abort_unless($request->header('Origin')===$origin,403,'Passkey Origin is not allowed.');
         return [$rp,$origin,hash_hmac('sha256',$session['scope'].':'.$session['id'],config('app.key'))];
     }

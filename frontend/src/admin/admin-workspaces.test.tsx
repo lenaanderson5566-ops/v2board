@@ -320,7 +320,7 @@ it("clears the user email draft together with its applied filter chip", async ()
 it("requires a fresh successful mail audience check after a repeated check fails", async () => {
     let rejectPreview!: (error: Error) => void;
     let previews = 0;
-    const audience = { eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 };
+    const audience = { audience_token: "preview-1", eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 };
     api.request.mockImplementation(async (path: string) => {
         if (path.includes("user/fetch")) return { data: [{ id: 7, email: "guest@example.com" }], total: 1 };
         if (path.includes("previewMailAudience")) {
@@ -368,7 +368,7 @@ it("keeps a mail draft when closing is cancelled and prevents dismissing a pendi
     let finishSend!: (response: unknown) => void;
     api.request.mockImplementation(async (path: string) => {
         if (path.includes("user/fetch")) return { data: [{ id: 7, email: "guest@example.com" }], total: 1 };
-        if (path.includes("previewMailAudience")) return { data: { eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 } };
+        if (path.includes("previewMailAudience")) return { data: { audience_token: "preview-1", eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 } };
         if (path.includes("user/sendMail")) return new Promise(resolve => { finishSend = resolve; });
         return { data: [] };
     });
@@ -400,11 +400,56 @@ it("keeps a mail draft when closing is cancelled and prevents dismissing a pendi
         expect(confirm).not.toHaveBeenCalled();
         expect(api.request.mock.calls.filter(([path]) => String(path).includes("user/sendMail"))).toHaveLength(1);
         expect(api.request).toHaveBeenCalledWith("test-admin/user/sendMail", expect.objectContaining({
-            subject: "Service update", content: "Service details", purpose: "service", filter: [], expected_count: 1,
+            subject: "Service update", content: "Service details", purpose: "service", filter: [], expected_count: 1, audience_token: "preview-1",
         }));
         finishSend({ data: {} });
         await waitFor(() => expect(screen.queryByRole("dialog", { name: "发送用户邮件" })).toBeNull());
     } finally { confirm.mockRestore(); }
+});
+it("requires a new audience confirmation after a send conflict and retains the mail draft", async () => {
+    let previews = 0;
+    api.request.mockImplementation(async (path: string, body: { audience_token?: string }) => {
+        if (path.includes("user/fetch")) return { data: [{ id: 7, email: "guest@example.com" }], total: 1 };
+        if (path.includes("previewMailAudience")) {
+            return { data: { audience_token: `preview-${++previews}`, eligible: 1, not_subscribed: 0, suppressed: 0, account_disabled: 0 } };
+        }
+        if (path.includes("user/sendMail") && body.audience_token === "preview-1") {
+            throw Object.assign(new Error("收件范围或发送资格已变化"), { status: 409 });
+        }
+        return { data: [] };
+    });
+    render(<UsersPage />);
+    await screen.findByRole("button", { name: "分配订单" });
+    fireEvent.click(screen.getByText("操作", { selector: "summary" }));
+    const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
+    await waitFor(() => expect(sendMail.disabled).toBe(false));
+    fireEvent.click(sendMail);
+    const dialog = await screen.findByRole("dialog", { name: "发送用户邮件" });
+    const preview = within(dialog).getByRole("button", { name: "检查收件范围" });
+    const confirmation = within(dialog).getByRole("checkbox", { name: "我已确认操作范围和人数" }) as HTMLInputElement;
+    const composer = dialog.querySelector("form.mail-composer")!;
+    fireEvent.change(within(dialog).getByLabelText("邮件主题"), { target: { value: "Service update" } });
+    fireEvent.change(within(dialog).getByLabelText("邮件正文 HTML"), { target: { value: "Service details" } });
+    fireEvent.click(within(dialog).getByRole("checkbox", { name: "English" }));
+    fireEvent.click(preview);
+    await within(dialog).findByText(/预计发送 1 人/);
+    fireEvent.click(confirmation);
+    fireEvent.submit(composer);
+    await within(dialog).findByText("收件范围或发送资格已变化");
+    expect(confirmation.disabled).toBe(true);
+    expect(confirmation.checked).toBe(false);
+    expect(within(dialog).getByDisplayValue("Service update")).toBeTruthy();
+    expect(within(dialog).getByDisplayValue("Service details")).toBeTruthy();
+
+    fireEvent.click(preview);
+    await within(dialog).findByText(/预计发送 1 人/);
+    expect(confirmation.checked).toBe(false);
+    fireEvent.click(confirmation);
+    fireEvent.submit(composer);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "发送用户邮件" })).toBeNull());
+    const sends = api.request.mock.calls.filter(([path]) => String(path).includes("user/sendMail"));
+    expect(sends.map(([, body]) => body.audience_token)).toEqual(["preview-1", "preview-2"]);
+    expect(sends[0][1].request_key).toBe(sends[1][1].request_key);
 });
 it("guards only changed advanced user filters and preserves applied conditions when a draft is discarded", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
@@ -465,6 +510,25 @@ it("ignores a late clipboard failure after a different user action has opened de
     expect(screen.getByRole("dialog")).toBe(dialog);
     expect(screen.queryByLabelText("用户订阅链接")).toBeNull();
 });
+it("offers manual traffic resets only for the user's current active plan", async () => {
+    const { AssignOrder } = await import("./admin-users");
+    const row = { email: "member@example.test", plan_id: 1, expired_at: Math.floor(Date.now() / 1000) + 3600, transfer_enable: 1024 };
+    const plans = [
+        { id: 1, name: "Current", month_price: 1000, reset_price: 200 },
+        { id: 2, name: "Credit", group_id: 2, transfer_enable: 10, onetime_price: 500, reset_price: 100 },
+    ];
+    const view = render(<AssignOrder row={row} plans={plans} loading={false} error="" />);
+    expect(within(screen.getByLabelText("周期")).getByRole("option", { name: "重置流量" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("套餐"), { target: { value: "2" } });
+    const period = within(screen.getByLabelText("周期"));
+    expect(period.queryByRole("option", { name: "重置流量" })).toBeNull();
+    expect(period.getByRole("option", { name: "一次性额度包" })).toBeTruthy();
+    view.unmount();
+
+    render(<AssignOrder row={{ ...row, expired_at: 1 }} plans={plans} loading={false} error="" />);
+    expect(within(screen.getByLabelText("周期")).queryByRole("option", { name: "重置流量" })).toBeNull();
+});
+
 it("searches invitation relationships and submits commission approval through the existing contract", async () => {
     const existingRequest = api.request.getMockImplementation()!;
     api.request.mockImplementation(async (path: string, ...args: unknown[]) => {
@@ -1027,6 +1091,68 @@ it.each(["access-logs", "access-logs-subscriptions", "access-logs-connections", 
     expect(screen.getAllByText(/Asia\/Shanghai/)).toHaveLength(1);
 });
 
+it.each([
+    ["批量封禁", "批量封禁用户", "确认封禁", "ban", "ban"],
+    ["批量删除", "批量删除用户", "确认永久删除", "delete", "allDel"],
+])("requires a fresh user scope before %s", async (open, title, submit, operation, endpoint) => {
+    let previews = 0;
+    const conflict = "受影响用户已变化，请重新检查后确认";
+    api.request.mockImplementation(async (path: string, body: { scope_token?: string }) => {
+        if (path.includes("user/fetch")) return {data:[{id:7,email:"guest@example.com"}],total:1};
+        if (path.endsWith("user/previewBulk")) {
+            return {data:{scope_token:`scope-${++previews}`,total:1,sample:[{id:7,email:"guest@example.com"}]}};
+        }
+        if (path.endsWith(`user/${endpoint}`) && body.scope_token === "scope-1") {
+            throw Object.assign(new Error(conflict), {status:409});
+        }
+        return {data:[]};
+    });
+    render(<UsersPage />);
+    fireEvent.change(screen.getByLabelText("搜索所有用户邮箱"), {target:{value:"guest@example.com"}});
+    fireEvent.submit(screen.getByRole("form", {name:"用户搜索与筛选"}));
+    fireEvent.click(screen.getByText("操作", {selector:"summary"}));
+    const action = screen.getByRole("button", {name:open}) as HTMLButtonElement;
+    await waitFor(() => expect(action.disabled).toBe(false));
+    fireEvent.click(action);
+    const dialog = within(await screen.findByRole("dialog", {name:title}));
+    const confirmation = dialog.getByRole("checkbox", {name:"我已确认操作范围和人数"}) as HTMLInputElement;
+    const confirm = dialog.getByRole("button", {name:submit});
+    expect(confirmation.disabled).toBe(true);
+    fireEvent.click(confirm);
+    expect(api.request.mock.calls.some(([path]) => String(path).endsWith(`user/${endpoint}`))).toBe(false);
+    fireEvent.click(dialog.getByRole("button", {name:"检查受影响用户"}));
+    await dialog.findByText("#7 guest@example.com");
+    fireEvent.click(confirmation);
+    fireEvent.click(confirm);
+    await dialog.findByText(conflict);
+    expect(confirmation.checked).toBe(false);
+    expect(confirmation.disabled).toBe(true);
+    fireEvent.click(dialog.getByRole("button", {name:"检查受影响用户"}));
+    await dialog.findByText("#7 guest@example.com");
+    fireEvent.click(confirmation);
+    fireEvent.click(confirm);
+    await waitFor(() => expect(screen.queryByRole("dialog", {name:title})).toBeNull());
+    expect(api.request).toHaveBeenCalledWith("test-admin/user/previewBulk", expect.objectContaining({operation, expected_count:1}));
+    expect(api.request).toHaveBeenCalledWith(`test-admin/user/${endpoint}`, expect.objectContaining({scope_token:"scope-2"}));
+});
+
+it("submits only the modified account field and its version", async () => {
+    const account = {id:7,email:"guest@example.com",balance:450,u:1073741824,banned:0,is_admin:0,remarks:"old note"};
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("user/getUserInfoById")) return {data:{...account,edit_versions:{remarks:"note-version",balance:"balance-version"}}};
+        if (path.includes("user/fetch")) return {data:[account],total:1};
+        return {data:[]};
+    });
+    render(<UsersPage />);
+    fireEvent.click(await screen.findByRole("button", {name:"编辑"}));
+    const dialog = within(await screen.findByRole("dialog", {name:"编辑 · 用户管理"}));
+    fireEvent.change(dialog.getByLabelText("备注"), {target:{value:"new note"}});
+    fireEvent.click(dialog.getByRole("button", {name:"保存"}));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/user/update", {
+        id:7, remarks:"new note", edit_versions:{remarks:"note-version"},
+    }));
+});
+
 it("removes account generation and CSV export while preserving user management", async () => {
     render(<UsersPage />);
     await waitFor(() => expect((screen.getByRole("button", {name:"刷新"}) as HTMLButtonElement).disabled).toBe(false));
@@ -1236,6 +1362,29 @@ it.each(["email", "browser", "safe", "server", "footer", "app", "invite", "depos
     expect(api.request.mock.calls.some(([path]) => path.includes("plan/fetch") || path.includes("server/group/fetch"))).toBe(false);
 });
 
+it("shows direct referral commission and omits retired multi-level settings from saves", async () => {
+    const { Settings } = await import("./admin-settings");
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("config/fetch")) {
+            return { data: { invite: {
+                invite_commission: 10,
+                commission_distribution_enable: 1,
+                commission_distribution_l1: 80,
+                commission_distribution_l2: 30,
+                commission_distribution_l3: 20,
+            } } };
+        }
+        return { data: {} };
+    });
+    const view = render(<Settings section="invite" />);
+    const rate = await screen.findByRole("spinbutton", { name: /^直推佣金比例/ });
+    expect(screen.getByText("订单按佣金比例计算后，全部应发佣金归直属邀请人。可在用户管理为邀请人单独设置比例。")).toBeTruthy();
+    expect(view.container.querySelector('[data-field^="commission_distribution_"]')).toBeNull();
+    fireEvent.change(rate, { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", { invite_commission: 12 }));
+});
+
 it("locks duplicate destructive resource actions and unlocks after a failure", async () => {
     const { ResourcePage } = await import("./admin");
     let reject!: (error: Error) => void;
@@ -1283,6 +1432,39 @@ it("opens row actions without native popover APIs and supports keyboard dismissa
     fireEvent.click(screen.getByRole("button",{name:"查看详情"}));
     expect(action).toHaveBeenCalledTimes(1);
     expect(trigger.getAttribute("aria-expanded")).toBe("false");
+});
+
+it("rechecks the grant audience after a same-count scope conflict", async () => {
+    const {AdminUsageReset} = await import("./AdminUsageReset");
+    const done = vi.fn();
+    let previews = 0;
+    api.request.mockImplementation(async (path: string, body: { scope_token?: string }) => {
+        if (path.endsWith("/usageResetPreview")) {
+            previews++;
+            return {data:{scope_token:`grant-${previews}`,total:1,sample:[{id:previews,email:`user${previews}@example.com`}]}};
+        }
+        if (body.scope_token === "grant-1") throw Object.assign(new Error("reset_scope_changed"), {code:"reset_scope_changed"});
+        return {data:{affected:1}};
+    });
+    render(<AdminUsageReset count={1} filters={[]} onComplete={done} />);
+    fireEvent.click(screen.getByRole("button", {name:"批量发放储备重置"}));
+    const dialog = within(await screen.findByRole("dialog", {name:"发放储备重置"}));
+    const confirmation = dialog.getByRole("checkbox") as HTMLInputElement;
+    const submit = dialog.getByRole("button", {name:"确认发放"}) as HTMLButtonElement;
+    expect(submit.disabled).toBe(true);
+    fireEvent.click(dialog.getByRole("button", {name:"检查发放对象"}));
+    await dialog.findByText("#1 user1@example.com");
+    fireEvent.click(confirmation);
+    fireEvent.click(submit);
+    await dialog.findByText("受影响用户已变化，请重新检查后确认。");
+    expect(confirmation.checked).toBe(false);
+    expect(submit.disabled).toBe(true);
+    fireEvent.click(dialog.getByRole("button", {name:"检查发放对象"}));
+    await dialog.findByText("#2 user2@example.com");
+    fireEvent.click(confirmation);
+    fireEvent.click(submit);
+    await waitFor(() => expect(done).toHaveBeenCalledTimes(1));
+    expect(api.request).toHaveBeenCalledWith("test-admin/user/usageReset", expect.objectContaining({scope_token:"grant-2",expected_count:1}));
 });
 
 it("keeps a nested row action dialog mounted when the action list closes", async () => {

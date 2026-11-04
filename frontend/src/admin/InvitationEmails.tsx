@@ -169,10 +169,14 @@ export function InvitationEmails() {
                                                     受邀用户 #
                                                     {r.accepted_user_id}
                                                 </a>
-                                                <br />
-                                                <a href="#/invitations?tab=reviews">
-                                                    异常复核
-                                                </a>
+                                                {r.review_id != null && (
+                                                    <>
+                                                        <br />
+                                                        <a href={`#/invitations?tab=reviews&review_id=${encodeURIComponent(String(r.review_id))}`}>
+                                                            异常复核
+                                                        </a>
+                                                    </>
+                                                )}
                                                 <br />
                                                 <a href="#/invitations?tab=commissions">
                                                     佣金审核

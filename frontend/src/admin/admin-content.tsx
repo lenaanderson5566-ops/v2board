@@ -6,6 +6,7 @@ import { admin, query, date, type Row } from "../shared/api";
 import { Modal, State, Html, useData } from "../shared/ui";
 import { ResourcePage, resources } from "./admin";
 import { Tickets } from "../shared/Tickets";
+import { AdminTicketConversation } from "./AdminTicketConversation";
 export function AdminTickets() {
     const paramsFromHash = new URLSearchParams(
         window.location.hash.split("?")[1] || "",
@@ -24,7 +25,7 @@ export function AdminTickets() {
         <Tickets
             key={JSON.stringify({ params, pageSize })}
             isAdmin
-            renderAccount={(row) => <AdminUserActivityLink row={row} />}
+            renderAdminConversation={(props) => <AdminTicketConversation key={props.id} {...props} />}
             queryParams={params}
             pageSize={pageSize}
                 onPageSizeChange={setPageSize}

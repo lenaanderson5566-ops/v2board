@@ -1,4 +1,3 @@
-import { AdminTicketReplyStatus } from "./admin-status";
 import { StatusBadge } from "./StatusBadge";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { boot, request, rows, query, date, type Row } from "./api";
@@ -18,6 +17,14 @@ import {
     unresolvedTicket,
     supportPayload,
 } from "./support-flow";
+
+export type TicketConversationProps = {
+    id: number;
+    detail: ReturnType<typeof useData<Row>>;
+    dismiss: () => void;
+    confirmClose: () => void;
+    reply: (body: Row) => Promise<void>;
+};
 export function Tickets({
     isAdmin = false,
     queryParams = {},
@@ -26,7 +33,7 @@ export function Tickets({
     onPageSizeChange,
     heading,
     adminColumns,
-    renderAccount,
+    renderAdminConversation,
     orderTradeNo,
 }: {
     isAdmin?: boolean;
@@ -36,7 +43,7 @@ export function Tickets({
     onPageSizeChange?: (size:number)=>void;
     heading?: string;
     adminColumns?: [string, string, ((row: Row) => ReactNode)?][];
-    renderAccount?: (row: Row) => ReactNode;
+    renderAdminConversation?: (props: TicketConversationProps) => ReactNode;
     orderTradeNo?: string;
 }) {
     const [page, setPage] = useState(1);
@@ -269,7 +276,20 @@ export function Tickets({
                     />
                 </Modal>
             )}
-            {id && (
+            {id && isAdmin && renderAdminConversation ? renderAdminConversation({
+                id,
+                detail,
+                dismiss: () => setId(null),
+                confirmClose: () => {
+                    setCloseError("");
+                    setCloseTarget(id);
+                },
+                reply: async (body) => {
+                    await request(`${prefix}/ticket/reply`, body);
+                    detail.reload();
+                    d.reload();
+                },
+            }) : id && (
                 <Modal
                     title={detail.data?.subject || tx("工单对话")}
                     close={() => {
@@ -281,7 +301,6 @@ export function Tickets({
                     }}
                 >
                     <State {...detail} retry={detail.reload}>
-                        {isAdmin && detail.data && <div className="pad">{renderAccount?.(detail.data) || <>ID: {detail.data.user_id || "—"} · {detail.data.email || tx("邮箱不可用")}</>}<AdminTicketReplyStatus status={detail.data.status} replyStatus={detail.data.reply_status} /></div>}
                         <div className="messages">
                             {rows(detail.data?.message).map((m) => (
                                 <div

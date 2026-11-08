@@ -20,7 +20,7 @@ class TicketController extends Controller
                 abort(404, '工单不存在');
             }
             \App\Services\AdminUserIdentity::append(collect([$ticket]));
-            $ticket['message'] = TicketMessage::where('ticket_id', $ticket->id)->get();
+            $ticket['message'] = TicketMessage::where('ticket_id', $ticket->id)->orderBy('id')->get();
             for ($i = 0; $i < count($ticket['message']); $i++) {
                 if ($ticket['message'][$i]['user_id'] !== $ticket->user_id) {
                     $ticket['message'][$i]['is_me'] = true;

@@ -626,6 +626,7 @@ CREATE TABLE IF NOT EXISTS `v2_payment_attempt_event` (
   `gateway_code` int NULL,
   `gateway_order` varchar(64) NULL,
   `gateway_actions` varchar(40) NULL,
+  `gateway_response` json NULL,
   `duration_ms` int unsigned NULL,
   `created_at` int unsigned NOT NULL,
   PRIMARY KEY (`id`),

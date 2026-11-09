@@ -2,7 +2,7 @@
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\{Order, Payment, ClientStrategy};
-use App\Services\{PaymentCallbackHistory, ClientStrategyService};
+use App\Services\{PaymentAttemptHistory, PaymentCallbackHistory, ClientStrategyService};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 $n = 0;
@@ -30,6 +30,42 @@ try {
     catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode() === 500, 'Failed verification keeps provider failure response'); }
     $assert(count(PaymentCallbackHistory::forOrder($order)['events']) === 1, 'Forged order reference remains unassociated');
     $assert($order->fresh()->status === 0, 'Diagnostic recording does not settle an order');
+    $payment->update(['payment' => 'MGate']);
+    $attempt = new PaymentAttemptHistory($requestId);
+    $attempt->identify($order, $payment->id);
+    $attempt->sending('https://gateway.example/v1/gateway/fetch');
+    $mgateResponse = (object) ['code' => 1, 'message' => 'Unrecognized error fixture-private-message', 'data' => (object) [
+        'pay_url' => 'javascript:fixture-private-url', 'checkoutUrl' => 'https://gateway.example/pay?secret=fixture-private-link',
+        'tradeNo' => 'fixture-private-order', 'appSecret' => 'fixture-private-secret', 'fixture-private-key' => 'untrusted',
+    ]];
+    $attempt->received((object) ['httpStatusCode' => 200, 'response' => $mgateResponse], 1, null, $mgateResponse->data, 'MGate');
+    $attempt->checkpoint('missing_payment_action');
+    $attempt->finish('failed');
+    $summary = PaymentAttemptHistory::forOrder($order)['events'][0]->gateway_response;
+    $assert($summary['fields']['data.trade_no'] === 'missing' && $summary['fields']['data.pay_url'] === 'invalid_url'
+        && $summary['fields']['data.tradeNo'] === 'string' && $summary['fields']['data.checkoutUrl'] === 'masked' && $summary['codes']['code'] === 1,
+        'MGate diagnostics identify missing fields and unexpected payment URL locations');
+    $assert($summary['other_fields']['data'] === 1 && $summary['fields']['data.appSecret'] === 'masked' && $summary['unrecognized_message']
+        && !str_contains(json_encode($summary), 'fixture-private'), 'Stored diagnostics contain no raw field names, secrets, URLs or unknown messages');
+    $assert(PaymentAttemptHistory::forChannel($payment->id)['events'][0]->gateway_response === $summary,
+        'Same redacted summary is available in channel failure diagnostics');
+
+    $epayResponse = '{"msg":"Stats pid is null: fixture-private-pid","sign":"fixture-private-sign","payurl":""}';
+    $epay = Payment::create(['name'=>'Diagnostic EPay', 'payment'=>'EPayQrcode', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>[]]);
+    $attempt = new PaymentAttemptHistory($requestId);
+    $attempt->identify($order, $epay->id);
+    $attempt->sending('https://gateway.example/mapi.php');
+    $attempt->received((object) ['httpStatusCode' => 200, 'response' => $epayResponse], null, null, json_decode($epayResponse), 'EPayQrcode');
+    $attempt->finish('failed');
+    $summary = PaymentAttemptHistory::forChannel($epay->id)['events'][0]->gateway_response;
+    $assert($summary['format'] === 'object' && $summary['fields']['code'] === 'missing'
+        && $summary['fields']['payurl'] === 'empty' && $summary['fields']['sign'] === 'masked'
+        && $summary['messages'] === ['商户 PID 缺失'] && !str_contains(json_encode($summary), 'fixture-private'),
+        'EPay diagnostics recognize a JSON string with no code and map the error to a safe label');
+    $markup = App\Services\PaymentGatewayResponse::summarize('<html>fixture-private-html</html>', 'EPayQrcode');
+    $assert($markup['format'] === 'markup' && $markup['fields']['code'] === 'missing' && !str_contains(json_encode($markup), 'fixture-private'),
+        'HTML responses are identifiable without retaining their contents');
+    $payment->update(['payment' => 'PaytaroQR']);
     ClientStrategy::updateOrCreate(['client_type'=>'fastai'], ['client_name'=>'FastAI', 'is_enabled'=>1, 'min_version'=>'v1.3.0']);
     config(['fastai.fastai_releases'=>[['platform'=>'windows', 'architecture'=>'x64', 'minimumVersion'=>'1.2.0', 'latestVersion'=>'1.2.5']]]);
     $row = (new ClientStrategyService())->getStrategies()->firstWhere('client_type', 'fastai');

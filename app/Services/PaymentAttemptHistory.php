@@ -62,7 +62,7 @@ final class PaymentAttemptHistory
         }
     }
 
-    public function received(object $curl, mixed $code, mixed $gatewayOrder, mixed $actions): void
+    public function received(object $curl, mixed $code, mixed $gatewayOrder, mixed $actions, ?string $provider = null): void
     {
         if ($this->startedAt !== null) $this->gateway['duration_ms'] = (int) ((hrtime(true) - $this->startedAt) / 1000000);
         $status = (int) ($curl->httpStatusCode ?? 0);
@@ -70,8 +70,11 @@ final class PaymentAttemptHistory
         if ((is_int($code) || is_string($code)) && preg_match('/\A-?[0-9]{1,9}\z/D', (string) $code)) {
             $this->gateway['gateway_code'] = (int) $code;
         }
-        if ((is_int($gatewayOrder) || is_string($gatewayOrder)) && preg_match('/\A[a-zA-Z0-9_-]{1,64}\z/D', (string) $gatewayOrder)) {
+        if ($provider === null && (is_int($gatewayOrder) || is_string($gatewayOrder)) && preg_match('/\A[a-zA-Z0-9_-]{1,64}\z/D', (string) $gatewayOrder)) {
             $this->gateway['gateway_order'] = (string) $gatewayOrder;
+        }
+        if ($provider !== null) {
+            $this->gateway['gateway_response'] = json_encode(PaymentGatewayResponse::summarize($curl->response ?? null, $provider), JSON_UNESCAPED_UNICODE);
         }
         $fields = [];
         foreach (['qrcode', 'urlscheme', 'payurl', 'pay_url'] as $field) {
@@ -94,7 +97,9 @@ final class PaymentAttemptHistory
 
         try {
             $provider = $this->paymentId ? Payment::whereKey($this->paymentId)->value('payment') : null;
-            DB::table(self::TABLE)->insert($this->gateway + [
+            $gateway = $this->gateway;
+            if (isset($gateway['gateway_response']) && !Schema::hasColumn(self::TABLE, 'gateway_response')) unset($gateway['gateway_response']);
+            DB::table(self::TABLE)->insert($gateway + [
                 'order_id' => $this->orderId,
                 'payment_id' => $provider === null ? null : $this->paymentId,
                 'provider' => $provider,
@@ -135,11 +140,11 @@ final class PaymentAttemptHistory
 
         return [
             'available' => true,
-            'events' => DB::table(self::TABLE)->where('order_id', $order->id)
-                ->orderByDesc('created_at')->orderByDesc('id')->limit(20)->get([
+            'events' => self::events(DB::table(self::TABLE)->where('order_id', $order->id)
+                ->orderByDesc('created_at')->orderByDesc('id')->limit(20), [
                     'id', 'provider', 'payment_id', 'stage', 'result', 'reason', 'request_id', 'previous_request_id',
                     'gateway_host', 'gateway_http_status', 'gateway_code', 'gateway_order', 'gateway_actions', 'duration_ms', 'created_at',
-                ]),
+                ], 'gateway_response'),
         ];
     }
 
@@ -157,12 +162,21 @@ final class PaymentAttemptHistory
 
         return [
             'available' => true,
-            'events' => self::failures()->where('event.payment_id', $id)
+            'events' => self::events(self::failures()->where('event.payment_id', $id)
                 ->leftJoin('v2_order as orders', 'orders.id', '=', 'event.order_id')
-                ->orderByDesc('event.created_at')->orderByDesc('event.id')->limit(20)->get([
-                    'event.id', 'event.stage', 'event.result', 'event.reason', 'event.request_id', 'event.created_at', 'orders.trade_no',
-                ]),
+                ->orderByDesc('event.created_at')->orderByDesc('event.id')->limit(20), [
+                    'event.id', 'event.provider', 'event.stage', 'event.result', 'event.reason', 'event.request_id', 'event.created_at', 'orders.trade_no',
+                    'event.gateway_host', 'event.gateway_http_status', 'event.gateway_code', 'event.gateway_order', 'event.gateway_actions', 'event.duration_ms',
+                ], 'event.gateway_response'),
         ];
+    }
+
+    private static function events(\Illuminate\Database\Query\Builder $query, array $columns, string $responseColumn): \Illuminate\Support\Collection
+    {
+        if (Schema::hasColumn(self::TABLE, 'gateway_response')) $columns[] = $responseColumn;
+        return $query->get($columns)->each(function ($event) {
+            $event->gateway_response = json_decode($event->gateway_response ?? 'null', true);
+        });
     }
 
     private static function failures(): \Illuminate\Database\Query\Builder

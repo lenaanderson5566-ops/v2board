@@ -79,7 +79,7 @@ class MGate
             $diagnostic?->sending($endpoint);
             $curl->post($endpoint, http_build_query($params));
             $result = $curl->response;
-            $diagnostic?->received($curl, $result->code ?? null, $result->data->trade_no ?? null, $result->data ?? null);
+            $diagnostic?->received($curl, $result->code ?? null, null, $result->data ?? null, 'MGate');
             if (!$result) abort(500, 'MGate：网络异常');
             if ($curl->error) {
                 $message = is_object($result) && isset($result->message) && is_string($result->message) ? $result->message : '接口请求失败';

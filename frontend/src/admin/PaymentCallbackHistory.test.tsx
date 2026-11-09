@@ -52,3 +52,17 @@ it("links a channel failure to the matching order search", () => {
     expect(screen.getByRole("link", { name: "fixture-order" }).getAttribute("href")).toBe("#/orders?trade_no=fixture-order");
     expect(screen.getByText("商户凭证缺失，请核对渠道配置")).toBeTruthy();
 });
+
+it("shows redacted gateway fields and the error summary from a channel failure", () => {
+    render(<PaymentChannelFailures history={{ available: true, events: [{
+        id: 1, stage: "gateway", result: "failed", trade_no: "fixture-order", created_at: 1791849600,
+        gateway_http_status: 200, gateway_response: { format: "object", fields: { code: "number", "data.trade_no": "missing", "data.pay_url": "masked" },
+            codes: { code: 1 }, messages: ["商户 PID 缺失"], unrecognized_message: true, other_fields: { data: 1 } },
+    }] }} />);
+    screen.getByText("查看脱敏响应").click();
+    expect(screen.getByText("网关提示：商户 PID 缺失")).toBeTruthy();
+    expect(screen.getByText("data.trade_no").parentElement?.textContent).toContain("缺失");
+    expect(screen.getByText("data.pay_url").parentElement?.textContent).toContain("已遮蔽");
+    expect(screen.getByText("code").parentElement?.textContent).toContain("数值 · 1");
+    expect(screen.getByText("网关返回了未识别的提示，原文已遮蔽。")).toBeTruthy();
+});

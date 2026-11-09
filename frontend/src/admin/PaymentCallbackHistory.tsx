@@ -74,14 +74,45 @@ const columns: [string, string, ((row: Row) => React.ReactNode)?][] = [
     ],
 ];
 
-const gatewayColumn: (typeof columns)[number] = ["gateway_host", "网关信息", (r) => [
-    r.gateway_host,
-    r.gateway_http_status ? `HTTP ${r.gateway_http_status}` : null,
-    r.gateway_code != null ? `网关码 ${r.gateway_code}` : null,
-    r.gateway_order ? `网关单号 ${r.gateway_order}` : null,
-    r.gateway_actions ? `返回字段 ${r.gateway_actions}` : null,
-    r.duration_ms != null ? `${r.duration_ms} ms` : null,
-].filter(Boolean).join(" · ") || "—"];
+const responseTypes: Record<string, string> = {
+    object: "对象", array: "数组", string: "字符串", number: "数值", boolean: "布尔值",
+    null: "空值", empty: "空字符串", markup: "HTML 或 XML", missing: "缺失",
+    masked: "已遮蔽", invalid_url: "链接无效，已遮蔽",
+};
+
+function GatewayResponse({ response, provider }: { response: Row; provider?: string }) {
+    const format = responseTypes[response.format] || "未知";
+    return <details>
+        <summary>查看脱敏响应</summary>
+        <p>响应类型：{format}</p>
+        {response.messages?.length > 0 && <p>网关提示：{response.messages.join("、")}</p>}
+        {response.unrecognized_message && <p>网关返回了未识别的提示，原文已遮蔽。</p>}
+        {provider === "EPayQrcode" && <p>易支付下单成功时，三个支付入口字段中有一个可用即可。</p>}
+        <ul>
+            {Object.entries(response.fields ?? {}).map(([field, kind]) => (
+                <li key={field}>
+                    <code>{field}</code> · {responseTypes[String(kind)] || "未知"}
+                    {response.codes?.[field] != null && <> · {response.codes[field]}</>}
+                </li>
+            ))}
+            {Object.entries(response.other_fields ?? {}).map(([path, count]) => (
+                <li key={path}>{path === "$" ? "根对象" : <code>{path}</code>} · {String(count)} 个其他字段已隐藏</li>
+            ))}
+        </ul>
+    </details>;
+}
+
+const gatewayColumn: (typeof columns)[number] = ["gateway_host", "网关信息", (r) => <>
+    {[
+        r.gateway_host,
+        r.gateway_http_status ? `HTTP ${r.gateway_http_status}` : null,
+        r.gateway_code != null ? `网关码 ${r.gateway_code}` : null,
+        r.gateway_order ? `网关单号 ${r.gateway_order}` : null,
+        r.gateway_actions ? `返回字段 ${r.gateway_actions}` : null,
+        r.duration_ms != null ? `${r.duration_ms} ms` : null,
+    ].filter(Boolean).join(" · ") || "—"}
+    {r.gateway_response && <GatewayResponse response={r.gateway_response} provider={r.provider} />}
+</>];
 
 export function PaymentCallbackHistory({ history, attempts, paidAt }: { history?: Row; attempts?: Row; paidAt?: number }) {
     const attemptEvents: Row[] = attempts?.events || [];
@@ -100,7 +131,7 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: { history?
             {paidAt ? <p><strong>站点已记录付款</strong> · {date(paidAt)}</p> : null}
             {latest && <p><strong>最近进展</strong> · {diagnosis(latest)}{origin && <> · 前一笔：{diagnosis(origin)}</>}</p>}
             <p className="muted">
-                各显示最近 20 条发起和回调记录。跳转链接或二维码由网关返回，到账以订单状态及支付时间为准。
+                各显示最近 20 条发起和回调记录。脱敏响应仅记录功能上线后的下单请求，到账以订单状态及支付时间为准。
             </p>
             {timeline.length > 0 && <Table data={timeline} columns={[...columns, gatewayColumn]} />}
             {!attempts?.available ? <p className="muted">支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>
@@ -132,6 +163,7 @@ export function PaymentChannelFailures({ history }: { history: Row }) {
         <Table data={history.events} columns={[
             ["trade_no", "订单号", (r) => r.trade_no ? <a href={`#/orders?trade_no=${encodeURIComponent(r.trade_no)}`}>{r.trade_no}</a> : "—"],
             ...columns.filter(([key]) => key !== "provider" && key !== "result"),
+            gatewayColumn,
         ]} />
     </>;
 }

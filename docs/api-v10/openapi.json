@@ -4412,7 +4412,7 @@
         ],
         "x-permission": "user",
         "x-legacy-path": "/api/v1/user/order/checkout",
-        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow. With requestKey, duplicate attempts replay results or resume status checks without reissuing provider requests. Provided expected amounts are checked for same-currency payments too. Calls without requestKey also participate in the in-flight guard using a server-generated key. A stable client key is required to replay a specific result. A provider pending result blocks another attempt even with a fresh key.",
+        "description": "Requires an active session. Order and ticket identifiers are checked against the authenticated owner. Unauthenticated: 401; banned account: 403. Historical orders with negative totals are rejected with 409; zero totals use the free checkout flow. With requestKey, duplicate attempts replay results or resume status checks without reissuing provider requests. Provided expected amounts are checked for same-currency payments too. Calls without requestKey also participate in the in-flight guard using a server-generated key. A stable client key is required to replay a specific result. After the user confirms switching channels, switchFromPaymentMethodId identifies the previously selected channel. It allows a different channel after a completed attempt with an unknown result. Active requests and provider pending results still block another attempt.",
         "requestBody": {
           "required": true,
           "content": {
@@ -13090,6 +13090,10 @@
           "requestKey": {
             "type": "string",
             "format": "uuid"
+          },
+          "switchFromPaymentMethodId": {
+            "type": "integer",
+            "minimum": 1
           }
         },
         "required": [

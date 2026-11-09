@@ -156,6 +156,7 @@ export function PaymentCheckout({
         initialPayment?.requestKey || crypto.randomUUID(),
     );
     const keyedMethod = useRef(initialPayment?.methodId);
+    const restartFromMethod = useRef<number | undefined>(undefined);
     const refresh = useRef(reload);
     refresh.current = reload;
     const serverPayment = JSON.stringify([
@@ -344,6 +345,7 @@ export function PaymentCheckout({
         setQr("");
         setPaymentLink("");
         try {
+            const previousMethod = restartFromMethod.current;
             const result = await request(
                 "user/order/checkout",
                 {
@@ -356,6 +358,9 @@ export function PaymentCheckout({
                         (item) => Number(item.id) === id,
                     )?.quoted_currency,
                     ...(token ? { token } : {}),
+                    ...(previousMethod && previousMethod !== id && id > 0
+                        ? { switch_from_payment_method: previousMethod }
+                        : {}),
                     ...(paymentKey.current
                         ? { payment_request_key: paymentKey.current }
                         : {}),
@@ -363,6 +368,7 @@ export function PaymentCheckout({
                 { timeoutMs: 45000 },
             );
             if (!mounted.current) return;
+            restartFromMethod.current = undefined;
             setIssuedFee(
                 Number(
                     methods.data?.find((item) => Number(item.id) === id)
@@ -418,7 +424,10 @@ export function PaymentCheckout({
                 code?: string;
                 status?: number;
             };
-            if (failure.status === 409) methods.reload();
+            if (failure.status === 409) {
+                methods.reload();
+                if (restartFromMethod.current) reload();
+            }
             if (
                 ["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(
                     failure.code || "",
@@ -520,10 +529,13 @@ export function PaymentCheckout({
         setBusy(true);
         setError("");
         try {
-            const result = await request<number>(
-                query("user/order/check", { trade_no: order.trade_no }),
+            const result = await request<Row>(
+                query("user/order/detail", { trade_no: order.trade_no }),
             );
-            if (Number(result.data) === 0) {
+            if (Number(result.data?.status) === 0) {
+                autoStarted.current = true;
+                restartFromMethod.current = Number(result.data.payment_id) || undefined;
+                if (restartFromMethod.current) setSelected(restartFromMethod.current);
                 setWaiting(false);
                 setQr("");
                 setPaymentLink("");

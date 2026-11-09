@@ -146,8 +146,8 @@ it('maps coupon wallet selection and confirmed cross-currency payment amounts',(
  expect(JSON.parse(v10Request('user/coupon/claim',{coupon_id:2}).body!)).toEqual({couponId:2});
  const methods=v10Request('user/order/getPaymentMethod?trade_no=old-order');expect(methods.url).toContain('orderNumber=old-order');
  expect(methods.decode({data:[{id:1,currency:'CNY',quotedAmount:3625,quotedCurrency:'CNY',quotedFee:0}]}).data[0]).toMatchObject({quoted_amount:3625,quoted_currency:'CNY',quoted_fee:0});
- const pay=v10Request('user/order/checkout',{trade_no:'old-order',method:1,expected_payment_amount:3625,expected_payment_currency:'CNY'});
- expect(JSON.parse(pay.body!)).toMatchObject({expectedPaymentAmount:3625,expectedPaymentCurrency:'CNY'});
+ const pay=v10Request('user/order/checkout',{trade_no:'old-order',method:1,expected_payment_amount:3625,expected_payment_currency:'CNY',switch_from_payment_method:2});
+ expect(JSON.parse(pay.body!)).toMatchObject({expectedPaymentAmount:3625,expectedPaymentCurrency:'CNY',switchFromPaymentMethodId:2});
 });
 
 it("rejects retired coupon code calls instead of silently placing undiscounted orders", () => {

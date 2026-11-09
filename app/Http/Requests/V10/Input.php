@@ -47,7 +47,7 @@ final class Input
             'orderNumber'=>'string|max:64','expectedPaymentAmount'=>'integer|min:1|max:1000000000','expectedPaymentCurrency'=>'in:CNY,USD',
             'createdFrom'=>'string|date|regex:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/D',
             'createdBefore'=>'string|date|regex:/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?Z$/D',
-            'paymentMethodId'=>'integer|min:0','paymentToken'=>'string|max:1024','depositAmount'=>'integer|min:1|max:9999998',
+            'paymentMethodId'=>'integer|min:0','switchFromPaymentMethodId'=>'integer|min:1','paymentToken'=>'string|max:1024','depositAmount'=>'integer|min:1|max:9999998',
             'walletCouponId'=>'integer|min:1','couponId'=>'integer|min:1',
             'code'=>'string|max:128','giftCardCode'=>'string|max:128',
             'amount'=>'integer|min:1','autoRenewal'=>'boolean','expiryReminders'=>'boolean','trafficReminders'=>'boolean','announcementEmails'=>'boolean','serviceNotifications'=>'boolean',

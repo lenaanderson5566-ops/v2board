@@ -420,7 +420,9 @@ it("keeps payment status checking available if a previous payment method was rem
     );
 });
 it("uses the fee locked in an issued order even when provider settings change", async () => {
-    mocks.request.mockResolvedValue({ data: 0 });
+    mocks.request.mockImplementation(async (path: string) => ({
+        data: path.startsWith("user/order/detail") ? { status: 0, payment_id: 1 } : 0,
+    }));
     checkout({ payment_id: 1, handling_amount: 75 });
     expect(screen.getByText("¥10.75")).toBeTruthy();
     expect(

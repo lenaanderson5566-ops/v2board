@@ -117,6 +117,29 @@ try {
      && $timeout?->stage === 'gateway' && $timeout?->reason === 'gateway_timeout', 'Retry links to the original gateway timeout');
  $assert($timeout->gateway_host === 'pay.example.test' && $timeout->gateway_code === null
      && !str_contains($diagnostics->toJson(), 'fixture-secret'), 'Diagnostics retain the host and omit secrets and raw gateway values');
+ $switchRequest = clone $payRequest;
+ $switchRequest->merge(['method' => $channel->id + 1, 'payment_request_key' => Str::uuid()->toString()]);
+ try { App\Services\CheckoutPayment::once($switchRequest, $provider); throw new RuntimeException('Unconfirmed switch accepted'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 1, 'A different channel without explicit confirmation remains blocked'); }
+
+ $existing = $createdOrder->fresh();
+ $existing->payment_id = $channel->id;
+ $snapshot = $existing->payment_snapshot;
+ $oldKey = $uncertainRequest->input('payment_request_key');
+ unset($snapshot['payment_attempts'][$oldKey]['provider_failed']); // Earlier releases only recorded the failure in diagnostics.
+ $existing->payment_snapshot = $snapshot;
+ $existing->save();
+ $switchRequest->merge(['switch_from_payment_method' => $channel->id]);
+ $switchResult = App\Services\CheckoutPayment::once($switchRequest, function () use ($createdOrder, $switchRequest, $provider) {
+     $createdOrder->fresh()->update(['payment_id' => $switchRequest->input('method')]);
+     return $provider();
+ });
+ $switchReplay = App\Services\CheckoutPayment::once($switchRequest, $provider);
+ $assert($calls === 2 && json_decode($switchResult->getContent(), true) == json_decode($switchReplay->getContent(), true),
+     'Confirmed switch after a recorded legacy gateway failure is issued once');
+ try { App\Services\CheckoutPayment::once($payRequest, $provider); throw new RuntimeException('Old channel payment entry replayed'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Old request key cannot reopen a payment entry after switching'); }
+
  $payRequest->merge(['method'=>$channel->id+1]);
  try {App\Services\CheckoutPayment::once($payRequest,$provider);throw new RuntimeException('Different payment method accepted');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Payment request key is bound to channel and expected quote');}
 
@@ -125,6 +148,22 @@ try {
  App\Services\CheckoutPayment::once($pendingRequest,fn()=>response(['type'=>2,'data'=>true]));
  $pendingRequest->merge(['payment_request_key'=>(string)Str::uuid()]);
  try {App\Services\CheckoutPayment::once($pendingRequest,fn()=>response(['type'=>2,'data'=>true]));throw new RuntimeException('New key bypassed pending provider result');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Provider pending result blocks another payment attempt with a fresh key');}
+ $pendingOrder->update(['payment_id' => $channel->id]);
+ $pendingRequest->merge(['method' => $channel->id + 1, 'switch_from_payment_method' => $channel->id]);
+ try { App\Services\CheckoutPayment::once($pendingRequest, $provider); throw new RuntimeException('Switch bypassed pending provider result'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Explicit switching does not bypass a provider still processing payment'); }
+
+ $pendingOrder->update(['payment_snapshot' => ['payment_attempts' => ['active' => ['method' => $channel->id, 'state' => 'started']]]]);
+ try { App\Services\CheckoutPayment::once($pendingRequest, $provider); throw new RuntimeException('Switch raced a live provider request'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'A request that has not reported a result cannot be superseded'); }
+
+ $pendingOrder->update(['payment_snapshot' => ['payment_attempts' => ['previous' => ['method' => $channel->id, 'state' => 'started', 'provider_failed' => true]]]]);
+ $paidWhileSwitching = App\Services\CheckoutPayment::once($pendingRequest, function () use ($pendingOrder) {
+     (new OrderService($pendingOrder))->paid('original-channel-callback');
+     return response(['type' => 0, 'data' => 'https://pay.example.test/new-channel']);
+ });
+ $assert(json_decode($paidWhileSwitching->getContent(), true)['type'] === 2 && $pendingOrder->fresh()->callback_no === 'original-channel-callback',
+     'Old channel settlement prevents returning the new channel payment entry');
 
  $epay=App\Models\Payment::create(['name'=>'WeChat fixture','payment'=>'EPayQrcode','uuid'=>App\Utils\Helper::guid(),
      'enable'=>1,'config'=>['pid'=>'fixture','key'=>'fixture','url'=>'https://pay.example.test']]);

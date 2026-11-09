@@ -469,12 +469,22 @@ try {
     $assert(!collect($j['data'])->firstWhere('id',$payment->id),'Disabled crypto channels are absent');
     $payment->enable=1; $payment->save();
     $order=Order::create(['user_id'=>$user->id,'plan_id'=>$plan->id,'period'=>'month_price','trade_no'=>'v10-'.Str::random(16),'total_amount'=>1000,'status'=>0,'type'=>1]);
+    $oldChannel = App\Models\Payment::create(['uuid'=>Str::random(16),'payment'=>'V10TestPayment','name'=>'Previous local test provider','config'=>[],'enable'=>1]);
+    $order->payment_id = $oldChannel->id;
+    $order->payment_snapshot = ['payment_attempts' => ['earlier' => ['method'=>$oldChannel->id, 'state'=>'started', 'provider_failed'=>true]]];
+    App\Services\OrderPaymentHistory::select($order, $oldChannel);
     $payment->handling_fee_percent=2; $payment->handling_fee_fixed=30; $payment->save();
-    [$r,$j]=$call('POST','/api/v10/me/orders/'.$order->trade_no.'/payments',['paymentMethodId'=>$payment->id,'paymentToken'=>'test-card-token'],$bearer);
+    $paymentPath = '/api/v10/me/orders/'.$order->trade_no.'/payments';
+    [$unconfirmed] = $call('POST', $paymentPath, ['paymentMethodId'=>$payment->id], $bearer);
+    [$invalidSwitch] = $call('POST', $paymentPath, ['paymentMethodId'=>$payment->id, 'switchFromPaymentMethodId'=>0], $bearer);
+    $assert($unconfirmed->getStatusCode() === 409 && $invalidSwitch->getStatusCode() === 422, 'Channel switch requires explicit confirmation and a valid previous channel');
+    [$r,$j]=$call('POST',$paymentPath,['paymentMethodId'=>$payment->id,'paymentToken'=>'test-card-token',
+        'switchFromPaymentMethodId'=>$oldChannel->id,'requestKey'=>Str::uuid()->toString()],$bearer);
     $assert($r->getStatusCode()===200 && $j['data']['kind']==='redirect','Checkout redirect contract '.json_encode($j));
     $assert((int)App\Payments\V10TestPayment::$lastOrder['total_amount']===1050 && App\Payments\V10TestPayment::$lastOrder['stripe_token']==='test-card-token','Checkout fee and payment token reach provider');
     $assert(parse_url(App\Payments\V10TestPayment::$lastOrder['return_url'],PHP_URL_FRAGMENT)==='/plan/'.$plan->id.'?order='.rawurlencode($order->trade_no),'Checkout passes owned subscription context for an in-place gateway return');
     $assert($order->fresh()->payment_id===$payment->id && $order->fresh()->handling_amount===50 && $order->fresh()->status===0,'Checkout persists fee without prematurely activating');
+    $assert(isset($order->fresh()->payment_snapshot['channels'][$oldChannel->id]), 'Switching preserves the prior gateway quote for late callbacks');
     $notifyBody=['signature'=>'local-test-signature','orderNumber'=>$order->trade_no,'amount'=>1050,'currency'=>'CNY'];
     [$bad,$problem]=$call('POST','/api/v10/webhooks/payments/MGate/'.$payment->uuid,$notifyBody);
     $assert($bad->getStatusCode()>=400 && $order->fresh()->status===0,'Callback cannot choose a different provider for channel');

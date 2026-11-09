@@ -170,7 +170,7 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
                 ? Promise.reject(
                       Object.assign(new Error("Load failed"), { code }),
                   )
-                : Promise.resolve({ data: 0 }),
+                : Promise.resolve({ data: path === "user/order/detail" ? { status: 0, payment_id: 1 } : 0 }),
         );
         const reload = vi.fn();
         renderCheckout({ trade_no: "uncertain" }, reload);
@@ -212,6 +212,30 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
         expect(screen.getByRole("button", { name: "确认支付" })).toBeTruthy();
     },
 );
+
+it("sends the old channel only when the user confirms restarting and selects a different channel", async () => {
+    mock.methods = [originalMethods[0], { id: 11, name: "WeChat Pay", handling_fee_fixed: 0 } as any];
+    mock.request.mockImplementation(async (path: string) => {
+        if (path === "user/order/checkout") return { type: 0, data: "new-channel-qr" };
+        if (path === "user/order/detail") return { data: { status: 0, payment_id: 1 } };
+        return { data: 0 };
+    });
+    renderCheckout({ trade_no: "switch-order", payment_id: 3 });
+
+    fireEvent.click(await screen.findByRole("button", { name: "重新发起支付" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "重新发起支付" }).at(-1)!);
+    const pay = await screen.findByRole("button", { name: "确认支付" });
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(0);
+    expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true);
+
+    fireEvent.click(screen.getByRole("radio", { name: "WeChat Pay" }));
+    fireEvent.click(pay);
+    await waitFor(() => expect(mock.request).toHaveBeenCalledWith(
+        "user/order/checkout",
+        expect.objectContaining({ method: 11, switch_from_payment_method: 1, payment_request_key: expect.any(String) }),
+        { timeoutMs: 45000 },
+    ));
+});
 
 it("shows the converted payment amount and confirms it without relabelling the USD order", async () => {
     const old = mock.methods;

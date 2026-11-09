@@ -121,6 +121,14 @@ final class PaymentAttemptHistory
         return is_string($value) && Str::isUuid($value) ? $value : null;
     }
 
+    public static function hasFailed(Order $order, array $attempt): bool
+    {
+        $requestId = self::uuid($attempt['request_id'] ?? null);
+        return $requestId !== null && Schema::hasTable(self::TABLE)
+            && DB::table(self::TABLE)->where('order_id', $order->id)->where('request_id', $requestId)
+                ->where('result', 'failed')->whereIn('stage', ['provider', 'gateway'])->exists();
+    }
+
     public static function forOrder(Order $order): array
     {
         if (!Schema::hasTable(self::TABLE)) return ['available' => false, 'events' => []];

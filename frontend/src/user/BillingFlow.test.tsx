@@ -428,10 +428,10 @@ it("uses the fee locked in an issued order even when provider settings change", 
     expect(
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
     ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "重新发起支付" }));
+    fireEvent.click(screen.getByRole("button", { name: "reselectPayment{}" }));
     fireEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
-            name: "重新发起支付",
+            name: "继续",
         }),
     );
     expect(await screen.findByText("¥10.50")).toBeTruthy();

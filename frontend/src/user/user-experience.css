@@ -1470,6 +1470,7 @@ body:has(.browser-notice) #custom-footer {
     .checkout-processing .checkout-details-toggle { display: none; }
     .checkout-payment { padding: 0; }
     .checkout-confirm { position: fixed; inset-inline: 0; bottom: 0; z-index: 35; margin: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: var(--surface); border-top: 1px solid var(--border); }
+    .checkout-confirm.checkout-confirm-in-flow { position: static; margin-top: 16px; padding: 0; border-top: 0; background: transparent; }
     .checkout-page:has(input:focus:not([type="radio"]):not([type="checkbox"])) .checkout-confirm { position: static; padding: 12px 0; border-top: 0; }
     .checkout-page .purchase-steps { margin-bottom: 20px; }
 }

@@ -85,7 +85,6 @@ export function PaymentCheckout({
         [error, setError] = useState(""),
         [qr, setQr] = useState("");
     const [paymentLink, setPaymentLink] = useState("");
-    const [qrVisible, setQrVisible] = useState(true);
     const [copied, setCopied] = useState(false);
     const [copyError, setCopyError] = useState("");
     const [smallScreen, setSmallScreen] = useState(
@@ -104,9 +103,7 @@ export function PaymentCheckout({
     const paymentActionPanel = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (
-            !embedded ||
             !qr ||
-            !qrVisible ||
             !qrPanel.current ||
             qrPanel.current.closest("details:not([open])")
         )
@@ -124,7 +121,7 @@ export function PaymentCheckout({
                 ? "instant"
                 : "smooth",
         });
-    }, [embedded, compact, qr, qrVisible]);
+    }, [compact, qr]);
     const [waiting, setWaiting] = useState(
         due > 0 && Boolean(order.payment_id),
     );
@@ -201,7 +198,7 @@ export function PaymentCheckout({
                   : undefined)
             : undefined;
     useEffect(() => {
-        if (!smallScreen || !openUrl || !paymentActionPanel.current) return;
+        if (!openUrl || !paymentActionPanel.current) return;
         const target = paymentActionPanel.current;
         const bounds = target.getBoundingClientRect();
         if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
@@ -213,7 +210,7 @@ export function PaymentCheckout({
                 ? "instant"
                 : "smooth",
         });
-    }, [smallScreen, openUrl]);
+    }, [openUrl]);
     const fee =
         status === 0
             ? waiting
@@ -226,6 +223,21 @@ export function PaymentCheckout({
         ? issuedQuote.currency
         : method?.quoted_currency;
     const awaitingConfirmation = waiting || newServerPayment;
+    const hasPaymentAction = Boolean(qr || openUrl);
+    const canResumePayment = awaitingConfirmation && !hasPaymentAction && selected > 0 &&
+        (Boolean(method) || !methods.data);
+    const canSwitchPayment = awaitingConfirmation &&
+        (Boolean(methods.error) || methods.data?.some((item) => Number(item.id) !== selected));
+    const selectedOriginalMethod = restartFromMethod.current === selected;
+    const confirmLabel = awaitingConfirmation
+        ? "检查支付结果"
+        : busy
+          ? "提交中…"
+          : selectedOriginalMethod
+            ? "继续支付"
+            : due > 0
+              ? "确认支付"
+              : "确认开通";
     const paymentLocked = useRef(false);
     paymentLocked.current = awaitingConfirmation || status !== 0;
     const displayedAmount = Number(
@@ -345,7 +357,6 @@ export function PaymentCheckout({
         setError("");
         setWaiting(false);
         setQr("");
-        setQrVisible(true);
         setPaymentLink("");
         try {
             const previousMethod = restartFromMethod.current;
@@ -401,8 +412,6 @@ export function PaymentCheckout({
                 setCardMethod(null);
                 if (action) {
                     setPaymentLink(action);
-                    if (!smallScreen && /^https?:/i.test(action))
-                        location.assign(action);
                 } else if (nativeWechatQr(result.data)) {
                     // Native WeChat QR data is scan-only; it is not an H5 payment URL.
                     setQr(result.data);
@@ -526,7 +535,7 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
-    async function restartPayment() {
+    async function choosePaymentMethod() {
         if (inFlight.current) return;
         inFlight.current = true;
         setBusy(true);
@@ -572,13 +581,12 @@ export function PaymentCheckout({
                 return;
             }
             if (typeof result.data !== "string" || !result.data) {
-                throw new Error(tx("当前订单没有可恢复的支付入口。"));
+                throw new Error(tx("订单状态暂不可用，请刷新后重试。"));
             }
             const link = result.type === 1 ? paymentActionUrl(result.data) : undefined;
             if (link) setPaymentLink(link);
             else if (result.type === 0 || (result.type === 1 && nativeWechatQr(result.data))) {
                 setQr(result.data);
-                setQrVisible(true);
             } else throw new Error(tx("此支付方式需要专用客户端，请选择其他方式。"));
             setWaiting(true);
             restartFromMethod.current = undefined;
@@ -588,6 +596,13 @@ export function PaymentCheckout({
             inFlight.current = false;
             if (mounted.current) setBusy(false);
         }
+    }
+    function confirmOrCheckPayment() {
+        if (awaitingConfirmation) reload();
+        else if (selectedOriginalMethod) void resumePayment(selected);
+        else if (due > 0 && method?.payment === "StripeCredit") {
+            setCardMethod(Number(method.id));
+        } else void pay(due > 0 ? selected : 0);
     }
     async function copyPayment() {
         setCopied(false);
@@ -624,15 +639,6 @@ export function PaymentCheckout({
             <div className="checkout-secondary">
                 <OrderHelp tradeNo={String(order.trade_no)} />
                 <div className="checkout-secondary-actions">
-                    {awaitingConfirmation ? (
-                        <button
-                            type="button"
-                            disabled={busy}
-                            onClick={() => setRetryOpen(true)}
-                        >
-                            {tx("重新发起支付")}
-                        </button>
-                    ) : null}
                     <button
                         type="button"
                         disabled={busy}
@@ -644,7 +650,7 @@ export function PaymentCheckout({
             </div>
         </>
     );
-    const qrContent = qr && qrVisible && (
+    const qrContent = qr && (
         <div ref={qrPanel} className="checkout-qr">
             {method && !compact && (
                 <p className="checkout-qr-channel">
@@ -658,9 +664,6 @@ export function PaymentCheckout({
                 </p>
             )}
             <QRCodeSVG value={qr} size={200} marginSize={3} />
-            <button type="button" onClick={() => setQrVisible(false)}>
-                {tx("关闭二维码")}
-            </button>
             <p>
                 {smallScreen
                     ? pc("mobileScanHelp")
@@ -1039,7 +1042,6 @@ export function PaymentCheckout({
                         {smallScreen && openUrl && qr ? (
                             <details
                                 className="checkout-alternative-qr"
-                                hidden={!qrVisible}
                                 onToggle={(event) => {
                                     if (!event.currentTarget.open) return;
                                     const target =
@@ -1068,16 +1070,6 @@ export function PaymentCheckout({
                         ) : (
                             qrContent
                         )}
-                        {qr && !qrVisible && (
-                            <button type="button" onClick={() => setQrVisible(true)}>
-                                {tx("重新显示二维码")}
-                            </button>
-                        )}
-                        {awaitingConfirmation && !qr && !paymentLink && selected > 0 && (
-                            <button type="button" disabled={busy} onClick={() => void resumePayment(selected)}>
-                                {tx("恢复支付入口")}
-                            </button>
-                        )}
                         {smallScreen && (qr || paymentLink) && (
                             <div className="checkout-mobile-copy">
                                 <button type="button" onClick={copyPayment}>
@@ -1096,11 +1088,22 @@ export function PaymentCheckout({
                                 )}
                             </div>
                         )}
-                        <div className="checkout-confirm">
+                        <div className={awaitingConfirmation ? "checkout-confirm checkout-confirm-in-flow" : "checkout-confirm"}>
+                            {canResumePayment && (
+                                <button
+                                    type="button"
+                                    className="primary"
+                                    disabled={busy}
+                                    onClick={() => void resumePayment(selected)}
+                                >
+                                    {busy && <LoaderCircle className="checkout-spinner" size={18} aria-hidden="true" />}
+                                    {tx(busy ? "正在加载…" : "继续支付")}
+                                </button>
+                            )}
                             <button
                                 type="button"
                                 className={
-                                    openUrl && awaitingConfirmation
+                                    awaitingConfirmation && (hasPaymentAction || canResumePayment)
                                         ? "checkout-check-result"
                                         : "primary"
                                 }
@@ -1112,39 +1115,27 @@ export function PaymentCheckout({
                                             methods.loading ||
                                             Boolean(methods.error)))
                                 }
-                                onClick={() =>
-                                    awaitingConfirmation
-                                        ? reload()
-                                        : restartFromMethod.current === selected
-                                          ? resumePayment(selected)
-                                          : method?.payment === "StripeCredit" &&
-                                            due > 0
-                                          ? setCardMethod(Number(method.id))
-                                          : pay(due > 0 ? selected : 0)
-                                }
+                                onClick={confirmOrCheckPayment}
                             >
-                                {busy && (
+                                {busy && !awaitingConfirmation && (
                                     <LoaderCircle
                                         className="checkout-spinner"
                                         size={18}
                                         aria-hidden="true"
                                     />
                                 )}
-                                {tx(
-                                    busy
-                                        ? "提交中…"
-                                        : awaitingConfirmation
-                                          ? "检查支付结果"
-                                          : due > 0
-                                            ? "确认支付"
-                                            : "确认开通",
-                                )}
+                                {tx(confirmLabel)}
                             </button>
                         </div>
                         {waiting && (
                             <p role="status" className="muted">
                                 {tx("正在等待支付确认，请勿重复付款。")}
                             </p>
+                        )}
+                        {canSwitchPayment && (
+                            <button type="button" disabled={busy} onClick={() => setRetryOpen(true)}>
+                                {pc("reselectPayment")}
+                            </button>
                         )}
                         {due > 0 && <BrowserHandoffHelp context="payment" disabled={busy} />}
                         {compact ? (
@@ -1190,14 +1181,13 @@ export function PaymentCheckout({
             )}
             {retryOpen && status === 0 && (
                 <Modal
-                    title={tx("重新发起支付")}
+                    title={pc("reselectPayment")}
                     close={() => {
                         if (!busy) setRetryOpen(false);
                     }}
                 >
                     <div className="pad">
                         <p>{e("retryPayment")}</p>
-                        <p>{tx("如果已扫码或打开过原支付页面，请先检查结果。切换后请使用新支付入口。")}</p>
                         <div className="actions">
                             <button
                                 type="button"
@@ -1212,9 +1202,9 @@ export function PaymentCheckout({
                             <button
                                 type="button"
                                 disabled={busy}
-                                onClick={() => void restartPayment()}
+                                onClick={() => void choosePaymentMethod()}
                             >
-                                {tx(busy ? "提交中…" : "重新发起支付")}
+                                {tx(busy ? "正在加载…" : "继续")}
                             </button>
                         </div>
                     </div>

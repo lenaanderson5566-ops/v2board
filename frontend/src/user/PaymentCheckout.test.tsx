@@ -12,6 +12,8 @@ import {
 const mock = vi.hoisted(() => ({
     request: vi.fn(),
     trackCopyFailure: vi.fn(),
+    methodsError: "",
+    reloadMethods: vi.fn(),
     methods: [
         { id: 1, name: "Alipay", handling_fee_fixed: 0 },
         {
@@ -47,7 +49,7 @@ vi.mock("../shared/i18n", () => ({
     locale: () => "zh-CN",
 }));
 vi.mock("../shared/ui", () => ({
-    useData: () => ({ data: mock.methods, loading: false, reload: vi.fn() }),
+    useData: () => ({ data: mock.methods, loading: false, error: mock.methodsError, reload: mock.reloadMethods }),
     State: ({ children }: any) => children,
     Modal: ({ title, close, children }: any) => (
         <div role="dialog" aria-label={title}>
@@ -99,6 +101,8 @@ function renderCheckout(
 afterEach(() => {
     cleanup();
     mock.methods = originalMethods;
+    mock.methodsError = "";
+    mock.reloadMethods.mockReset();
     vi.unstubAllGlobals();
     vi.clearAllMocks();
 });
@@ -202,8 +206,8 @@ it.each([
             screen.getByRole("radio", { name: "Alipay" }).closest("fieldset")
                 ?.disabled,
         ).toBe(true);
-        fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
-        expect(reload).toHaveBeenCalled();
+        fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+        await waitFor(() => expect(reload).toHaveBeenCalled());
         expect(
             mock.request.mock.calls.filter(
                 ([path]) => path === "user/order/checkout",
@@ -211,6 +215,8 @@ it.each([
         ).toHaveLength(1);
         fireEvent.click(screen.getByRole("button", { name: "reselectPayment" }));
         fireEvent.click(screen.getByRole("button", { name: "继续" }));
+        await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+        fireEvent.click(await screen.findByRole("radio", { name: "Alipay" }));
         await screen.findByRole("button", { name: "retryPaymentRequest" });
         expect(
             screen.queryByText(
@@ -237,7 +243,8 @@ it("recovers an unconfirmed checkout on the only available channel using the ori
     const retryPayment = await screen.findByRole("button", { name: "retryPaymentRequest" });
     expect(submit).toHaveBeenCalledTimes(1);
 
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+    await waitFor(() => expect((retryPayment as HTMLButtonElement).disabled).toBe(false));
     expect(submit).toHaveBeenCalledTimes(1);
     const repricedMethod = { ...quotedMethod, quoted_amount: 1200 };
     mock.methods = [repricedMethod];
@@ -282,9 +289,10 @@ it("sends the old channel only when the user confirms restarting and selects a d
     expect(reselect.closest(".checkout-secondary-actions")).toBeTruthy();
     fireEvent.click(reselect);
     fireEvent.click(screen.getByRole("button", { name: "继续" }));
-    await screen.findByRole("button", { name: "paymentOpenAgain" });
+    const confirm = await screen.findByRole<HTMLButtonElement>("button", { name: "确认支付" });
+    expect(confirm.disabled).toBe(true);
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(0);
-    expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true);
+    expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(false);
 
     fireEvent.click(screen.getByRole("radio", { name: "WeChat Pay" }));
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
@@ -315,6 +323,7 @@ it.each([
     const view = render(checkout(3));
     fireEvent.click(await screen.findByRole("button", { name: "reselectPayment" }));
     fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     fireEvent.click(await screen.findByRole("radio", { name: "WeChat Pay" }));
     fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
 
@@ -332,7 +341,7 @@ it.each([
         if (code === "PAYMENT_CONFIRMATION_PENDING") {
             expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true);
         }
-        fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+        fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
         expect(reload).toHaveBeenCalled();
     } else {
         expect((screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(false);
@@ -355,11 +364,233 @@ it("keeps the restored QR visible without a dismiss control or another checkout"
     );
     expect(screen.queryByRole("button", { name: "关闭二维码" })).toBeNull();
     expect(screen.queryByRole("button", { name: "继续支付" })).toBeNull();
-    const checkResult = screen.getByRole("button", { name: "检查支付结果" });
+    const checkResult = screen.getByRole("button", { name: "checkPayment" });
     expect(checkResult.classList.contains("primary")).toBe(true);
     expect(checkResult.parentElement?.className).toBe("checkout-confirm");
     fireEvent.click(checkResult);
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
+it.each([0, 1])("reports a completed manual check without starting another type %s payment", async (type) => {
+    mock.request.mockImplementation(async (path: string) => path === "user/order/checkout"
+        ? { type, data: "https://gateway.example.test/pay" } : { data: 0 });
+    renderCheckout({ payment_id: 1 });
+    await screen.findByRole(type === 0 ? "img" : "link", { name: type === 0 ? "付款内容" : "openPayment" });
+    expect(screen.queryByText("paymentNotConfirmed")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+    expect((await screen.findByText("paymentNotConfirmed")).getAttribute("role")).toBe("status");
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
+it.each([
+    { type: 0, nextStatus: 1 }, { type: 1, nextStatus: 1 },
+    { type: 0, nextStatus: 2 }, { type: 0, nextStatus: 3 }, { type: 1, nextStatus: 4 },
+])("removes type $type payment actions as soon as status $nextStatus is observed, even if detail stays stale", async ({ type, nextStatus }) => {
+    let checkedStatus = 0;
+    mock.request.mockImplementation(async (path: string) => path === "user/order/checkout"
+        ? { type, data: "https://gateway.example.test/old-payment" } : { data: checkedStatus });
+    const reload = vi.fn();
+    const order = { status: 0, plan_id: 1, total_amount: 1000, trade_no: "transition-order", payment_id: 1 };
+    const checkout = (status: number) => <PaymentCheckout order={{ ...order, status }} reload={reload} renderCard={() => null} />;
+    const view = render(checkout(0));
+    await screen.findByRole(type === 0 ? "img" : "link", { name: type === 0 ? "付款内容" : "openPayment" });
+    checkedStatus = nextStatus;
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+    await screen.findByText("paymentStatusUpdating");
+    view.rerender(checkout(0));
+    expect(screen.queryByRole("img", { name: "付款内容" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "reselectPayment" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "取消订单" })).toBeNull();
+    const calls = reload.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(reload).toHaveBeenCalledTimes(calls + 1);
+    view.rerender(checkout(nextStatus));
+    expect(screen.queryByText("paymentStatusUpdating")).toBeNull();
+    if (nextStatus === 1) expect(screen.getByText("支付已确认，正在开通")).toBeTruthy();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
+it("ignores a saved QR that arrives in the same turn after the status check confirms payment", async () => {
+    let resolveStatus!: (value: { data: number }) => void;
+    let resolveEntry!: (value: { type: number; data: string }) => void;
+    const status = new Promise((resolve) => { resolveStatus = resolve; });
+    const entry = new Promise((resolve) => { resolveEntry = resolve; });
+    mock.request.mockImplementation((path: string) => path === "user/order/checkout" ? entry : status);
+    renderCheckout({ payment_id: 1 });
+    await act(async () => {
+        resolveStatus({ data: 3 });
+        resolveEntry({ type: 0, data: "already-paid-qr" });
+    });
+    expect(screen.getByText("paymentStatusUpdating")).toBeTruthy();
+    expect(screen.queryByDisplayValue("already-paid-qr")).toBeNull();
+    expect(screen.queryByRole("button", { name: "reselectPayment" })).toBeNull();
+});
+
+it("recovers a compact order's channel load failure through the existing check action", async () => {
+    mock.methods = [];
+    mock.methodsError = "Payment methods temporarily unavailable";
+    mock.reloadMethods.mockImplementation(() => {
+        mock.methods = originalMethods;
+        mock.methodsError = "";
+    });
+    mock.request.mockImplementation(async (path: string) => path === "user/order/checkout"
+        ? { type: 0, data: "recovered-after-method-load" } : { data: 0 });
+    render(<PaymentCheckout compact order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "method-load-error", payment_id: 1 }} reload={() => {}} renderCard={() => null} />);
+    await screen.findByText("Payment methods temporarily unavailable");
+    expect(screen.queryByRole("img", { name: "付款内容" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+    await screen.findByDisplayValue("recovered-after-method-load");
+    expect(screen.queryByText("Payment methods temporarily unavailable")).toBeNull();
+    expect(mock.reloadMethods).toHaveBeenCalledTimes(1);
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toEqual([
+        ["user/order/checkout", { trade_no: "method-load-error", method: 1, resume_payment: true }, { timeoutMs: 8000 }],
+    ]);
+});
+
+it("keeps the current payment available when reselection receives an invalid order status", async () => {
+    mock.request.mockImplementation(async (path: string) => {
+        if (path === "user/order/checkout") return { type: 0, data: "current-valid-qr" };
+        if (path === "user/order/detail") return { data: {} };
+        return { data: 0 };
+    });
+    renderCheckout({ payment_id: 1 });
+    await screen.findByDisplayValue("current-valid-qr");
+    fireEvent.click(screen.getByRole("button", { name: "reselectPayment" }));
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    await screen.findByText("订单状态暂不可用，请刷新后重试。");
+    expect(screen.queryByText("paymentStatusUpdating")).toBeNull();
+    expect(screen.getByDisplayValue("current-valid-qr")).toBeTruthy();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
+it("confirms successful copying on desktop without starting another payment", async () => {
+    vi.stubGlobal("innerWidth", 1280);
+    const copy = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
+    mock.request.mockImplementation(async (path: string) => path === "user/order/checkout"
+        ? { type: 0, data: "copy-this-payment" } : { data: 0 });
+    renderCheckout({ payment_id: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: "复制" }));
+    await screen.findByRole("button", { name: "paymentCopied" });
+    expect(copy).toHaveBeenCalledWith("copy-this-payment");
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
+it("discards a late payment response when the order already uses a different channel", async () => {
+    let returnOldPayment!: (value: { type: number; data: string }) => void;
+    const oldPayment = new Promise((resolve) => { returnOldPayment = resolve; });
+    mock.request.mockImplementation(async (path: string, body) => {
+        if (path !== "user/order/checkout") return { data: 0 };
+        if (body.resume_payment) return { type: 0, data: "current-channel-qr" };
+        return oldPayment;
+    });
+    const order = { status: 0, plan_id: 1, total_amount: 1000, trade_no: "changing-channel-order", plan: { name: "Plan" } };
+    const checkout = (paymentId?: number) => (
+        <PaymentCheckout order={{ ...order, payment_id: paymentId }} reload={() => {}} renderCard={() => null} />
+    );
+    const view = render(checkout());
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    view.rerender(checkout(2));
+    await act(async () => { returnOldPayment({ type: 0, data: "old-channel-qr" }); });
+
+    await screen.findByDisplayValue("current-channel-qr");
+    expect(screen.queryByDisplayValue("old-channel-qr")).toBeNull();
+    expect(mock.request).toHaveBeenCalledWith("user/order/checkout",
+        { trade_no: "changing-channel-order", method: 2, resume_payment: true }, { timeoutMs: 8000 });
+});
+
+it("explains that the old payment is shown after a blocked switch", async () => {
+    mock.methods = [originalMethods[0], { id: 11, name: "WeChat Pay", handling_fee_fixed: 0 } as any];
+    mock.request.mockImplementation(async (path: string, body) => {
+        if (path === "user/order/detail") return { data: { status: 0, payment_id: 1 } };
+        if (path !== "user/order/checkout") return { data: 0 };
+        if (body.resume_payment) return { type: 0, data: "original-alipay-qr" };
+        throw Object.assign(new Error("In flight"), { code: "PAYMENT_CONFIRMATION_PENDING" });
+    });
+    renderCheckout({ payment_id: 1 });
+    await screen.findByDisplayValue("original-alipay-qr");
+    fireEvent.click(screen.getByRole("button", { name: "reselectPayment" }));
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(await screen.findByRole("radio", { name: "WeChat Pay" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+
+    await screen.findByText("paymentSwitchUnchanged");
+    expect(screen.getByDisplayValue("original-alipay-qr")).toBeTruthy();
+    expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true);
+    expect(mock.request.mock.calls.filter(([path, body]) => path === "user/order/checkout" && !body.resume_payment)).toHaveLength(1);
+});
+
+it("stops automatic entry recovery after repeated pending responses and keeps manual recovery available", async () => {
+    vi.useFakeTimers();
+    try {
+        const resume = vi.fn().mockRejectedValue(Object.assign(new Error("In flight"), { code: "PAYMENT_CONFIRMATION_PENDING" }));
+        mock.request.mockImplementation(async (path: string, body) =>
+            path === "user/order/checkout" ? resume(body) : { data: 0 },
+        );
+        await act(async () => { renderCheckout({ payment_id: 1 }); });
+        for (let attempt = 0; attempt < 6; attempt++) {
+            await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+        }
+        expect(screen.getByText("paymentActionUnavailable")).toBeTruthy();
+        expect(screen.getByRole<HTMLButtonElement>("button", { name: "checkPayment" }).disabled).toBe(false);
+        expect(screen.queryByRole("button", { name: "paymentOpenAgain" })).toBeNull();
+        expect(resume).toHaveBeenCalledTimes(5);
+        expect(resume.mock.calls.every(([body]) => body.resume_payment === true)).toBe(true);
+    } finally { vi.useRealTimers(); }
+});
+
+it.each([
+    { phase: "initial", nextStatus: 0 },
+    { phase: "pending", nextStatus: 0 },
+    { phase: "exhausted", nextStatus: 0 },
+    { phase: "unavailable", nextStatus: 0 },
+    { phase: "exhausted", nextStatus: 3 },
+])("checks status before restoring a late entry on return from a hidden $phase page (status $nextStatus)", async ({ phase, nextStatus }) => {
+    vi.useFakeTimers();
+    const visibility = vi.spyOn(document, "visibilityState", "get").mockReturnValue(phase === "initial" ? "hidden" : "visible");
+    try {
+        let saved = false;
+        let checkedStatus = 0;
+        const resume = vi.fn(async (_body?: unknown) => {
+            if (saved) return { type: 0, data: "late-saved-entry" };
+            throw Object.assign(new Error("Entry not ready"), {
+                code: phase === "unavailable" ? "PAYMENT_ACTION_UNAVAILABLE" : "PAYMENT_CONFIRMATION_PENDING",
+            });
+        });
+        mock.request.mockImplementation(async (path: string, body) => path === "user/order/checkout" ? resume(body) : { data: checkedStatus });
+        await act(async () => { renderCheckout({ payment_id: 1 }); });
+        if (phase === "exhausted") {
+            for (let attempt = 0; attempt < 6; attempt++) {
+                await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+            }
+            expect(resume).toHaveBeenCalledTimes(5);
+        }
+        const restoresBefore = resume.mock.calls.length;
+        visibility.mockReturnValue("hidden");
+        await act(async () => {
+            fireEvent(document, new Event("visibilitychange"));
+            await vi.advanceTimersByTimeAsync(60000);
+        });
+        expect(resume).toHaveBeenCalledTimes(restoresBefore);
+        const checksBefore = mock.request.mock.calls.filter(([path]) => path === "user/order/check").length;
+        saved = true;
+        checkedStatus = nextStatus;
+        visibility.mockReturnValue("visible");
+        await act(async () => {
+            fireEvent(document, new Event("visibilitychange"));
+            fireEvent(window, new Event("focus"));
+        });
+        expect(mock.request.mock.calls.filter(([path]) => path === "user/order/check")).toHaveLength(checksBefore + 1);
+        if (nextStatus === 0) expect(screen.getByDisplayValue("late-saved-entry")).toBeTruthy();
+        else {
+            expect(screen.getByText("paymentStatusUpdating")).toBeTruthy();
+            expect(screen.queryByDisplayValue("late-saved-entry")).toBeNull();
+        }
+        expect(resume).toHaveBeenCalledTimes(restoresBefore + (nextStatus === 0 ? 1 : 0));
+        expect(mock.request.mock.calls.filter(([path, body]) => path === "user/order/checkout" && !body.resume_payment)).toHaveLength(0);
+    } finally { visibility.mockRestore(); vi.useRealTimers(); }
 });
 
 it("recovers a QR automatically when a pending gateway saves it without changing the order status", async () => {
@@ -374,7 +605,8 @@ it("recovers a QR automatically when a pending gateway saves it without changing
         const reload = vi.fn();
         await act(async () => { renderCheckout({ payment_id: 1 }, reload); });
         expect(screen.getByText("paymentConfirmationPending")).toBeTruthy();
-        expect(screen.getByRole("button", { name: "paymentOpenAgain" })).toBeTruthy();
+        expect(screen.getByRole("button", { name: "checkPayment" })).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "paymentOpenAgain" })).toBeNull();
         await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
 
         expect(screen.getByDisplayValue("late-wechat-qr")).toBeTruthy();
@@ -388,25 +620,31 @@ it("recovers a QR automatically when a pending gateway saves it without changing
     } finally { vi.useRealTimers(); }
 });
 
-it("lets the customer reopen a pending payment without creating a new attempt and stops polling a missing action", async () => {
+it.each([0, 3])("checks order status before recovering the original payment when the order returns %s", async (status) => {
     vi.useFakeTimers();
     try {
         const resume = vi.fn()
             .mockRejectedValueOnce(Object.assign(new Error("In flight"), { code: "PAYMENT_CONFIRMATION_PENDING" }))
             .mockRejectedValueOnce(Object.assign(new Error("No saved entry"), { code: "PAYMENT_ACTION_UNAVAILABLE" }));
+        let check = Promise.resolve({ data: 0 });
         mock.request.mockImplementation(async (path: string, body) =>
-            path === "user/order/checkout" ? resume(body) : { data: 0 },
+            path === "user/order/checkout" ? resume(body) : check,
         );
         await act(async () => { renderCheckout({ payment_id: 1 }); });
-        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "paymentOpenAgain" })); });
-        expect(screen.getByText("paymentActionUnavailable")).toBeTruthy();
-        expect(screen.queryByText("paymentConfirmationPending")).toBeNull();
-        expect(screen.getByRole("button", { name: "reselectPayment" })).toBeTruthy();
+        let finishCheck!: (result: { data: number }) => void;
+        check = new Promise((resolve) => { finishCheck = resolve; });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "checkPayment" })); });
+        expect(resume).toHaveBeenCalledTimes(1);
+        await act(async () => { finishCheck({ data: status }); });
+        if (status === 0) {
+            expect(screen.getByText("paymentActionUnavailable")).toBeTruthy();
+            expect(screen.queryByText("paymentConfirmationPending")).toBeNull();
+            expect(screen.getByRole("button", { name: "reselectPayment" })).toBeTruthy();
+        }
         await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
-        expect(resume.mock.calls).toEqual([
-            [{ trade_no: "test-order", method: 1, resume_payment: true }],
-            [{ trade_no: "test-order", method: 1, resume_payment: true }],
-        ]);
+        expect(resume.mock.calls).toEqual(Array(status === 0 ? 2 : 1).fill([
+            { trade_no: "test-order", method: 1, resume_payment: true },
+        ]));
     } finally { vi.useRealTimers(); }
 });
 
@@ -420,7 +658,7 @@ it("restores the saved cashier without navigating away or creating a payment", a
     renderCheckout({ payment_id: 1 });
     expect((await screen.findByRole("link", { name: "openPayment" })).getAttribute("href")).toBe(cashier);
     expect(screen.queryByRole("button", { name: "继续支付" })).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toEqual([
         ["user/order/checkout", { trade_no: "test-order", method: 1, resume_payment: true }, { timeoutMs: 8000 }],
     ]);
@@ -526,8 +764,8 @@ it("locks an externally issued payment after an order refresh and does not unloc
         (screen.getByRole("radio", { name: /TRON/ }) as HTMLInputElement)
             .checked,
     ).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
-    expect(reload).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+    await waitFor(() => expect(reload).toHaveBeenCalled());
     expect(
         mock.request.mock.calls.filter(
             ([path, body]) => path === "user/order/checkout" && !body?.resume_payment,
@@ -587,7 +825,7 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
             expect(
                 (
                     screen.getByRole("button", {
-                        name: "检查支付结果",
+                        name: "checkPayment",
                     }) as HTMLButtonElement
                 ).disabled,
             ).toBe(false);
@@ -1071,8 +1309,8 @@ it("opens an existing mobile redirect payment without starting another checkout"
     expect(action.getAttribute("href")).toBe(target);
     for (let i = 0; i < 3; i++) clickSyntheticPaymentLink(action);
     expect(mock.trackCopyFailure).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
-    expect(reload).toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
+    await waitFor(() => expect(reload).toHaveBeenCalled());
     expect(
         mock.request.mock.calls.filter(
             ([path]) => path === "user/order/checkout",
@@ -1098,7 +1336,7 @@ it("keeps a desktop MGate redirect on the checkout page until the customer opens
     expect(link.getAttribute("href")).toBe(target);
     expect(link.closest(".checkout-confirm")).toBeTruthy();
     expect(assign).not.toHaveBeenCalled();
-    expect(screen.getByRole("button", { name: "检查支付结果" }).classList.contains("checkout-check-result")).toBe(true);
+    expect(screen.getByRole("button", { name: "checkPayment" }).classList.contains("checkout-check-result")).toBe(true);
     expect(screen.queryByRole("button", { name: "reselectPayment" })).toBeNull();
     clickSyntheticPaymentLink(link);
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
@@ -1214,7 +1452,7 @@ it("preserves scan-only native WeChat responses without treating them as an H5 a
     await screen.findByDisplayValue(code);
     expect(screen.queryByRole("link", {name:"openPayment"})).toBeNull();
     expect(screen.getByRole("button", {name:"copyPayment"})).toBeTruthy();
-    expect(screen.getByRole("button", {name:"检查支付结果"})).toBeTruthy();
+    expect(screen.getByRole("button", {name:"checkPayment"})).toBeTruthy();
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 it("keeps a rejected redirect response locked for status recovery without exposing its URL", async () => {
@@ -1224,6 +1462,6 @@ it("keeps a rejected redirect response locked for status recovery without exposi
     await screen.findByText("此支付方式需要专用客户端，请选择其他方式。");
     expect(screen.queryByRole("link", {name:"openPayment"})).toBeNull();
     expect(screen.queryByRole("button", {name:"确认支付"})).toBeNull();
-    expect(screen.getByRole("button", {name:"检查支付结果"})).toBeTruthy();
+    expect(screen.getByRole("button", {name:"checkPayment"})).toBeTruthy();
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });

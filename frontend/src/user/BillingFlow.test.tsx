@@ -139,7 +139,7 @@ import { SubscriptionPurchase } from "./SubscriptionPurchase";
 import { UnifiedCheckout } from "./UnifiedCheckout";
 import { useCheckoutQuote } from "./useCheckoutQuote";
 import { PaymentCheckout } from "./PaymentCheckout";
-import { Orders } from "./user";
+import { Orders, Plans } from "./user";
 import { PurchaseRules, PlanResetRule } from "./PurchaseRules";
 import { configureTimeZone, setDisplayTimeZone } from "../shared/timezone";
 const plan = {
@@ -399,20 +399,21 @@ it("selects a method without charging and shows fixed plus percentage fees befor
     );
     await screen.findByDisplayValue("https://pay.example/qr");
     expect(screen.queryByText("订单已完成")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment{}" }));
     expect(
         mocks.request.mock.calls.filter(
             ([path]) => path === "user/order/checkout",
         ),
     ).toHaveLength(1);
 });
-it("keeps payment status checking available if a previous payment method was removed", () => {
+it("keeps payment status checking available if a previous payment method was removed", async () => {
     mocks.methods = [];
+    mocks.request.mockResolvedValue({ data: 0 });
     const view = checkout({ payment_id: 99 });
-    const button = screen.getByRole("button", { name: "检查支付结果" });
+    const button = screen.getByRole("button", { name: "checkPayment{}" });
     expect((button as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(button);
-    expect(view.reload).toHaveBeenCalled();
+    await waitFor(() => expect(view.reload).toHaveBeenCalled());
     expect(mocks.request).toHaveBeenCalledWith(
         "user/order/check?trade_no=test-order",
         undefined,
@@ -428,17 +429,18 @@ it("uses the fee locked in an issued order even when provider settings change", 
     expect(
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
     ).toBe(true);
-    await screen.findByRole("button", { name: "检查支付结果" });
+    await screen.findByRole("button", { name: "checkPayment{}" });
     fireEvent.click(screen.getByRole("button", { name: "reselectPayment{}" }));
     fireEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
             name: "继续",
         }),
     );
+    const card = await screen.findByRole<HTMLInputElement>("radio", { name: /Card/ });
+    await waitFor(() => expect(card.disabled).toBe(false));
+    expect(card.checked).toBe(false);
+    fireEvent.click(card);
     expect(await screen.findByText("¥10.50")).toBeTruthy();
-    expect(
-        screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
-    ).toBe(false);
     expect(
         mocks.request.mock.calls.filter(
             ([path, body]) => path === "user/order/checkout" && !body?.resume_payment,
@@ -483,7 +485,7 @@ it("replaces a QR checkout with its receipt when the authoritative status comple
     );
     expect(screen.getByRole("heading", { name: "订单已完成" })).toBeTruthy();
     expect(screen.queryByDisplayValue("https://pay.example/finish")).toBeNull();
-    expect(screen.queryByRole("button", { name: "检查支付结果" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "checkPayment{}" })).toBeNull();
 });
 it("closes the card dialog and exposes a failed card charge without claiming success", async () => {
     mocks.methods = [{ id: 3, name: "Stripe", payment: "StripeCredit" }];
@@ -1543,12 +1545,13 @@ it("labels the retained amount as previous and blocks confirmation after recalcu
 });
 
 it("creates an order and starts its QR payment in place once under StrictMode, then resumes without charging again", async () => {
+    history.replaceState(null, "", "#/plan/1");
     mocks.detail = { ...order, trade_no: "inline-order", total_amount: 810, balance_amount: 0, discount_amount: 90 };
     mocks.methods = [{ id: 11, name: "Alipay", payment: "TestQR", category: "wallet", quoted_amount: 810, quoted_currency: "CNY", quoted_fee: 0 }];
     mocks.request.mockImplementation(async (path: string) => path === "user/order/save"
         ? { data: "inline-order" } : path === "user/order/checkout" ? { type: 0, data: "https://pay.example/inline-qr" } : { data: 0 });
     const scroll = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
-    const view = render(<StrictMode><UnifiedCheckout initialPlan={plan} /></StrictMode>);
+    const view = render(<StrictMode><Plans planId={1} /></StrictMode>);
     const confirm = await screen.findByRole<HTMLButtonElement>("button", { name: "confirmAndPay{}" });
     await waitFor(() => expect(confirm.disabled).toBe(false));
     fireEvent.click(view.container.querySelector(".checkout-coupon summary")!);
@@ -1567,7 +1570,7 @@ it("creates an order and starts its QR payment in place once under StrictMode, t
     expect(view.container.querySelector(".checkout-confirmed-coupon")?.textContent).toContain("SAVE");
     expect(view.container.querySelector(".checkout-confirmed-coupon")?.textContent).toContain("−¥0.90");
     expect(view.container.querySelector(".purchase-footer-total strong")?.textContent).toBe("¥8.10");
-    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    fireEvent.click(screen.getByRole("button", { name: "checkPayment{}" }));
     expect(view.container.querySelectorAll(".payment-method-picker")).toHaveLength(0);
     expect(view.container.querySelector(".checkout-method-confirmed")?.textContent).toContain("Alipay");
     expect(qrContent.closest(".purchase-footer-confirmed")).toBeTruthy();
@@ -1581,10 +1584,16 @@ it("creates an order and starts its QR payment in place once under StrictMode, t
     expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/save")).toHaveLength(1);
     expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
     expect(mocks.request).toHaveBeenCalledWith("user/order/checkout", expect.objectContaining({ trade_no: "inline-order", method: 11, expected_payment_amount: 810, expected_payment_currency: "CNY", payment_request_key: expect.any(String) }), { timeoutMs: 45000 });
+
+    location.hash = "/plan/1";
+    await screen.findByRole("button", { name: "confirmAndPay{}" });
+    expect(screen.queryByDisplayValue("https://pay.example/inline-qr")).toBeNull();
     view.unmount();
+
+    history.replaceState(null, "", "#/plan/1?order=inline-order");
     mocks.request.mockClear(); mocks.quoteRequest.mockClear();
     mocks.detail = { ...mocks.detail, payment_id: 11 };
-    const resumed = render(<UnifiedCheckout planId={1} initialOrder="inline-order" />);
+    const resumed = render(<Plans planId={1} />);
     await screen.findByDisplayValue("https://pay.example/inline-qr");
     expect(mocks.request.mock.calls.filter(([path, body]) => path === "user/order/save" || (path === "user/order/checkout" && !body?.resume_payment))).toHaveLength(0);
     expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toEqual([
@@ -1594,13 +1603,41 @@ it("creates an order and starts its QR payment in place once under StrictMode, t
     expect(within(screen.getByRole("group", { name: "选择订阅周期" })).getByRole<HTMLInputElement>("radio", { name: /季付/ }).checked).toBe(true);
     expect(resumed.container.querySelector(".checkout-summary")).toBeNull();
     mocks.detail = { ...mocks.detail, status: 3 };
-    resumed.rerender(<UnifiedCheckout planId={1} initialOrder="inline-order" />);
+    resumed.rerender(<Plans planId={1} />);
     await screen.findByText("订单已完成");
     expect(resumed.container.querySelector('.purchase-steps [aria-current="step"]')?.textContent).toContain("开通完成");
     expect(screen.queryByDisplayValue("https://pay.example/inline-qr")).toBeNull();
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(location.hash).toBe("#/plan/1?order=inline-order");
     scroll.mockRestore();
+});
+
+it("loads the order from same-plan URL navigation and browser history", async () => {
+    history.replaceState(null, "", "#/plan/1?order=first-order");
+    mocks.methods = [mocks.methods[1]];
+    mocks.detail = { ...order, trade_no: "first-order", total_amount: 1200 };
+    const view = render(<Plans planId={1} />);
+    const amount = () => view.container.querySelector(".purchase-footer-total strong")?.textContent;
+    await waitFor(() => expect(amount()).toBe("¥12.00"));
+
+    mocks.detail = { ...order, trade_no: "second-order", total_amount: 1800 };
+    location.hash = "/plan/1?order=second-order";
+    await waitFor(() => expect(amount()).toBe("¥18.00"));
+    expect(location.hash).toBe("#/plan/1?order=second-order");
+
+    mocks.detail = { ...order, trade_no: "first-order", total_amount: 1200 };
+    history.back();
+    await waitFor(() => expect(amount()).toBe("¥12.00"));
+    expect(location.hash).toBe("#/plan/1?order=first-order");
+
+    const otherPlan = { ...plan, id: 2 };
+    mocks.plans = [plan, otherPlan];
+    mocks.detail = { ...order, plan: otherPlan, plan_id: 2, trade_no: "third-order", total_amount: 2400 };
+    history.replaceState(null, "", "#/plan/2?order=third-order");
+    view.rerender(<Plans planId={2} />);
+    await waitFor(() => expect(amount()).toBe("¥24.00"));
+    expect(location.hash).toBe("#/plan/2?order=third-order");
+    expect(mocks.request).not.toHaveBeenCalled();
 });
 it("does not initiate payment when an order read returns a different order", async () => {
     mocks.detail = { ...order, trade_no: "different-owned-order" };

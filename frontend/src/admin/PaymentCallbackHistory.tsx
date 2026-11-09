@@ -42,6 +42,7 @@ const reasons: Record<string, string> = {
     invalid_response: "网关返回格式无法识别",
     gateway_rejected: "网关拒绝下单，请核对网关错误码及商户配置",
     missing_payment_action: "网关响应缺少有效的支付入口或交易号",
+    saved_payment_action_unavailable: "站内未找到可恢复的二维码或付款链接，本次未向网关发起新请求",
     "gate is not found": "支付接口不存在",
     "Payment channel not found": "支付渠道不存在",
     "gate is not enable": "支付渠道未启用",
@@ -58,6 +59,14 @@ function requestLink(id: string) {
 }
 
 function diagnosis(row: Row): string {
+    if (row.reason === "saved_payment_action_unavailable"
+        || (row.stage === "preflight" && row.reason === "missing_payment_action")) {
+        const count = Number(row.recovery_miss_count);
+        const message = reasons.saved_payment_action_unavailable;
+        return Number.isSafeInteger(count) && count > 1
+            ? `${message}（本订单共 ${count} 次，显示最近一次）`
+            : message;
+    }
     return reasons[row.reason] || results[row.result] || "—";
 }
 
@@ -177,7 +186,7 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: {
             {paidAt ? <p><strong>站点已记录付款</strong> · {date(paidAt)}</p> : null}
             {latest && <p><strong>最近进展</strong> · {diagnosis(latest)}{origin && <> · 前一笔：{diagnosis(origin)}</>}</p>}
             <p className="muted">
-                各显示最近 20 条发起和回调记录。原始诊断仅管理员可查看，从启用统一记录后开始保存。到账以订单状态及支付时间为准。
+                发起记录和回调记录各显示最近 20 条。本订单重复的站内付款恢复失败合并显示最近一次。原始诊断仅管理员可查看，从启用统一记录后开始保存。到账以订单状态及支付时间为准。
             </p>
             {timeline.length > 0 && <Table data={timeline} columns={[...columns, gatewayColumn]} />}
             {!attempts?.available ? <p className="muted">支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>

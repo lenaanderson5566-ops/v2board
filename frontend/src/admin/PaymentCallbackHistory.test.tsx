@@ -53,6 +53,28 @@ it("links a channel failure to the matching order search", () => {
     expect(screen.getByText("商户凭证缺失，请核对渠道配置")).toBeTruthy();
 });
 
+it("distinguishes local payment recovery records from gateway responses missing an action", () => {
+    const latestRequest = "12345678-1234-4234-8234-123456789abc";
+    render(<PaymentCallbackHistory history={{ available: true, events: [] }} attempts={{ available: true, events: [
+        { id: 2, stage: "preflight", result: "failed", reason: "saved_payment_action_unavailable",
+            recovery_miss_count: 25, request_id: latestRequest, created_at: 1791849620 },
+        { id: 1, stage: "gateway", result: "failed", reason: "missing_payment_action", created_at: 1791849600 },
+    ] }} />);
+    const local = "站内未找到可恢复的二维码或付款链接，本次未向网关发起新请求";
+    const grouped = `${local}（本订单共 25 次，显示最近一次）`;
+    expect(screen.getByText("最近进展").parentElement?.textContent).toContain(grouped);
+    expect(screen.getByRole("cell", { name: grouped })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "网关响应缺少有效的支付入口或交易号" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: latestRequest }).getAttribute("href")).toBe(`#/system-log?request_id=${latestRequest}`);
+});
+
+it("labels a historical local recovery miss even when an older response omits its grouped count", () => {
+    render(<PaymentCallbackHistory history={{ available: true, events: [] }} attempts={{ available: true, events: [
+        { id: 1, stage: "preflight", result: "failed", reason: "missing_payment_action", created_at: 1791849600 },
+    ] }} />);
+    expect(screen.getByRole("cell", { name: "站内未找到可恢复的二维码或付款链接，本次未向网关发起新请求" })).toBeTruthy();
+});
+
 it("shows redacted gateway fields and the error summary from a channel failure", () => {
     render(<PaymentChannelFailures history={{ available: true, events: [{
         id: 1, stage: "gateway", result: "failed", trade_no: "fixture-order", created_at: 1791849600,

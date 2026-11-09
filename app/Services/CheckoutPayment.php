@@ -178,7 +178,7 @@ final class CheckoutPayment
             && in_array($attempt['result']['type'] ?? null, [0, 1], true)
             && is_string($attempt['result']['data'] ?? null)
             && $attempt['result']['data'] !== '');
-        $diagnostic->checkpoint('missing_payment_action');
+        $diagnostic->checkpoint('saved_payment_action_unavailable');
         if (count($actions) !== 1) {
             $message = '当前订单没有可恢复的支付入口，请检查订单状态或切换支付方式。';
             if ($readOnly && $request->is('api/v10/*')) {

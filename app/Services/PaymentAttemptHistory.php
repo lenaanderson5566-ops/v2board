@@ -17,7 +17,7 @@ final class PaymentAttemptHistory
         'in_flight', 'request_key_conflict', 'invalid_config', 'missing_credentials', 'currency_mismatch',
         'gateway_result_unknown', 'dns_failed', 'connection_failed', 'tls_failed', 'gateway_timeout',
         'transport_failed', 'gateway_http_error', 'invalid_response', 'gateway_rejected',
-        'missing_payment_action', 'internal_error',
+        'missing_payment_action', 'saved_payment_action_unavailable', 'internal_error',
     ];
 
     private ?int $orderId = null;
@@ -160,13 +160,24 @@ final class PaymentAttemptHistory
     {
         if (!Schema::hasTable(self::TABLE)) return ['available' => false, 'events' => []];
 
+        $columns = [
+            'id', 'provider', 'payment_id', 'stage', 'result', 'reason', 'request_id', 'previous_request_id',
+            'gateway_host', 'gateway_http_status', 'gateway_code', 'gateway_order', 'gateway_actions', 'duration_ms', 'created_at',
+        ];
+        $history = DB::table(self::TABLE)->where('order_id', $order->id);
+        $events = self::events((clone $history)->whereNot(fn ($query) => self::localRecoveryMiss($query))
+            ->orderByDesc('created_at')->orderByDesc('id')->limit(20), $columns);
+
+        // Keep the latest local check and its total without crowding out gateway requests.
+        $recovery = $history->where(fn ($query) => self::localRecoveryMiss($query));
+        $recoveryCount = (clone $recovery)->selectRaw('COUNT(*)');
+        $latestRecovery = self::events($recovery->selectSub($recoveryCount, 'recovery_miss_count')
+            ->orderByDesc('created_at')->orderByDesc('id')->limit(1), $columns);
+
         return [
             'available' => true,
-            'events' => self::events(DB::table(self::TABLE)->where('order_id', $order->id)
-                ->orderByDesc('created_at')->orderByDesc('id')->limit(20), [
-                    'id', 'provider', 'payment_id', 'stage', 'result', 'reason', 'request_id', 'previous_request_id',
-                    'gateway_host', 'gateway_http_status', 'gateway_code', 'gateway_order', 'gateway_actions', 'duration_ms', 'created_at',
-                ]),
+            'events' => $events->concat($latestRecovery)
+                ->sortBy([['created_at', 'desc'], ['id', 'desc']])->take(20)->values(),
         ];
     }
 
@@ -196,16 +207,26 @@ final class PaymentAttemptHistory
     private static function events(\Illuminate\Database\Query\Builder $query, array $columns, ?string $alias = null): \Illuminate\Support\Collection
     {
         if (Schema::hasColumn(self::TABLE, 'gateway_response')) $columns[] = $alias ? $alias . '.gateway_response' : 'gateway_response';
-        $query->select($columns);
+        $query->addSelect($columns);
         return PaymentGatewayTrace::selectAvailability($query, self::TABLE, $alias)->get()->each(function ($event) {
             $event->gateway_response = json_decode($event->gateway_response ?? 'null', true);
             $event->has_raw_diagnostic = (bool) $event->has_raw_diagnostic;
+            if (isset($event->recovery_miss_count)) $event->recovery_miss_count = (int) $event->recovery_miss_count;
         });
+    }
+
+    private static function localRecoveryMiss(\Illuminate\Database\Query\Builder $query, string $prefix = ''): void
+    {
+        // Older local checks shared the reason used for missing actions at the gateway.
+        $query->where($prefix . 'stage', 'preflight')->where($prefix . 'result', 'failed')
+            ->whereNotNull($prefix . 'reason')
+            ->whereIn($prefix . 'reason', ['saved_payment_action_unavailable', 'missing_payment_action']);
     }
 
     private static function failures(): \Illuminate\Database\Query\Builder
     {
         return DB::table(self::TABLE . ' as event')->where('event.result', 'failed')
-            ->where('event.created_at', '>=', time() - 3600);
+            ->where('event.created_at', '>=', time() - 3600)
+            ->whereNot(fn ($query) => self::localRecoveryMiss($query, 'event.'));
     }
 }

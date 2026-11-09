@@ -246,9 +246,45 @@ try {
      && $timeout?->stage === 'gateway' && $timeout?->reason === 'gateway_timeout', 'Retry links to the original gateway timeout');
  $assert($timeout->gateway_host === 'pay.example.test' && $timeout->gateway_code === null
      && !str_contains($diagnostics->toJson(), 'fixture-secret'), 'Diagnostics retain the host and omit secrets and raw gateway values');
- $assertConflict($makePayment($uncertainOrder, $channel, ['resume_payment'=>true]),
-     'A recorded gateway timeout has no action to resume', 'PAYMENT_ACTION_UNAVAILABLE');
+ $channelFailureBaseline = (int) (PaymentAttemptHistory::recentFailures()[$channel->id] ?? 0);
+ $unavailableResume = $makePayment($uncertainOrder, $channel, ['resume_payment'=>true]);
+ $assertConflict($unavailableResume, 'A recorded gateway timeout has no action to resume', 'PAYMENT_ACTION_UNAVAILABLE');
+ $unavailableId = $unavailableResume->attributes->get('requestId');
+ $unavailableEvent = PaymentAttemptHistory::forOrder($uncertainOrder)['events']->firstWhere('request_id', $unavailableId);
+ $assert($unavailableEvent?->stage === 'preflight' && $unavailableEvent->reason === 'saved_payment_action_unavailable',
+     'A missing saved action is distinct from a missing payment action in a gateway response');
  $assert($unknownCalls === 1, 'A missing saved action does not create another provider request');
+
+ $diagnosticFixture = [
+     'order_id' => $uncertainOrder->id, 'payment_id' => $channel->id, 'provider' => $channel->payment, 'result' => 'failed',
+ ];
+ $gatewayMissingId = DB::table(PaymentAttemptHistory::TABLE)->insertGetId($diagnosticFixture + [
+     'stage' => 'gateway', 'reason' => 'missing_payment_action', 'created_at' => $unavailableEvent->created_at,
+ ]);
+ $misses = [];
+ for ($i = 0; $i < 24; $i++) {
+     $misses[] = $diagnosticFixture + [
+         'stage' => 'preflight',
+         'reason' => $i % 2 === 0 ? 'missing_payment_action' : 'saved_payment_action_unavailable',
+         'request_id' => Str::uuid()->toString(),
+         'created_at' => $unavailableEvent->created_at + ($i === 22 ? 1 : 0),
+     ];
+ }
+ DB::table(PaymentAttemptHistory::TABLE)->insert($misses);
+ $diagnostics = PaymentAttemptHistory::forOrder($uncertainOrder)['events'];
+ $groupedRecovery = $diagnostics->whereNotNull('recovery_miss_count');
+ $assert($groupedRecovery->count() === 1 && $groupedRecovery->first()->recovery_miss_count === 25
+     && $groupedRecovery->first()->request_id === $misses[22]['request_id']
+     && $diagnostics->firstWhere('request_id', $uncertainId)?->reason === 'gateway_timeout'
+     && $diagnostics->firstWhere('id', $gatewayMissingId)?->stage === 'gateway',
+     'Repeated local checks keep their latest row and count while retaining the original gateway diagnostics');
+ $channelFailures = PaymentAttemptHistory::forChannel($channel->id)['events'];
+ $assert((int) PaymentAttemptHistory::recentFailures()[$channel->id] === $channelFailureBaseline + 1
+     && $channelFailures->firstWhere('id', $gatewayMissingId)?->stage === 'gateway'
+     && $channelFailures->firstWhere('request_id', $uncertainId)?->stage === 'gateway'
+     && !$channelFailures->contains(fn ($event) => $event->stage === 'preflight'
+         && in_array($event->reason, ['missing_payment_action', 'saved_payment_action_unavailable'], true)),
+     'Channel failure lists and counts ignore local checks and keep missing actions reported by the gateway');
 
  $existing = $uncertainOrder->fresh();
  $snapshot = $existing->payment_snapshot;
@@ -330,14 +366,20 @@ try {
      && App\Services\PaymentAttemptHistory::recentFailures()[$mgate->id] == 2,
      'Channel diagnostics count failures and link to the relevant order');
 
+ $adapter = new App\Payments\EPayQrcode(['type'=>'wxpay']);
+ $gatewayResponse = new ReflectionMethod($adapter, 'gatewayResponse');
  $rejectedOrder = $makeOrder();
  $rejectedRequest = $makePayment($rejectedOrder, $channel);
  $rejectedCalls = 0;
- V10TestPayment::$payHandler = function (array $order, PaymentAttemptHistory $diagnostic) use (&$rejectedCalls) {
+ V10TestPayment::$payHandler = function (array $order, PaymentAttemptHistory $diagnostic) use (&$rejectedCalls, $adapter, $gatewayResponse) {
      ++$rejectedCalls;
      $diagnostic->sending('https://pay.example.test/mapi.php');
-     $diagnostic->checkpoint('gateway_rejected');
-     abort(500, 'sensitive fixture gateway text');
+     $gatewayResponse->invoke($adapter, (object) [
+         'response' => '{"status":"error","msg":"sensitive fixture gateway text"}',
+         'httpStatusCode' => 200,
+         'error' => false,
+     ], $diagnostic);
+     throw new RuntimeException('EPay unexpectedly accepted a gateway rejection');
  };
  [$status, $problem] = $checkoutProblem($rejectedRequest);
  $assert($status === 500 && $problem['code'] === 'PAYMENT_GATEWAY_REJECTED'
@@ -347,9 +389,29 @@ try {
      'Provider rejection does not allow the original request key to contact the gateway again');
  V10TestPayment::$payHandler = null;
 
- $adapter=new App\Payments\EPayQrcode(['type'=>'wxpay']);
+ foreach ([
+     ['{"status":"error","msg":"temporary error"}', 502, true],
+     ['{"status":"error","msg":" "}', 200, false],
+     ['<html>Service unavailable</html>', 200, false],
+ ] as [$body, $httpStatus, $transportError]) {
+     $diagnostic = new PaymentAttemptHistory(null);
+     $diagnostic->sending('https://pay.example.test/mapi.php');
+     try {
+         $gatewayResponse->invoke($adapter, (object) [
+             'response' => $body, 'httpStatusCode' => $httpStatus, 'error' => $transportError,
+         ], $diagnostic);
+         throw new RuntimeException('EPay unexpectedly accepted an invalid gateway response');
+     } catch (HttpException $error) {
+         $assert($error->getStatusCode() === 500 && !$diagnostic->gatewayRejected(),
+             'A transport or unrecognized response error remains uncertain');
+     }
+ }
  $action=new ReflectionMethod($adapter, 'paymentAction');
  $qr='weixin://wxpay/bizpayurl?pr=test';
+ $success = $gatewayResponse->invoke($adapter, (object) [
+     'response' => (object) ['code' => 1, 'qrcode' => $qr], 'httpStatusCode' => 200, 'error' => false,
+ ], null);
+ $assert($success->qrcode === $qr, 'EPay preserves the code=1 success contract');
  $wallet='weixin://wap/pay?prepayid=test';
  $h5='https://pay.example.test/wx';
  $previousUa=$_SERVER['HTTP_USER_AGENT'] ?? null;

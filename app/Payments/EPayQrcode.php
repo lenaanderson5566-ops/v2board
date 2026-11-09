@@ -75,22 +75,32 @@ class EPayQrcode
         $diagnostic?->sending($endpoint);
         try {
             PaymentGatewayTransport::post($curl, $endpoint, http_build_query($params));
-            $result = $curl->response;
-            if (is_string($result)) $result = json_decode($result);
-            $diagnostic?->received($curl, $result->code ?? null, $result->trade_no ?? null, $result);
-
-            if (!is_object($result)) abort(500, '支付接口网络异常或返回内容无法解析');
-            if ($curl->error || !isset($result->code) || (int) $result->code !== 1) {
-                if (!$curl->error && isset($result->code)) $diagnostic?->checkpoint('gateway_rejected');
-                $message = is_string($result->msg ?? null) ? $result->msg : 'API 下单失败';
-                abort(500, $message);
-            }
+            $result = $this->gatewayResponse($curl, $diagnostic);
         } finally {
             $curl->close();
         }
 
         $diagnostic?->checkpoint('missing_payment_action');
         return $this->paymentAction($result);
+    }
+
+    private function gatewayResponse(object $curl, ?PaymentAttemptHistory $diagnostic): object
+    {
+        $result = $curl->response;
+        if (is_string($result)) $result = json_decode($result);
+        $diagnostic?->received($curl, $result->code ?? null, $result->trade_no ?? null, $result);
+
+        if (!is_object($result)) abort(500, '支付接口网络异常或返回内容无法解析');
+        if (!$curl->error && isset($result->code) && (int) $result->code === 1) return $result;
+
+        $message = is_string($result->msg ?? null) ? $result->msg : null;
+        $status = (int) ($curl->httpStatusCode ?? 0);
+        $explicitError = $status >= 200 && $status < 300
+            && ($result->status ?? null) === 'error' && $message !== null && trim($message) !== '';
+        if (!$curl->error && (isset($result->code) || $explicitError)) {
+            $diagnostic?->checkpoint('gateway_rejected');
+        }
+        abort(500, $message ?? 'API 下单失败');
     }
 
     private function paymentAction(object $result): array

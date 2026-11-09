@@ -1,15 +1,23 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
+require __DIR__.'/fixtures/V10TestPayment.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Models\Plan;
 use App\Models\Order;
+use App\Models\Payment;
+use App\Payments\V10TestPayment;
+use App\Services\Actions\Guest\PaymentActions;
+use App\Services\PaymentAttemptHistory;
 use App\Services\OrderService;
+use App\Utils\Helper;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use App\Http\Requests\User\OrderSave;
 use App\Services\Actions\User\OrderActions as OrderController;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
@@ -37,7 +45,8 @@ try {
  $assert($previous->fresh()->status === 2, 'Stale callback must not reopen replaced order');
  try { $save(['plan_id'=>$plan->id,'period'=>'month_price','replace_trade_no'=>$old]); throw new RuntimeException('Duplicate replacement accepted'); }
  catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409, 'Duplicate conflict'); }
- $next->payment_id=1; $next->save();
+ $issuedChannel = Payment::create(['name'=>'Previously issued channel','payment'=>'V10TestPayment','uuid'=>Str::random(8),'enable'=>1,'config'=>[]]);
+ $next->payment_id=$issuedChannel->id; $next->save();
  try { $save(['plan_id'=>$plan->id,'period'=>'month_price','replace_trade_no'=>$new]); throw new RuntimeException('Issued payment replaced'); }
  catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409, 'Issued payment protected'); }
  $next->payment_id=null; $next->status=1; $next->save();
@@ -46,7 +55,7 @@ try {
 
  // Unified checkout quotes are pure reads, and order/payment retries are durable.
  $quoteUser = User::create(['email'=>Str::uuid().'@example.com','password'=>'test','token'=>Str::random(32),'uuid'=>(string)Str::uuid(),'balance'=>200,'transfer_enable'=>0,'expired_at'=>0]);
- $channel = App\Models\Payment::create(['name'=>'Quote test','payment'=>'EPay','uuid'=>Str::random(8),'enable'=>1,'currency'=>'CNY','handling_fee_percent'=>0,'handling_fee_fixed'=>20,'config'=>['key'=>'must-not-be-public']]);
+ $channel = Payment::create(['name'=>'Quote test','payment'=>'V10TestPayment','uuid'=>Str::random(8),'enable'=>1,'currency'=>'CNY','handling_fee_percent'=>0,'handling_fee_fixed'=>20,'config'=>['key'=>'must-not-be-public']]);
  $coupon = App\Models\Coupon::create(['name'=>'Quote coupon','code'=>Str::random(16),'type'=>2,'value'=>10,'show'=>1,'public_claim'=>1,'started_at'=>time()-60,'ended_at'=>time()+3600,'limit_plan_ids'=>[],'limit_period'=>[]]);
  $walletId = App\Services\CouponWallet::issue($quoteUser->id,$coupon->id);
  $requestFor = function(array $body, $owner = null) use ($quoteUser) {
@@ -86,93 +95,170 @@ try {
  $replacement=$selection+['replace_trade_no'=>$created];
  $replacementQuote=json_decode($actions->quote($requestFor($replacement))->getContent(),true)['data'];
  $assert($replacementQuote['balance_amount']===200 && $replacementQuote['discount_amount']===100 && $createdOrder->fresh()->status===0 && $quoteUser->fresh()->balance===0,'Replacement preview simulates refundable balance and owned coupon without cancellation');
- $methodKey=(string)Str::uuid();$payRequest=Illuminate\Http\Request::create('/api/v10/me/orders/'.$created.'/payments','POST',['trade_no'=>$created,'method'=>$channel->id,'payment_request_key'=>$methodKey,'expected_payment_amount'=>720,'expected_payment_currency'=>'CNY']);$payRequest->user=['id'=>$quoteUser->id];
- $calls=0;$provider=function()use(&$calls){$calls++;return response(['type'=>0,'data'=>'https://pay.example.test/synthetic']);};
- $first=App\Services\CheckoutPayment::once($payRequest,$provider);
- $second=App\Services\CheckoutPayment::once($payRequest,$provider);
- $assert($calls===1 && json_decode($first->getContent(),true)==json_decode($second->getContent(),true),'Payment retry replays result without second provider call');
+ $otherChannel = Payment::create(['name'=>'Other checkout channel','payment'=>'V10TestPayment','uuid'=>Str::random(8),
+     'enable'=>1,'handling_fee_fixed'=>25,'config'=>[]]);
+ $makeOrder = fn () => Order::create([
+     'user_id'=>$quoteUser->id,'plan_id'=>$plan->id,'trade_no'=>Helper::generateOrderNo(),
+     'period'=>'month_price','currency'=>'CNY','total_amount'=>1000,'type'=>1,
+ ]);
+ $makePayment = function (Order $order, Payment $method, array $overrides = []) {
+     $request = Request::create('/api/v10/me/orders/'.$order->trade_no.'/payments', 'POST', $overrides + [
+         'trade_no'=>$order->trade_no, 'method'=>$method->id, 'payment_request_key'=>(string) Str::uuid(),
+     ]);
+     $request->user = ['id'=>$order->user_id];
+     return $request;
+ };
+ $checkout = function (Request $request) use ($actions): array {
+     app()->instance('request', $request);
+     $result = json_decode($actions->checkout($request)->getContent(), true, flags: JSON_THROW_ON_ERROR);
+     ksort($result);
+     return $result;
+ };
+ $assertConflict = function (Request $request, string $message) use ($checkout, $assert): void {
+     try {
+         $checkout($request);
+     } catch (HttpException $error) {
+         $assert($error->getStatusCode() === 409, $message);
+         return;
+     }
+     throw new RuntimeException($message);
+ };
 
- $createdOrder->fresh()->update(['payment_id' => $channel->id]);
- $resumeRequest = clone $payRequest;
- $resumeRequest->merge(['resume_payment' => true, 'payment_request_key' => (string)Str::uuid()]);
- $resumed = App\Services\CheckoutPayment::once($resumeRequest, $provider);
- $assert($calls === 1 && json_decode($resumed->getContent(), true) == json_decode($first->getContent(), true),
-     'Reopening a payment restores the issued action without calling the gateway');
+ $quoteFields = ['expected_payment_amount'=>720,'expected_payment_currency'=>'CNY'];
+ $payRequest = $makePayment($createdOrder, $channel, $quoteFields);
+ $competingRequest = $makePayment($createdOrder, $channel, $quoteFields);
+ $earlySwitch = $makePayment($createdOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]);
+ $qrAction = ['data'=>'weixin://wxpay/bizpayurl?pr=fixture', 'type'=>0];
+ $redirectAction = ['data'=>'https://pay.example.test/new-channel', 'type'=>1];
+ $pendingAction = ['data'=>true, 'type'=>2];
+ $calls = 0;
+ V10TestPayment::$payHandler = function () use (&$calls, $checkout, $payRequest, $assertConflict, $competingRequest, $earlySwitch, $qrAction, $pendingAction, $assert) {
+     if (++$calls !== 1) throw new RuntimeException('Duplicate provider call during initial checkout');
+     // Insert another request while the real checkout action is waiting on the provider.
+     $assert($checkout(clone $payRequest) === $pendingAction, 'An in-flight original key only reports pending');
+     $assertConflict($competingRequest, 'Fresh key is rejected while the same channel is sending');
+     $assertConflict($earlySwitch, 'A different channel cannot supersede a live provider request');
+     return $qrAction;
+ };
+ $first = $checkout($payRequest);
+ $assert($first === $qrAction && $createdOrder->fresh()->payment_id === $channel->id, 'First request binds the channel and returns its QR');
+ $assert($checkout($payRequest) === $first && $checkout($competingRequest) === $first && $calls === 1,
+     'Same key and fresh key both replay the issued QR without a second provider call');
+ $assertConflict($makePayment($createdOrder, $channel, ['expected_payment_amount'=>721,'expected_payment_currency'=>'CNY']),
+     'Fresh key cannot replay the action for a different quoted amount');
+ $assertConflict($makePayment($createdOrder, $channel, ['expected_payment_amount'=>720,'expected_payment_currency'=>'USD']),
+     'Fresh key cannot replay the action for a different quoted currency');
+ $resumeRequest = $makePayment($createdOrder, $channel, ['resume_payment'=>true]);
+ $assert($checkout($resumeRequest) === $first && $calls === 1, 'Explicit resume restores the issued QR without calling the gateway');
+ $assertConflict($makePayment($createdOrder, $otherChannel), 'Changing channels without explicit confirmation is rejected even after a QR was issued');
+ $assertConflict($makePayment($createdOrder, $otherChannel, ['switch_from_payment_method'=>$issuedChannel->id]),
+     'Switch confirmation must name the currently selected channel');
+ $reusedKey = $makePayment($createdOrder, $otherChannel, ['payment_request_key'=>$payRequest->input('payment_request_key')]);
+ $assertConflict($reusedKey, 'An old request key remains bound to its original channel and quote');
 
- $uncertainRequest=clone $payRequest;$uncertainRequest->merge(['payment_request_key'=>(string)Str::uuid()]);
+ V10TestPayment::$payHandler = function () use (&$calls, $redirectAction) {
+     ++$calls;
+     return $redirectAction;
+ };
+ $switchRequest = $makePayment($createdOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]);
+ $assert($checkout($switchRequest) === $redirectAction && $checkout($switchRequest) === $redirectAction
+     && $createdOrder->fresh()->payment_id === $otherChannel->id && $calls === 2, 'An explicit switch calls the new channel once');
+ $assert($checkout($makePayment($createdOrder, $otherChannel)) === $redirectAction && $calls === 2,
+     'A fresh key also replays the current redirect without contacting the gateway');
+ $assertConflict($resumeRequest, 'Explicit resume cannot restore a superseded channel');
+ $assertConflict($payRequest, 'The original request key cannot replay a superseded channel');
+
+ $existing = $createdOrder->fresh();
+ $snapshot = $existing->payment_snapshot;
+ unset($snapshot['payment_action_key']);
+ $existing->update(['payment_snapshot'=>$snapshot]);
+ $assert($checkout($makePayment($createdOrder, $otherChannel, ['resume_payment'=>true])) === $redirectAction
+     && $checkout($makePayment($createdOrder, $otherChannel)) === $redirectAction && $calls === 2,
+     'Legacy snapshots without an action key recover the sole current action while ignoring the older channel');
+ $ambiguous = $snapshot;
+ $ambiguous['payment_attempts'][(string) Str::uuid()] = $snapshot['payment_attempts'][$switchRequest->input('payment_request_key')];
+ $existing->update(['payment_snapshot'=>$ambiguous]);
+ $assertConflict($makePayment($createdOrder, $otherChannel), 'Legacy replay rejects multiple possible actions on the same channel');
+ unset($snapshot['channels'][$otherChannel->id]['payment_amount']);
+ $existing->update(['payment_snapshot'=>$snapshot]);
+ $otherChannel->update(['handling_fee_fixed'=>50]);
+ $assert($checkout($makePayment($createdOrder, $otherChannel, ['expected_payment_amount'=>725,'expected_payment_currency'=>'CNY'])) === $redirectAction,
+     'Legacy replay uses the fee saved on the order, even after the live fee changes');
+ $assertConflict($makePayment($createdOrder, $otherChannel, ['expected_payment_amount'=>750,'expected_payment_currency'=>'CNY']),
+     'Changing the configured fee does not alter the saved legacy quote');
+ $assertConflict($payRequest, 'A legacy snapshot cannot replay a superseded channel request');
+ $assertConflict($makePayment($createdOrder, $channel), 'A fresh key cannot expose a superseded channel from a legacy snapshot');
+ $assert($calls === 2, 'Rejected and replayed requests leave the provider call count unchanged');
+
+ $uncertainOrder = $makeOrder();
+ $uncertainRequest = $makePayment($uncertainOrder, $channel);
  $uncertainId = Str::uuid()->toString();
  $uncertainRequest->attributes->set('requestId', $uncertainId);
- $unknownCalls=0;
+ $unknownCalls = 0;
+ V10TestPayment::$payHandler = function (array $order, PaymentAttemptHistory $diagnostic) use (&$unknownCalls) {
+     ++$unknownCalls;
+     $diagnostic->sending('https://pay.example.test/mapi.php?sign=fixture-secret');
+     $diagnostic->received((object)['curlErrorCode'=>28], 'fixture-secret', null, null);
+     throw new RuntimeException('Synthetic connection loss');
+ };
  try {
-     App\Services\CheckoutPayment::once($uncertainRequest, function (App\Services\PaymentAttemptHistory $diagnostic) use (&$unknownCalls, $uncertainRequest) {
-         $unknownCalls++;
-         $uncertainRequest->attributes->set('checkout.provider_started', true);
-         $diagnostic->sending('https://pay.example.test/mapi.php?sign=fixture-secret');
-         $diagnostic->received((object)['curlErrorCode' => 28], 'fixture-secret', null, null);
-         throw new RuntimeException('Synthetic connection loss');
-     });
- } catch (RuntimeException $e) {}
- $pending=App\Services\CheckoutPayment::once($uncertainRequest,function()use(&$unknownCalls){$unknownCalls++;return response(['type'=>0,'data'=>'unexpected']);});
- $assert($unknownCalls===1 && json_decode($pending->getContent(),true)['type']===2,'Uncertain provider result resumes status checks without reissuing payment');
-
- $withoutKey=clone $payRequest; $withoutKey->request->remove('payment_request_key');
- try {$actions->checkout($withoutKey);throw new RuntimeException('Missing-key retry bypassed in-flight guard');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Omitting request key cannot bypass an uncertain payment');}
- $diagnostics = App\Services\PaymentAttemptHistory::forOrder($createdOrder)['events'];
+     $checkout($uncertainRequest);
+     throw new RuntimeException('Synthetic timeout was not propagated');
+ } catch (RuntimeException $error) {
+     $assert($error->getMessage() === 'Synthetic connection loss', 'Provider timeout is propagated without creating a payment action');
+ }
+ $assert($checkout($uncertainRequest) === $pendingAction && $unknownCalls === 1,
+     'Uncertain provider result resumes status checks without reissuing payment');
+ $withoutKey = $makePayment($uncertainOrder, $channel);
+ $withoutKey->request->remove('payment_request_key');
+ $assertConflict($withoutKey, 'Omitting a key cannot bypass an uncertain payment');
+ $diagnostics = PaymentAttemptHistory::forOrder($uncertainOrder)['events'];
  $blocked = $diagnostics->first();
  $timeout = $diagnostics->firstWhere('request_id', $uncertainId);
  $assert($blocked->result === 'blocked' && $blocked->previous_request_id === $uncertainId
      && $timeout?->stage === 'gateway' && $timeout?->reason === 'gateway_timeout', 'Retry links to the original gateway timeout');
  $assert($timeout->gateway_host === 'pay.example.test' && $timeout->gateway_code === null
      && !str_contains($diagnostics->toJson(), 'fixture-secret'), 'Diagnostics retain the host and omit secrets and raw gateway values');
- $switchRequest = clone $payRequest;
- $switchRequest->merge(['method' => $channel->id + 1, 'payment_request_key' => Str::uuid()->toString()]);
- try { App\Services\CheckoutPayment::once($switchRequest, $provider); throw new RuntimeException('Unconfirmed switch accepted'); }
- catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 1, 'A different channel without explicit confirmation remains blocked'); }
 
- $existing = $createdOrder->fresh();
- $existing->payment_id = $channel->id;
+ $existing = $uncertainOrder->fresh();
  $snapshot = $existing->payment_snapshot;
- $oldKey = $uncertainRequest->input('payment_request_key');
- unset($snapshot['payment_attempts'][$oldKey]['provider_failed']); // Earlier releases only recorded the failure in diagnostics.
- $existing->payment_snapshot = $snapshot;
- $existing->save();
- $switchRequest->merge(['switch_from_payment_method' => $channel->id]);
- $switchResult = App\Services\CheckoutPayment::once($switchRequest, function () use ($createdOrder, $switchRequest, $provider) {
-     $createdOrder->fresh()->update(['payment_id' => $switchRequest->input('method')]);
-     return $provider();
- });
- $switchReplay = App\Services\CheckoutPayment::once($switchRequest, $provider);
- $assert($calls === 2 && json_decode($switchResult->getContent(), true) == json_decode($switchReplay->getContent(), true),
-     'Confirmed switch after a recorded legacy gateway failure is issued once');
- try { App\Services\CheckoutPayment::once($resumeRequest, $provider); throw new RuntimeException('Resumed a switched-away channel'); }
- catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Restoring an old channel is rejected without contacting the gateway'); }
- try { App\Services\CheckoutPayment::once($payRequest, $provider); throw new RuntimeException('Old channel payment entry replayed'); }
- catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Old request key cannot reopen a payment entry after switching'); }
+ unset($snapshot['payment_attempts'][$uncertainRequest->input('payment_request_key')]['provider_failed']);
+ $existing->update(['payment_snapshot'=>$snapshot]);
+ V10TestPayment::$payHandler = function () use (&$unknownCalls, $redirectAction) {
+     ++$unknownCalls;
+     return $redirectAction;
+ };
+ $afterTimeout = $makePayment($uncertainOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]);
+ $assert($checkout($afterTimeout) === $redirectAction && $checkout($afterTimeout) === $redirectAction && $unknownCalls === 2,
+     'Explicit switch after a recorded legacy provider failure is issued once');
 
- $payRequest->merge(['method'=>$channel->id+1]);
- try {App\Services\CheckoutPayment::once($payRequest,$provider);throw new RuntimeException('Different payment method accepted');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Payment request key is bound to channel and expected quote');}
+ $pendingOrder = $makeOrder();
+ $pendingCalls = 0;
+ V10TestPayment::$payHandler = function () use (&$pendingCalls, $pendingAction) {
+     ++$pendingCalls;
+     return $pendingAction;
+ };
+ $assert($checkout($makePayment($pendingOrder, $channel)) === $pendingAction, 'Provider pending result is returned');
+ $assertConflict($makePayment($pendingOrder, $channel), 'A fresh key cannot bypass a provider pending result');
+ $assertConflict($makePayment($pendingOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]),
+     'An explicit switch cannot bypass a provider pending result');
+ $assert($pendingCalls === 1, 'Pending payment blocks every additional provider call');
 
- $pendingOrder=Order::create(['user_id'=>$quoteUser->id,'plan_id'=>$plan->id,'trade_no'=>'pending-'.Str::random(16),'period'=>'month_price','currency'=>'CNY','total_amount'=>1000,'type'=>1]);
- $pendingRequest=clone $payRequest;$pendingRequest->merge(['trade_no'=>$pendingOrder->trade_no,'method'=>$channel->id,'payment_request_key'=>(string)Str::uuid()]);
- App\Services\CheckoutPayment::once($pendingRequest,fn()=>response(['type'=>2,'data'=>true]));
- $pendingRequest->merge(['payment_request_key'=>(string)Str::uuid()]);
- try {App\Services\CheckoutPayment::once($pendingRequest,fn()=>response(['type'=>2,'data'=>true]));throw new RuntimeException('New key bypassed pending provider result');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Provider pending result blocks another payment attempt with a fresh key');}
- $pendingOrder->update(['payment_id' => $channel->id]);
- $pendingRequest->merge(['method' => $channel->id + 1, 'switch_from_payment_method' => $channel->id]);
- try { App\Services\CheckoutPayment::once($pendingRequest, $provider); throw new RuntimeException('Switch bypassed pending provider result'); }
- catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Explicit switching does not bypass a provider still processing payment'); }
-
- $pendingOrder->update(['payment_snapshot' => ['payment_attempts' => ['active' => ['method' => $channel->id, 'state' => 'started']]]]);
- try { App\Services\CheckoutPayment::once($pendingRequest, $provider); throw new RuntimeException('Switch raced a live provider request'); }
- catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'A request that has not reported a result cannot be superseded'); }
-
- $pendingOrder->update(['payment_snapshot' => ['payment_attempts' => ['previous' => ['method' => $channel->id, 'state' => 'started', 'provider_failed' => true]]]]);
- $paidWhileSwitching = App\Services\CheckoutPayment::once($pendingRequest, function () use ($pendingOrder) {
-     (new OrderService($pendingOrder))->paid('original-channel-callback');
-     return response(['type' => 0, 'data' => 'https://pay.example.test/new-channel']);
- });
- $assert(json_decode($paidWhileSwitching->getContent(), true)['type'] === 2 && $pendingOrder->fresh()->callback_no === 'original-channel-callback',
-     'Old channel settlement prevents returning the new channel payment entry');
+ $raceOrder = $makeOrder();
+ V10TestPayment::$payHandler = fn () => $qrAction;
+ $checkout($makePayment($raceOrder, $channel));
+ V10TestPayment::$payHandler = function () use ($raceOrder, $channel, $redirectAction, $assert) {
+     $callback = Request::create('/api/v10/webhooks/payments/V10TestPayment/'.$channel->uuid, 'POST', [
+         'signature'=>'local-test-signature','orderNumber'=>$raceOrder->trade_no,'amount'=>1020,'currency'=>'CNY',
+     ]);
+     $result = (new PaymentActions())->notify($channel->payment, $channel->uuid, $callback);
+     $assert($result === 'success', 'Original signed callback can settle while the new provider is sending');
+     return $redirectAction;
+ };
+ $paidWhileSwitching = $checkout($makePayment($raceOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]));
+ $assert($paidWhileSwitching === $pendingAction && $raceOrder->fresh()->callback_no === 'local-callback'
+     && $raceOrder->fresh()->payment_id === $channel->id, 'Old channel settlement suppresses the new payment link');
+ V10TestPayment::$payHandler = null;
 
  $epay=App\Models\Payment::create(['name'=>'WeChat fixture','payment'=>'EPayQrcode','uuid'=>App\Utils\Helper::guid(),
      'enable'=>1,'config'=>['pid'=>'fixture','key'=>'fixture','url'=>'https://pay.example.test']]);

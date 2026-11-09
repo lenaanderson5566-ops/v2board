@@ -21,16 +21,18 @@ try {
     $checkout = function () use ($order, $payment) {
         $request = Request::create('/api/v10/orders/'.$order->trade_no.'/payments', 'POST', ['trade_no'=>$order->trade_no,'method'=>$payment->id]);
         $request->user = ['id'=>$order->user_id];
-        return json_decode((new OrderActions())->checkout($request)->getContent(), true);
+        $result = json_decode((new OrderActions())->checkout($request)->getContent(), true, flags: JSON_THROW_ON_ERROR);
+        ksort($result);
+        return $result;
     };
     $first = $checkout();
     parse_str(parse_url($first['data'], PHP_URL_QUERY), $params);
     $assert($params['out_trade_no'] === $order->trade_no, 'Original merchant reference retained');
     $payment->name='Renamed'; $payment->save();
-    $checkout();
-    $assert($order->fresh()->payment_snapshot['name']==='Original Alipay', 'Original channel snapshot retained');
+    $assert($checkout() === $first && $order->fresh()->payment_snapshot['name'] === 'Original Alipay',
+        'Repeating checkout keeps the issued link and the original channel snapshot');
     $other = Payment::create(['name'=>'Second channel','payment'=>'Paytaro','uuid'=>App\Utils\Helper::guid(),'enable'=>1,'config'=>['pid'=>'test','key'=>'test-secret'],'handling_fee_fixed'=>30]);
-    $request=Request::create('/', 'POST',['trade_no'=>$order->trade_no,'method'=>$other->id]); $request->user=['id'=>$order->user_id];
+    $request=Request::create('/', 'POST',['trade_no'=>$order->trade_no,'method'=>$other->id,'switch_from_payment_method'=>$payment->id]); $request->user=['id'=>$order->user_id];
     (new OrderActions())->checkout($request);
     $deleteChannel = fn ($channel) => (new App\Http\Controllers\V1\Admin\PaymentController())->drop(
         Request::create('/', 'POST', ['id'=>$channel->id])

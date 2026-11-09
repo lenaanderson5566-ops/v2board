@@ -31,6 +31,7 @@ import {
 } from "./payment-action";
 
 export type PaymentQuote = { amount: number; currency: string; fee: number };
+type PaymentSubmission = Row & { method: number };
 
 export type InitialPayment = {
     methodId: number;
@@ -103,6 +104,7 @@ export function PaymentCheckout({
     const paymentActionPanel = useRef<HTMLDivElement>(null);
     useEffect(() => {
         if (
+            !embedded ||
             !qr ||
             !qrPanel.current ||
             qrPanel.current.closest("details:not([open])")
@@ -121,10 +123,12 @@ export function PaymentCheckout({
                 ? "instant"
                 : "smooth",
         });
-    }, [compact, qr]);
+    }, [embedded, compact, qr]);
     const [waiting, setWaiting] = useState(
         due > 0 && Boolean(order.payment_id),
     );
+    const [unconfirmedSubmission, setUnconfirmedSubmission] = useState<PaymentSubmission>();
+    const [checkingOnly, setCheckingOnly] = useState(false);
     const [issuedFee, setIssuedFee] = useState(
         Number(order.handling_amount || 0),
     );
@@ -170,7 +174,9 @@ export function PaymentCheckout({
     useEffect(() => {
         observedPayment.current = serverPayment;
         if (!newServerPayment || status !== 0) return;
-        setSelected(Number(order.payment_id));
+        const issuedMethod = Number(order.payment_id);
+        const channelChanged = issuedMethod !== selected;
+        setSelected(issuedMethod);
         setIssuedFee(Number(order.handling_amount || 0));
         setIssuedQuote({
             amount: order.payment_amount,
@@ -178,8 +184,12 @@ export function PaymentCheckout({
         });
         setWaiting(true);
         setCardMethod(null);
+        if (channelChanged) {
+            setUnconfirmedSubmission(undefined);
+            setCheckingOnly(false);
+        }
         if (
-            Number(order.payment_id) !== selected ||
+            channelChanged ||
             (order.payment_amount != null &&
                 Number(order.payment_amount) !== Number(issuedQuote.amount)) ||
             (order.payment_currency &&
@@ -198,7 +208,7 @@ export function PaymentCheckout({
                   : undefined)
             : undefined;
     useEffect(() => {
-        if (!openUrl || !paymentActionPanel.current) return;
+        if (!smallScreen || !openUrl || !paymentActionPanel.current) return;
         const target = paymentActionPanel.current;
         const bounds = target.getBoundingClientRect();
         if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
@@ -210,7 +220,7 @@ export function PaymentCheckout({
                 ? "instant"
                 : "smooth",
         });
-    }, [openUrl]);
+    }, [smallScreen, openUrl]);
     const fee =
         status === 0
             ? waiting
@@ -224,9 +234,10 @@ export function PaymentCheckout({
         : method?.quoted_currency;
     const awaitingConfirmation = waiting || newServerPayment;
     const hasPaymentAction = Boolean(qr || openUrl);
-    const canResumePayment = awaitingConfirmation && !hasPaymentAction && selected > 0 &&
-        (Boolean(method) || !methods.data);
-    const canSwitchPayment = awaitingConfirmation &&
+    const canResumePayment = awaitingConfirmation && !hasPaymentAction &&
+        (selected > 0 ? (Boolean(method) || !methods.data) : due <= 0) &&
+        (Boolean(unconfirmedSubmission) || (selected > 0 && !checkingOnly));
+    const canSwitchPayment = awaitingConfirmation && (!checkingOnly || Boolean(unconfirmedSubmission)) &&
         (Boolean(methods.error) || methods.data?.some((item) => Number(item.id) !== selected));
     const selectedOriginalMethod = restartFromMethod.current === selected;
     const confirmLabel = awaitingConfirmation
@@ -280,6 +291,7 @@ export function PaymentCheckout({
             setPaymentLink("");
             setCardMethod(null);
             setRetryOpen(false);
+            setUnconfirmedSubmission(undefined);
         }
     }, [status]);
     useEffect(() => {
@@ -345,67 +357,51 @@ export function PaymentCheckout({
             window.removeEventListener("focus", visible);
         };
     }, [status, waiting, order.trade_no, pollRun]);
-    async function pay(id: number, token?: string) {
-        if (inFlight.current || paymentLocked.current || !mounted.current)
+    async function pay(id: number, token?: string, retry?: PaymentSubmission) {
+        if (inFlight.current || status !== 0 || (!retry && paymentLocked.current) || !mounted.current)
             return;
         inFlight.current = true;
-        if (paymentKey.current && keyedMethod.current !== id) {
+        if (!retry && keyedMethod.current !== id) {
             paymentKey.current = crypto.randomUUID();
             keyedMethod.current = id;
         }
+        if (!retry) setUnconfirmedSubmission(undefined);
         setBusy(true);
         setError("");
-        setWaiting(false);
-        setQr("");
-        setPaymentLink("");
+        const quotedMethod = methods.data?.find((item) => Number(item.id) === id);
+        const previousMethod = restartFromMethod.current;
+        const submission = retry ?? {
+            trade_no: order.trade_no,
+            method: id,
+            expected_payment_amount: quotedMethod?.quoted_amount,
+            expected_payment_currency: quotedMethod?.quoted_currency,
+            ...(token ? { token } : {}),
+            ...(previousMethod && previousMethod !== id && id > 0
+                ? { switch_from_payment_method: previousMethod }
+                : {}),
+            payment_request_key: paymentKey.current,
+        };
+        const checkoutFee = retry ? issuedFee : Number(quotedMethod?.quoted_fee ?? paymentFee(due, quotedMethod));
+        const checkoutQuote = retry ? issuedQuote : {
+            amount: quotedMethod?.quoted_amount,
+            currency: quotedMethod?.quoted_currency,
+        };
         try {
-            const previousMethod = restartFromMethod.current;
             const result = await request(
                 "user/order/checkout",
-                {
-                    trade_no: order.trade_no,
-                    method: id,
-                    expected_payment_amount: methods.data?.find(
-                        (item) => Number(item.id) === id,
-                    )?.quoted_amount,
-                    expected_payment_currency: methods.data?.find(
-                        (item) => Number(item.id) === id,
-                    )?.quoted_currency,
-                    ...(token ? { token } : {}),
-                    ...(previousMethod && previousMethod !== id && id > 0
-                        ? { switch_from_payment_method: previousMethod }
-                        : {}),
-                    ...(paymentKey.current
-                        ? { payment_request_key: paymentKey.current }
-                        : {}),
-                },
+                submission,
                 { timeoutMs: 45000 },
             );
             if (!mounted.current) return;
             restartFromMethod.current = undefined;
-            setIssuedFee(
-                Number(
-                    methods.data?.find((item) => Number(item.id) === id)
-                        ?.quoted_fee ??
-                        paymentFee(
-                            due,
-                            methods.data?.find(
-                                (item) => Number(item.id) === id,
-                            ),
-                        ),
-                ),
-            );
-            const quotedMethod = methods.data?.find(
-                (item) => Number(item.id) === id,
-            );
-            setIssuedQuote({
-                amount: quotedMethod?.quoted_amount,
-                currency: quotedMethod?.quoted_currency,
-            });
+            setIssuedFee(checkoutFee);
+            setIssuedQuote(checkoutQuote);
+            if (result.type !== 2) setUnconfirmedSubmission(undefined);
+            setCheckingOnly(result.type === -1 || result.type === 2);
             if (result.type === -1 || result.type === 2) {
                 setWaiting(true);
                 setCardMethod(null);
-                reload();
+                checkPaymentResult();
             } else if (result.type === 1 && typeof result.data === "string") {
                 const action = paymentActionUrl(result.data);
                 setWaiting(true);
@@ -437,8 +433,23 @@ export function PaymentCheckout({
                 status?: number;
             };
             if (failure.status === 409) {
+                if (retry) {
+                    try {
+                        const { data } = await request<Row>(
+                            query("user/order/detail", { trade_no: order.trade_no }),
+                        );
+                        if (!mounted.current) return;
+                        if (Number(data?.status) === 0 && !data?.payment_id) {
+                            setUnconfirmedSubmission(undefined);
+                            setWaiting(false);
+                            setCheckingOnly(false);
+                        }
+                    } catch {
+                        // Keep the original request if the order could not be checked.
+                    }
+                }
                 methods.reload();
-                if (restartFromMethod.current) reload();
+                reload();
             }
             if (
                 ["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(
@@ -446,25 +457,9 @@ export function PaymentCheckout({
                 ) ||
                 (failure.status || 0) >= 500
             ) {
-                setIssuedFee(
-                    Number(
-                        methods.data?.find((item) => Number(item.id) === id)
-                            ?.quoted_fee ??
-                            paymentFee(
-                                due,
-                                methods.data?.find(
-                                    (item) => Number(item.id) === id,
-                                ),
-                            ),
-                    ),
-                );
-                const confirmed = methods.data?.find(
-                    (item) => Number(item.id) === id,
-                );
-                setIssuedQuote({
-                    amount: confirmed?.quoted_amount,
-                    currency: confirmed?.quoted_currency,
-                });
+                setIssuedFee(checkoutFee);
+                setIssuedQuote(checkoutQuote);
+                setUnconfirmedSubmission(submission);
                 setWaiting(true);
                 setPollRun((run) => run + 1);
                 setError(
@@ -546,13 +541,17 @@ export function PaymentCheckout({
             );
             if (Number(result.data?.status) === 0) {
                 autoStarted.current = true;
-                restartFromMethod.current = Number(result.data.payment_id) || undefined;
-                if (restartFromMethod.current) setSelected(restartFromMethod.current);
+                const previousMethod = Number(result.data.payment_id) || undefined;
+                restartFromMethod.current = previousMethod;
+                if (previousMethod) setSelected(previousMethod);
                 setWaiting(false);
+                setUnconfirmedSubmission((submission) =>
+                    submission?.method === previousMethod ? submission : undefined,
+                );
+                setCheckingOnly(false);
                 setQr("");
                 setPaymentLink("");
-                if (paymentKey.current)
-                    paymentKey.current = crypto.randomUUID();
+                paymentKey.current = crypto.randomUUID();
                 methods.reload();
             } else reload();
             setRetryOpen(false);
@@ -577,7 +576,8 @@ export function PaymentCheckout({
             }, { timeoutMs: 45000 });
             if (!mounted.current) return;
             if (result.type === 2) {
-                reload();
+                setCheckingOnly(true);
+                checkPaymentResult();
                 return;
             }
             if (typeof result.data !== "string" || !result.data) {
@@ -597,9 +597,18 @@ export function PaymentCheckout({
             if (mounted.current) setBusy(false);
         }
     }
+    function checkPaymentResult() {
+        setPollRun((run) => run + 1);
+        reload();
+    }
+    function continuePayment() {
+        if (unconfirmedSubmission) {
+            void pay(unconfirmedSubmission.method, undefined, unconfirmedSubmission);
+        } else void resumePayment(selected);
+    }
     function confirmOrCheckPayment() {
-        if (awaitingConfirmation) reload();
-        else if (selectedOriginalMethod) void resumePayment(selected);
+        if (awaitingConfirmation) checkPaymentResult();
+        else if (selectedOriginalMethod) continuePayment();
         else if (due > 0 && method?.payment === "StripeCredit") {
             setCardMethod(Number(method.id));
         } else void pay(due > 0 ? selected : 0);
@@ -639,6 +648,11 @@ export function PaymentCheckout({
             <div className="checkout-secondary">
                 <OrderHelp tradeNo={String(order.trade_no)} />
                 <div className="checkout-secondary-actions">
+                    {canSwitchPayment && (
+                        <button type="button" disabled={busy} onClick={() => setRetryOpen(true)}>
+                            {pc("reselectPayment")}
+                        </button>
+                    )}
                     <button
                         type="button"
                         disabled={busy}
@@ -1070,6 +1084,11 @@ export function PaymentCheckout({
                         ) : (
                             qrContent
                         )}
+                        {canResumePayment && (
+                            <button type="button" disabled={busy} onClick={continuePayment}>
+                                {tx(busy ? "正在加载…" : "继续支付")}
+                            </button>
+                        )}
                         {smallScreen && (qr || paymentLink) && (
                             <div className="checkout-mobile-copy">
                                 <button type="button" onClick={copyPayment}>
@@ -1088,22 +1107,11 @@ export function PaymentCheckout({
                                 )}
                             </div>
                         )}
-                        <div className={awaitingConfirmation ? "checkout-confirm checkout-confirm-in-flow" : "checkout-confirm"}>
-                            {canResumePayment && (
-                                <button
-                                    type="button"
-                                    className="primary"
-                                    disabled={busy}
-                                    onClick={() => void resumePayment(selected)}
-                                >
-                                    {busy && <LoaderCircle className="checkout-spinner" size={18} aria-hidden="true" />}
-                                    {tx(busy ? "正在加载…" : "继续支付")}
-                                </button>
-                            )}
+                        <div className="checkout-confirm">
                             <button
                                 type="button"
                                 className={
-                                    awaitingConfirmation && (hasPaymentAction || canResumePayment)
+                                    openUrl && awaitingConfirmation
                                         ? "checkout-check-result"
                                         : "primary"
                                 }
@@ -1132,11 +1140,6 @@ export function PaymentCheckout({
                                 {tx("正在等待支付确认，请勿重复付款。")}
                             </p>
                         )}
-                        {canSwitchPayment && (
-                            <button type="button" disabled={busy} onClick={() => setRetryOpen(true)}>
-                                {pc("reselectPayment")}
-                            </button>
-                        )}
                         {due > 0 && <BrowserHandoffHelp context="payment" disabled={busy} />}
                         {compact ? (
                             <details className="checkout-order-actions">
@@ -1154,10 +1157,7 @@ export function PaymentCheckout({
                     {tx("自动检查已暂停，订单仍可继续处理，请勿重复付款。")}
                     <button
                         type="button"
-                        onClick={() => {
-                            setPollRun((run) => run + 1);
-                            reload();
-                        }}
+                        onClick={checkPaymentResult}
                     >
                         {tx("继续检查")}
                     </button>
@@ -1166,14 +1166,14 @@ export function PaymentCheckout({
             {pollError && (
                 <div className="alert" role="alert">
                     {pollError}
-                    <button type="button" onClick={reload}>
+                    <button type="button" onClick={checkPaymentResult}>
                         {tx("检查支付结果")}
                     </button>
                 </div>
             )}
             {status === 1 && (
                 <div className="checkout-processing-actions">
-                    <button type="button" onClick={reload}>
+                    <button type="button" onClick={checkPaymentResult}>
                         {tx("检查支付结果")}
                     </button>
                     <OrderHelp tradeNo={String(order.trade_no)} />
@@ -1194,7 +1194,7 @@ export function PaymentCheckout({
                                 disabled={busy}
                                 onClick={() => {
                                     setRetryOpen(false);
-                                    reload();
+                                    checkPaymentResult();
                                 }}
                             >
                                 {tx("检查支付结果")}

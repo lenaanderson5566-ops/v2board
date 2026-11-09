@@ -8,11 +8,27 @@ use App\Models\Payment;
 class PaymentService
 {
     public const RETIRED_METHODS = ['Epusdt', 'BEasyPaymentUSDT'];
+    private const CALLBACK_ONLY_METHODS = ['metepay', 'metewxpay'];
 
     public $method;
     protected $class;
     protected $config;
     protected $payment;
+
+    public static function isCallbackOnly(?string $method): bool
+    {
+        return $method !== null && in_array(strtolower($method), self::CALLBACK_ONLY_METHODS, true);
+    }
+
+    public static function unavailableForCheckout(): array
+    {
+        return array_merge(array_map('strtolower', self::RETIRED_METHODS), self::CALLBACK_ONLY_METHODS);
+    }
+
+    public static function canCheckout(string $method): bool
+    {
+        return !in_array(strtolower($method), self::unavailableForCheckout(), true);
+    }
 
     public function __construct($method, $id = NULL, $uuid = NULL)
     {

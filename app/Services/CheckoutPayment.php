@@ -31,8 +31,7 @@ final class CheckoutPayment
             $diagnostic->identify($order, $method);
             $snapshot = $order->payment_snapshot ?: [];
             if ($request->boolean('resume_payment')) {
-                $outcome = 'replayed';
-                return ['result' => self::resumeAction($order, $method, $snapshot)];
+                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome)];
             }
             if (isset($snapshot['payment_attempts'][$key])) {
                 $attempt = $snapshot['payment_attempts'][$key];
@@ -40,6 +39,11 @@ final class CheckoutPayment
                 abort_unless(hash_equals($attempt['fingerprint'],$fingerprint),409,__('Invalid parameter'));
                 if (in_array($attempt['result']['type'] ?? null, [0, 1], true)) {
                     if ((int) $order->status !== 0) return ['result' => ['type' => 2, 'data' => true]];
+                    $provider = Payment::whereKey($method)->value('payment');
+                    if (self::isCallbackOnlyChannel($order, $snapshot, $method, $provider)) {
+                        $diagnostic->checkpoint('channel_unavailable');
+                        abort(409, __('Payment method is not available'));
+                    }
                     if (($order->payment_id && (int) $order->payment_id !== $method)
                         || (array_key_exists('payment_action_key', $snapshot) && $snapshot['payment_action_key'] !== $key)) {
                         $diagnostic->checkpoint('quote_changed');
@@ -51,17 +55,17 @@ final class CheckoutPayment
             $diagnostic->checkpoint('order_closed');
             abort_unless((int)$order->status === 0,409,__('Order does not exist or has been paid'));
             $currentMethod = (int) $order->payment_id;
-            $switching = $switchFrom > 0 && $method > 0 && $switchFrom !== $method;
-            if ($switching && $currentMethod !== 0 && $currentMethod !== $switchFrom) {
-                $diagnostic->checkpoint('quote_changed');
-                abort(409, __('Payment quote changed. Reload and confirm the payment amount.'));
+            if ($method > 0 && $currentMethod === $method) {
+                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request)];
             }
+
+            $switching = $switchFrom > 0 && $method > 0 && $switchFrom === $currentMethod;
             foreach ($snapshot['payment_attempts'] ?? [] as $attempt) {
                 $state = $attempt['state'] ?? '';
                 if ($state !== 'started'
                     && !($state === 'returned' && (int) ($attempt['result']['type'] ?? -2) === 2)) continue;
 
-                if ($switching && $currentMethod === $switchFrom && $state === 'started'
+                if ($switching && $state === 'started'
                     && (int) ($attempt['method'] ?? 0) !== $method
                     && (($attempt['provider_failed'] ?? false) || PaymentAttemptHistory::hasFailed($order, $attempt))) {
                     if ((int) $attempt['method'] === $switchFrom) $diagnostic->previous($attempt);
@@ -71,6 +75,10 @@ final class CheckoutPayment
                 $diagnostic->checkpoint('in_flight');
                 $diagnostic->previous($attempt);
                 abort(409, __('Payment is being confirmed. Please check the order status before trying again.'));
+            }
+            if (!$switching && ($currentMethod > 0 || $switchFrom > 0)) {
+                $diagnostic->checkpoint('quote_changed');
+                abort(409, __('Payment quote changed. Reload and confirm the payment amount.'));
             }
             $diagnostic->checkpoint('internal_error');
             $snapshot['payment_attempts'][$key] = ['fingerprint'=>$fingerprint,'method'=>$method,'state'=>'started',
@@ -123,21 +131,37 @@ final class CheckoutPayment
         return $closed ? response(['type' => 2, 'data' => true]) : $result;
     }
 
-    private static function resumeAction(Order $order, int $method, array $snapshot): array
+    private static function resumeAction(
+        Order $order,
+        array $snapshot,
+        int $method,
+        PaymentAttemptHistory $diagnostic,
+        string &$outcome,
+        ?Request $checkout = null,
+    ): array
     {
         if ((int) $order->status !== 0) return ['type' => 2, 'data' => true];
+        $diagnostic->checkpoint('channel_unavailable');
         abort_unless($method > 0 && (int) $order->payment_id === $method, 409, __('Payment method is not available'));
         $channel = Payment::whereKey($method)->where('enable', 1)->first(['uuid', 'payment']);
         $savedChannel = $snapshot['channels'][$method] ?? null;
-        abort_unless($channel && (!$savedChannel || (($savedChannel['uuid'] ?? null) === $channel->uuid
+        if (!isset($snapshot['channels']) && isset($snapshot['uuid'], $snapshot['provider'])) {
+            $savedChannel = $snapshot;
+        }
+        abort_unless($channel && !self::isCallbackOnlyChannel($order, $snapshot, $method, $channel->payment)
+            && (!isset($snapshot['channels']) || $savedChannel)
+            && (!$savedChannel || (($savedChannel['uuid'] ?? null) === $channel->uuid
             && ($savedChannel['provider'] ?? null) === $channel->payment)), 409, __('Payment method is not available'));
 
         $attempts = $snapshot['payment_attempts'] ?? [];
         foreach ($attempts as $attempt) {
-            if (($attempt['result']['type'] ?? null) === 2
+            if ((int) ($attempt['result']['type'] ?? -2) === 2
                 || (($attempt['state'] ?? '') === 'started'
                 && ((int) ($attempt['method'] ?? 0) === $method
                     || (!($attempt['provider_failed'] ?? false) && !PaymentAttemptHistory::hasFailed($order, $attempt))))) {
+                $outcome = 'blocked';
+                $diagnostic->checkpoint('in_flight');
+                $diagnostic->previous($attempt);
                 abort(409, __('Payment is being confirmed. Please check the order status before trying again.'));
             }
         }
@@ -152,7 +176,27 @@ final class CheckoutPayment
             && in_array($attempt['result']['type'] ?? null, [0, 1], true)
             && is_string($attempt['result']['data'] ?? null)
             && $attempt['result']['data'] !== '');
+        $diagnostic->checkpoint('missing_payment_action');
         abort_unless(count($actions) === 1, 409, '当前订单没有可恢复的支付入口，请检查订单状态或切换支付方式。');
+
+        $orderCurrency = $order->currency ?: 'CNY';
+        $currency = $savedChannel['payment_currency'] ?? $orderCurrency;
+        if ($checkout && ($checkout->filled('expected_payment_amount') || $checkout->filled('expected_payment_currency') || $currency !== $orderCurrency)) {
+            // Reuse the issued quote. Legacy orders were charged their total plus the saved fee.
+            $amount = $savedChannel['payment_amount']
+                ?? ((int) $order->total_amount + (int) ($savedChannel['handling_amount'] ?? $order->handling_amount));
+            $diagnostic->checkpoint('quote_changed');
+            abort_unless((int) $checkout->input('expected_payment_amount') === $amount
+                && $checkout->input('expected_payment_currency') === $currency, 409,
+                __('Payment quote changed. Reload and confirm the payment amount.'));
+        }
         return reset($actions)['result'];
+    }
+
+    private static function isCallbackOnlyChannel(Order $order, array $snapshot, int $method, ?string $provider): bool
+    {
+        $saved = $snapshot['channels'][$method]['provider'] ?? null;
+        if ($saved === null && (int) $order->payment_id === $method) $saved = $snapshot['provider'] ?? null;
+        return PaymentService::isCallbackOnly($provider) || PaymentService::isCallbackOnly($saved);
     }
 }

@@ -309,7 +309,9 @@ class OrderActions
         }
         $diagnostic->checkpoint('channel_unavailable');
         $payment = Payment::find($method);
-        if (!$payment || $payment->enable !== 1) abort(request()->is('api/v10/*') ? 409 : 500, __('Payment method is not available'));
+        if (!$payment || $payment->enable !== 1 || !PaymentService::canCheckout($payment->payment)) {
+            abort(request()->is('api/v10/*') ? 409 : 500, __('Payment method is not available'));
+        }
         $channelSnapshot = $order->payment_snapshot['channels'][(string)$method] ?? null;
         abort_if($channelSnapshot && (($channelSnapshot['uuid'] ?? null) !== $payment->uuid || ($channelSnapshot['provider'] ?? null) !== $payment->payment),409,__('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
@@ -405,7 +407,7 @@ class OrderActions
             'config'
         ])
             ->where('enable', 1)
-            ->whereNotIn('payment', PaymentService::RETIRED_METHODS)
+            ->whereNotIn(DB::raw('LOWER(payment)'), PaymentService::unavailableForCheckout())
             ->orderBy('sort', 'ASC')
             ->get()
             ->map(function ($method) use ($order) {

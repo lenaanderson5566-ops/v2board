@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 142266,
+      "startupGzipBytes": 142267,
       "startupBytes": 468750,
       "startupFileCount": 16,
       "largestStartupAssets": [
@@ -18,9 +18,9 @@
           "gzipBytes": 52686
         },
         {
-          "file": "assets/app-TZOd9Cvk.js",
+          "file": "assets/app-t0eRrH19.js",
           "bytes": 12597,
-          "gzipBytes": 5274
+          "gzipBytes": 5275
         },
         {
           "file": "assets/runtime-config-DXkPanaE.js",
@@ -38,40 +38,40 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 142266,
+          "gzipBytes": 142267,
           "bytes": 468750,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 208178,
-          "bytes": 772457,
+          "gzipBytes": 208145,
+          "bytes": 772336,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 221231,
-          "bytes": 815390,
+          "gzipBytes": 221199,
+          "bytes": 815269,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 211512,
-          "bytes": 739703,
+          "gzipBytes": 211479,
+          "bytes": 739582,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 224565,
-          "bytes": 782636,
+          "gzipBytes": 224533,
+          "bytes": 782515,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3485576,
+      "totalBytes": 3485219,
       "fileCount": 343
     },
     {

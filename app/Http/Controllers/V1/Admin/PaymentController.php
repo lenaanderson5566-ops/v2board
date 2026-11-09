@@ -18,23 +18,28 @@ class PaymentController extends Controller
 {
     public function getPaymentMethods()
     {
+        return response(['data' => $this->availableMethods()]);
+    }
+
+    private function availableMethods(): array
+    {
         $methods = [];
-        foreach (glob(base_path('app//Payments') . '/*.php') as $file) {
+        foreach (glob(app_path('Payments/*.php')) as $file) {
             $className = pathinfo($file, PATHINFO_FILENAME);
+            if (!PaymentService::canCheckout($className)) continue;
             if (strpos($className, 'Paytaro') !== false) {
                 array_unshift($methods, pathinfo($file)['filename']);
             } else {
                 array_push($methods, pathinfo($file)['filename']);
             }
         }
-        return response([
-            'data' => $methods
-        ]);
+        return $methods;
     }
 
     public function fetch()
     {
-        $payments = Payment::orderBy('sort', 'ASC')->get();
+        $payments = Payment::orderBy('sort', 'ASC')->get()
+            ->reject(fn (Payment $payment) => PaymentService::isCallbackOnly($payment->payment))->values();
         $failures = PaymentAttemptHistory::recentFailures();
         foreach ($payments as $k => $v) {
             $notifyUrl = url("/api/v10/webhooks/payments/{$v->payment}/{$v->uuid}");
@@ -70,7 +75,9 @@ class PaymentController extends Controller
 
     public function getPaymentForm(Request $request)
     {
-        $paymentService = new PaymentService($request->input('payment'), $request->input('id'));
+        $method = $request->input('payment');
+        abort_unless(is_string($method) && PaymentService::canCheckout($method), 404, __('Payment method is not available'));
+        $paymentService = new PaymentService($method, $request->input('id'));
         return response([
             'data' => $paymentService->form()
         ]);
@@ -80,7 +87,8 @@ class PaymentController extends Controller
     {
         $payment = Payment::find($request->input('id'));
         if (!$payment) abort(500, '支付方式不存在');
-        abort_if(!$payment->enable && in_array($payment->payment, PaymentService::RETIRED_METHODS, true), 422, __('Payment method is not available'));
+        abort_if(PaymentService::isCallbackOnly($payment->payment)
+            || (!$payment->enable && !PaymentService::canCheckout($payment->payment)), 422, __('Payment method is not available'));
         $payment->enable = !$payment->enable;
         if (!$payment->save()) abort(500, '保存失败');
         return response([
@@ -97,7 +105,7 @@ class PaymentController extends Controller
             'currency' => 'sometimes|required|in:CNY,USD',
             'name' => 'required|string|max:255',
             'icon' => 'nullable',
-            'payment' => ['required', 'string', \Illuminate\Validation\Rule::in(array_map(fn($file)=>pathinfo($file, PATHINFO_FILENAME), glob(app_path('Payments/*.php')))), \Illuminate\Validation\Rule::notIn(PaymentService::RETIRED_METHODS)],
+            'payment' => ['required', 'string', \Illuminate\Validation\Rule::in($this->availableMethods())],
             'config' => 'required|array',
             'notify_domain' => 'nullable|url',
             'handling_fee_fixed' => 'nullable|integer|min:0',
@@ -117,6 +125,7 @@ class PaymentController extends Controller
         if ($request->input('id')) {
             $payment = Payment::find($request->input('id'));
             if (!$payment) abort(500, '支付方式不存在');
+            abort_if(PaymentService::isCallbackOnly($payment->payment), 422, __('Payment method is not available'));
             try {
                 $payment->update($params);
             } catch (\Exception $e) {
@@ -140,6 +149,7 @@ class PaymentController extends Controller
         $values = $request->validate(['id' => 'required|integer|min:1']);
         $deleted = DB::transaction(function () use ($values) {
             $payment = Payment::query()->lockForUpdate()->findOrFail($values['id']);
+            abort_if(PaymentService::isCallbackOnly($payment->payment), 422, __('Payment method is not available'));
             $pending = Order::where('status', 0)
                 ->where(fn ($orders) => $orders->where('payment_id', $payment->id)
                     ->orWhereNotNull('payment_snapshot->channels->'.$payment->id))

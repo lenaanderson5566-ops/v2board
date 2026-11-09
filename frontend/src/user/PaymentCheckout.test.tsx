@@ -211,6 +211,54 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
     },
 );
 
+it("recovers an unconfirmed checkout on the only available channel using the original request", async () => {
+    const quotedMethod = {
+        ...originalMethods[0], quoted_amount: 1000, quoted_currency: "CNY",
+    };
+    mock.methods = [quotedMethod];
+    const submit = vi.fn()
+        .mockRejectedValueOnce(Object.assign(new Error("Load failed"), { code: "REQUEST_TIMEOUT" }))
+        .mockResolvedValueOnce({ type: 0, data: "recovered-qr-payload" });
+    mock.request.mockImplementation((path: string, body) =>
+        path === "user/order/checkout" ? submit(body) : Promise.resolve({ data: 0 }),
+    );
+    renderCheckout();
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    const continuePayment = await screen.findByRole("button", { name: "继续支付" });
+    expect(submit).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    expect(submit).toHaveBeenCalledTimes(1);
+    const repricedMethod = { ...quotedMethod, quoted_amount: 1200 };
+    mock.methods = [repricedMethod];
+    fireEvent.click(continuePayment);
+
+    await screen.findByDisplayValue("recovered-qr-payload");
+    expect(submit).toHaveBeenCalledTimes(2);
+    expect(submit.mock.calls[1][0]).toEqual(submit.mock.calls[0][0]);
+    expect(submit.mock.calls[1][0]).toMatchObject({
+        payment_request_key: expect.any(String), expected_payment_amount: 1000,
+    });
+});
+
+it("returns to quote confirmation when a replay conflicts and the order has no linked payment", async () => {
+    mock.methods = [originalMethods[0]];
+    const submit = vi.fn()
+        .mockRejectedValueOnce(Object.assign(new Error("Load failed"), { code: "REQUEST_TIMEOUT" }))
+        .mockRejectedValueOnce(Object.assign(new Error("Quote changed"), { status: 409 }));
+    mock.request.mockImplementation(async (path: string, body) => {
+        if (path === "user/order/checkout") return submit(body);
+        if (path === "user/order/detail") return { data: { status: 0, payment_id: null } };
+        return { data: 0 };
+    });
+    renderCheckout();
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    fireEvent.click(await screen.findByRole("button", { name: "继续支付" }));
+    expect((await screen.findByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(false);
+    expect(screen.getByText("Quote changed")).toBeTruthy();
+    expect(submit).toHaveBeenCalledTimes(2);
+});
+
 it("sends the old channel only when the user confirms restarting and selects a different channel", async () => {
     mock.methods = [originalMethods[0], { id: 11, name: "WeChat Pay", handling_fee_fixed: 0 } as any];
     mock.request.mockImplementation(async (path: string) => {
@@ -220,7 +268,9 @@ it("sends the old channel only when the user confirms restarting and selects a d
     });
     renderCheckout({ trade_no: "switch-order", payment_id: 3 });
 
-    fireEvent.click(await screen.findByRole("button", { name: "reselectPayment" }));
+    const reselect = await screen.findByRole("button", { name: "reselectPayment" });
+    expect(reselect.closest(".checkout-secondary-actions")).toBeTruthy();
+    fireEvent.click(reselect);
     fireEvent.click(screen.getByRole("button", { name: "继续" }));
     await screen.findByRole("button", { name: "继续支付" });
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(0);
@@ -251,7 +301,9 @@ it("keeps the restored QR visible without a dismiss control or another checkout"
     );
     expect(screen.queryByRole("button", { name: "关闭二维码" })).toBeNull();
     expect(screen.queryByRole("button", { name: "继续支付" })).toBeNull();
-    expect(screen.getByRole("button", { name: "检查支付结果" }).classList.contains("checkout-check-result")).toBe(true);
+    const checkResult = screen.getByRole("button", { name: "检查支付结果" });
+    expect(checkResult.classList.contains("primary")).toBe(true);
+    expect(checkResult.parentElement?.className).toBe("checkout-confirm");
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 

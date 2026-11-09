@@ -23,7 +23,8 @@ final class CheckoutQuote
         $payment = null; $channel = [];
         if ($amount > 0 && $methodId > 0) {
             $payment = Payment::find($methodId);
-            abort_unless($payment && (int)$payment->enable === 1 && !in_array($payment->payment,PaymentService::RETIRED_METHODS,true),409,__('Payment method is not available'));
+            abort_unless($payment && (int)$payment->enable === 1 && PaymentService::canCheckout($payment->payment),
+                409, __('Payment method is not available'));
             $draft = clone $order; $draft->total_amount = $amount;
             $channel = PaymentQuote::make($draft,$payment);
         }

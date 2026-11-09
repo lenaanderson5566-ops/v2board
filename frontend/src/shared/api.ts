@@ -146,8 +146,10 @@ export async function request<T = Row>(
 ): Promise<Envelope<T>> {
     const observedStart=performance.now();
     let observedFailure: "api_error" | "network_error" | null = null;
-    // Checkout quotes use POST for structured input, but do not mutate account data.
-    const readOnly = path.split("?")[0] === "user/order/quote";
+    // Quotes and recovery of existing payment actions do not mutate account data.
+    const orderRoute = path.split("?")[0];
+    const readOnly = orderRoute === "user/order/quote" ||
+        (orderRoute === "user/order/checkout" && !(body instanceof FormData) && body?.resume_payment === true);
     if (body && !readOnly) clearReadCache();
     const token = hasBrowserSession();
     const requestMode = boot.mode;
@@ -218,8 +220,9 @@ export async function request<T = Row>(
         } catch {
             observedFailure="api_error";
             if (!res.ok) throw apiFailure(undefined, res.status, token, Boolean(v10), res.headers.get("Retry-After"));
-            throw new Error(
-                tx("服务响应异常 ({{value0}})", { value0: res.status }),
+            throw Object.assign(
+                new Error(tx("服务响应异常 ({{value0}})", { value0: res.status })),
+                { code: "RESPONSE_INVALID" },
             );
         }
         if (!res.ok) throw apiFailure(json, res.status, token, Boolean(v10), res.headers.get("Retry-After"));

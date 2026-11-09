@@ -3,6 +3,7 @@ namespace App\Services;
 
 use App\Models\Order;
 use App\Models\Payment;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -31,7 +32,7 @@ final class CheckoutPayment
             $diagnostic->identify($order, $method);
             $snapshot = $order->payment_snapshot ?: [];
             if ($request->boolean('resume_payment')) {
-                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome)];
+                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request)];
             }
             if (isset($snapshot['payment_attempts'][$key])) {
                 $attempt = $snapshot['payment_attempts'][$key];
@@ -56,7 +57,7 @@ final class CheckoutPayment
             abort_unless((int)$order->status === 0,409,__('Order does not exist or has been paid'));
             $currentMethod = (int) $order->payment_id;
             if ($method > 0 && $currentMethod === $method) {
-                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request)];
+                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request, validateQuote: true)];
             }
 
             $switching = $switchFrom > 0 && $method > 0 && $switchFrom === $currentMethod;
@@ -74,7 +75,7 @@ final class CheckoutPayment
                 $outcome = 'blocked';
                 $diagnostic->checkpoint('in_flight');
                 $diagnostic->previous($attempt);
-                abort(409, __('Payment is being confirmed. Please check the order status before trying again.'));
+                self::abortInFlight($request);
             }
             if (!$switching && ($currentMethod > 0 || $switchFrom > 0)) {
                 $diagnostic->checkpoint('quote_changed');
@@ -137,7 +138,8 @@ final class CheckoutPayment
         int $method,
         PaymentAttemptHistory $diagnostic,
         string &$outcome,
-        ?Request $checkout = null,
+        Request $request,
+        bool $validateQuote = false,
     ): array
     {
         if ((int) $order->status !== 0) return ['type' => 2, 'data' => true];
@@ -162,7 +164,7 @@ final class CheckoutPayment
                 $outcome = 'blocked';
                 $diagnostic->checkpoint('in_flight');
                 $diagnostic->previous($attempt);
-                abort(409, __('Payment is being confirmed. Please check the order status before trying again.'));
+                self::abortInFlight($request);
             }
         }
         $candidates = $attempts;
@@ -181,16 +183,28 @@ final class CheckoutPayment
 
         $orderCurrency = $order->currency ?: 'CNY';
         $currency = $savedChannel['payment_currency'] ?? $orderCurrency;
-        if ($checkout && ($checkout->filled('expected_payment_amount') || $checkout->filled('expected_payment_currency') || $currency !== $orderCurrency)) {
+        if ($validateQuote && ($request->filled('expected_payment_amount') || $request->filled('expected_payment_currency') || $currency !== $orderCurrency)) {
             // Reuse the issued quote. Legacy orders were charged their total plus the saved fee.
             $amount = $savedChannel['payment_amount']
                 ?? ((int) $order->total_amount + (int) ($savedChannel['handling_amount'] ?? $order->handling_amount));
             $diagnostic->checkpoint('quote_changed');
-            abort_unless((int) $checkout->input('expected_payment_amount') === $amount
-                && $checkout->input('expected_payment_currency') === $currency, 409,
+            abort_unless((int) $request->input('expected_payment_amount') === $amount
+                && $request->input('expected_payment_currency') === $currency, 409,
                 __('Payment quote changed. Reload and confirm the payment amount.'));
         }
         return reset($actions)['result'];
+    }
+
+    private static function abortInFlight(Request $request): void
+    {
+        $message = __('Payment is being confirmed. Please check the order status before trying again.');
+        if ($request->is('api/v10/*')) {
+            throw new HttpResponseException(response()->json([
+                'code' => 'PAYMENT_CONFIRMATION_PENDING',
+                'message' => $message,
+            ], 409));
+        }
+        abort(409, $message);
     }
 
     private static function isCallbackOnlyChannel(Order $order, array $snapshot, int $method, ?string $provider): bool

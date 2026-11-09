@@ -3,24 +3,24 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 142267,
-      "startupBytes": 468750,
+      "startupGzipBytes": 142304,
+      "startupBytes": 468888,
       "startupFileCount": 16,
       "largestStartupAssets": [
         {
-          "file": "assets/render-app-BE6zB5gG.js",
+          "file": "assets/render-app-D2R_itdA.js",
           "bytes": 210023,
-          "gzipBytes": 65539
+          "gzipBytes": 65538
         },
         {
-          "file": "assets/createLucideIcon-F_6aFD0G.js",
-          "bytes": 201084,
-          "gzipBytes": 52686
+          "file": "assets/createLucideIcon-DhGB6a0K.js",
+          "bytes": 201222,
+          "gzipBytes": 52721
         },
         {
-          "file": "assets/app-t0eRrH19.js",
+          "file": "assets/app-CspFVTUY.js",
           "bytes": 12597,
-          "gzipBytes": 5275
+          "gzipBytes": 5277
         },
         {
           "file": "assets/runtime-config-DXkPanaE.js",
@@ -28,7 +28,7 @@
           "gzipBytes": 4234
         },
         {
-          "file": "assets/browser-access-CH-dKy4z.js",
+          "file": "assets/browser-access-CZCMzvGP.js",
           "bytes": 8072,
           "gzipBytes": 3361
         }
@@ -38,67 +38,67 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 142267,
-          "bytes": 468750,
+          "gzipBytes": 142304,
+          "bytes": 468888,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 208145,
-          "bytes": 772336,
+          "gzipBytes": 208339,
+          "bytes": 773216,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 221199,
-          "bytes": 815269,
+          "gzipBytes": 221396,
+          "bytes": 816149,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 211479,
-          "bytes": 739582,
+          "gzipBytes": 211665,
+          "bytes": 740226,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 224533,
-          "bytes": 782515,
+          "gzipBytes": 224722,
+          "bytes": 783159,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3485219,
+      "totalBytes": 3501993,
       "fileCount": 343
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 380717,
-      "startupBytes": 1291149,
+      "startupGzipBytes": 380743,
+      "startupBytes": 1291287,
       "startupFileCount": 31,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-CHF4b3Ym.js",
+          "file": "assets/AdminApp-BGHTM03m.js",
           "bytes": 524320,
           "gzipBytes": 148520
         },
         {
-          "file": "assets/render-app-BE6zB5gG.js",
+          "file": "assets/render-app-D2R_itdA.js",
           "bytes": 210023,
-          "gzipBytes": 65539
+          "gzipBytes": 65538
         },
         {
-          "file": "assets/createLucideIcon-F_6aFD0G.js",
-          "bytes": 201084,
-          "gzipBytes": 52686
+          "file": "assets/createLucideIcon-DhGB6a0K.js",
+          "bytes": 201222,
+          "gzipBytes": 52721
         },
         {
-          "file": "assets/admin-status-zCPemJxb.js",
+          "file": "assets/admin-status-B3oLlUv9.js",
           "bytes": 117689,
-          "gzipBytes": 47914
+          "gzipBytes": 47913
         },
         {
           "file": "assets/AdminApp-jsNulDas.css",
@@ -107,7 +107,7 @@
         }
       ],
       "budget": 460800,
-      "totalBytes": 4785960,
+      "totalBytes": 4801036,
       "fileCount": 95
     }
   ],

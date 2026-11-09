@@ -155,23 +155,30 @@ it("recalculates the exact network fee and submits its channel ID", async () => 
             { timeoutMs: 45000 },
         ),
     );
-    await screen.findByText("正在等待支付确认，请勿重复付款。");
+    await screen.findByDisplayValue("https://example.test/qr");
+    expect(screen.queryByText("正在等待支付确认，请勿重复付款。")).toBeNull();
     expect(
         screen.getByRole("radio", { name: /BSC/ }).closest("fieldset")
             ?.disabled,
     ).toBe(true);
 });
 
-it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
-    "checks status without resubmitting after %s",
-    async (code) => {
-        mock.request.mockImplementation((path: string) =>
-            path === "user/order/checkout"
-                ? Promise.reject(
-                      Object.assign(new Error("Load failed"), { code }),
-                  )
-                : Promise.resolve({ data: path === "user/order/detail" ? { status: 0, payment_id: 1 } : 0 }),
-        );
+it.each([
+    { code: "NETWORK_ERROR" },
+    { code: "REQUEST_TIMEOUT" },
+    { code: "RESPONSE_INVALID" },
+    { code: "SERVICE_UNAVAILABLE", status: 503 },
+    { code: "EMPTY_PAYMENT_ACTION", invalidAction: true },
+])(
+    "checks status without resubmitting after $code",
+    async ({ code, status, invalidAction }) => {
+        mock.request.mockImplementation(async (path: string) => {
+            if (path !== "user/order/checkout") {
+                return { data: path === "user/order/detail" ? { status: 0, payment_id: 1 } : 0 };
+            }
+            if (invalidAction) return { type: 0, data: "" };
+            throw Object.assign(new Error("Load failed"), { code, status });
+        });
         const reload = vi.fn();
         renderCheckout({ trade_no: "uncertain" }, reload);
         fireEvent.click(
@@ -180,6 +187,9 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
         await screen.findByText(
             "未能确认支付请求结果，正在检查订单状态，请勿重复付款。",
         );
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(screen.queryByText("正在等待支付确认，请勿重复付款。")).toBeNull();
+        expect(screen.queryByRole("button", { name: "继续支付" })).toBeNull();
         await waitFor(() =>
             expect(mock.request).toHaveBeenCalledWith(
                 "user/order/check",
@@ -201,7 +211,7 @@ it.each(["NETWORK_ERROR", "REQUEST_TIMEOUT"])(
         ).toHaveLength(1);
         fireEvent.click(screen.getByRole("button", { name: "reselectPayment" }));
         fireEvent.click(screen.getByRole("button", { name: "继续" }));
-        await screen.findByRole("button", { name: "继续支付" });
+        await screen.findByRole("button", { name: "retryPaymentRequest" });
         expect(
             screen.queryByText(
                 "未能确认支付请求结果，正在检查订单状态，请勿重复付款。",
@@ -224,14 +234,14 @@ it("recovers an unconfirmed checkout on the only available channel using the ori
     );
     renderCheckout();
     fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
-    const continuePayment = await screen.findByRole("button", { name: "继续支付" });
+    const retryPayment = await screen.findByRole("button", { name: "retryPaymentRequest" });
     expect(submit).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
     expect(submit).toHaveBeenCalledTimes(1);
     const repricedMethod = { ...quotedMethod, quoted_amount: 1200 };
     mock.methods = [repricedMethod];
-    fireEvent.click(continuePayment);
+    fireEvent.click(retryPayment);
 
     await screen.findByDisplayValue("recovered-qr-payload");
     expect(submit).toHaveBeenCalledTimes(2);
@@ -253,7 +263,7 @@ it("returns to quote confirmation when a replay conflicts and the order has no l
     });
     renderCheckout();
     fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
-    fireEvent.click(await screen.findByRole("button", { name: "继续支付" }));
+    fireEvent.click(await screen.findByRole("button", { name: "retryPaymentRequest" }));
     expect((await screen.findByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(false);
     expect(screen.getByText("Quote changed")).toBeTruthy();
     expect(submit).toHaveBeenCalledTimes(2);
@@ -272,7 +282,7 @@ it("sends the old channel only when the user confirms restarting and selects a d
     expect(reselect.closest(".checkout-secondary-actions")).toBeTruthy();
     fireEvent.click(reselect);
     fireEvent.click(screen.getByRole("button", { name: "继续" }));
-    await screen.findByRole("button", { name: "继续支付" });
+    await screen.findByRole("button", { name: "paymentOpenAgain" });
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(0);
     expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true);
 
@@ -285,6 +295,51 @@ it("sends the old channel only when the user confirms restarting and selects a d
     ));
 });
 
+it.each([
+    { code: "PAYMENT_CHANNEL_UNAVAILABLE", status: 422, message: "paymentChannelUnavailable", awaiting: false },
+    { code: "PAYMENT_GATEWAY_REJECTED", status: 500, message: "paymentGatewayRejected", awaiting: true },
+    { code: "PAYMENT_CONFIRMATION_PENDING", status: 409, message: "paymentConfirmationPending", awaiting: true },
+])("shows the right next step after a switch returns $code", async ({ code, status, message, awaiting }) => {
+    mock.methods = [originalMethods[0], { id: 11, name: "WeChat Pay", handling_fee_fixed: 0 } as any];
+    const submit = vi.fn().mockRejectedValue(Object.assign(new Error("Gateway internals"), { code, status }));
+    mock.request.mockImplementation(async (path: string, body) => {
+        if (path === "user/order/checkout") return submit(body);
+        if (path === "user/order/detail") return { data: { status: 0, payment_id: 1 } };
+        return { data: 0 };
+    });
+    const reload = vi.fn();
+    const order = { status: 0, plan_id: 1, total_amount: 1000, trade_no: "switch-error-order", plan: { name: "Plan" } };
+    const checkout = (paymentId: number) => (
+        <PaymentCheckout order={{ ...order, payment_id: paymentId }} reload={reload} renderCard={() => null} />
+    );
+    const view = render(checkout(3));
+    fireEvent.click(await screen.findByRole("button", { name: "reselectPayment" }));
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    fireEvent.click(await screen.findByRole("radio", { name: "WeChat Pay" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+
+    const feedback = await screen.findByText(message);
+    expect(feedback.getAttribute("role")).toBe(awaiting ? "status" : "alert");
+    expect(screen.queryByText("Gateway internals")).toBeNull();
+    expect(screen.queryByText("未能确认支付请求结果，正在检查订单状态，请勿重复付款。")).toBeNull();
+    expect(screen.queryByRole("button", { name: "retryPaymentRequest" })).toBeNull();
+    expect(submit).toHaveBeenCalledWith(expect.objectContaining({ method: 11, switch_from_payment_method: 1 }));
+    if (awaiting) {
+        if (code === "PAYMENT_GATEWAY_REJECTED") {
+            view.rerender(checkout(11));
+            expect(screen.getByText("paymentGatewayRejected")).toBeTruthy();
+        }
+        if (code === "PAYMENT_CONFIRMATION_PENDING") {
+            expect((screen.getByRole("radio", { name: "Alipay" }) as HTMLInputElement).checked).toBe(true);
+        }
+        fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+        expect(reload).toHaveBeenCalled();
+    } else {
+        expect((screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(false);
+    }
+    expect(submit).toHaveBeenCalledTimes(1);
+});
+
 it("keeps the restored QR visible without a dismiss control or another checkout", async () => {
     mock.request.mockImplementation(async (path: string) =>
         path === "user/order/checkout"
@@ -292,19 +347,35 @@ it("keeps the restored QR visible without a dismiss control or another checkout"
             : { data: 0 },
     );
     renderCheckout({ payment_id: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: "继续支付" }));
     await screen.findByDisplayValue("saved-qr-payload");
     expect(mock.request).toHaveBeenCalledWith(
         "user/order/checkout",
         { trade_no: "test-order", method: 1, resume_payment: true },
-        { timeoutMs: 45000 },
+        { timeoutMs: 8000 },
     );
     expect(screen.queryByRole("button", { name: "关闭二维码" })).toBeNull();
     expect(screen.queryByRole("button", { name: "继续支付" })).toBeNull();
     const checkResult = screen.getByRole("button", { name: "检查支付结果" });
     expect(checkResult.classList.contains("primary")).toBe(true);
     expect(checkResult.parentElement?.className).toBe("checkout-confirm");
+    fireEvent.click(checkResult);
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
+it("restores the saved cashier without navigating away or creating a payment", async () => {
+    const cashier = "https://gateway.example.test/cashier/owned-order";
+    mock.request.mockImplementation(async (path: string, body) =>
+        path === "user/order/checkout" && body?.resume_payment
+            ? { type: 1, data: cashier }
+            : { data: 0 },
+    );
+    renderCheckout({ payment_id: 1 });
+    expect((await screen.findByRole("link", { name: "openPayment" })).getAttribute("href")).toBe(cashier);
+    expect(screen.queryByRole("button", { name: "继续支付" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toEqual([
+        ["user/order/checkout", { trade_no: "test-order", method: 1, resume_payment: true }, { timeoutMs: 8000 }],
+    ]);
 });
 
 it("shows the converted payment amount and confirms it without relabelling the USD order", async () => {
@@ -344,7 +415,10 @@ it("shows the converted payment amount and confirms it without relabelling the U
 });
 
 it("locks an externally issued payment after an order refresh and does not unlock on an older snapshot", async () => {
-    mock.request.mockResolvedValue({ data: 0 });
+    mock.request.mockImplementation(async (path: string) => {
+        if (path === "user/order/checkout") throw Object.assign(new Error("No saved payment"), { status: 409 });
+        return { data: 0 };
+    });
     const onQuoteChange = vi.fn();
     const reload = vi.fn();
     const original = {
@@ -380,7 +454,7 @@ it("locks an externally issued payment after an order refresh and does not unloc
             payment_currency: "CNY",
         }),
     );
-    await screen.findByText("正在等待支付确认，请勿重复付款。");
+    await screen.findByText("paymentActionUnavailable");
     expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
     expect(
         screen.getByRole("radio", { name: "Alipay" }).closest("fieldset")
@@ -398,7 +472,7 @@ it("locks an externally issued payment after an order refresh and does not unloc
         }),
     );
     view.rerender(checkout(original));
-    expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
+    expect(screen.getByText("paymentActionUnavailable")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "确认支付" })).toBeNull();
     expect(
         (screen.getByRole("radio", { name: /TRON/ }) as HTMLInputElement)
@@ -408,7 +482,7 @@ it("locks an externally issued payment after an order refresh and does not unloc
     expect(reload).toHaveBeenCalled();
     expect(
         mock.request.mock.calls.filter(
-            ([path]) => path === "user/order/checkout",
+            ([path, body]) => path === "user/order/checkout" && !body?.resume_payment,
         ),
     ).toHaveLength(0);
 });
@@ -548,9 +622,9 @@ it.each([
             } as any,
         ];
         try {
-            mock.request.mockImplementation(async (path: string) =>
+            mock.request.mockImplementation(async (path: string, body) =>
                 path === "user/order/checkout"
-                    ? { type: 0, data: "https://example.test/snapshot-qr" }
+                    ? { type: 0, data: body?.resume_payment ? "new-authoritative-qr" : "https://example.test/snapshot-qr" }
                     : { data: 0 },
             );
             const onQuoteChange = vi.fn();
@@ -599,14 +673,8 @@ it.each([
                     payment_currency: currency,
                 }),
             );
-            await waitFor(() =>
-                expect(
-                    screen.queryByRole("textbox", { name: "付款内容" }),
-                ).toBeNull(),
-            );
-            expect(
-                screen.getByText("正在等待支付确认，请勿重复付款。"),
-            ).toBeTruthy();
+            await screen.findByDisplayValue("new-authoritative-qr");
+            expect(screen.queryByDisplayValue("https://example.test/snapshot-qr")).toBeNull();
             expect(
                 screen.queryByRole("button", { name: "确认支付" }),
             ).toBeNull();
@@ -622,7 +690,7 @@ it.each([
             });
             expect(
                 mock.request.mock.calls.filter(
-                    ([path]) => path === "user/order/checkout",
+                    ([path, body]) => path === "user/order/checkout" && !body?.resume_payment,
                 ),
             ).toHaveLength(1);
         } finally {
@@ -704,7 +772,7 @@ it.each([
             });
             expect(
                 mock.request.mock.calls.filter(
-                    ([path]) => path === "user/order/checkout",
+                    ([path, body]) => path === "user/order/checkout" && !body?.resume_payment,
                 ),
             ).toHaveLength(0);
         } finally {
@@ -980,6 +1048,7 @@ it("keeps a desktop MGate redirect on the checkout page until the customer opens
     fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
     const link = await screen.findByRole("link", { name: "openPayment" });
     expect(link.getAttribute("href")).toBe(target);
+    expect(link.closest(".checkout-confirm")).toBeTruthy();
     expect(assign).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "检查支付结果" }).classList.contains("checkout-check-result")).toBe(true);
     expect(screen.queryByRole("button", { name: "reselectPayment" })).toBeNull();
@@ -1000,7 +1069,7 @@ it("offers a mobile action for an official supported Alipay QR while retaining i
     expect(screen.getByDisplayValue(target)).toBeTruthy();
     clickSyntheticPaymentLink(action);
     clickSyntheticPaymentLink(action);
-    expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
+    expect(screen.getByText("mobileScanHelp")).toBeTruthy();
     expect(mock.trackCopyFailure).not.toHaveBeenCalled();
     expect(
         mock.request.mock.calls.filter(

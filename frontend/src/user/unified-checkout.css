@@ -325,11 +325,6 @@
 .purchase-rules li + li {
     margin-top: 4px;
 }
-.checkout-open-payment {
-    display: grid;
-    gap: 8px;
-    margin-top: 16px;
-}
 .app.user .checkout-open-link {
     display: flex;
     align-items: center;
@@ -339,8 +334,8 @@
     width: 100%;
     box-sizing: border-box;
 }
-.checkout-open-payment p {
-    margin: 0;
+.checkout-open-help {
+    margin: 16px 0 0;
     color: var(--text-secondary);
     font-size: 12px;
     line-height: 1.6;
@@ -372,11 +367,6 @@
     margin: 4px 0 0;
     line-height: 1.5;
 }
-.checkout-check-result {
-    min-height: 44px;
-    width: 100%;
-}
-
 .checkout-copy-error {
     color: var(--danger);
     font-size: 12px;

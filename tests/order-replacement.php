@@ -114,30 +114,45 @@ try {
      ksort($result);
      return $result;
  };
- $assertConflict = function (Request $request, string $message) use ($checkout, $assert): void {
+ $checkoutProblem = function (Request $request) use ($actions): array {
+     app()->instance('request', $request);
+     $response = app(App\Http\Middleware\V10::class)->handle($request, fn (Request $r) => $actions->checkout($r));
+     return [$response->getStatusCode(), $response->getData(true)];
+ };
+ $assertConflict = function (Request $request, string $message, string $code = 'CONFLICT') use ($checkoutProblem, $assert): void {
+     [$status, $problem] = $checkoutProblem($request);
+     $assert($status === 409 && $problem['code'] === $code, $message);
+ };
+ $assertLegacyConflict = function (Request $request) use ($checkout, $assert): void {
      try {
          $checkout($request);
      } catch (HttpException $error) {
-         $assert($error->getStatusCode() === 409, $message);
+         $assert($error->getStatusCode() === 409, 'Non-V10 checkout retains its plain HTTP conflict');
          return;
      }
-     throw new RuntimeException($message);
+     throw new RuntimeException('Non-V10 checkout bypassed an in-flight payment');
  };
 
  $quoteFields = ['expected_payment_amount'=>720,'expected_payment_currency'=>'CNY'];
  $payRequest = $makePayment($createdOrder, $channel, $quoteFields);
  $competingRequest = $makePayment($createdOrder, $channel, $quoteFields);
  $earlySwitch = $makePayment($createdOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]);
+ $earlyResume = $makePayment($createdOrder, $channel, ['resume_payment'=>true]);
+ $legacySwitch = Request::create('/legacy/order/checkout', 'POST', $earlySwitch->all());
+ $legacySwitch->user = $earlySwitch->user;
  $qrAction = ['data'=>'weixin://wxpay/bizpayurl?pr=fixture', 'type'=>0];
  $redirectAction = ['data'=>'https://pay.example.test/new-channel', 'type'=>1];
  $pendingAction = ['data'=>true, 'type'=>2];
  $calls = 0;
- V10TestPayment::$payHandler = function () use (&$calls, $checkout, $payRequest, $assertConflict, $competingRequest, $earlySwitch, $qrAction, $pendingAction, $assert) {
+ V10TestPayment::$payHandler = function () use (&$calls, $checkout, $payRequest, $assertConflict, $assertLegacyConflict,
+     $competingRequest, $earlySwitch, $earlyResume, $legacySwitch, $qrAction, $pendingAction, $assert) {
      if (++$calls !== 1) throw new RuntimeException('Duplicate provider call during initial checkout');
      // Insert another request while the real checkout action is waiting on the provider.
      $assert($checkout(clone $payRequest) === $pendingAction, 'An in-flight original key only reports pending');
-     $assertConflict($competingRequest, 'Fresh key is rejected while the same channel is sending');
-     $assertConflict($earlySwitch, 'A different channel cannot supersede a live provider request');
+     $assertConflict($competingRequest, 'Fresh key is rejected while the same channel is sending', 'PAYMENT_CONFIRMATION_PENDING');
+     $assertConflict($earlySwitch, 'A different channel cannot supersede a live provider request', 'PAYMENT_CONFIRMATION_PENDING');
+     $assertConflict($earlyResume, 'Read-only resume reports a live provider request', 'PAYMENT_CONFIRMATION_PENDING');
+     $assertLegacyConflict($legacySwitch);
      return $qrAction;
  };
  $first = $checkout($payRequest);
@@ -211,7 +226,7 @@ try {
      'Uncertain provider result resumes status checks without reissuing payment');
  $withoutKey = $makePayment($uncertainOrder, $channel);
  $withoutKey->request->remove('payment_request_key');
- $assertConflict($withoutKey, 'Omitting a key cannot bypass an uncertain payment');
+ $assertConflict($withoutKey, 'Omitting a key cannot bypass an uncertain payment', 'PAYMENT_CONFIRMATION_PENDING');
  $diagnostics = PaymentAttemptHistory::forOrder($uncertainOrder)['events'];
  $blocked = $diagnostics->first();
  $timeout = $diagnostics->firstWhere('request_id', $uncertainId);
@@ -239,9 +254,9 @@ try {
      return $pendingAction;
  };
  $assert($checkout($makePayment($pendingOrder, $channel)) === $pendingAction, 'Provider pending result is returned');
- $assertConflict($makePayment($pendingOrder, $channel), 'A fresh key cannot bypass a provider pending result');
+ $assertConflict($makePayment($pendingOrder, $channel), 'A fresh key cannot bypass a provider pending result', 'PAYMENT_CONFIRMATION_PENDING');
  $assertConflict($makePayment($pendingOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]),
-     'An explicit switch cannot bypass a provider pending result');
+     'An explicit switch cannot bypass a provider pending result', 'PAYMENT_CONFIRMATION_PENDING');
  $assert($pendingCalls === 1, 'Pending payment blocks every additional provider call');
 
  $raceOrder = $makeOrder();
@@ -270,13 +285,12 @@ try {
          'trade_no'=>$epayOrder->trade_no,'method'=>$epay->id,'payment_request_key'=>Str::uuid()->toString(),
      ]);
      $attempt->user=['id'=>$quoteUser->id];
-     try {$actions->checkout($attempt); throw new RuntimeException('Invalid EPay configuration accepted');}
-     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
-         $fresh=$epayOrder->fresh();
-         $assert($e->getStatusCode()===422 && (int)$fresh->payment_id===0
-             && empty($fresh->payment_snapshot['payment_attempts']) && empty($fresh->payment_snapshot['channels']),
-             'Local EPay failure leaves the unpaid order free to retry with a new key');
-     }
+     [$status, $problem] = $checkoutProblem($attempt);
+     $fresh = $epayOrder->fresh();
+     $assert($status === 422 && $problem['code'] === 'PAYMENT_CHANNEL_UNAVAILABLE'
+         && (int) $fresh->payment_id === 0 && empty($fresh->payment_snapshot['payment_attempts'])
+         && empty($fresh->payment_snapshot['channels']),
+         'Local EPay configuration failure leaves the order free to select another channel');
  }
 
  $mgate = App\Models\Payment::create(['name'=>'MGate fixture','payment'=>'MGate','uuid'=>App\Utils\Helper::guid(),
@@ -285,18 +299,34 @@ try {
  $mgateRequest->merge(['method'=>$mgate->id]);
  for ($i = 0; $i < 2; $i++) {
      $mgateRequest->merge(['payment_request_key'=>Str::uuid()->toString()]);
-     try { $actions->checkout($mgateRequest); throw new RuntimeException('Invalid MGate configuration accepted'); }
-     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
-         $fresh = $epayOrder->fresh();
-         $assert($e->getStatusCode() === 500 && (int) $fresh->payment_id === 0
-             && empty($fresh->payment_snapshot['payment_attempts']), 'MGate preflight failure remains retryable');
-     }
+     [$status, $problem] = $checkoutProblem($mgateRequest);
+     $fresh = $epayOrder->fresh();
+     $assert($status === 422 && $problem['code'] === 'PAYMENT_CHANNEL_UNAVAILABLE'
+         && (int) $fresh->payment_id === 0 && empty($fresh->payment_snapshot['payment_attempts']),
+         'MGate preflight configuration failure receives a known local rejection');
  }
  $mgateFailures = App\Services\PaymentAttemptHistory::forChannel($mgate->id)['events'];
  $assert($mgateFailures->count() === 2 && $mgateFailures->every(fn ($event) =>
      $event->stage === 'preflight' && $event->reason === 'missing_credentials' && $event->trade_no === $epayOrder->trade_no)
      && App\Services\PaymentAttemptHistory::recentFailures()[$mgate->id] == 2,
      'Channel diagnostics count failures and link to the relevant order');
+
+ $rejectedOrder = $makeOrder();
+ $rejectedRequest = $makePayment($rejectedOrder, $channel);
+ $rejectedCalls = 0;
+ V10TestPayment::$payHandler = function (array $order, PaymentAttemptHistory $diagnostic) use (&$rejectedCalls) {
+     ++$rejectedCalls;
+     $diagnostic->sending('https://pay.example.test/mapi.php');
+     $diagnostic->checkpoint('gateway_rejected');
+     abort(500, 'sensitive fixture gateway text');
+ };
+ [$status, $problem] = $checkoutProblem($rejectedRequest);
+ $assert($status === 500 && $problem['code'] === 'PAYMENT_GATEWAY_REJECTED'
+     && !str_contains($problem['detail'], 'sensitive fixture gateway text'),
+     'Provider rejection has a specific code with redacted detail');
+ $assert($checkout($rejectedRequest) === $pendingAction && $rejectedCalls === 1,
+     'Provider rejection does not allow the original request key to contact the gateway again');
+ V10TestPayment::$payHandler = null;
 
  $adapter=new App\Payments\EPayQrcode(['type'=>'wxpay']);
  $action=new ReflectionMethod($adapter, 'paymentAction');

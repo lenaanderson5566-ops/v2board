@@ -397,7 +397,7 @@ it("selects a method without charging and shows fixed plus percentage fees befor
             { timeoutMs: 45000 },
         ),
     );
-    expect(screen.getByText("正在等待支付确认，请勿重复付款。")).toBeTruthy();
+    await screen.findByDisplayValue("https://pay.example/qr");
     expect(screen.queryByText("订单已完成")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "检查支付结果" }));
     expect(
@@ -428,6 +428,7 @@ it("uses the fee locked in an issued order even when provider settings change", 
     expect(
         screen.getByRole("radio", { name: /Card/ }).matches(":disabled"),
     ).toBe(true);
+    await screen.findByRole("button", { name: "检查支付结果" });
     fireEvent.click(screen.getByRole("button", { name: "reselectPayment{}" }));
     fireEvent.click(
         within(screen.getByRole("dialog")).getByRole("button", {
@@ -440,7 +441,7 @@ it("uses the fee locked in an issued order even when provider settings change", 
     ).toBe(false);
     expect(
         mocks.request.mock.calls.filter(
-            ([path]) => path === "user/order/checkout",
+            ([path, body]) => path === "user/order/checkout" && !body?.resume_payment,
         ),
     ).toHaveLength(0);
 });
@@ -1584,8 +1585,11 @@ it("creates an order and starts its QR payment in place once under StrictMode, t
     mocks.request.mockClear(); mocks.quoteRequest.mockClear();
     mocks.detail = { ...mocks.detail, payment_id: 11 };
     const resumed = render(<UnifiedCheckout planId={1} initialOrder="inline-order" />);
-    await screen.findByText("正在等待支付确认，请勿重复付款。");
-    expect(mocks.request.mock.calls.filter(([path]) => ["user/order/save", "user/order/checkout"].includes(path))).toHaveLength(0);
+    await screen.findByDisplayValue("https://pay.example/inline-qr");
+    expect(mocks.request.mock.calls.filter(([path, body]) => path === "user/order/save" || (path === "user/order/checkout" && !body?.resume_payment))).toHaveLength(0);
+    expect(mocks.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toEqual([
+        ["user/order/checkout", { trade_no: "inline-order", method: 11, resume_payment: true }, { timeoutMs: 8000 }],
+    ]);
     expect(mocks.quoteRequest).not.toHaveBeenCalled();
     expect(within(screen.getByRole("group", { name: "选择订阅周期" })).getByRole<HTMLInputElement>("radio", { name: /季付/ }).checked).toBe(true);
     expect(resumed.container.querySelector(".checkout-summary")).toBeNull();

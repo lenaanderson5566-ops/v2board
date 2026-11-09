@@ -42,6 +42,11 @@ final class PaymentAttemptHistory
         $this->reason = $reason;
     }
 
+    public function gatewayRejected(): bool
+    {
+        return $this->stage === 'gateway' && $this->reason === 'gateway_rejected';
+    }
+
     public function previous(array $attempt): void
     {
         $this->previousRequestId = self::uuid($attempt['request_id'] ?? null);

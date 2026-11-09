@@ -32,6 +32,7 @@ import {
 
 export type PaymentQuote = { amount: number; currency: string; fee: number };
 type PaymentSubmission = Row & { method: number };
+type UnconfirmedPayment = { submission: PaymentSubmission; gatewayRejected: boolean };
 
 export type InitialPayment = {
     methodId: number;
@@ -127,8 +128,11 @@ export function PaymentCheckout({
     const [waiting, setWaiting] = useState(
         due > 0 && Boolean(order.payment_id),
     );
-    const [unconfirmedSubmission, setUnconfirmedSubmission] = useState<PaymentSubmission>();
+    const [unconfirmedPayment, setUnconfirmedPayment] = useState<UnconfirmedPayment>();
+    const [confirmationPending, setConfirmationPending] = useState(false);
     const [checkingOnly, setCheckingOnly] = useState(false);
+    const [restoring, setRestoring] = useState(false);
+    const [restoreUnavailable, setRestoreUnavailable] = useState(false);
     const [issuedFee, setIssuedFee] = useState(
         Number(order.handling_amount || 0),
     );
@@ -171,6 +175,10 @@ export function PaymentCheckout({
     const observedPayment = useRef(serverPayment);
     const newServerPayment =
         Boolean(order.payment_id) && observedPayment.current !== serverPayment;
+    const paymentView = JSON.stringify([order.trade_no, status, selected, serverPayment]);
+    const currentPaymentView = useRef(paymentView);
+    currentPaymentView.current = paymentView;
+    const attemptedRestore = useRef("");
     useEffect(() => {
         observedPayment.current = serverPayment;
         if (!newServerPayment || status !== 0) return;
@@ -184,8 +192,9 @@ export function PaymentCheckout({
         });
         setWaiting(true);
         setCardMethod(null);
+        setRestoreUnavailable(false);
         if (channelChanged) {
-            setUnconfirmedSubmission(undefined);
+            setUnconfirmedPayment(undefined);
             setCheckingOnly(false);
         }
         if (
@@ -208,7 +217,7 @@ export function PaymentCheckout({
                   : undefined)
             : undefined;
     useEffect(() => {
-        if (!smallScreen || !openUrl || !paymentActionPanel.current) return;
+        if (!embedded || !smallScreen || !openUrl || !paymentActionPanel.current) return;
         const target = paymentActionPanel.current;
         const bounds = target.getBoundingClientRect();
         if (bounds.top >= 80 && bounds.bottom <= window.innerHeight - 80)
@@ -220,7 +229,7 @@ export function PaymentCheckout({
                 ? "instant"
                 : "smooth",
         });
-    }, [smallScreen, openUrl]);
+    }, [embedded, smallScreen, openUrl]);
     const fee =
         status === 0
             ? waiting
@@ -234,21 +243,42 @@ export function PaymentCheckout({
         : method?.quoted_currency;
     const awaitingConfirmation = waiting || newServerPayment;
     const hasPaymentAction = Boolean(qr || openUrl);
-    const canResumePayment = awaitingConfirmation && !hasPaymentAction &&
-        (selected > 0 ? (Boolean(method) || !methods.data) : due <= 0) &&
-        (Boolean(unconfirmedSubmission) || (selected > 0 && !checkingOnly));
-    const canSwitchPayment = awaitingConfirmation && (!checkingOnly || Boolean(unconfirmedSubmission)) &&
+    const canRestorePayment = status === 0 && awaitingConfirmation && !hasPaymentAction &&
+        !checkingOnly && !unconfirmedPayment?.gatewayRejected &&
+        selected === Number(order.payment_id) && Boolean(method);
+    const originalSubmission = unconfirmedPayment && !unconfirmedPayment.gatewayRejected &&
+        (unconfirmedPayment.submission.method === 0 ||
+            (unconfirmedPayment.submission.method === selected && Boolean(method)))
+        ? unconfirmedPayment.submission
+        : undefined;
+    const retrySubmission = awaitingConfirmation && !hasPaymentAction && !confirmationPending
+        ? originalSubmission
+        : undefined;
+    const canSwitchPayment = awaitingConfirmation && (!checkingOnly || Boolean(unconfirmedPayment)) &&
         (Boolean(methods.error) || methods.data?.some((item) => Number(item.id) !== selected));
-    const selectedOriginalMethod = restartFromMethod.current === selected;
-    const confirmLabel = awaitingConfirmation
-        ? "检查支付结果"
-        : busy
-          ? "提交中…"
-          : selectedOriginalMethod
-            ? "继续支付"
-            : due > 0
-              ? "确认支付"
-              : "确认开通";
+    const selectedOriginalMethod = restartFromMethod.current === selected || Boolean(originalSubmission);
+    const confirmLabel = restoring
+        ? tx("正在加载…")
+        : awaitingConfirmation
+          ? tx("检查支付结果")
+          : busy
+            ? tx("提交中…")
+            : selectedOriginalMethod
+              ? pc(originalSubmission ? "retryPaymentRequest" : "paymentOpenAgain")
+              : tx(due > 0 ? "确认支付" : "确认开通");
+    let paymentStatusMessage = "";
+    if (awaitingConfirmation && !error && !restoring) {
+        if (pollError) paymentStatusMessage = tx("订单状态暂不可用，请刷新后重试。");
+        else if (pollStopped) paymentStatusMessage = tx("自动检查已暂停，订单仍可继续处理，请勿重复付款。");
+        else if (confirmationPending) paymentStatusMessage = pc("paymentConfirmationPending");
+        else if (unconfirmedPayment?.gatewayRejected) paymentStatusMessage = pc("paymentGatewayRejected");
+        else if (unconfirmedPayment) paymentStatusMessage = tx("未能确认支付请求结果，正在检查订单状态，请勿重复付款。");
+        else if (!hasPaymentAction) {
+            paymentStatusMessage = restoreUnavailable || (selected > 0 && methods.data && !method)
+                ? pc("paymentActionUnavailable")
+                : tx("正在等待支付确认，请勿重复付款。");
+        }
+    }
     const paymentLocked = useRef(false);
     paymentLocked.current = awaitingConfirmation || status !== 0;
     const displayedAmount = Number(
@@ -291,7 +321,8 @@ export function PaymentCheckout({
             setPaymentLink("");
             setCardMethod(null);
             setRetryOpen(false);
-            setUnconfirmedSubmission(undefined);
+            setUnconfirmedPayment(undefined);
+            setConfirmationPending(false);
         }
     }, [status]);
     useEffect(() => {
@@ -365,9 +396,11 @@ export function PaymentCheckout({
             paymentKey.current = crypto.randomUUID();
             keyedMethod.current = id;
         }
-        if (!retry) setUnconfirmedSubmission(undefined);
+        if (!retry) setUnconfirmedPayment(undefined);
         setBusy(true);
         setError("");
+        setRestoreUnavailable(false);
+        setConfirmationPending(false);
         const quotedMethod = methods.data?.find((item) => Number(item.id) === id);
         const previousMethod = restartFromMethod.current;
         const submission = retry ?? {
@@ -396,13 +429,13 @@ export function PaymentCheckout({
             restartFromMethod.current = undefined;
             setIssuedFee(checkoutFee);
             setIssuedQuote(checkoutQuote);
-            if (result.type !== 2) setUnconfirmedSubmission(undefined);
-            setCheckingOnly(result.type === -1 || result.type === 2);
+            if (result.type !== 2) setUnconfirmedPayment(undefined);
+            setCheckingOnly(result.type === -1 || (result.type === 2 && !retry));
             if (result.type === -1 || result.type === 2) {
                 setWaiting(true);
                 setCardMethod(null);
                 checkPaymentResult();
-            } else if (result.type === 1 && typeof result.data === "string") {
+            } else if (result.type === 1 && typeof result.data === "string" && result.data) {
                 const action = paymentActionUrl(result.data);
                 setWaiting(true);
                 setCardMethod(null);
@@ -422,16 +455,24 @@ export function PaymentCheckout({
                 setQr(result.data);
                 setCardMethod(null);
                 setWaiting(true);
-            } else
-                throw new Error(
-                    tx("此支付方式需要专用客户端，请选择其他方式。"),
-                );
+            } else throw Object.assign(new Error("Invalid payment action"), { code: "RESPONSE_INVALID" });
         } catch (problem) {
             if (!mounted.current) return;
             const failure = problem as Error & {
                 code?: string;
                 status?: number;
             };
+            if (failure.code === "PAYMENT_CONFIRMATION_PENDING") {
+                const linkedMethod = previousMethod ?? (Number(order.payment_id) || undefined);
+                if (linkedMethod) setSelected(linkedMethod);
+                setIssuedFee(Number(order.handling_amount || 0));
+                setIssuedQuote({ amount: order.payment_amount, currency: order.payment_currency });
+                setUnconfirmedPayment(undefined);
+                setConfirmationPending(true);
+                setWaiting(true);
+                checkPaymentResult();
+                return;
+            }
             if (failure.status === 409) {
                 if (retry) {
                     try {
@@ -440,7 +481,7 @@ export function PaymentCheckout({
                         );
                         if (!mounted.current) return;
                         if (Number(data?.status) === 0 && !data?.payment_id) {
-                            setUnconfirmedSubmission(undefined);
+                            setUnconfirmedPayment(undefined);
                             setWaiting(false);
                             setCheckingOnly(false);
                         }
@@ -452,21 +493,27 @@ export function PaymentCheckout({
                 reload();
             }
             if (
-                ["NETWORK_ERROR", "REQUEST_TIMEOUT"].includes(
+                ["NETWORK_ERROR", "REQUEST_TIMEOUT", "RESPONSE_INVALID", "PAYMENT_GATEWAY_REJECTED"].includes(
                     failure.code || "",
                 ) ||
                 (failure.status || 0) >= 500
             ) {
                 setIssuedFee(checkoutFee);
                 setIssuedQuote(checkoutQuote);
-                setUnconfirmedSubmission(submission);
+                setUnconfirmedPayment({
+                    submission,
+                    gatewayRejected: failure.code === "PAYMENT_GATEWAY_REJECTED",
+                });
                 setWaiting(true);
-                setPollRun((run) => run + 1);
-                setError(
-                    tx(
-                        "未能确认支付请求结果，正在检查订单状态，请勿重复付款。",
-                    ),
-                );
+                checkPaymentResult();
+            } else if (failure.code === "PAYMENT_CHANNEL_UNAVAILABLE") {
+                setError(pc("paymentChannelUnavailable"));
+                if (retry) {
+                    setUnconfirmedPayment(undefined);
+                    setWaiting(false);
+                    setCheckingOnly(false);
+                    reload();
+                }
             } else setError(failure.message);
             if (token) setCardMethod(null);
         } finally {
@@ -545,10 +592,14 @@ export function PaymentCheckout({
                 restartFromMethod.current = previousMethod;
                 if (previousMethod) setSelected(previousMethod);
                 setWaiting(false);
-                setUnconfirmedSubmission((submission) =>
-                    submission?.method === previousMethod ? submission : undefined,
+                setUnconfirmedPayment((payment) =>
+                    !previousMethod || payment?.submission.method === previousMethod ? payment : undefined,
                 );
                 setCheckingOnly(false);
+                setConfirmationPending(false);
+                setRestoreUnavailable(false);
+                setPollError("");
+                setPollStopped(false);
                 setQr("");
                 setPaymentLink("");
                 paymentKey.current = crypto.randomUUID();
@@ -563,20 +614,27 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
-    async function resumePayment(id: number) {
+    async function resumePayment(id: number, automatic = false) {
         if (inFlight.current || status !== 0 || id <= 0) return;
         inFlight.current = true;
+        attemptedRestore.current = JSON.stringify([order.trade_no, serverPayment, pollRun]);
+        const view = currentPaymentView.current;
         setBusy(true);
-        setError("");
+        setRestoring(true);
+        setRestoreUnavailable(false);
+        if (!automatic) setError("");
         try {
             const result = await request("user/order/checkout", {
                 trade_no: order.trade_no,
                 method: id,
                 resume_payment: true,
-            }, { timeoutMs: 45000 });
-            if (!mounted.current) return;
+            }, { timeoutMs: 8000 });
+            if (!mounted.current || currentPaymentView.current !== view) return;
             if (result.type === 2) {
+                setWaiting(true);
                 setCheckingOnly(true);
+                setUnconfirmedPayment(undefined);
+                setConfirmationPending(false);
                 checkPaymentResult();
                 return;
             }
@@ -589,26 +647,42 @@ export function PaymentCheckout({
                 setQr(result.data);
             } else throw new Error(tx("此支付方式需要专用客户端，请选择其他方式。"));
             setWaiting(true);
+            setUnconfirmedPayment(undefined);
+            setConfirmationPending(false);
+            setError("");
             restartFromMethod.current = undefined;
         } catch (problem) {
-            if (mounted.current) setError((problem as Error).message);
+            if (!mounted.current || currentPaymentView.current !== view) return;
+            setWaiting(true);
+            if ((problem as { code?: string }).code === "PAYMENT_CONFIRMATION_PENDING") {
+                setConfirmationPending(true);
+            } else setRestoreUnavailable(true);
         } finally {
             inFlight.current = false;
-            if (mounted.current) setBusy(false);
+            if (mounted.current) {
+                setBusy(false);
+                setRestoring(false);
+            }
         }
     }
+    useEffect(() => {
+        if (!canRestorePayment || busy || inFlight.current) return;
+        const key = JSON.stringify([order.trade_no, serverPayment, pollRun]);
+        if (attemptedRestore.current === key) return;
+        void resumePayment(selected, true);
+    }, [canRestorePayment, busy, order.trade_no, serverPayment, pollRun, selected]);
     function checkPaymentResult() {
+        setPollError("");
+        setPollStopped(false);
         setPollRun((run) => run + 1);
         reload();
     }
-    function continuePayment() {
-        if (unconfirmedSubmission) {
-            void pay(unconfirmedSubmission.method, undefined, unconfirmedSubmission);
-        } else void resumePayment(selected);
-    }
     function confirmOrCheckPayment() {
         if (awaitingConfirmation) checkPaymentResult();
-        else if (selectedOriginalMethod) continuePayment();
+        else if (selectedOriginalMethod) {
+            if (originalSubmission) void pay(originalSubmission.method, undefined, originalSubmission);
+            else void resumePayment(selected);
+        }
         else if (due > 0 && method?.payment === "StripeCredit") {
             setCardMethod(Number(method.id));
         } else void pay(due > 0 ? selected : 0);
@@ -648,11 +722,6 @@ export function PaymentCheckout({
             <div className="checkout-secondary">
                 <OrderHelp tradeNo={String(order.trade_no)} />
                 <div className="checkout-secondary-actions">
-                    {canSwitchPayment && (
-                        <button type="button" disabled={busy} onClick={() => setRetryOpen(true)}>
-                            {pc("reselectPayment")}
-                        </button>
-                    )}
                     <button
                         type="button"
                         disabled={busy}
@@ -1037,22 +1106,6 @@ export function PaymentCheckout({
                                           )}
                                   </State>
                               )}
-                        {openUrl && awaitingConfirmation && (
-                            <div
-                                ref={paymentActionPanel}
-                                className="checkout-open-payment"
-                            >
-                                <a
-                                    className="button primary checkout-open-link"
-                                    href={openUrl}
-                                    rel="noreferrer"
-                                    onClick={() => setPollRun((run) => run + 1)}
-                                >
-                                    {pc("openPayment")}
-                                </a>
-                                <p>{pc("openPaymentHelp")}</p>
-                            </div>
-                        )}
                         {smallScreen && openUrl && qr ? (
                             <details
                                 className="checkout-alternative-qr"
@@ -1084,11 +1137,6 @@ export function PaymentCheckout({
                         ) : (
                             qrContent
                         )}
-                        {canResumePayment && (
-                            <button type="button" disabled={busy} onClick={continuePayment}>
-                                {tx(busy ? "正在加载…" : "继续支付")}
-                            </button>
-                        )}
                         {smallScreen && (qr || paymentLink) && (
                             <div className="checkout-mobile-copy">
                                 <button type="button" onClick={copyPayment}>
@@ -1107,38 +1155,77 @@ export function PaymentCheckout({
                                 )}
                             </div>
                         )}
-                        <div className="checkout-confirm">
-                            <button
-                                type="button"
-                                className={
-                                    openUrl && awaitingConfirmation
-                                        ? "checkout-check-result"
-                                        : "primary"
-                                }
-                                disabled={
-                                    busy ||
-                                    (!awaitingConfirmation &&
-                                        due > 0 &&
-                                        (!method ||
-                                            methods.loading ||
-                                            Boolean(methods.error)))
-                                }
-                                onClick={confirmOrCheckPayment}
-                            >
-                                {busy && !awaitingConfirmation && (
-                                    <LoaderCircle
-                                        className="checkout-spinner"
-                                        size={18}
-                                        aria-hidden="true"
-                                    />
-                                )}
-                                {tx(confirmLabel)}
-                            </button>
+                        {openUrl && awaitingConfirmation && (
+                            <p className="checkout-open-help">{pc("openPaymentHelp")}</p>
+                        )}
+                        <div className="checkout-confirm" ref={paymentActionPanel}>
+                            {openUrl && awaitingConfirmation ? (
+                                <a
+                                    className="button primary checkout-open-link"
+                                    href={busy ? undefined : openUrl}
+                                    aria-disabled={busy || undefined}
+                                    rel="noreferrer"
+                                    onClick={() => setPollRun((run) => run + 1)}
+                                >
+                                    {pc("openPayment")}
+                                </a>
+                            ) : (
+                                <button
+                                    type="button"
+                                    className="primary"
+                                    disabled={
+                                        busy ||
+                                        (!awaitingConfirmation &&
+                                            due > 0 &&
+                                            (!method ||
+                                                methods.loading ||
+                                                Boolean(methods.error)))
+                                    }
+                                    onClick={confirmOrCheckPayment}
+                                >
+                                    {busy && (!awaitingConfirmation || restoring) && (
+                                        <LoaderCircle
+                                            className="checkout-spinner"
+                                            size={18}
+                                            aria-hidden="true"
+                                        />
+                                    )}
+                                    {confirmLabel}
+                                </button>
+                            )}
                         </div>
-                        {waiting && (
+                        {paymentStatusMessage && (
                             <p role="status" className="muted">
-                                {tx("正在等待支付确认，请勿重复付款。")}
+                                {paymentStatusMessage}
                             </p>
+                        )}
+                        {((openUrl && awaitingConfirmation) || canSwitchPayment || retrySubmission) && (
+                            <div className="checkout-secondary">
+                                <div className="checkout-secondary-actions">
+                                    {openUrl && awaitingConfirmation && (
+                                        <button
+                                            type="button"
+                                            className="checkout-check-result"
+                                            disabled={busy}
+                                            onClick={checkPaymentResult}
+                                        >
+                                            {tx("检查支付结果")}
+                                        </button>
+                                    )}
+                                    {canSwitchPayment && (
+                                        <button type="button" disabled={busy} onClick={() => setRetryOpen(true)}>
+                                            {pc("reselectPayment")}
+                                        </button>
+                                    )}
+                                    {retrySubmission && (
+                                        <button type="button" disabled={busy} onClick={() =>
+                                            void pay(retrySubmission.method, undefined, retrySubmission)
+                                        }>
+                                            {pc("retryPaymentRequest")}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
                         )}
                         {due > 0 && <BrowserHandoffHelp context="payment" disabled={busy} />}
                         {compact ? (
@@ -1152,29 +1239,17 @@ export function PaymentCheckout({
                     </section>
                 )}
             </div>
-            {pollStopped && (
-                <div className="alert" role="status">
-                    {tx("自动检查已暂停，订单仍可继续处理，请勿重复付款。")}
-                    <button
-                        type="button"
-                        onClick={checkPaymentResult}
-                    >
-                        {tx("继续检查")}
-                    </button>
-                </div>
-            )}
-            {pollError && (
-                <div className="alert" role="alert">
-                    {pollError}
-                    <button type="button" onClick={checkPaymentResult}>
-                        {tx("检查支付结果")}
-                    </button>
-                </div>
-            )}
             {status === 1 && (
                 <div className="checkout-processing-actions">
+                    {(pollError || pollStopped) && (
+                        <p role="status" className="muted">
+                            {tx(pollError
+                                ? "订单状态暂不可用，请刷新后重试。"
+                                : "自动检查已暂停，订单仍可继续处理，请勿重复付款。")}
+                        </p>
+                    )}
                     <button type="button" onClick={checkPaymentResult}>
-                        {tx("检查支付结果")}
+                        {tx(pollStopped ? "继续检查" : "检查支付结果")}
                     </button>
                     <OrderHelp tradeNo={String(order.trade_no)} />
                 </div>
@@ -1229,7 +1304,7 @@ export function PaymentCheckout({
                                 disabled={busy}
                                 onClick={() => setCancelOpen(false)}
                             >
-                                {tx("继续支付")}
+                                {tx("返回")}
                             </button>
                             <button
                                 type="button"

@@ -67,6 +67,11 @@ $curl->closed = false;
 $curl->response = (object) ['data' => (object) ['trade_no' => 'gateway-order', 'pay_url' => 'javascript:alert(1)']];
 try { $adapter->pay(['trade_no'=>'local-order','total_amount'=>1234,'notify_url'=>'https://site.example/notify','return_url'=>'https://site.example/app']); throw new RuntimeException('Unsafe URL accepted'); }
 catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode() === 500 && $curl->closed, 'Error handling failed'); }
+$curl->response = (object) ['code'=>'1', 'msg'=>'数据传输异常05'];
+try { $adapter->pay(['trade_no'=>'local-order','total_amount'=>1234,'notify_url'=>'https://site.example/notify','return_url'=>'https://site.example/app']); throw new RuntimeException('Gateway error accepted'); }
+catch (Symfony\Component\HttpKernel\Exception\HttpException $error) {
+    $assert($error->getStatusCode() === 500 && str_contains($error->getMessage(), '网关未返回支付入口'), 'Gateway business error does not become a payable response');
+}
 $methods = json_decode((new App\Http\Controllers\V1\Admin\PaymentController())->getPaymentMethods()->getContent(), true)['data'];
 $assert(in_array('MGate', $methods, true), 'Admin discovery failed');
 $form = (new App\Services\PaymentService('MGate'))->form();

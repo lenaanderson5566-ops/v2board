@@ -14,8 +14,10 @@ use App\Services\PaymentAttemptHistory;
 use App\Services\PlanService;
 use App\Services\UserService;
 use App\Utils\Helper;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class OrderActions
 {
@@ -317,7 +319,17 @@ class OrderActions
         $paymentService = new PaymentService($payment->payment, $payment->id);
         $diagnostic->checkpoint('internal_error');
         $quote = \App\Services\PaymentQuote::make($order, $payment);
-        $paymentService->validateCheckout($quote['payment_currency'], $diagnostic);
+        try {
+            $paymentService->validateCheckout($quote['payment_currency'], $diagnostic);
+        } catch (HttpExceptionInterface $error) {
+            if ($request->is('api/v10/*') && in_array($error->getStatusCode(), [422, 500], true)) {
+                throw new HttpResponseException(response()->json([
+                    'code' => 'PAYMENT_CHANNEL_UNAVAILABLE',
+                    'message' => __('Payment method is not available'),
+                ], 422));
+            }
+            throw $error;
+        }
         $diagnostic->checkpoint('quote_changed');
         if ($request->filled('expected_payment_amount') || ($order->currency ?: 'CNY') !== $quote['payment_currency']) {
             abort_unless((int)$request->input('expected_payment_amount') === $quote['payment_amount']
@@ -344,16 +356,26 @@ class OrderActions
         $diagnostic->checkpoint('order_closed');
         if (!$claimed) abort(409, __('Order does not exist or has been paid'));
         $request->attributes->set('checkout.provider_started',true);
-        $result = $paymentService->pay([
-            'trade_no' => $tradeNo,
-            'total_amount' => $quote['payment_amount'],
-            'currency' => $quote['payment_currency'],
-            'user_id' => $order->user_id,
-            'plan_id' => (int)$order->plan_id,
-            'period' => $order->period,
-            'credit_bytes' => (int)$order->credit_bytes,
-            'stripe_token' => $request->input('token')
-        ], $diagnostic);
+        try {
+            $result = $paymentService->pay([
+                'trade_no' => $tradeNo,
+                'total_amount' => $quote['payment_amount'],
+                'currency' => $quote['payment_currency'],
+                'user_id' => $order->user_id,
+                'plan_id' => (int)$order->plan_id,
+                'period' => $order->period,
+                'credit_bytes' => (int)$order->credit_bytes,
+                'stripe_token' => $request->input('token')
+            ], $diagnostic);
+        } catch (HttpExceptionInterface $error) {
+            if ($request->is('api/v10/*') && $error->getStatusCode() >= 500 && $diagnostic->gatewayRejected()) {
+                // Preserve uncertainty about whether the gateway created a payment.
+                throw new HttpResponseException(response()->json([
+                    'code' => 'PAYMENT_GATEWAY_REJECTED',
+                ], $error->getStatusCode()));
+            }
+            throw $error;
+        }
         return response([
             'type' => $result['type'],
             'data' => $result['data']

@@ -91,6 +91,10 @@ class MGate
             }
             $payUrl = $result->data->pay_url ?? null;
             if (empty($result->data->trade_no) || !is_string($payUrl) || !filter_var($payUrl, FILTER_VALIDATE_URL) || !in_array(strtolower(parse_url($payUrl, PHP_URL_SCHEME) ?? ''), ['http', 'https'], true)) {
+                if (!isset($result->data) && is_string($result->msg ?? null) && trim($result->msg) !== '') {
+                    $diagnostic?->checkpoint('gateway_rejected');
+                    abort(500, 'MGate：网关未返回支付入口，请在支付诊断中查看网关提示');
+                }
                 if (is_object($result)) $diagnostic?->checkpoint('missing_payment_action');
                 abort(500, 'MGate：接口返回数据不完整');
             }

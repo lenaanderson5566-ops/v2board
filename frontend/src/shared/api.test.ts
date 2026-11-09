@@ -358,6 +358,14 @@ it("normalizes browser network failures without retrying the request", async () 
     expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
+it("reports an invalid successful payment response without replaying the checkout", async () => {
+    const fetcher = vi.fn().mockResolvedValue(new Response("<html>Unexpected response</html>", { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    await expect(request("user/order/checkout", { trade_no: "test-order", method: 1 }))
+        .rejects.toMatchObject({ code: "RESPONSE_INVALID" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+});
+
 it("maps private ticket notification receipts to their explicit V10 route",async()=>{
  session.active=true;
  const send=vi.fn().mockResolvedValue(new Response(null,{status:204}));vi.stubGlobal("fetch",send);
@@ -392,18 +400,22 @@ it("separates in-memory account reads even when Web Storage cannot persist a rev
     session.identity="user:42";clearReadCache();
 });
 
-it("does not invalidate wallet reads or broadcast changes for a read-only checkout quote", async () => {
+it("does not invalidate wallet reads or broadcast changes for payment quotes and recovery", async () => {
     const { readRequest, clearReadCache } = await import("./api");
     clearReadCache();
     const fetchMock = vi.fn(async (url: string) => new Response(JSON.stringify({
-        data: url.includes("checkout-quotes") ? {} : [],
+        data: url.includes("checkout-quotes") ? {}
+            : url.endsWith("/payments") ? { kind: "qr", value: "saved-qr" }
+            : [],
     }), { status: 200 }));
     vi.stubGlobal("fetch", fetchMock);
     await readRequest("user/coupon/wallet");
     const before = (window.dispatchEvent as any).mock.calls.length;
     await request("user/order/quote", { plan_id: 1, period: "month_price", quote_method: 0 });
+    await expect(request("user/order/checkout", { trade_no: "test-order", method: 1, resume_payment: true }))
+        .resolves.toMatchObject({ type: 0, data: "saved-qr" });
     await readRequest("user/coupon/wallet");
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
     expect((window.dispatchEvent as any).mock.calls.slice(before).some(([event]: [Event]) => event.type === "data-changed")).toBe(false);
     clearReadCache();
 });

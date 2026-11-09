@@ -93,13 +93,30 @@ try {
  $assert($calls===1 && json_decode($first->getContent(),true)==json_decode($second->getContent(),true),'Payment retry replays result without second provider call');
 
  $uncertainRequest=clone $payRequest;$uncertainRequest->merge(['payment_request_key'=>(string)Str::uuid()]);
+ $uncertainId = Str::uuid()->toString();
+ $uncertainRequest->attributes->set('requestId', $uncertainId);
  $unknownCalls=0;
- try {App\Services\CheckoutPayment::once($uncertainRequest,function()use(&$unknownCalls,$uncertainRequest){$unknownCalls++;$uncertainRequest->attributes->set('checkout.provider_started',true);throw new RuntimeException('Synthetic connection loss');});} catch (RuntimeException $e) {}
+ try {
+     App\Services\CheckoutPayment::once($uncertainRequest, function (App\Services\PaymentAttemptHistory $diagnostic) use (&$unknownCalls, $uncertainRequest) {
+         $unknownCalls++;
+         $uncertainRequest->attributes->set('checkout.provider_started', true);
+         $diagnostic->sending('https://pay.example.test/mapi.php?sign=fixture-secret');
+         $diagnostic->received((object)['curlErrorCode' => 28], 'fixture-secret', null, null);
+         throw new RuntimeException('Synthetic connection loss');
+     });
+ } catch (RuntimeException $e) {}
  $pending=App\Services\CheckoutPayment::once($uncertainRequest,function()use(&$unknownCalls){$unknownCalls++;return response(['type'=>0,'data'=>'unexpected']);});
  $assert($unknownCalls===1 && json_decode($pending->getContent(),true)['type']===2,'Uncertain provider result resumes status checks without reissuing payment');
 
  $withoutKey=clone $payRequest; $withoutKey->request->remove('payment_request_key');
  try {$actions->checkout($withoutKey);throw new RuntimeException('Missing-key retry bypassed in-flight guard');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Omitting request key cannot bypass an uncertain payment');}
+ $diagnostics = App\Services\PaymentAttemptHistory::forOrder($createdOrder)['events'];
+ $blocked = $diagnostics->first();
+ $timeout = $diagnostics->firstWhere('request_id', $uncertainId);
+ $assert($blocked->result === 'blocked' && $blocked->previous_request_id === $uncertainId
+     && $timeout?->stage === 'gateway' && $timeout?->reason === 'gateway_timeout', 'Retry links to the original gateway timeout');
+ $assert($timeout->gateway_host === 'pay.example.test' && $timeout->gateway_code === null
+     && !str_contains($diagnostics->toJson(), 'fixture-secret'), 'Diagnostics retain the host and omit secrets and raw gateway values');
  $payRequest->merge(['method'=>$channel->id+1]);
  try {App\Services\CheckoutPayment::once($payRequest,$provider);throw new RuntimeException('Different payment method accepted');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Payment request key is bound to channel and expected quote');}
 
@@ -127,6 +144,25 @@ try {
              'Local EPay failure leaves the unpaid order free to retry with a new key');
      }
  }
+
+ $mgate = App\Models\Payment::create(['name'=>'MGate fixture','payment'=>'MGate','uuid'=>App\Utils\Helper::guid(),
+     'enable'=>1,'config'=>['mgate_url'=>'https://pay.example.test','mgate_source_currency'=>'CNY']]);
+ $mgateRequest = clone $attempt;
+ $mgateRequest->merge(['method'=>$mgate->id]);
+ for ($i = 0; $i < 2; $i++) {
+     $mgateRequest->merge(['payment_request_key'=>Str::uuid()->toString()]);
+     try { $actions->checkout($mgateRequest); throw new RuntimeException('Invalid MGate configuration accepted'); }
+     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
+         $fresh = $epayOrder->fresh();
+         $assert($e->getStatusCode() === 500 && (int) $fresh->payment_id === 0
+             && empty($fresh->payment_snapshot['payment_attempts']), 'MGate preflight failure remains retryable');
+     }
+ }
+ $mgateFailures = App\Services\PaymentAttemptHistory::forChannel($mgate->id)['events'];
+ $assert($mgateFailures->count() === 2 && $mgateFailures->every(fn ($event) =>
+     $event->stage === 'preflight' && $event->reason === 'missing_credentials' && $event->trade_no === $epayOrder->trade_no)
+     && App\Services\PaymentAttemptHistory::recentFailures()[$mgate->id] == 2,
+     'Channel diagnostics count failures and link to the relevant order');
 
  $adapter=new App\Payments\EPayQrcode(['type'=>'wxpay']);
  $action=new ReflectionMethod($adapter, 'paymentAction');

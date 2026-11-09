@@ -18,6 +18,7 @@ import { sortPayload } from "./admin-actions";
 import { AdminSwitch } from "./admin-switch";
 import { tx } from "../shared/i18n";
 import { SortButton } from "./admin-tools";
+import { PaymentChannelFailures } from "./PaymentCallbackHistory";
 import {
     paymentFields,
     paymentInitial,
@@ -32,6 +33,7 @@ export function Payments() {
     const d = useData<Row[]>(admin("payment/fetch")),
         methods = useData<string[]>(admin("payment/getPaymentMethods"));
     const [editing, setEditing] = useState<Row | null>(null);
+    const [diagnosticChannel, setDiagnosticChannel] = useState<Row | null>(null);
     const pending = useRef(false);
     const [deleting, setDeleting] = useState(false);
     const [error, setError] = useState("");
@@ -98,6 +100,11 @@ export function Payments() {
                             ],
                             ["name", "显示名称"],
                             ["payment", "支付接口"],
+                            ["recent_failure_count", "近一小时发起失败", (r) => (
+                                <button type="button" onClick={() => setDiagnosticChannel(r)} aria-label={`查看 ${r.name} 的支付失败`}>
+                                    {r.recent_failure_count ?? "查看"}
+                                </button>
+                            )],
                             ["notify_url", "通知地址"],
                         ]}
                         onReorder={!d.loading && !d.error && !deleting ? async (items) => {
@@ -138,6 +145,9 @@ export function Payments() {
                     />
                 </State>
             </Panel>
+            {diagnosticChannel && <Modal title={`${diagnosticChannel.name} · 支付失败`} close={() => setDiagnosticChannel(null)}>
+                <RecentPaymentFailures channelId={diagnosticChannel.id} />
+            </Modal>}
             {editing && (
                 <Modal
                     variant="modal"
@@ -159,6 +169,14 @@ export function Payments() {
         </>
     );
 }
+
+function RecentPaymentFailures({ channelId }: { channelId: number }) {
+    const history = useData<Row>(admin(`payment/${channelId}/recentFailures`));
+    return <State {...history} retry={history.reload}>
+        {history.data && <PaymentChannelFailures history={history.data} />}
+    </State>;
+}
+
 function PaymentEditor({
     initial,
     methods,

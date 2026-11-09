@@ -2,6 +2,7 @@
 
 namespace App\Payments;
 
+use App\Services\PaymentAttemptHistory;
 use \Curl\Curl;
 
 /**
@@ -45,9 +46,9 @@ class EPayQrcode
         ];
     }
 
-    public function pay($order)
+    public function pay($order, ?PaymentAttemptHistory $diagnostic = null)
     {
-        $this->validateConfig();
+        $this->validateConfig($diagnostic);
 
         $params = [
             'pid' => (string) $this->config['pid'],
@@ -69,25 +70,25 @@ class EPayQrcode
         $curl->setHeader('Content-Type', 'application/x-www-form-urlencoded');
         $curl->setOpt(CURLOPT_CONNECTTIMEOUT, 10);
         $curl->setOpt(CURLOPT_TIMEOUT, 30);
-        $curl->post($this->mapiUrl(), http_build_query($params));
+        $endpoint = $this->mapiUrl();
+        $diagnostic?->sending($endpoint);
+        try {
+            $curl->post($endpoint, http_build_query($params));
+            $result = $curl->response;
+            if (is_string($result)) $result = json_decode($result);
+            $diagnostic?->received($curl, $result->code ?? null, $result->trade_no ?? null, $result);
 
-        $result = $curl->response;
-        if (is_string($result)) {
-            $result = json_decode($result);
-        }
-
-        if (!$result) {
+            if (!is_object($result)) abort(500, '支付接口网络异常或返回内容无法解析');
+            if ($curl->error || !isset($result->code) || (int) $result->code !== 1) {
+                if (!$curl->error && isset($result->code)) $diagnostic?->checkpoint('gateway_rejected');
+                $message = is_string($result->msg ?? null) ? $result->msg : 'API 下单失败';
+                abort(500, $message);
+            }
+        } finally {
             $curl->close();
-            abort(500, '支付接口网络异常或返回内容无法解析');
         }
 
-        if ($curl->error || !isset($result->code) || (int) $result->code !== 1) {
-            $message = isset($result->msg) ? (string) $result->msg : 'API 下单失败';
-            $curl->close();
-            abort(500, $message);
-        }
-        $curl->close();
-
+        $diagnostic?->checkpoint('missing_payment_action');
         return $this->paymentAction($result);
     }
 
@@ -176,16 +177,18 @@ class EPayQrcode
         return rtrim($baseUrl, '/') . '/mapi.php';
     }
 
-    public function validateConfig(): void
+    public function validateConfig(?PaymentAttemptHistory $diagnostic = null): void
     {
         foreach (['url', 'pid', 'key', 'type'] as $key) {
             if (!isset($this->config[$key]) || trim((string) $this->config[$key]) === '') {
+                $diagnostic?->checkpoint(in_array($key, ['pid', 'key'], true) ? 'missing_credentials' : 'invalid_config');
                 abort(422, 'EPay 配置不完整：' . $key);
             }
         }
 
         $url = $this->mapiUrl();
         if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['https', 'http'], true)) {
+            $diagnostic?->checkpoint('invalid_config');
             abort(422, 'EPay URL 格式错误');
         }
     }

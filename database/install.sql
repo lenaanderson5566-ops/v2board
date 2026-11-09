@@ -611,6 +611,29 @@ CREATE TABLE IF NOT EXISTS `v2_payment_callback_event` (
   KEY `v2_payment_callback_event_created_at_index` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `v2_payment_attempt_event` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `order_id` int unsigned NOT NULL,
+  `payment_id` int unsigned NULL,
+  `provider` varchar(64) NULL,
+  `stage` varchar(24) NOT NULL,
+  `result` varchar(24) NOT NULL,
+  `reason` varchar(48) NULL,
+  `request_id` char(36) NULL,
+  `previous_request_id` char(36) NULL,
+  `gateway_host` varchar(253) NULL,
+  `gateway_http_status` smallint unsigned NULL,
+  `gateway_code` int NULL,
+  `gateway_order` varchar(64) NULL,
+  `gateway_actions` varchar(40) NULL,
+  `duration_ms` int unsigned NULL,
+  `created_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  KEY `payment_attempt_order` (`order_id`,`created_at`,`id`),
+  KEY `payment_attempt_channel` (`payment_id`,`result`,`created_at`,`id`),
+  KEY `v2_payment_attempt_event_created_at_index` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `v2_client_diagnostic_report` (
  `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL,
  `report_id` char(36) NOT NULL, `report_kind` varchar(16) NOT NULL DEFAULT 'diagnostic', `client_version` varchar(32) NOT NULL, `platform` varchar(16) NOT NULL,

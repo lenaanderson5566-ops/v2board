@@ -1174,6 +1174,26 @@ it.each([
     }));
 });
 
+it("adds the language column to existing user views and respects later visibility changes", async () => {
+    const viewKey = "admin.users.view.v1";
+    localStorage.setItem(viewKey, JSON.stringify({ columns: ["id"], pageSize: 20 }));
+    api.request.mockImplementation(async (path: string) => path.includes("user/fetch")
+        ? { data: [{id: 7, language: "ja-JP"}, {id: 8, language: null}, {id: 9, language: "nl-NL"}], total: 3 }
+        : { data: [] });
+    const view = render(<UsersPage />);
+    expect(await screen.findByText("日本語")).toBeTruthy();
+    expect(screen.getByText("未设置")).toBeTruthy();
+    expect(screen.getByText("nl-NL")).toBeTruthy();
+    expect(screen.queryByRole("columnheader", {name: "账号币种"})).toBeNull();
+    fireEvent.click(screen.getByRole("button", {name: "显示设置"}));
+    fireEvent.click(within(screen.getByRole("dialog", {name: "用户显示设置"})).getByRole("button", {name: "用户语言"}));
+    view.unmount();
+    render(<UsersPage />);
+    await screen.findByRole("columnheader", {name: "用户（ID / 邮箱）"});
+    expect(screen.queryByRole("columnheader", {name: "用户语言"})).toBeNull();
+    localStorage.removeItem(viewKey);
+});
+
 it("removes account generation and CSV export while preserving user management", async () => {
     render(<UsersPage />);
     await waitFor(() => expect((screen.getByRole("button", {name:"刷新"}) as HTMLButtonElement).disabled).toBe(false));

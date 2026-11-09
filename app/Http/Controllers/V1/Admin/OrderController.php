@@ -46,6 +46,7 @@ class OrderController extends Controller
         $order['payment_display'] = \App\Services\OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
         $order['payment_provider'] = $order->payment_snapshot['provider'] ?? null;
         $order['callback_history'] = \App\Services\PaymentCallbackHistory::forOrder($order);
+        $order['payment_attempt_history'] = \App\Services\PaymentAttemptHistory::forOrder($order);
         $review = $order->invite_user_id ? DB::table('v2_invitation_review')->where('user_id',$order->user_id)->where('inviter_id',$order->invite_user_id)->first(['id','state','signals','updated_at']) : null;
         $order['invitation_review'] = $review ? ['id'=>$review->id,'state'=>$review->state,'signals'=>json_decode($review->signals,true) ?: [],'updated_at'=>$review->updated_at] : null;
         $order['plan_name'] = Plan::where('id',$order->plan_id)->value('name');

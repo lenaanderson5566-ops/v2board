@@ -5,6 +5,7 @@ namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
+use App\Services\PaymentAttemptHistory;
 use App\Services\PaymentService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -32,6 +33,7 @@ class PaymentController extends Controller
     public function fetch()
     {
         $payments = Payment::orderBy('sort', 'ASC')->get();
+        $failures = PaymentAttemptHistory::recentFailures();
         foreach ($payments as $k => $v) {
             $notifyUrl = url("/api/v10/webhooks/payments/{$v->payment}/{$v->uuid}");
             if ($v->notify_domain) {
@@ -39,10 +41,16 @@ class PaymentController extends Controller
                 $notifyUrl = $v->notify_domain . $parseUrl['path'];
             }
             $payments[$k]['notify_url'] = $notifyUrl;
+            $payments[$k]['recent_failure_count'] = $failures === null ? null : (int) ($failures[$v->id] ?? 0);
         }
         return response([
             'data' => $payments
         ]);
+    }
+
+    public function recentFailures(int $id)
+    {
+        return response(['data' => PaymentAttemptHistory::forChannel($id)])->header('Cache-Control', 'no-store');
     }
 
     public function getPaymentForm(Request $request)

@@ -3,7 +3,7 @@ import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { AdminSubscriptionExpiry } from "./AdminSubscriptionExpiry";
-import { languageCodes } from "../shared/language-options";
+import { languageCodes, languages } from "../shared/language-options";
 import { Plus, Search } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -270,6 +270,10 @@ export const resources: Record<string, Resource> = {
                     />
                 ),
             ],
+            ["language", "用户语言", (r) => {
+                const code = typeof r.language === "string" ? r.language.trim() : "";
+                return languages.find((language) => language.code === code)?.name ?? (code || "未设置");
+            }],
             ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
             [
                 "banned",

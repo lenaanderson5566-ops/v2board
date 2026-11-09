@@ -104,7 +104,7 @@ export function OrdersPage({
                           "commission_balance",
                       ].includes(item.key),
               )
-            : ["user_id", "invite_user_id", "commission_status", "status"]
+            : ["trade_no", "user_id", "invite_user_id", "commission_status", "status"]
                   .filter((key) => params.has(key) && params.get(key) !== "")
                   .map((key) => ({
                       key,
@@ -659,7 +659,11 @@ function OrderDetail({
                                     </div>
                                 ))}
                         </dl>
-                        <PaymentCallbackHistory history={r.callback_history} />
+                        <PaymentCallbackHistory
+                            history={r.callback_history}
+                            attempts={r.payment_attempt_history}
+                            paidAt={r.paid_at}
+                        />
                         {commissionMode && (
                             <>
                                 <h3>佣金记录</h3>

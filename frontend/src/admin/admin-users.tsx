@@ -22,6 +22,7 @@ import {
 } from "./user-filters";
 
 const userViewKey = "admin.users.view.v1";
+const userColumnsVersion = 2;
 function savedUserView(): Record<string, any> {
     try {
         const value = JSON.parse(localStorage.getItem(userViewKey) || "{}");
@@ -41,13 +42,12 @@ const defaultUserColumns = () =>
         );
 export function UsersPage() {
     const [saved] = useState(savedUserView);
-    const [optionalColumns, setOptionalColumns] = useState<string[]>(() =>
-        Array.isArray(saved.columns)
-            ? saved.columns.filter((key: string) =>
-                  resources.users.columns.some(([id]) => id === key),
-              )
-            : defaultUserColumns(),
-    );
+    const [optionalColumns, setOptionalColumns] = useState<string[]>(() => {
+        if (!Array.isArray(saved.columns)) return defaultUserColumns();
+        const columns = saved.columns.filter((key: string) => resources.users.columns.some(([id]) => id === key));
+        if (saved.columnsVersion !== userColumnsVersion && !columns.includes("language")) columns.push("language");
+        return columns;
+    });
     const plans = useData<Row[]>(admin("plan/fetch"));
     const [filters, setFilters] = useState<UserFilter[]>(() => {
             const params = new URLSearchParams(
@@ -92,6 +92,7 @@ export function UsersPage() {
                 userViewKey,
                 JSON.stringify({
                     columns: optionalColumns,
+                    columnsVersion: userColumnsVersion,
                     pageSize,
                     sort,
                     direction,

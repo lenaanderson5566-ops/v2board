@@ -16,6 +16,21 @@ import { Payments } from "./admin";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
+it("opens the selected channel's failure records and links to the affected order", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/fetch")) return { data: [{ id: 7, name: "WeChat", payment: "EPayQrcode", enable: 1, recent_failure_count: 1 }] };
+        if (path.endsWith("/getPaymentMethods")) return { data: ["EPayQrcode"] };
+        if (path.endsWith("/payment/7/recentFailures")) return { data: { available: true, events: [
+            { id: 2, reason: "gateway_timeout", stage: "gateway", trade_no: "fixture-order", created_at: 1791849600 },
+        ] } };
+        throw new Error(`Unexpected endpoint: ${path}`);
+    });
+
+    render(<Payments />);
+    fireEvent.click(await screen.findByRole("button", { name: "查看 WeChat 的支付失败" }));
+    expect((await screen.findByRole("link", { name: "fixture-order" })).getAttribute("href")).toBe("#/orders?trade_no=fixture-order");
+});
+
 it("enables and disables PaytaroQR using the existing backend show endpoint", async () => {
     let enabled = 0;
     api.request.mockImplementation(async (path: string, body: any) => {

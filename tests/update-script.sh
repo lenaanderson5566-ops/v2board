@@ -44,6 +44,7 @@ printf '{"name":"test/site","require":{"php":"^7.3.0 || ^8.0","geoip2/geoip2":"^
 git cat-file blob "$public_current" > config/entrypoint-signing.php
 mkdir -p public/console/.vite database/migrations
 cp -- "$SOURCE" update.sh
+echo '<?php // fixture' > database/migrations/2026_11_09_000001_create_payment_attempt_events.php
 echo '{}' > public/console/.vite/manifest.json
 echo '<?php // fixture' > database/migrations/2026_10_11_000000_ensure_operations_schema.php
 echo '<?php // fixture' > database/migrations/2026_10_27_000001_retire_v2node.php
@@ -275,6 +276,7 @@ grep -q 'migrate --path=database/migrations/2026_10_30_000001_track_plan_transla
 grep -q 'migrate --path=database/migrations/2026_11_03_000001_add_traffic_reset_anchor.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_04_000001_subscription_blacklist_expiry.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_04_000002_reconcile_mail_complaint_suppressions.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_11_09_000001_create_payment_attempt_events.php --force --no-interaction' calls.log
 grep -q 'Missing plan translation source column' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty

@@ -2,7 +2,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 vi.hoisted(() => { window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any; });
-import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
+import { PaymentCallbackHistory, PaymentChannelFailures } from "./PaymentCallbackHistory";
 afterEach(cleanup);
 it("labels unassociated channel events separately and links request IDs", () => {
     render(
@@ -32,4 +32,23 @@ it("labels unassociated channel events separately and links request IDs", () => 
             .getByText("12345678-1234-4234-8234-123456789abc")
             .getAttribute("href"),
     ).toContain("#/system-log?request_id=");
+});
+
+it("links a blocked retry to its original gateway failure", () => {
+    const requestId = "12345678-1234-4234-8234-123456789abc";
+    render(<PaymentCallbackHistory history={{ available: true, events: [] }} attempts={{ available: true, events: [
+        { id: 2, stage: "preflight", result: "blocked", reason: "in_flight", previous_request_id: requestId, created_at: 1791849610 },
+        { id: 1, stage: "gateway", result: "failed", reason: "gateway_timeout", request_id: requestId, created_at: 1791849600, gateway_host: "gateway.example" },
+    ] }} />);
+    expect(screen.getByText(/最近进展/).parentElement?.textContent).toContain("前一笔：等待网关响应超时");
+    expect(screen.getAllByRole("link", { name: requestId })).toHaveLength(2);
+    expect(screen.getByText("gateway.example")).toBeTruthy();
+});
+
+it("links a channel failure to the matching order search", () => {
+    render(<PaymentChannelFailures history={{ available: true, events: [
+        { id: 1, stage: "preflight", result: "failed", reason: "missing_credentials", trade_no: "fixture-order", created_at: 1791849600 },
+    ] }} />);
+    expect(screen.getByRole("link", { name: "fixture-order" }).getAttribute("href")).toBe("#/orders?trade_no=fixture-order");
+    expect(screen.getByText("商户凭证缺失，请核对渠道配置")).toBeTruthy();
 });

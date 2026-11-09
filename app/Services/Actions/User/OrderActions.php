@@ -10,6 +10,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\OrderService;
 use App\Services\PaymentService;
+use App\Services\PaymentAttemptHistory;
 use App\Services\PlanService;
 use App\Services\UserService;
 use App\Utils\Helper;
@@ -274,10 +275,10 @@ class OrderActions
     {
         // Older callers may omit a key, but must still respect another in-flight attempt.
         if (!$request->filled('payment_request_key')) $request->merge(['payment_request_key'=>(string)\Illuminate\Support\Str::uuid()]);
-        return \App\Services\CheckoutPayment::once($request, fn()=>$this->performCheckout($request));
+        return \App\Services\CheckoutPayment::once($request, fn(PaymentAttemptHistory $diagnostic) => $this->performCheckout($request, $diagnostic));
     }
 
-    private function performCheckout(Request $request)
+    private function performCheckout(Request $request, PaymentAttemptHistory $diagnostic)
     {
         $tradeNo = $request->input('trade_no');
         $method = $request->input('method');
@@ -285,14 +286,17 @@ class OrderActions
             ->where('user_id', $request->user['id'])
             ->where('status', 0)
             ->first();
+        $diagnostic->checkpoint('order_closed');
         if (!$order) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Order does not exist or has been paid'));
         }
+        $diagnostic->checkpoint('invalid_amount');
         if ($order->total_amount < 0) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Invalid parameter'));
         }
         // free process
         if ($order->total_amount <= 0) {
+            $diagnostic->checkpoint('internal_error');
             $orderService = new OrderService($order);
             if (!$orderService->paid($order->trade_no, [], function () use ($order) {
                 $fresh = $this->lockCheckoutOrder($order);
@@ -303,13 +307,16 @@ class OrderActions
                 'data' => true
             ]);
         }
+        $diagnostic->checkpoint('channel_unavailable');
         $payment = Payment::find($method);
         if (!$payment || $payment->enable !== 1) abort(request()->is('api/v10/*') ? 409 : 500, __('Payment method is not available'));
         $channelSnapshot = $order->payment_snapshot['channels'][(string)$method] ?? null;
         abort_if($channelSnapshot && (($channelSnapshot['uuid'] ?? null) !== $payment->uuid || ($channelSnapshot['provider'] ?? null) !== $payment->payment),409,__('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
-        $paymentService->validateCheckout();
+        $diagnostic->checkpoint('internal_error');
         $quote = \App\Services\PaymentQuote::make($order, $payment);
+        $paymentService->validateCheckout($quote['payment_currency'], $diagnostic);
+        $diagnostic->checkpoint('quote_changed');
         if ($request->filled('expected_payment_amount') || ($order->currency ?: 'CNY') !== $quote['payment_currency']) {
             abort_unless((int)$request->input('expected_payment_amount') === $quote['payment_amount']
                 && $request->input('expected_payment_currency') === $quote['payment_currency'], 409, __('Payment quote changed. Reload and confirm the payment amount.'));
@@ -317,19 +324,22 @@ class OrderActions
         $order->handling_amount = $quote['handling_amount'];
         $order->payment_id = $method;
         // Claim payment before contacting the provider; replacement must not cancel issued payments.
-        $claimed = DB::transaction(function () use ($order, $method, $payment, $quote) {
+        $diagnostic->checkpoint('internal_error');
+        $claimed = DB::transaction(function () use ($order, $method, $payment, $quote, $diagnostic) {
             // Coordinate with admin deletion before binding this channel to a pending order.
             $currentPayment = Payment::query()->lockForUpdate()->find($payment->id);
+            $diagnostic->checkpoint('channel_unavailable');
             abort_unless($currentPayment && $currentPayment->enable === 1
                 && $currentPayment->uuid === $payment->uuid && $currentPayment->payment === $payment->payment,
                 409, __('Payment method is not available'));
-            $fresh = $this->lockCheckoutOrder($order);
+            $fresh = $this->lockCheckoutOrder($order, $diagnostic);
             $fresh->payment_id = $method;
             $fresh->handling_amount = $order->handling_amount;
             $saved = \App\Services\OrderPaymentHistory::select($fresh, $payment, $quote);
             $order->handling_amount = $fresh->handling_amount;
             return $saved;
         }, 3);
+        $diagnostic->checkpoint('order_closed');
         if (!$claimed) abort(409, __('Order does not exist or has been paid'));
         $request->attributes->set('checkout.provider_started',true);
         $result = $paymentService->pay([
@@ -341,24 +351,27 @@ class OrderActions
             'period' => $order->period,
             'credit_bytes' => (int)$order->credit_bytes,
             'stripe_token' => $request->input('token')
-        ]);
+        ], $diagnostic);
         return response([
             'type' => $result['type'],
             'data' => $result['data']
         ]);
     }
 
-    private function lockCheckoutOrder(Order $order): Order
+    private function lockCheckoutOrder(Order $order, ?PaymentAttemptHistory $diagnostic = null): Order
     {
         $user = User::whereKey($order->user_id)->lockForUpdate()->firstOrFail();
         $fresh = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+        $diagnostic?->checkpoint('order_closed');
         abort_unless((int)$fresh->status === 0, 409, __('Order does not exist or has been paid'));
         if ((int)$fresh->surplus_amount > 0 || (int)$fresh->refund_amount > 0) {
+            $diagnostic?->checkpoint('quote_expired');
             abort_unless((int)$fresh->created_at >= time() - 900 && (new OrderService($fresh))->isSurplusQuoteCurrent($user),
                 409, $fresh->payment_id
                     ? __('Payment is being confirmed. Please check the order status before trying again.')
                     : __('This order quote has expired. Cancel this order and create a new one.'));
         }
+        $diagnostic?->checkpoint('internal_error');
         return $fresh;
     }
 

@@ -43,9 +43,10 @@ class PaymentService
         return $this->payment->notify($params);
     }
 
-    public function pay($order)
+    public function pay($order, ?PaymentAttemptHistory $diagnostic = null)
     {
         // New payments use V10; historical callbacks remain registered.
+        $diagnostic?->checkpoint('invalid_config');
         $base = $this->configuredBase();
         $notifyBase = !empty($this->config['notify_domain'])
             ? rtrim($this->config['notify_domain'], '/') : $base;
@@ -58,7 +59,7 @@ class PaymentService
             && in_array($order['period'] ?? null, ['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price'], true);
         $returnPath = $subscription ? '/#/plan/' . $planId . '?order=' : '/#/order/';
         $returnUrl = $this->currentBase($base) . $returnPath . rawurlencode($order['trade_no']);
-        return $this->payment->pay([
+        $parameters = [
             'currency' => $order['currency'] ?? 'CNY',
             'notify_url' => $notifyUrl,
             'return_url' => $returnUrl,
@@ -66,13 +67,22 @@ class PaymentService
             'total_amount' => $order['total_amount'],
             'user_id' => $order['user_id'],
             'stripe_token' => $order['stripe_token']
-        ]);
+        ];
+        $diagnostic?->provider();
+        if ($this->payment instanceof \App\Payments\MGate || $this->payment instanceof \App\Payments\EPayQrcode) {
+            return $this->payment->pay($parameters, $diagnostic);
+        }
+        return $this->payment->pay($parameters);
     }
 
-    public function validateCheckout(): void
+    public function validateCheckout(string $currency = 'CNY', ?PaymentAttemptHistory $diagnostic = null): void
     {
+        $diagnostic?->checkpoint('invalid_config');
+        $this->configuredBase();
         if ($this->payment instanceof \App\Payments\EPayQrcode) {
-            $this->payment->validateConfig();
+            $this->payment->validateConfig($diagnostic);
+        } elseif ($this->payment instanceof \App\Payments\MGate) {
+            $this->payment->validateConfig($currency, $diagnostic);
         }
     }
 

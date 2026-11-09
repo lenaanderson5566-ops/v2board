@@ -2,6 +2,7 @@
 
 namespace App\Payments;
 
+use App\Services\PaymentAttemptHistory;
 use Curl\Curl;
 
 class MGate
@@ -34,22 +35,36 @@ class MGate
         return md5(http_build_query($params) . $this->config['mgate_app_secret']);
     }
 
-    public function pay($order)
+    public function validateConfig(string $currency, ?PaymentAttemptHistory $diagnostic = null): void
     {
         $url = rtrim(trim((string) ($this->config['mgate_url'] ?? '')), '/');
+        $diagnostic?->checkpoint('invalid_config');
         if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(strtolower(parse_url($url, PHP_URL_SCHEME) ?? ''), ['http', 'https'], true)) {
             abort(500, 'MGate：API地址格式有误');
         }
+        $diagnostic?->checkpoint('missing_credentials');
         if (empty($this->config['mgate_app_id']) || empty($this->config['mgate_app_secret'])) {
             abort(500, 'MGate：请填写APPID和AppSecret');
         }
-        abort_unless(strtoupper((string)($this->config['mgate_source_currency'] ?? 'CNY')) === strtoupper((string)($order['currency'] ?? 'CNY')) || empty($this->config['mgate_source_currency']), 422, 'MGate currency does not match the saved quote');
+        $diagnostic?->checkpoint('currency_mismatch');
+        abort_unless(strtoupper($this->sourceCurrency()) === strtoupper($currency), 422, 'MGate currency does not match the saved quote');
+    }
+
+    private function sourceCurrency(): string
+    {
+        return trim((string) ($this->config['mgate_source_currency'] ?? '')) ?: 'CNY';
+    }
+
+    public function pay($order, ?PaymentAttemptHistory $diagnostic = null)
+    {
+        $this->validateConfig($order['currency'] ?? 'CNY', $diagnostic);
+        $endpoint = rtrim(trim($this->config['mgate_url']), '/') . '/v1/gateway/fetch';
         $params = [
             'out_trade_no' => $order['trade_no'],
             'total_amount' => $order['total_amount'],
             'notify_url' => $order['notify_url'],
             'return_url' => $order['return_url'],
-            'source_currency' => trim((string) ($this->config['mgate_source_currency'] ?? '')) ?: 'CNY',
+            'source_currency' => $this->sourceCurrency(),
             'app_id' => $this->config['mgate_app_id'],
         ];
         ksort($params);
@@ -61,8 +76,10 @@ class MGate
             $curl->setOpt(CURLOPT_SSL_VERIFYHOST, 2);
             $curl->setOpt(CURLOPT_CONNECTTIMEOUT, 10);
             $curl->setOpt(CURLOPT_TIMEOUT, 30);
-            $curl->post($url . '/v1/gateway/fetch', http_build_query($params));
+            $diagnostic?->sending($endpoint);
+            $curl->post($endpoint, http_build_query($params));
             $result = $curl->response;
+            $diagnostic?->received($curl, $result->code ?? null, $result->data->trade_no ?? null, $result->data ?? null);
             if (!$result) abort(500, 'MGate：网络异常');
             if ($curl->error) {
                 $message = is_object($result) && isset($result->message) && is_string($result->message) ? $result->message : '接口请求失败';
@@ -75,6 +92,7 @@ class MGate
             }
             $payUrl = $result->data->pay_url ?? null;
             if (empty($result->data->trade_no) || !is_string($payUrl) || !filter_var($payUrl, FILTER_VALIDATE_URL) || !in_array(strtolower(parse_url($payUrl, PHP_URL_SCHEME) ?? ''), ['http', 'https'], true)) {
+                if (is_object($result)) $diagnostic?->checkpoint('missing_payment_action');
                 abort(500, 'MGate：接口返回数据不完整');
             }
             return ['type' => 1, 'data' => $payUrl];

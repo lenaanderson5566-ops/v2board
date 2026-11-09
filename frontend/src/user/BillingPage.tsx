@@ -48,19 +48,17 @@ function BalanceAutoRenewal({ account, canEnable, refresh }: {
     }
 
     return (
-        <div className="settings-card notification-options">
-            <div className="notification-option">
-                <div className="notification-description">
-                    <label htmlFor={id}>{pc("balanceAutoRenewal")}</label>
-                    <p id={`${id}-hint`}>{pc("balanceAutoRenewalHelp")}</p>
-                    {failed && <p className="notification-feedback" data-error="true" role="alert">{pc("balanceAutoRenewalError")}</p>}
-                </div>
-                <button id={id} type="button" role="switch" className="toggle-control"
-                    aria-describedby={`${id}-hint`} aria-checked={checked}
-                    aria-busy={saving} disabled={saving || (!checked && !canEnable)} onClick={() => void toggle()}>
-                    <span className="toggle-track" aria-hidden="true"><i /></span>
-                </button>
+        <div className="notification-option billing-renewal">
+            <div className="notification-description">
+                <label htmlFor={id}>{pc("balanceAutoRenewal")}</label>
+                <p id={`${id}-hint`}>{pc("balanceAutoRenewalHelp")}</p>
+                {failed && <p className="notification-feedback" data-error="true" role="alert">{pc("balanceAutoRenewalError")}</p>}
             </div>
+            <button id={id} type="button" role="switch" className="toggle-control"
+                aria-describedby={`${id}-hint`} aria-checked={checked}
+                aria-busy={saving} disabled={saving || (!checked && !canEnable)} onClick={() => void toggle()}>
+                <span className="toggle-track" aria-hidden="true"><i /></span>
+            </button>
         </div>
     );
 }
@@ -92,36 +90,38 @@ export function BillingPage() {
             <p className="settings-intro">{b("billingIntro")}</p>
             <section className="settings-section">
                 <h2>{b("currentPlan")}</h2>
-                <State {...sub} retry={sub.reload}>
-                    <div className="settings-card settings-row billing-current-plan">
-                        <div>
-                            <strong>
-                                {sub.data?.has_subscription === false
-                                    ? tx("尚未订阅套餐")
-                                    : sub.data?.plan?.name ||
-                                      tx("尚未订阅套餐")}
-                            </strong>
-                            <p className="muted">
-                                {sub.data?.plan &&
-                                sub.data?.has_subscription !== false
-                                    ? `${tx("订阅到期")} · ${sub.data.expired_at ? date(sub.data.expired_at, { second: undefined }) : tx("长期有效")}`
-                                    : b("choosePlan")}
-                            </p>
-                            {newAccount && (
+                <div className="settings-card billing-current-plan">
+                    <State {...sub} retry={sub.reload}>
+                        <div className="settings-row billing-plan-summary">
+                            <div>
+                                <strong>
+                                    {sub.data?.has_subscription === false
+                                        ? tx("尚未订阅套餐")
+                                        : sub.data?.plan?.name ||
+                                          tx("尚未订阅套餐")}
+                                </strong>
                                 <p className="muted">
-                                    {tx("购买套餐可直接付款，无需先充值账户余额。")}
+                                    {sub.data?.plan &&
+                                    sub.data?.has_subscription !== false
+                                        ? `${tx("订阅到期")} · ${sub.data.expired_at ? date(sub.data.expired_at, { second: undefined }) : tx("长期有效")}`
+                                        : b("choosePlan")}
                                 </p>
-                            )}
+                                {newAccount && (
+                                    <p className="muted">
+                                        {tx("购买套餐可直接付款，无需先充值账户余额。")}
+                                    </p>
+                                )}
+                            </div>
+                            <a className="button soft-button" href="#/plan">
+                                {tx(sub.data?.plan ? "管理订阅" : "购买订阅")}
+                                <ArrowUpRight size={15} />
+                            </a>
                         </div>
-                        <a className="button soft-button" href="#/plan">
-                            {tx(sub.data?.plan ? "管理订阅" : "购买订阅")}
-                            <ArrowUpRight size={15} />
-                        </a>
-                    </div>
-                </State>
-                {!info.error && info.data?.auto_renewal != null && (autoRenewalEnabled || canAutoRenew) && (
-                    <BalanceAutoRenewal account={info.data} canEnable={canAutoRenew} refresh={info.reload} />
-                )}
+                    </State>
+                    {!info.error && info.data?.auto_renewal != null && (autoRenewalEnabled || canAutoRenew) && (
+                        <BalanceAutoRenewal account={info.data} canEnable={canAutoRenew} refresh={info.reload} />
+                    )}
+                </div>
             </section>
             <State {...info} retry={info.reload}>
                 <section className="settings-section">

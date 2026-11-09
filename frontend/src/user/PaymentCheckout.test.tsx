@@ -362,6 +362,54 @@ it("keeps the restored QR visible without a dismiss control or another checkout"
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 
+it("recovers a QR automatically when a pending gateway saves it without changing the order status", async () => {
+    vi.useFakeTimers();
+    try {
+        const resume = vi.fn()
+            .mockRejectedValueOnce(Object.assign(new Error("In flight"), { code: "PAYMENT_CONFIRMATION_PENDING" }))
+            .mockResolvedValueOnce({ type: 0, data: "late-wechat-qr" });
+        mock.request.mockImplementation(async (path: string, body) =>
+            path === "user/order/checkout" ? resume(body) : { data: 0 },
+        );
+        const reload = vi.fn();
+        await act(async () => { renderCheckout({ payment_id: 1 }, reload); });
+        expect(screen.getByText("paymentConfirmationPending")).toBeTruthy();
+        expect(screen.getByRole("button", { name: "paymentOpenAgain" })).toBeTruthy();
+        await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+
+        expect(screen.getByDisplayValue("late-wechat-qr")).toBeTruthy();
+        expect(screen.queryByText("paymentConfirmationPending")).toBeNull();
+        expect(screen.queryByRole("button", { name: "paymentOpenAgain" })).toBeNull();
+        expect(resume.mock.calls).toEqual([
+            [{ trade_no: "test-order", method: 1, resume_payment: true }],
+            [{ trade_no: "test-order", method: 1, resume_payment: true }],
+        ]);
+        expect(reload).not.toHaveBeenCalled();
+    } finally { vi.useRealTimers(); }
+});
+
+it("lets the customer reopen a pending payment without creating a new attempt and stops polling a missing action", async () => {
+    vi.useFakeTimers();
+    try {
+        const resume = vi.fn()
+            .mockRejectedValueOnce(Object.assign(new Error("In flight"), { code: "PAYMENT_CONFIRMATION_PENDING" }))
+            .mockRejectedValueOnce(Object.assign(new Error("No saved entry"), { code: "PAYMENT_ACTION_UNAVAILABLE" }));
+        mock.request.mockImplementation(async (path: string, body) =>
+            path === "user/order/checkout" ? resume(body) : { data: 0 },
+        );
+        await act(async () => { renderCheckout({ payment_id: 1 }); });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "paymentOpenAgain" })); });
+        expect(screen.getByText("paymentActionUnavailable")).toBeTruthy();
+        expect(screen.queryByText("paymentConfirmationPending")).toBeNull();
+        expect(screen.getByRole("button", { name: "reselectPayment" })).toBeTruthy();
+        await act(async () => { await vi.advanceTimersByTimeAsync(30000); });
+        expect(resume.mock.calls).toEqual([
+            [{ trade_no: "test-order", method: 1, resume_payment: true }],
+            [{ trade_no: "test-order", method: 1, resume_payment: true }],
+        ]);
+    } finally { vi.useRealTimers(); }
+});
+
 it("restores the saved cashier without navigating away or creating a payment", async () => {
     const cashier = "https://gateway.example.test/cashier/owned-order";
     mock.request.mockImplementation(async (path: string, body) =>

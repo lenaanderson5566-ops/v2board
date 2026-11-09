@@ -165,6 +165,16 @@ try {
      'Fresh key cannot replay the action for a different quoted currency');
  $resumeRequest = $makePayment($createdOrder, $channel, ['resume_payment'=>true]);
  $assert($checkout($resumeRequest) === $first && $calls === 1, 'Explicit resume restores the issued QR without calling the gateway');
+ $existing = $createdOrder->fresh();
+ $snapshot = $existing->payment_snapshot;
+ $failedHistory = $snapshot;
+ $failedHistory['payment_attempts'][(string) Str::uuid()] = [
+     'method' => $channel->id, 'state' => 'started', 'provider_failed' => true,
+ ];
+ $existing->update(['payment_snapshot'=>$failedHistory]);
+ $assert($checkout($resumeRequest) === $first && $calls === 1,
+     'A recorded failure does not prevent reading the current issued QR');
+ $existing->update(['payment_snapshot'=>$snapshot]);
  $assertConflict($makePayment($createdOrder, $otherChannel), 'Changing channels without explicit confirmation is rejected even after a QR was issued');
  $assertConflict($makePayment($createdOrder, $otherChannel, ['switch_from_payment_method'=>$issuedChannel->id]),
      'Switch confirmation must name the currently selected channel');
@@ -194,6 +204,8 @@ try {
  $ambiguous['payment_attempts'][(string) Str::uuid()] = $snapshot['payment_attempts'][$switchRequest->input('payment_request_key')];
  $existing->update(['payment_snapshot'=>$ambiguous]);
  $assertConflict($makePayment($createdOrder, $otherChannel), 'Legacy replay rejects multiple possible actions on the same channel');
+ $assertConflict($makePayment($createdOrder, $otherChannel, ['resume_payment'=>true]),
+     'Read-only resume distinguishes an ambiguous saved action', 'PAYMENT_ACTION_UNAVAILABLE');
  unset($snapshot['channels'][$otherChannel->id]['payment_amount']);
  $existing->update(['payment_snapshot'=>$snapshot]);
  $otherChannel->update(['handling_fee_fixed'=>50]);
@@ -234,11 +246,16 @@ try {
      && $timeout?->stage === 'gateway' && $timeout?->reason === 'gateway_timeout', 'Retry links to the original gateway timeout');
  $assert($timeout->gateway_host === 'pay.example.test' && $timeout->gateway_code === null
      && !str_contains($diagnostics->toJson(), 'fixture-secret'), 'Diagnostics retain the host and omit secrets and raw gateway values');
+ $assertConflict($makePayment($uncertainOrder, $channel, ['resume_payment'=>true]),
+     'A recorded gateway timeout has no action to resume', 'PAYMENT_ACTION_UNAVAILABLE');
+ $assert($unknownCalls === 1, 'A missing saved action does not create another provider request');
 
  $existing = $uncertainOrder->fresh();
  $snapshot = $existing->payment_snapshot;
  unset($snapshot['payment_attempts'][$uncertainRequest->input('payment_request_key')]['provider_failed']);
  $existing->update(['payment_snapshot'=>$snapshot]);
+ $assertConflict($makePayment($uncertainOrder, $channel, ['resume_payment'=>true]),
+     'Legacy gateway diagnostics also distinguish a recorded failure from a live request', 'PAYMENT_ACTION_UNAVAILABLE');
  V10TestPayment::$payHandler = function () use (&$unknownCalls, $redirectAction) {
      ++$unknownCalls;
      return $redirectAction;
@@ -255,6 +272,8 @@ try {
  };
  $assert($checkout($makePayment($pendingOrder, $channel)) === $pendingAction, 'Provider pending result is returned');
  $assertConflict($makePayment($pendingOrder, $channel), 'A fresh key cannot bypass a provider pending result', 'PAYMENT_CONFIRMATION_PENDING');
+ $assertConflict($makePayment($pendingOrder, $channel, ['resume_payment'=>true]),
+     'A provider pending result still blocks read-only resume', 'PAYMENT_CONFIRMATION_PENDING');
  $assertConflict($makePayment($pendingOrder, $otherChannel, ['switch_from_payment_method'=>$channel->id]),
      'An explicit switch cannot bypass a provider pending result', 'PAYMENT_CONFIRMATION_PENDING');
  $assert($pendingCalls === 1, 'Pending payment blocks every additional provider call');

@@ -32,7 +32,7 @@ final class CheckoutPayment
             $diagnostic->identify($order, $method);
             $snapshot = $order->payment_snapshot ?: [];
             if ($request->boolean('resume_payment')) {
-                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request)];
+                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request, readOnly: true)];
             }
             if (isset($snapshot['payment_attempts'][$key])) {
                 $attempt = $snapshot['payment_attempts'][$key];
@@ -57,7 +57,7 @@ final class CheckoutPayment
             abort_unless((int)$order->status === 0,409,__('Order does not exist or has been paid'));
             $currentMethod = (int) $order->payment_id;
             if ($method > 0 && $currentMethod === $method) {
-                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request, validateQuote: true)];
+                return ['result' => self::resumeAction($order, $snapshot, $method, $diagnostic, $outcome, $request)];
             }
 
             $switching = $switchFrom > 0 && $method > 0 && $switchFrom === $currentMethod;
@@ -139,7 +139,7 @@ final class CheckoutPayment
         PaymentAttemptHistory $diagnostic,
         string &$outcome,
         Request $request,
-        bool $validateQuote = false,
+        bool $readOnly = false,
     ): array
     {
         if ((int) $order->status !== 0) return ['type' => 2, 'data' => true];
@@ -159,7 +159,7 @@ final class CheckoutPayment
         foreach ($attempts as $attempt) {
             if ((int) ($attempt['result']['type'] ?? -2) === 2
                 || (($attempt['state'] ?? '') === 'started'
-                && ((int) ($attempt['method'] ?? 0) === $method
+                && ((!$readOnly && (int) ($attempt['method'] ?? 0) === $method)
                     || (!($attempt['provider_failed'] ?? false) && !PaymentAttemptHistory::hasFailed($order, $attempt))))) {
                 $outcome = 'blocked';
                 $diagnostic->checkpoint('in_flight');
@@ -179,11 +179,20 @@ final class CheckoutPayment
             && is_string($attempt['result']['data'] ?? null)
             && $attempt['result']['data'] !== '');
         $diagnostic->checkpoint('missing_payment_action');
-        abort_unless(count($actions) === 1, 409, '当前订单没有可恢复的支付入口，请检查订单状态或切换支付方式。');
+        if (count($actions) !== 1) {
+            $message = '当前订单没有可恢复的支付入口，请检查订单状态或切换支付方式。';
+            if ($readOnly && $request->is('api/v10/*')) {
+                throw new HttpResponseException(response()->json([
+                    'code' => 'PAYMENT_ACTION_UNAVAILABLE',
+                    'message' => $message,
+                ], 409));
+            }
+            abort(409, $message);
+        }
 
         $orderCurrency = $order->currency ?: 'CNY';
         $currency = $savedChannel['payment_currency'] ?? $orderCurrency;
-        if ($validateQuote && ($request->filled('expected_payment_amount') || $request->filled('expected_payment_currency') || $currency !== $orderCurrency)) {
+        if (!$readOnly && ($request->filled('expected_payment_amount') || $request->filled('expected_payment_currency') || $currency !== $orderCurrency)) {
             // Reuse the issued quote. Legacy orders were charged their total plus the saved fee.
             $amount = $savedChannel['payment_amount']
                 ?? ((int) $order->total_amount + (int) ($savedChannel['handling_amount'] ?? $order->handling_amount));

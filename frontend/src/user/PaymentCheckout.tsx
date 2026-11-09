@@ -132,6 +132,7 @@ export function PaymentCheckout({
     const [confirmationPending, setConfirmationPending] = useState(false);
     const [checkingOnly, setCheckingOnly] = useState(false);
     const [restoring, setRestoring] = useState(false);
+    const [restorePending, setRestorePending] = useState(false);
     const [restoreUnavailable, setRestoreUnavailable] = useState(false);
     const [issuedFee, setIssuedFee] = useState(
         Number(order.handling_amount || 0),
@@ -179,6 +180,7 @@ export function PaymentCheckout({
     const currentPaymentView = useRef(paymentView);
     currentPaymentView.current = paymentView;
     const attemptedRestore = useRef("");
+    const restoreRetries = useRef(0);
     useEffect(() => {
         observedPayment.current = serverPayment;
         if (!newServerPayment || status !== 0) return;
@@ -192,6 +194,7 @@ export function PaymentCheckout({
         });
         setWaiting(true);
         setCardMethod(null);
+        setRestorePending(false);
         setRestoreUnavailable(false);
         if (channelChanged) {
             setUnconfirmedPayment(undefined);
@@ -251,11 +254,14 @@ export function PaymentCheckout({
             (unconfirmedPayment.submission.method === selected && Boolean(method)))
         ? unconfirmedPayment.submission
         : undefined;
-    const retrySubmission = awaitingConfirmation && !hasPaymentAction && !confirmationPending
+    const retrySubmission = awaitingConfirmation && !hasPaymentAction && !confirmationPending && !restorePending
         ? originalSubmission
         : undefined;
     const canSwitchPayment = awaitingConfirmation && (!checkingOnly || Boolean(unconfirmedPayment)) &&
         (Boolean(methods.error) || methods.data?.some((item) => Number(item.id) !== selected));
+    const showRecoveryHelp = awaitingConfirmation && !hasPaymentAction &&
+        (confirmationPending || restorePending || restoreUnavailable);
+    const canReopenPayment = canRestorePayment && showRecoveryHelp && !retrySubmission;
     const selectedOriginalMethod = restartFromMethod.current === selected || Boolean(originalSubmission);
     const confirmLabel = restoring
         ? tx("正在加载…")
@@ -270,7 +276,7 @@ export function PaymentCheckout({
     if (awaitingConfirmation && !error && !restoring) {
         if (pollError) paymentStatusMessage = tx("订单状态暂不可用，请刷新后重试。");
         else if (pollStopped) paymentStatusMessage = tx("自动检查已暂停，订单仍可继续处理，请勿重复付款。");
-        else if (confirmationPending) paymentStatusMessage = pc("paymentConfirmationPending");
+        else if (confirmationPending || restorePending) paymentStatusMessage = pc("paymentConfirmationPending");
         else if (unconfirmedPayment?.gatewayRejected) paymentStatusMessage = pc("paymentGatewayRejected");
         else if (unconfirmedPayment) paymentStatusMessage = tx("未能确认支付请求结果，正在检查订单状态，请勿重复付款。");
         else if (!hasPaymentAction) {
@@ -323,6 +329,7 @@ export function PaymentCheckout({
             setRetryOpen(false);
             setUnconfirmedPayment(undefined);
             setConfirmationPending(false);
+            setRestorePending(false);
         }
     }, [status]);
     useEffect(() => {
@@ -399,6 +406,7 @@ export function PaymentCheckout({
         if (!retry) setUnconfirmedPayment(undefined);
         setBusy(true);
         setError("");
+        setRestorePending(false);
         setRestoreUnavailable(false);
         setConfirmationPending(false);
         const quotedMethod = methods.data?.find((item) => Number(item.id) === id);
@@ -597,6 +605,7 @@ export function PaymentCheckout({
                 );
                 setCheckingOnly(false);
                 setConfirmationPending(false);
+                setRestorePending(false);
                 setRestoreUnavailable(false);
                 setPollError("");
                 setPollStopped(false);
@@ -614,15 +623,17 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
-    async function resumePayment(id: number, automatic = false) {
+    async function resumePayment(id: number, mode: "manual" | "initial" | "background" = "manual") {
         if (inFlight.current || status !== 0 || id <= 0) return;
         inFlight.current = true;
-        attemptedRestore.current = JSON.stringify([order.trade_no, serverPayment, pollRun]);
+        const key = JSON.stringify([order.trade_no, serverPayment, pollRun]);
+        if (mode === "manual" || attemptedRestore.current !== key) restoreRetries.current = 0;
+        attemptedRestore.current = key;
         const view = currentPaymentView.current;
         setBusy(true);
-        setRestoring(true);
+        setRestoring(mode !== "background");
         setRestoreUnavailable(false);
-        if (!automatic) setError("");
+        if (mode === "manual") setError("");
         try {
             const result = await request("user/order/checkout", {
                 trade_no: order.trade_no,
@@ -630,6 +641,7 @@ export function PaymentCheckout({
                 resume_payment: true,
             }, { timeoutMs: 8000 });
             if (!mounted.current || currentPaymentView.current !== view) return;
+            setRestorePending(false);
             if (result.type === 2) {
                 setWaiting(true);
                 setCheckingOnly(true);
@@ -654,9 +666,10 @@ export function PaymentCheckout({
         } catch (problem) {
             if (!mounted.current || currentPaymentView.current !== view) return;
             setWaiting(true);
-            if ((problem as { code?: string }).code === "PAYMENT_CONFIRMATION_PENDING") {
-                setConfirmationPending(true);
-            } else setRestoreUnavailable(true);
+            const code = (problem as { code?: string }).code;
+            setRestorePending(code === "PAYMENT_CONFIRMATION_PENDING");
+            if (code !== "PAYMENT_CONFIRMATION_PENDING") setRestoreUnavailable(true);
+            if (code === "PAYMENT_ACTION_UNAVAILABLE") setConfirmationPending(false);
         } finally {
             inFlight.current = false;
             if (mounted.current) {
@@ -666,11 +679,21 @@ export function PaymentCheckout({
         }
     }
     useEffect(() => {
-        if (!canRestorePayment || busy || inFlight.current) return;
+        if (!canRestorePayment || busy || retryOpen || cancelOpen || inFlight.current) return;
         const key = JSON.stringify([order.trade_no, serverPayment, pollRun]);
-        if (attemptedRestore.current === key) return;
-        void resumePayment(selected, true);
-    }, [canRestorePayment, busy, order.trade_no, serverPayment, pollRun, selected]);
+        if (attemptedRestore.current !== key) {
+            void resumePayment(selected, "initial");
+            return;
+        }
+        if (!restorePending || restoreRetries.current >= 4) return;
+        // The provider can save a QR while the order is still awaiting payment.
+        const timer = setTimeout(() => {
+            if (inFlight.current) return;
+            restoreRetries.current++;
+            void resumePayment(selected, "background");
+        }, 5000);
+        return () => clearTimeout(timer);
+    }, [canRestorePayment, busy, retryOpen, cancelOpen, restorePending, order.trade_no, serverPayment, pollRun, selected]);
     function checkPaymentResult() {
         setPollError("");
         setPollStopped(false);
@@ -720,7 +743,7 @@ export function PaymentCheckout({
     const secondaryActions = (
         <>
             <div className="checkout-secondary">
-                <OrderHelp tradeNo={String(order.trade_no)} />
+                {!showRecoveryHelp && <OrderHelp tradeNo={String(order.trade_no)} />}
                 <div className="checkout-secondary-actions">
                     <button
                         type="button"
@@ -1199,7 +1222,7 @@ export function PaymentCheckout({
                                 {paymentStatusMessage}
                             </p>
                         )}
-                        {((openUrl && awaitingConfirmation) || canSwitchPayment || retrySubmission) && (
+                        {((openUrl && awaitingConfirmation) || canSwitchPayment || retrySubmission || showRecoveryHelp) && (
                             <div className="checkout-secondary">
                                 <div className="checkout-secondary-actions">
                                     {openUrl && awaitingConfirmation && (
@@ -1217,6 +1240,11 @@ export function PaymentCheckout({
                                             {pc("reselectPayment")}
                                         </button>
                                     )}
+                                    {canReopenPayment && (
+                                        <button type="button" disabled={busy} onClick={() => void resumePayment(selected)}>
+                                            {pc("paymentOpenAgain")}
+                                        </button>
+                                    )}
                                     {retrySubmission && (
                                         <button type="button" disabled={busy} onClick={() =>
                                             void pay(retrySubmission.method, undefined, retrySubmission)
@@ -1225,6 +1253,7 @@ export function PaymentCheckout({
                                         </button>
                                     )}
                                 </div>
+                                {showRecoveryHelp && <OrderHelp tradeNo={String(order.trade_no)} />}
                             </div>
                         )}
                         {due > 0 && <BrowserHandoffHelp context="payment" disabled={busy} />}

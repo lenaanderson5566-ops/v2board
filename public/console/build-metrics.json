@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 142304,
+      "startupGzipBytes": 142302,
       "startupBytes": 468888,
       "startupFileCount": 16,
       "largestStartupAssets": [
@@ -18,7 +18,7 @@
           "gzipBytes": 52721
         },
         {
-          "file": "assets/app-CspFVTUY.js",
+          "file": "assets/app-DbyaLkyv.js",
           "bytes": 12597,
           "gzipBytes": 5277
         },
@@ -38,40 +38,40 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 142304,
+          "gzipBytes": 142302,
           "bytes": 468888,
           "fileCount": 16
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 208339,
-          "bytes": 773216,
+          "gzipBytes": 208328,
+          "bytes": 773173,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 221396,
-          "bytes": 816149,
+          "gzipBytes": 221383,
+          "bytes": 816106,
           "fileCount": 31
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 211665,
-          "bytes": 740226,
+          "gzipBytes": 211654,
+          "bytes": 740183,
           "fileCount": 22
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 224722,
-          "bytes": 783159,
+          "gzipBytes": 224709,
+          "bytes": 783116,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3501993,
+      "totalBytes": 3502918,
       "fileCount": 343
     },
     {

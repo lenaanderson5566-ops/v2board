@@ -88,25 +88,37 @@ class EPayQrcode
         }
         $curl->close();
 
-        $paymentData = null;
-        foreach (['qrcode', 'urlscheme', 'payurl'] as $field) {
-            if (!empty($result->{$field})) {
-                $paymentData = (string) $result->{$field};
-                break;
+        return $this->paymentAction($result);
+    }
+
+    private function paymentAction(object $result): array
+    {
+        $mobile = $this->isMobile();
+        if ($mobile && $this->config['type'] === 'wxpay') {
+            foreach (['urlscheme', 'payurl', 'qrcode'] as $field) {
+                $value = $result->{$field} ?? null;
+                if (!is_string($value) || strlen($value) > 8192 || str_contains($value, '\\') || preg_match('/[\x00-\x20\x7f]/', $value)) continue;
+                $url = parse_url($value);
+                if (!$url || isset($url['user']) || isset($url['pass'])) continue;
+                if (in_array($url['scheme'] ?? '', ['http', 'https'], true) && !empty($url['host'])) {
+                    return ['type' => 1, 'data' => $value];
+                }
+                if (($url['scheme'] ?? '') === 'weixin' && ($url['host'] ?? '') === 'wap'
+                    && ($url['path'] ?? '') === '/pay' && !isset($url['port']) && !isset($url['fragment'])) {
+                    parse_str($url['query'] ?? '', $query);
+                    if (is_string($query['prepayid'] ?? null) && $query['prepayid'] !== '') return ['type' => 1, 'data' => $value];
+                }
+            }
+            if (is_string($result->qrcode ?? null) && $result->qrcode !== '') {
+                return ['type' => 0, 'data' => $result->qrcode];
             }
         }
-
-        if ($paymentData === null) {
-            abort(500, '接口下单成功，但没有返回 qrcode、urlscheme 或 payurl');
+        foreach (['qrcode', 'urlscheme', 'payurl'] as $field) {
+            if (is_string($result->{$field} ?? null) && $result->{$field} !== '') {
+                return ['type' => $mobile ? 1 : 0, 'data' => $result->{$field}];
+            }
         }
-
-        return [
-            // FastAI: 0 = render data as QR code, 1 = open data as URL.
-            // Desktop always displays a QR code; mobile opens the returned
-            // QR scheme, URL scheme, or payment URL directly.
-            'type' => $this->isMobile() ? 1 : 0,
-            'data' => $paymentData,
-        ];
+        abort(500, '接口下单成功，但没有返回 qrcode、urlscheme 或 payurl');
     }
 
     public function notify($params)
@@ -164,16 +176,17 @@ class EPayQrcode
         return rtrim($baseUrl, '/') . '/mapi.php';
     }
 
-    private function validateConfig()
+    public function validateConfig(): void
     {
         foreach (['url', 'pid', 'key', 'type'] as $key) {
             if (!isset($this->config[$key]) || trim((string) $this->config[$key]) === '') {
-                abort(500, 'EPay 配置不完整：' . $key);
+                abort(422, 'EPay 配置不完整：' . $key);
             }
         }
 
-        if (!filter_var($this->mapiUrl(), FILTER_VALIDATE_URL)) {
-            abort(500, 'EPay URL 格式错误');
+        $url = $this->mapiUrl();
+        if (!filter_var($url, FILTER_VALIDATE_URL) || !in_array(parse_url($url, PHP_URL_SCHEME), ['https', 'http'], true)) {
+            abort(422, 'EPay URL 格式错误');
         }
     }
 

@@ -108,6 +108,43 @@ try {
  App\Services\CheckoutPayment::once($pendingRequest,fn()=>response(['type'=>2,'data'=>true]));
  $pendingRequest->merge(['payment_request_key'=>(string)Str::uuid()]);
  try {App\Services\CheckoutPayment::once($pendingRequest,fn()=>response(['type'=>2,'data'=>true]));throw new RuntimeException('New key bypassed pending provider result');} catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {$assert($e->getStatusCode()===409,'Provider pending result blocks another payment attempt with a fresh key');}
+
+ $epay=App\Models\Payment::create(['name'=>'WeChat fixture','payment'=>'EPayQrcode','uuid'=>App\Utils\Helper::guid(),
+     'enable'=>1,'config'=>['pid'=>'fixture','key'=>'fixture','url'=>'https://pay.example.test']]);
+ $epayOrder=Order::create(['user_id'=>$quoteUser->id,'plan_id'=>$plan->id,'trade_no'=>'epay-'.Str::random(16),
+     'period'=>'month_price','currency'=>'CNY','total_amount'=>1000,'type'=>1]);
+ foreach ([null, 'ftp://pay.example.test'] as $badUrl) {
+     if ($badUrl !== null) $epay->update(['config'=>['pid'=>'fixture','key'=>'fixture','type'=>'wxpay','url'=>$badUrl]]);
+     $attempt=Illuminate\Http\Request::create('/api/v10/me/orders/'.$epayOrder->trade_no.'/payments','POST',[
+         'trade_no'=>$epayOrder->trade_no,'method'=>$epay->id,'payment_request_key'=>Str::uuid()->toString(),
+     ]);
+     $attempt->user=['id'=>$quoteUser->id];
+     try {$actions->checkout($attempt); throw new RuntimeException('Invalid EPay configuration accepted');}
+     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) {
+         $fresh=$epayOrder->fresh();
+         $assert($e->getStatusCode()===422 && (int)$fresh->payment_id===0
+             && empty($fresh->payment_snapshot['payment_attempts']) && empty($fresh->payment_snapshot['channels']),
+             'Local EPay failure leaves the unpaid order free to retry with a new key');
+     }
+ }
+
+ $adapter=new App\Payments\EPayQrcode(['type'=>'wxpay']);
+ $action=new ReflectionMethod($adapter, 'paymentAction');
+ $qr='weixin://wxpay/bizpayurl?pr=test';
+ $wallet='weixin://wap/pay?prepayid=test';
+ $h5='https://pay.example.test/wx';
+ $previousUa=$_SERVER['HTTP_USER_AGENT'] ?? null;
+ try {
+     $_SERVER['HTTP_USER_AGENT']='Mobile iPhone';
+     $assert($action->invoke($adapter,(object)['qrcode'=>$qr,'urlscheme'=>$wallet,'payurl'=>$h5])===['type'=>1,'data'=>$wallet], 'Mobile WeChat opens a launchable wallet URL');
+     $assert($action->invoke($adapter,(object)['qrcode'=>$qr,'urlscheme'=>$qr,'payurl'=>$h5])===['type'=>1,'data'=>$h5], 'Mobile WeChat prefers H5 to scan-only data');
+     $assert($action->invoke($adapter,(object)['qrcode'=>$qr])===['type'=>0,'data'=>$qr], 'Mobile WeChat can still display a scan-only QR');
+     $_SERVER['HTTP_USER_AGENT']='Desktop';
+     $assert($action->invoke($adapter,(object)['qrcode'=>$qr,'urlscheme'=>$wallet,'payurl'=>$h5])===['type'=>0,'data'=>$qr], 'Desktop WeChat still prefers the QR');
+ } finally {
+     if ($previousUa === null) unset($_SERVER['HTTP_USER_AGENT']);
+     else $_SERVER['HTTP_USER_AGENT']=$previousUa;
+ }
  echo "Order replacement: $checks checks passed\n";
 } finally { DB::rollBack(); }
 

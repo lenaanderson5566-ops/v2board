@@ -308,6 +308,7 @@ class OrderActions
         $channelSnapshot = $order->payment_snapshot['channels'][(string)$method] ?? null;
         abort_if($channelSnapshot && (($channelSnapshot['uuid'] ?? null) !== $payment->uuid || ($channelSnapshot['provider'] ?? null) !== $payment->payment),409,__('Payment method is not available'));
         $paymentService = new PaymentService($payment->payment, $payment->id);
+        $paymentService->validateCheckout();
         $quote = \App\Services\PaymentQuote::make($order, $payment);
         if ($request->filled('expected_payment_amount') || ($order->currency ?: 'CNY') !== $quote['payment_currency']) {
             abort_unless((int)$request->input('expected_payment_amount') === $quote['payment_amount']

@@ -69,6 +69,13 @@ class PaymentService
         ]);
     }
 
+    public function validateCheckout(): void
+    {
+        if ($this->payment instanceof \App\Payments\EPayQrcode) {
+            $this->payment->validateConfig();
+        }
+    }
+
     public function form()
     {
         $form = $this->payment->form();

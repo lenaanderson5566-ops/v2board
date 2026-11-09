@@ -52,6 +52,8 @@ When a selected payment channel becomes unavailable, checkout resets the channel
 
 Before order creation, desktop checkout keeps the plan, billing cycle and coupon on the left. Price details, payment methods, payable total and confirmation follow in that order on the right. The payment picker is a sibling of the price breakdown in the scrolling body, not part of the sticky footer. Narrow screens use the same DOM order as a single column; only the total and confirmation remain in the compact footer. The issued-payment layout keeps its existing QR and recovery controls.
 
+The mobile confirmation footer clears the 68px navigation bar and device safe area. At widths up to 380px, amount and confirmation stack so long currency values and labels remain readable; order references wrap within the available width. Short viewports (up to 600px high) keep confirmation in document flow. The chat launcher clears visible docked payment controls as well as navigation, while the conversation panel retains its own position.
+
 The shared PaymentMethodPicker owns its styles for both unified checkout and existing orders. Wallet rows and asset headers share icon, selection and spacing columns. Expanded assets use compact full-width network rows with a single divider, matching the existing payment presentation. Network icons, full names and protocol tags stay visible on desktop and narrow screens. The chosen network remains in the asset summary when collapsed. Opening a multi-network asset clears the previous method and waits for a specific network; default wallet selection cannot override that deliberate choice during cycle re-quoting.
 
 ## Checkout error recovery

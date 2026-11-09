@@ -686,11 +686,9 @@ export function PlanSelection({
                         </span>
                         <span>
                             {unified
-                                ? [1, 3].includes(Number(order?.status))
+                                ? Number(order?.status) === 1
                                     ? tx("实际付款")
-                                    : [2, 4].includes(Number(order?.status))
-                                      ? tx("订单信息")
-                                      : pc("amountDue")
+                                    : pc("amountDue")
                                 : pc(
                                       coupon
                                           ? "couponEstimate"
@@ -706,18 +704,14 @@ export function PlanSelection({
                         )}
                         <strong>
                             {unified
-                                ? Number(order?.status) === 2
-                                    ? tx("已取消")
-                                    : Number(order?.status) === 4
-                                      ? tx("已折抵")
-                                      : checkout && order && !paymentQuote
-                                        ? "—"
-                                        : displayQuote
-                                          ? money(
-                                                displayQuote.payment_amount,
-                                                displayQuote.payment_currency,
-                                            )
-                                          : "—"
+                                ? checkout && order && !paymentQuote
+                                    ? "—"
+                                    : displayQuote
+                                      ? money(
+                                            displayQuote.payment_amount,
+                                            displayQuote.payment_currency,
+                                        )
+                                      : "—"
                                 : money(quote.subtotal, plan.currency)}
                         </strong>
                         <small>

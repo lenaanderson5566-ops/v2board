@@ -21,7 +21,7 @@ class MGate
             'mgate_url' => ['label' => 'API地址', 'description' => '填写网关基础地址，不包含 /v1/gateway/fetch', 'type' => 'input', 'required' => true],
             'mgate_app_id' => ['label' => 'APPID', 'description' => '', 'type' => 'input', 'required' => true],
             'mgate_app_secret' => ['label' => 'AppSecret', 'description' => '', 'type' => 'input', 'required' => true],
-            'mgate_source_currency' => ['label' => '源货币', 'description' => '默认CNY', 'type' => 'input', 'value' => 'CNY'],
+            'mgate_source_currency' => ['label' => '源货币', 'description' => '留空时按 CNY 校验订单，不发送源货币字段', 'type' => 'input'],
         ];
     }
 
@@ -48,12 +48,13 @@ class MGate
             abort(500, 'MGate：请填写APPID和AppSecret');
         }
         $diagnostic?->checkpoint('currency_mismatch');
-        abort_unless(strtoupper($this->sourceCurrency()) === strtoupper($currency), 422, 'MGate currency does not match the saved quote');
+        abort_unless(strtoupper($this->sourceCurrency() ?? 'CNY') === strtoupper($currency), 422, 'MGate currency does not match the saved quote');
     }
 
-    private function sourceCurrency(): string
+    private function sourceCurrency(): ?string
     {
-        return trim((string) ($this->config['mgate_source_currency'] ?? '')) ?: 'CNY';
+        $currency = trim((string) ($this->config['mgate_source_currency'] ?? ''));
+        return $currency === '' ? null : $currency;
     }
 
     public function pay($order, ?PaymentAttemptHistory $diagnostic = null)
@@ -65,9 +66,12 @@ class MGate
             'total_amount' => $order['total_amount'],
             'notify_url' => $order['notify_url'],
             'return_url' => $order['return_url'],
-            'source_currency' => $this->sourceCurrency(),
             'app_id' => $this->config['mgate_app_id'],
         ];
+        $currency = $this->sourceCurrency();
+        if ($currency !== null) {
+            $params['source_currency'] = $currency;
+        }
         ksort($params);
         $params['sign'] = $this->signature($params);
         $curl = $this->createCurl();
@@ -110,7 +114,7 @@ class MGate
         try { $amount = \App\Services\Money::parseMinorUnits($params['total_amount'] ?? null); }
         catch (\InvalidArgumentException $e) { return false; }
         $currency = strtoupper((string)($params['source_currency'] ?? 'CNY'));
-        if ($currency !== 'CNY' || $currency !== strtoupper((string)(($this->config['mgate_source_currency'] ?? '') ?: 'CNY'))) return false;
+        if ($currency !== 'CNY' || $currency !== strtoupper($this->sourceCurrency() ?? 'CNY')) return false;
         return ['trade_no'=>$params['out_trade_no'], 'callback_no'=>$params['trade_no'], 'amount'=>$amount, 'currency'=>$currency];
     }
 }

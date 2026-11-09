@@ -27,13 +27,33 @@ $adapter = new MGateTestAdapter($config);
 $curl = new MGateFakeCurl();
 $curl->response = (object) ['data' => (object) ['trade_no' => 'gateway-order', 'pay_url' => 'https://gateway.example/pay/test']];
 $adapter->curl = $curl;
-$result = $adapter->pay(['trade_no' => 'local-order', 'total_amount' => 1234, 'notify_url' => 'https://site.example/notify', 'return_url' => 'https://site.example/app#/order/local-order']);
+$order = ['trade_no' => 'local-order', 'total_amount' => 1234, 'notify_url' => 'https://site.example/notify', 'return_url' => 'https://site.example/app#/order/local-order'];
+$result = $adapter->pay($order);
 $assert($result === ['type' => 1, 'data' => 'https://gateway.example/pay/test'], 'Payment URL contract failed');
 $assert($curl->url === 'https://gateway.example/v1/gateway/fetch', 'Endpoint normalization failed');
 parse_str($curl->body, $payload);
 $sign = $payload['sign']; unset($payload['sign']); ksort($payload);
 $assert($sign === md5(http_build_query($payload) . $config['mgate_app_secret']), 'Request signature failed');
-$assert($payload['total_amount'] === '1234' && $payload['source_currency'] === 'CNY', 'Amount or default currency changed');
+$assert($payload === [
+    'app_id' => 'app-test', 'notify_url' => $order['notify_url'], 'out_trade_no' => $order['trade_no'],
+    'return_url' => $order['return_url'], 'total_amount' => '1234',
+], 'Blank currency must be omitted without changing the other fields');
+$withoutCurrency = $curl->body;
+foreach ([null, '   ', 'CNY'] as $configuredCurrency) {
+    $adapterWithCurrency = new MGateTestAdapter(array_replace($config, ['mgate_source_currency' => $configuredCurrency]));
+    $adapterWithCurrency->curl = $curl;
+    $adapterWithCurrency->pay($order);
+    if ($configuredCurrency === 'CNY') {
+        $expected = $payload + ['source_currency' => 'CNY'];
+        ksort($expected);
+        $expected['sign'] = md5(http_build_query($expected) . $config['mgate_app_secret']);
+        $assert($curl->body === http_build_query($expected), 'Explicit CNY must be sent and signed');
+    } else {
+        $assert($curl->body === $withoutCurrency, 'Unset or whitespace currency must produce the same signed request as a blank value');
+    }
+}
+try { $adapter->validateConfig('USD'); throw new RuntimeException('Blank currency accepted a USD quote'); }
+catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode() === 422, 'Blank currency must still enforce the CNY quote'); }
 $assert($curl->options[CURLOPT_SSL_VERIFYPEER] === true && $curl->options[CURLOPT_SSL_VERIFYHOST] === 2 && $curl->closed, 'TLS verification or cleanup failed');
 $signed = function ($params) use ($config) { ksort($params); $params['sign'] = md5(http_build_query($params) . $config['mgate_app_secret']); return $params; };
 $params = $signed(['out_trade_no' => 'local-order', 'trade_no' => 'gateway-order', 'app_id' => 'app-test', 'total_amount'=>'1234', 'source_currency'=>'CNY']);
@@ -50,5 +70,5 @@ catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($e
 $methods = json_decode((new App\Http\Controllers\V1\Admin\PaymentController())->getPaymentMethods()->getContent(), true)['data'];
 $assert(in_array('MGate', $methods, true), 'Admin discovery failed');
 $form = (new App\Services\PaymentService('MGate'))->form();
-$assert(count($form) === 4 && $form['mgate_source_currency']['value'] === 'CNY', 'Admin form failed');
+$assert(count($form) === 4 && isset($form['mgate_source_currency']) && !isset($form['mgate_source_currency']['value']), 'Admin must allow a blank source currency');
 echo "MGate: {$checks} checks passed (no external payment requests)\n";

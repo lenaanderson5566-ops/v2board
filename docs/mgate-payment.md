@@ -1,6 +1,6 @@
 # MGate 支付接口
 
-后台「支付配置」新增支付方式，接口选择 `MGate`，填写网关基础 API 地址、APPID、AppSecret、源货币（默认 `CNY`），保存后启用。AppSecret 使用后台的密码输入框；回调地址由现有支付配置页面生成。无需新增依赖或数据库迁移。
+后台「支付配置」新增支付方式，接口选择 `MGate`，填写网关基础 API 地址、APPID 和 AppSecret，保存后启用。源货币可留空，订单仍按 `CNY` 校验，下单时省略 `source_currency`。显式填写 `CNY` 会发送该字段并纳入签名。AppSecret 使用后台的密码输入框。回调地址由现有支付配置页面生成。无需新增依赖或数据库迁移。
 
 实现基于提供的 `MGate.php`：请求地址为基础地址加 `/v1/gateway/fetch`，金额以最小货币单位（分）提交，签名是参数按键排序后 `http_build_query` 拼接 AppSecret 的 MD5，响应使用 `data.pay_url` 跳转。回调验签后将 `out_trade_no`、`trade_no` 交给现有订单处理流程。没有自行添加附件中未定义的回调状态字段。
 

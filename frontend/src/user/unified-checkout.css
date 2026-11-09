@@ -62,9 +62,24 @@
     line-height: 1.7;
 }
 .checkout-method-section {
-    margin-top: 24px;
-    padding-top: 20px;
-    border-top: 1px solid var(--line);
+    min-width: 0;
+    margin: 0;
+    padding: 0 16px;
+}
+@media (min-width: 801px) {
+    .unified-checkout .purchase-selection:not(.has-confirmed-order) {
+        grid-template-rows: auto auto 1fr;
+    }
+    .unified-checkout .purchase-selection:not(.has-confirmed-order) .purchase-choices {
+        grid-row: 1 / span 3;
+    }
+    .unified-checkout .checkout-method-section {
+        grid-column: 2;
+        grid-row: 2;
+    }
+    .unified-checkout .purchase-selection:not(.has-confirmed-order) .purchase-footer {
+        grid-row: 3;
+    }
 }
 .checkout-quote-status {
     min-block-size: 1.5em;
@@ -145,9 +160,13 @@
         padding: 16px;
     }
     .unified-checkout .purchase-choices,
-    .unified-checkout .purchase-breakdown {
+    .unified-checkout .purchase-breakdown,
+    .unified-checkout .checkout-method-section {
         grid-column: auto;
         grid-row: auto;
+    }
+    .unified-checkout .checkout-method-section {
+        padding: 0;
     }
     .unified-checkout .purchase-footer {
         position: sticky;
@@ -174,6 +193,19 @@
         overflow-wrap: normal;
         word-break: normal;
     }
+}
+
+.unified-checkout .checkout-result {
+    max-width: 720px;
+    margin-inline: auto;
+    padding: clamp(20px, 4vw, 40px);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background: var(--surface, #fff);
+}
+.unified-checkout .checkout-result .receipt-actions {
+    justify-content: flex-start;
+    gap: 24px;
 }
 
 /* The confirmed order expands inside the existing cycle-selection form. */

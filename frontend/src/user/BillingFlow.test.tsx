@@ -1605,10 +1605,18 @@ it("creates an order and starts its QR payment in place once under StrictMode, t
     mocks.detail = { ...mocks.detail, status: 3 };
     resumed.rerender(<Plans planId={1} />);
     await screen.findByText("订单已完成");
-    expect(resumed.container.querySelector('.purchase-steps [aria-current="step"]')?.textContent).toContain("开通完成");
+    expect(resumed.container.querySelector('.purchase-steps')).toBeNull();
+    expect(resumed.container.querySelector('.checkout-result')).toBeTruthy();
+    expect(screen.queryByRole("group", { name: "选择订阅周期" })).toBeNull();
     expect(screen.queryByDisplayValue("https://pay.example/inline-qr")).toBeNull();
     expect(mocks.navigate).not.toHaveBeenCalled();
     expect(location.hash).toBe("#/plan/1?order=inline-order");
+    mocks.detail = { ...mocks.detail, status: 2 };
+    resumed.rerender(<Plans planId={1} />);
+    await screen.findByRole("heading", { name: "已取消" });
+    expect(screen.getAllByText("已取消")).toHaveLength(1);
+    expect(screen.getByRole("link", { name: "选择套餐" }).getAttribute("href")).toBe("#/plan");
+    expect(screen.queryByRole("group", { name: "选择订阅周期" })).toBeNull();
     scroll.mockRestore();
 });
 

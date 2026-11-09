@@ -402,96 +402,7 @@ export function PlanSelection({
                             )}
                             <PurchaseRules plan={plan} period={period} orderType={order?.type} />
                         </fieldset>
-                        {unified && !checkout && (
-                            <section className="checkout-method-section">
-                                <>
-                                    <h3>{tx("选择支付方式")}</h3>
-                                    <p
-                                        className="checkout-quote-status muted"
-                                        role="status"
-                                        aria-live="polite"
-                                    >
-                                        {preview.loading
-                                            ? pc("quoteLoading")
-                                            : "\u00a0"}
-                                    </p>
-                                    {paymentMethods.length > 0 && (
-                                        <PaymentMethodPicker
-                                            methods={paymentMethods}
-                                            selected={methodId}
-                                            disabled={
-                                                busy ||
-                                                uncertain ||
-                                                preview.retryIn > 0
-                                            }
-                                            onSelect={(id) => {
-                                                manualPaymentSelection.current = true;
-                                                setMethodId(id);
-                                            }}
-                                        />
-                                    )}
-                                    {serverQuote &&
-                                        Number(serverQuote.total_amount) > 0 &&
-                                        !serverQuote.methods?.length && (
-                                            <p role="status">
-                                                {pc("noPaymentMethods")}
-                                            </p>
-                                        )}
-                                    {preview.error && (
-                                        <div className="alert" role="alert">
-                                            {preview.error}
-                                            <button
-                                                type="button"
-                                                disabled={preview.retryIn > 0}
-                                                onClick={preview.reload}
-                                            >
-                                                {preview.retryIn > 0
-                                                    ? pc("retryIn", {
-                                                          seconds:
-                                                              preview.retryIn,
-                                                      })
-                                                    : tx("重试")}
-                                            </button>
-                                            {preview.status === 409 && (
-                                                <>
-                                                    <a href="#/order">
-                                                        {tx("查看订单记录")}
-                                                    </a>
-                                                    {methodId > 0 &&
-                                                        paymentMethods.length >
-                                                            0 && (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => {
-                                                                    manualPaymentSelection.current = false;
-                                                                    setMethodId(
-                                                                        0,
-                                                                    );
-                                                                }}
-                                                            >
-                                                                {pc(
-                                                                    "reselectPayment",
-                                                                )}
-                                                            </button>
-                                                        )}
-                                                </>
-                                            )}
-                                        </div>
-                                    )}
-                                    {preview.expired && (
-                                        <p role="status">
-                                            {pc("quoteExpired")}{" "}
-                                            <button
-                                                type="button"
-                                                onClick={preview.reload}
-                                            >
-                                                {tx("刷新")}
-                                            </button>
-                                        </p>
-                                    )}
-                                </>
-                            </section>
-                        )}
+
                     </section>
                     <section
                         className={`purchase-breakdown${showingPrevious ? " is-requoting" : ""}`}
@@ -662,6 +573,96 @@ export function PlanSelection({
                             </div>
                         )}
                     </section>
+                    {unified && !checkout && (
+                        <section className="checkout-method-section">
+                            <>
+                                <h3>{tx("选择支付方式")}</h3>
+                                <p
+                                    className="checkout-quote-status muted"
+                                    role="status"
+                                    aria-live="polite"
+                                >
+                                    {preview.loading
+                                        ? pc("quoteLoading")
+                                        : "\u00a0"}
+                                </p>
+                                {paymentMethods.length > 0 && (
+                                    <PaymentMethodPicker
+                                        methods={paymentMethods}
+                                        selected={methodId}
+                                        disabled={
+                                            busy ||
+                                            uncertain ||
+                                            preview.retryIn > 0
+                                        }
+                                        onSelect={(id) => {
+                                            manualPaymentSelection.current = true;
+                                            setMethodId(id);
+                                        }}
+                                    />
+                                )}
+                                {serverQuote &&
+                                    Number(serverQuote.total_amount) > 0 &&
+                                    !serverQuote.methods?.length && (
+                                        <p role="status">
+                                            {pc("noPaymentMethods")}
+                                        </p>
+                                    )}
+                                {preview.error && (
+                                    <div className="alert" role="alert">
+                                        {preview.error}
+                                        <button
+                                            type="button"
+                                            disabled={preview.retryIn > 0}
+                                            onClick={preview.reload}
+                                        >
+                                            {preview.retryIn > 0
+                                                ? pc("retryIn", {
+                                                      seconds:
+                                                          preview.retryIn,
+                                                  })
+                                                : tx("重试")}
+                                        </button>
+                                        {preview.status === 409 && (
+                                            <>
+                                                <a href="#/order">
+                                                    {tx("查看订单记录")}
+                                                </a>
+                                                {methodId > 0 &&
+                                                    paymentMethods.length >
+                                                        0 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                manualPaymentSelection.current = false;
+                                                                setMethodId(
+                                                                    0,
+                                                                );
+                                                            }}
+                                                        >
+                                                            {pc(
+                                                                "reselectPayment",
+                                                            )}
+                                                        </button>
+                                                    )}
+                                            </>
+                                        )}
+                                    </div>
+                                )}
+                                {preview.expired && (
+                                    <p role="status">
+                                        {pc("quoteExpired")}{" "}
+                                        <button
+                                            type="button"
+                                            onClick={preview.reload}
+                                        >
+                                            {tx("刷新")}
+                                        </button>
+                                    </p>
+                                )}
+                            </>
+                        </section>
+                    )}
                 </div>
                 <div
                     ref={paymentPanel}

@@ -11,6 +11,7 @@ import { PaymentCheckout } from "./PaymentCheckout";
 import type { InitialPayment, PaymentQuote } from "./PaymentCheckout";
 import { subscriptionAction, unfinishedOrder } from "./billing-flow";
 import { PendingOrderNotice } from "./PendingOrderNotice";
+import { OrderReceipt } from "./OrderReceipt";
 import "./unified-checkout.css";
 
 export function UnifiedCheckout({
@@ -50,6 +51,7 @@ export function UnifiedCheckout({
         String(detail.data.trade_no) === checkout.number
             ? detail.data
             : undefined;
+    const finished = order && [2, 3, 4].includes(Number(order.status));
     const plan = useData<Row>(
         !initialPlan && planId ? query("user/plan/fetch", { id: planId }) : "",
     );
@@ -119,9 +121,14 @@ export function UnifiedCheckout({
                 <ArrowLeft size={16} />
                 {tx("返回")}
             </button>
-            <PurchaseSteps step={Number(order?.status) === 3 ? 3 : 2} />
-            <h2>{tx("确认与支付")}</h2>
-            {!checkout && !orders.data ? (
+            {!finished && <PurchaseSteps step={2} />}
+            <h2>{tx(finished ? "订单详情" : "确认与支付")}</h2>
+            {finished ? (
+                <div className="checkout-result">
+                    {detail.error && <div className="alert" role="alert">{detail.error}<button type="button" onClick={detail.reload}>{tx("刷新")}</button></div>}
+                    <OrderReceipt order={order} embedded />
+                </div>
+            ) : !checkout && !orders.data ? (
                 <State {...orders} retry={orders.reload}>
                     {null}
                 </State>

@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 142288,
+      "startupGzipBytes": 142289,
       "startupBytes": 468888,
       "startupFileCount": 16,
       "largestStartupAssets": [
@@ -18,9 +18,9 @@
           "gzipBytes": 52717
         },
         {
-          "file": "assets/app-BX3bVVTP.js",
+          "file": "assets/app-q6lG6z7Z.js",
           "bytes": 12597,
-          "gzipBytes": 5275
+          "gzipBytes": 5274
         },
         {
           "file": "assets/runtime-config-DXkPanaE.js",
@@ -38,7 +38,7 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 142288,
+          "gzipBytes": 142289,
           "bytes": 468888,
           "fileCount": 16
         },
@@ -52,7 +52,7 @@
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 221449,
+          "gzipBytes": 221448,
           "bytes": 816562,
           "fileCount": 31
         },
@@ -66,12 +66,12 @@
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 224777,
+          "gzipBytes": 224776,
           "bytes": 783409,
           "fileCount": 31
         }
       ],
-      "totalBytes": 3513187,
+      "totalBytes": 3514190,
       "fileCount": 343
     },
     {

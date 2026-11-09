@@ -485,6 +485,17 @@ try {
     $assert(parse_url(App\Payments\V10TestPayment::$lastOrder['return_url'],PHP_URL_FRAGMENT)==='/plan/'.$plan->id.'?order='.rawurlencode($order->trade_no),'Checkout passes owned subscription context for an in-place gateway return');
     $assert($order->fresh()->payment_id===$payment->id && $order->fresh()->handling_amount===50 && $order->fresh()->status===0,'Checkout persists fee without prematurely activating');
     $assert(isset($order->fresh()->payment_snapshot['channels'][$oldChannel->id]), 'Switching preserves the prior gateway quote for late callbacks');
+    $issuedAction = $j['data'];
+    App\Payments\V10TestPayment::$lastOrder = null;
+    [$restored,$restoreBody] = $call('POST', $paymentPath, ['paymentMethodId'=>$payment->id,'resumePayment'=>true], $bearer);
+    [$stale] = $call('POST', $paymentPath, ['paymentMethodId'=>$oldChannel->id,'resumePayment'=>true], $bearer);
+    $payment->update(['enable'=>0]);
+    [$disabledResume] = $call('POST', $paymentPath, ['paymentMethodId'=>$payment->id,'resumePayment'=>true], $bearer);
+    $payment->update(['enable'=>1]);
+    $assert($restored->getStatusCode() === 200 && $restoreBody['data'] === $issuedAction
+        && $stale->getStatusCode() === 409 && $disabledResume->getStatusCode() === 409
+        && App\Payments\V10TestPayment::$lastOrder === null,
+        'Authenticated resume restores only the enabled current action without calling the provider');
     $notifyBody=['signature'=>'local-test-signature','orderNumber'=>$order->trade_no,'amount'=>1050,'currency'=>'CNY'];
     [$bad,$problem]=$call('POST','/api/v10/webhooks/payments/MGate/'.$payment->uuid,$notifyBody);
     $assert($bad->getStatusCode()>=400 && $order->fresh()->status===0,'Callback cannot choose a different provider for channel');

@@ -92,6 +92,13 @@ try {
  $second=App\Services\CheckoutPayment::once($payRequest,$provider);
  $assert($calls===1 && json_decode($first->getContent(),true)==json_decode($second->getContent(),true),'Payment retry replays result without second provider call');
 
+ $createdOrder->fresh()->update(['payment_id' => $channel->id]);
+ $resumeRequest = clone $payRequest;
+ $resumeRequest->merge(['resume_payment' => true, 'payment_request_key' => (string)Str::uuid()]);
+ $resumed = App\Services\CheckoutPayment::once($resumeRequest, $provider);
+ $assert($calls === 1 && json_decode($resumed->getContent(), true) == json_decode($first->getContent(), true),
+     'Reopening a payment restores the issued action without calling the gateway');
+
  $uncertainRequest=clone $payRequest;$uncertainRequest->merge(['payment_request_key'=>(string)Str::uuid()]);
  $uncertainId = Str::uuid()->toString();
  $uncertainRequest->attributes->set('requestId', $uncertainId);
@@ -137,6 +144,8 @@ try {
  $switchReplay = App\Services\CheckoutPayment::once($switchRequest, $provider);
  $assert($calls === 2 && json_decode($switchResult->getContent(), true) == json_decode($switchReplay->getContent(), true),
      'Confirmed switch after a recorded legacy gateway failure is issued once');
+ try { App\Services\CheckoutPayment::once($resumeRequest, $provider); throw new RuntimeException('Resumed a switched-away channel'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Restoring an old channel is rejected without contacting the gateway'); }
  try { App\Services\CheckoutPayment::once($payRequest, $provider); throw new RuntimeException('Old channel payment entry replayed'); }
  catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode() === 409 && $calls === 2, 'Old request key cannot reopen a payment entry after switching'); }
 

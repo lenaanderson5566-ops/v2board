@@ -2,6 +2,7 @@
 namespace App\Services;
 
 use App\Models\Order;
+use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -29,13 +30,18 @@ final class CheckoutPayment
             $order = Order::where('user_id',$request->user['id'])->where('trade_no',$request->input('trade_no'))->lockForUpdate()->firstOrFail();
             $diagnostic->identify($order, $method);
             $snapshot = $order->payment_snapshot ?: [];
+            if ($request->boolean('resume_payment')) {
+                $outcome = 'replayed';
+                return ['result' => self::resumeAction($order, $method, $snapshot)];
+            }
             if (isset($snapshot['payment_attempts'][$key])) {
                 $attempt = $snapshot['payment_attempts'][$key];
                 $diagnostic->checkpoint('request_key_conflict');
                 abort_unless(hash_equals($attempt['fingerprint'],$fingerprint),409,__('Invalid parameter'));
                 if (in_array($attempt['result']['type'] ?? null, [0, 1], true)) {
                     if ((int) $order->status !== 0) return ['result' => ['type' => 2, 'data' => true]];
-                    if ($order->payment_id && (int) $order->payment_id !== $method) {
+                    if (($order->payment_id && (int) $order->payment_id !== $method)
+                        || (array_key_exists('payment_action_key', $snapshot) && $snapshot['payment_action_key'] !== $key)) {
                         $diagnostic->checkpoint('quote_changed');
                         abort(409, __('Payment quote changed. Reload and confirm the payment amount.'));
                     }
@@ -103,6 +109,7 @@ final class CheckoutPayment
             $snapshot=$order->payment_snapshot ?: [];
             $snapshot['payment_attempts'][$key]['state']='returned';
             $snapshot['payment_attempts'][$key]['result']=$data;
+            $snapshot['payment_action_key'] = in_array($data['type'] ?? null, [0, 1], true) ? $key : null;
             $order->payment_snapshot=$snapshot; $order->save();
             return false;
         },3);
@@ -114,5 +121,38 @@ final class CheckoutPayment
             default => 'action_ready',
         };
         return $closed ? response(['type' => 2, 'data' => true]) : $result;
+    }
+
+    private static function resumeAction(Order $order, int $method, array $snapshot): array
+    {
+        if ((int) $order->status !== 0) return ['type' => 2, 'data' => true];
+        abort_unless($method > 0 && (int) $order->payment_id === $method, 409, __('Payment method is not available'));
+        $channel = Payment::whereKey($method)->where('enable', 1)->first(['uuid', 'payment']);
+        $savedChannel = $snapshot['channels'][$method] ?? null;
+        abort_unless($channel && (!$savedChannel || (($savedChannel['uuid'] ?? null) === $channel->uuid
+            && ($savedChannel['provider'] ?? null) === $channel->payment)), 409, __('Payment method is not available'));
+
+        $attempts = $snapshot['payment_attempts'] ?? [];
+        foreach ($attempts as $attempt) {
+            if (($attempt['result']['type'] ?? null) === 2
+                || (($attempt['state'] ?? '') === 'started'
+                && ((int) ($attempt['method'] ?? 0) === $method
+                    || (!($attempt['provider_failed'] ?? false) && !PaymentAttemptHistory::hasFailed($order, $attempt))))) {
+                abort(409, __('Payment is being confirmed. Please check the order status before trying again.'));
+            }
+        }
+        $candidates = $attempts;
+        if (array_key_exists('payment_action_key', $snapshot)) {
+            $key = $snapshot['payment_action_key'];
+            $candidates = is_string($key) && isset($attempts[$key]) ? [$attempts[$key]] : [];
+        }
+        $actions = array_filter($candidates, static fn (array $attempt) =>
+            (int) ($attempt['method'] ?? 0) === $method
+            && ($attempt['state'] ?? '') === 'returned'
+            && in_array($attempt['result']['type'] ?? null, [0, 1], true)
+            && is_string($attempt['result']['data'] ?? null)
+            && $attempt['result']['data'] !== '');
+        abort_unless(count($actions) === 1, 409, '当前订单没有可恢复的支付入口，请检查订单状态或切换支付方式。');
+        return reset($actions)['result'];
     }
 }

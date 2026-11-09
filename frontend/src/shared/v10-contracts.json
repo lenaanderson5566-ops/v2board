@@ -1944,7 +1944,8 @@
         "expectedPaymentAmount": "expected_payment_amount",
         "expectedPaymentCurrency": "expected_payment_currency",
         "requestKey": "payment_request_key",
-        "switchFromPaymentMethodId": "switch_from_payment_method"
+        "switchFromPaymentMethodId": "switch_from_payment_method",
+        "resumePayment": "resume_payment"
       },
       "output": "payment",
       "role": "user",

@@ -19,7 +19,7 @@ class OrderPaymentHistory {
         if ($quote && isset($channels[$key]['payment_amount']) && ($channels[$key]['payment_amount'] !== $quote['payment_amount'] || $channels[$key]['payment_currency'] !== $quote['payment_currency'])) abort(409, 'Payment quote changed');
         $order->handling_amount = $channels[$key]['handling_amount'];
         $order->payment_snapshot = $channels[$key] + ['channels' => $channels]
-            + array_intersect_key($order->payment_snapshot ?: [], array_flip(['checkout_request','payment_attempts']));
+            + array_intersect_key($order->payment_snapshot ?: [], array_flip(['checkout_request','payment_attempts','payment_action_key']));
         return $order->save();
     }
     public static function display(Order $order, ?Payment $current = null): string {

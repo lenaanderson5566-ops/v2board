@@ -13094,6 +13094,10 @@
           "switchFromPaymentMethodId": {
             "type": "integer",
             "minimum": 1
+          },
+          "resumePayment": {
+            "type": "boolean",
+            "description": "Only restore an already-issued payment action for the order's current channel. Never calls the payment provider."
           }
         },
         "required": [

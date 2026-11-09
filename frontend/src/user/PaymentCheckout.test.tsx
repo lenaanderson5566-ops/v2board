@@ -237,6 +237,27 @@ it("sends the old channel only when the user confirms restarting and selects a d
     ));
 });
 
+it("restores the issued QR after reopening the order and shows it again locally after closing", async () => {
+    mock.request.mockImplementation(async (path: string) =>
+        path === "user/order/checkout"
+            ? { type: 0, data: "saved-qr-payload" }
+            : { data: 0 },
+    );
+    renderCheckout({ payment_id: 1 });
+    fireEvent.click(await screen.findByRole("button", { name: "恢复支付入口" }));
+    const close = await screen.findByRole("button", { name: "关闭二维码" });
+    expect(mock.request).toHaveBeenCalledWith(
+        "user/order/checkout",
+        { trade_no: "test-order", method: 1, resume_payment: true },
+        { timeoutMs: 45000 },
+    );
+    fireEvent.click(close);
+    expect(screen.queryByRole("button", { name: "关闭二维码" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "重新显示二维码" }));
+    expect(screen.getByRole("button", { name: "关闭二维码" })).toBeTruthy();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
+
 it("shows the converted payment amount and confirms it without relabelling the USD order", async () => {
     const old = mock.methods;
     mock.methods = [

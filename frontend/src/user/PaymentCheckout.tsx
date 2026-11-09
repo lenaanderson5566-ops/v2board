@@ -85,6 +85,7 @@ export function PaymentCheckout({
         [error, setError] = useState(""),
         [qr, setQr] = useState("");
     const [paymentLink, setPaymentLink] = useState("");
+    const [qrVisible, setQrVisible] = useState(true);
     const [copied, setCopied] = useState(false);
     const [copyError, setCopyError] = useState("");
     const [smallScreen, setSmallScreen] = useState(
@@ -105,6 +106,7 @@ export function PaymentCheckout({
         if (
             !embedded ||
             !qr ||
+            !qrVisible ||
             !qrPanel.current ||
             qrPanel.current.closest("details:not([open])")
         )
@@ -122,7 +124,7 @@ export function PaymentCheckout({
                 ? "instant"
                 : "smooth",
         });
-    }, [embedded, compact, qr]);
+    }, [embedded, compact, qr, qrVisible]);
     const [waiting, setWaiting] = useState(
         due > 0 && Boolean(order.payment_id),
     );
@@ -343,6 +345,7 @@ export function PaymentCheckout({
         setError("");
         setWaiting(false);
         setQr("");
+        setQrVisible(true);
         setPaymentLink("");
         try {
             const previousMethod = restartFromMethod.current;
@@ -552,6 +555,40 @@ export function PaymentCheckout({
             setBusy(false);
         }
     }
+    async function resumePayment(id: number) {
+        if (inFlight.current || status !== 0 || id <= 0) return;
+        inFlight.current = true;
+        setBusy(true);
+        setError("");
+        try {
+            const result = await request("user/order/checkout", {
+                trade_no: order.trade_no,
+                method: id,
+                resume_payment: true,
+            }, { timeoutMs: 45000 });
+            if (!mounted.current) return;
+            if (result.type === 2) {
+                reload();
+                return;
+            }
+            if (typeof result.data !== "string" || !result.data) {
+                throw new Error(tx("当前订单没有可恢复的支付入口。"));
+            }
+            const link = result.type === 1 ? paymentActionUrl(result.data) : undefined;
+            if (link) setPaymentLink(link);
+            else if (result.type === 0 || (result.type === 1 && nativeWechatQr(result.data))) {
+                setQr(result.data);
+                setQrVisible(true);
+            } else throw new Error(tx("此支付方式需要专用客户端，请选择其他方式。"));
+            setWaiting(true);
+            restartFromMethod.current = undefined;
+        } catch (problem) {
+            if (mounted.current) setError((problem as Error).message);
+        } finally {
+            inFlight.current = false;
+            if (mounted.current) setBusy(false);
+        }
+    }
     async function copyPayment() {
         setCopied(false);
         setCopyError("");
@@ -607,7 +644,7 @@ export function PaymentCheckout({
             </div>
         </>
     );
-    const qrContent = qr && (
+    const qrContent = qr && qrVisible && (
         <div ref={qrPanel} className="checkout-qr">
             {method && !compact && (
                 <p className="checkout-qr-channel">
@@ -621,6 +658,9 @@ export function PaymentCheckout({
                 </p>
             )}
             <QRCodeSVG value={qr} size={200} marginSize={3} />
+            <button type="button" onClick={() => setQrVisible(false)}>
+                {tx("关闭二维码")}
+            </button>
             <p>
                 {smallScreen
                     ? pc("mobileScanHelp")
@@ -999,6 +1039,7 @@ export function PaymentCheckout({
                         {smallScreen && openUrl && qr ? (
                             <details
                                 className="checkout-alternative-qr"
+                                hidden={!qrVisible}
                                 onToggle={(event) => {
                                     if (!event.currentTarget.open) return;
                                     const target =
@@ -1026,6 +1067,16 @@ export function PaymentCheckout({
                             </details>
                         ) : (
                             qrContent
+                        )}
+                        {qr && !qrVisible && (
+                            <button type="button" onClick={() => setQrVisible(true)}>
+                                {tx("重新显示二维码")}
+                            </button>
+                        )}
+                        {awaitingConfirmation && !qr && !paymentLink && selected > 0 && (
+                            <button type="button" disabled={busy} onClick={() => void resumePayment(selected)}>
+                                {tx("恢复支付入口")}
+                            </button>
                         )}
                         {smallScreen && (qr || paymentLink) && (
                             <div className="checkout-mobile-copy">
@@ -1064,7 +1115,9 @@ export function PaymentCheckout({
                                 onClick={() =>
                                     awaitingConfirmation
                                         ? reload()
-                                        : method?.payment === "StripeCredit" &&
+                                        : restartFromMethod.current === selected
+                                          ? resumePayment(selected)
+                                          : method?.payment === "StripeCredit" &&
                                             due > 0
                                           ? setCardMethod(Number(method.id))
                                           : pay(due > 0 ? selected : 0)
@@ -1144,6 +1197,7 @@ export function PaymentCheckout({
                 >
                     <div className="pad">
                         <p>{e("retryPayment")}</p>
+                        <p>{tx("如果已扫码或打开过原支付页面，请先检查结果。切换后请使用新支付入口。")}</p>
                         <div className="actions">
                             <button
                                 type="button"

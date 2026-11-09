@@ -40,7 +40,7 @@ class PaymentService
     public function notify($params)
     {
         if (!$this->config['enable']) abort(500, 'gate is not enable');
-        return $this->payment->notify($params);
+        return $this->invokeGateway(fn () => $this->payment->notify($params));
     }
 
     public function pay($order, ?PaymentAttemptHistory $diagnostic = null)
@@ -68,11 +68,26 @@ class PaymentService
             'user_id' => $order['user_id'],
             'stripe_token' => $order['stripe_token']
         ];
-        $diagnostic?->provider();
-        if ($this->payment instanceof \App\Payments\MGate || $this->payment instanceof \App\Payments\EPayQrcode) {
-            return $this->payment->pay($parameters, $diagnostic);
-        }
-        return $this->payment->pay($parameters);
+        $pay = fn () => $this->payment->pay($parameters, $diagnostic);
+        if (!$trace = $diagnostic?->provider()) return $pay();
+
+        $trace->add('支付接口参数', $parameters);
+        return $trace->run(function () use ($pay, $trace) {
+            try {
+                $result = $this->invokeGateway($pay);
+                $trace->add('支付接口结果', $result);
+                return $result;
+            } catch (\Throwable $error) {
+                $trace->add('支付接口错误', $error->getMessage());
+                throw $error;
+            }
+        });
+    }
+
+    private function invokeGateway(callable $operation): mixed
+    {
+        return PaymentGatewayTrace::active() && str_starts_with($this->method, 'Stripe')
+            ? PaymentGatewayTransport::withStripe($operation) : $operation();
     }
 
     public function validateCheckout(string $currency = 'CNY', ?PaymentAttemptHistory $diagnostic = null): void

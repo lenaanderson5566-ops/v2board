@@ -1,10 +1,13 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
-use App\Models\{Order, Payment, ClientStrategy};
-use App\Services\{PaymentAttemptHistory, PaymentCallbackHistory, ClientStrategyService};
+use App\Models\{Order, Payment, ClientStrategy, User};
+use App\Payments\MGate;
+use App\Services\{AuthService, ClientStrategyService, PaymentAttemptHistory, PaymentCallbackHistory, PaymentGatewayTrace, PaymentService};
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 $n = 0;
 $assert = \Tests\Support\Assertions::counter($n);
 set_exception_handler(function ($e) { fwrite(STDERR,$e->getMessage()."\n".$e->getTraceAsString()."\n"); exit(1); });
@@ -23,49 +26,143 @@ try {
     $other = Payment::create(['name'=>'Other channel', 'payment'=>'PaytaroQR', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>[]]);
     PaymentCallbackHistory::record('PaytaroQR', $other->uuid, $order->trade_no, 'settlement', 'failed', 'channel mismatch', null);
     $assert(count(PaymentCallbackHistory::forOrder($order)['events']) === 1, 'Unrelated channel does not contaminate order history');
-    $request = Request::create('/', 'POST', ['merchant_no'=>$order->trade_no, 'callback_no'=>'fixture', 'status'=>'PAID', 'order_amount'=>1, 'order_currency'=>'CNY']);
-    $request->headers->set('X-App-Secret', 'wrong');
+    $callbackBody = json_encode(['merchant_no'=>$order->trade_no, 'callback_no'=>'fixture', 'status'=>'PAID', 'order_amount'=>1, 'order_currency'=>'CNY']);
+    $callbackPath = '/api/v10/webhooks/payments/PaytaroQR/' . $payment->uuid . '?signature=fixture-callback-query';
+    $request = Request::create($callbackPath, 'POST', [], [], [], [
+        'CONTENT_TYPE' => 'application/json', 'HTTP_X_APP_SECRET' => 'fixture-callback-secret', 'HTTP_COOKIE' => 'session=fixture-browser-session',
+    ], $callbackBody);
+    $request->attributes->set('requestId', $requestId);
     $app->instance('request', $request);
-    try { (new App\Services\Actions\Guest\PaymentActions())->notify('PaytaroQR', $payment->uuid, $request); }
-    catch (Symfony\Component\HttpKernel\Exception\HttpException $error) { $assert($error->getStatusCode() === 500, 'Failed verification keeps provider failure response'); }
-    $assert(count(PaymentCallbackHistory::forOrder($order)['events']) === 1, 'Forged order reference remains unassociated');
+    try {
+        (new App\Services\Actions\Guest\PaymentActions())->notify('PaytaroQR', $payment->uuid, $request);
+        throw new RuntimeException('Invalid callback unexpectedly accepted');
+    } catch (HttpException $error) {
+        $assert($error->getStatusCode() === 500, 'Failed verification keeps provider failure response');
+    }
+    $history = PaymentCallbackHistory::forOrder($order);
+    $callbackEvent = $history['channelEvents'][0];
+    $channelCallback = PaymentCallbackHistory::forChannel($payment->id)->firstWhere('id', $callbackEvent->id);
+    $assert(count($history['events']) === 1 && $callbackEvent->has_raw_diagnostic && !isset($callbackEvent->raw_diagnostic),
+        'Failed callback raw availability does not attach an unverified callback to the order or expose the payload in lists');
+    $assert($channelCallback?->has_raw_diagnostic && $channelCallback->trade_no === null
+        && PaymentCallbackHistory::forChannel($payment->id)->firstWhere('id', $history['events'][0]->id)->trade_no === $order->trade_no,
+        'The channel lists unassociated callbacks and links only verified order associations');
     $assert($order->fresh()->status === 0, 'Diagnostic recording does not settle an order');
-    $payment->update(['payment' => 'MGate']);
-    $attempt = new PaymentAttemptHistory($requestId);
-    $attempt->identify($order, $payment->id);
-    $attempt->sending('https://gateway.example/v1/gateway/fetch');
-    $mgateResponse = (object) ['code' => 1, 'message' => 'Unrecognized error fixture-private-message', 'data' => (object) [
-        'pay_url' => 'javascript:fixture-private-url', 'checkoutUrl' => 'https://gateway.example/pay?secret=fixture-private-link',
-        'tradeNo' => 'fixture-private-order', 'appSecret' => 'fixture-private-secret', 'fixture-private-key' => 'untrusted',
-    ]];
-    $attempt->received((object) ['httpStatusCode' => 200, 'response' => $mgateResponse], 1, null, $mgateResponse->data, 'MGate');
-    $attempt->checkpoint('missing_payment_action');
-    $attempt->finish('failed');
-    $summary = PaymentAttemptHistory::forOrder($order)['events'][0]->gateway_response;
-    $assert($summary['fields']['data.trade_no'] === 'missing' && $summary['fields']['data.pay_url'] === 'invalid_url'
-        && $summary['fields']['data.tradeNo'] === 'string' && $summary['fields']['data.checkoutUrl'] === 'masked' && $summary['codes']['code'] === 1,
-        'MGate diagnostics identify missing fields and unexpected payment URL locations');
-    $assert($summary['other_fields']['data'] === 1 && $summary['fields']['data.appSecret'] === 'masked' && $summary['unrecognized_message']
-        && !str_contains(json_encode($summary), 'fixture-private'), 'Stored diagnostics contain no raw field names, secrets, URLs or unknown messages');
-    $assert(PaymentAttemptHistory::forChannel($payment->id)['events'][0]->gateway_response === $summary,
-        'Same redacted summary is available in channel failure diagnostics');
+    $unknownTrace = new PaymentGatewayTrace();
+    $unknownTrace->add('Fixture', 'unknown-endpoint-content');
+    PaymentCallbackHistory::record('PaytaroQR', 'unknown-endpoint', null, 'channel', 'failed', 'Payment channel not found', $requestId, $unknownTrace);
+    $assert(DB::table(PaymentCallbackHistory::TABLE)->where('provider', 'unknown')->where('request_id', $requestId)
+        ->whereNotNull('raw_diagnostic')->doesntExist(), 'Unknown callback endpoints do not collect raw payloads');
 
-    $epayResponse = '{"msg":"Stats pid is null: fixture-private-pid","sign":"fixture-private-sign","payurl":""}';
-    $epay = Payment::create(['name'=>'Diagnostic EPay', 'payment'=>'EPayQrcode', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>[]]);
-    $attempt = new PaymentAttemptHistory($requestId);
-    $attempt->identify($order, $epay->id);
-    $attempt->sending('https://gateway.example/mapi.php');
-    $attempt->received((object) ['httpStatusCode' => 200, 'response' => $epayResponse], null, null, json_decode($epayResponse), 'EPayQrcode');
+    // An HTTP adapter uses the common transport and keeps exact response bytes and signed request contents.
+    config(['cache.default' => 'array', 'fastai.app_url' => 'https://panel.example.test']);
+    $mgate = Payment::create([
+        'name'=>'MGate diagnostic fixture', 'payment'=>'MGate', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1,
+        'notify_domain'=>'https://callbacks.example.test', 'config'=>[
+            'mgate_url'=>'https://gateway.example.test', 'mgate_app_id'=>'fixture-app', 'mgate_app_secret'=>'fixture-signing-key',
+        ],
+    ]);
+    $rawResponse = '{ "code": 1, "msg": "Notify domain rejected <script>fixture-message</script>", "secret": "fixture-response-secret", "link": "https://gateway.example.test/pay?t=fixture-full-link" }';
+    $curl = new class($rawResponse) {
+        public object $response;
+        public bool $error = false;
+        public int $httpStatusCode = 200;
+        public string $rawResponseHeaders = "HTTP/1.1 200 OK\r\nX-Gateway-Header: fixture-header\r\n";
+        public string $body;
+        public function __construct(public string $rawResponse) { $this->response = json_decode($rawResponse); }
+        public function setUserAgent($value) {}
+        public function setOpt($key, $value) {}
+        public function post($url, $body) { $this->body = $body; }
+        public function close() {}
+    };
+    $service = new class($mgate->id, $curl) extends PaymentService {
+        public function __construct(int $channelId, object $curl)
+        {
+            parent::__construct('MGate', $channelId);
+            $this->payment = new class($this->config, $curl) extends MGate {
+                public function __construct(array $config, private object $curl) { parent::__construct($config); }
+                protected function createCurl() { return $this->curl; }
+            };
+        }
+    };
+    $attempt = new PaymentAttemptHistory((string) Str::uuid());
+    $attempt->identify($order, $mgate->id);
+    try {
+        $service->pay($order->toArray() + ['stripe_token' => null], $attempt);
+        throw new RuntimeException('Gateway fixture unexpectedly returned a payment entry');
+    } catch (HttpException $error) {
+        $assert($error->getStatusCode() === 500, 'Gateway failure preserves checkout failure response');
+    }
     $attempt->finish('failed');
-    $summary = PaymentAttemptHistory::forChannel($epay->id)['events'][0]->gateway_response;
-    $assert($summary['format'] === 'object' && $summary['fields']['code'] === 'missing'
-        && $summary['fields']['payurl'] === 'empty' && $summary['fields']['sign'] === 'masked'
-        && $summary['messages'] === ['商户 PID 缺失'] && !str_contains(json_encode($summary), 'fixture-private'),
-        'EPay diagnostics recognize a JSON string with no code and map the error to a safe label');
-    $markup = App\Services\PaymentGatewayResponse::summarize('<html>fixture-private-html</html>', 'EPayQrcode');
-    $assert($markup['format'] === 'markup' && $markup['fields']['code'] === 'missing' && !str_contains(json_encode($markup), 'fixture-private'),
-        'HTML responses are identifiable without retaining their contents');
-    $payment->update(['payment' => 'PaytaroQR']);
+    $event = PaymentAttemptHistory::forOrder($order)['events'][0];
+    $channelEvent = PaymentAttemptHistory::forChannel($mgate->id)['events'][0];
+    $stored = DB::table(PaymentAttemptHistory::TABLE)->where('id', $event->id)->value('raw_diagnostic');
+    $assert($event->has_raw_diagnostic && $channelEvent->id === $event->id && $channelEvent->has_raw_diagnostic
+        && !isset($event->raw_diagnostic) && (int) $event->gateway_code === 1, 'Both history lists show only availability and gateway metadata');
+    $assert(is_string($stored) && !str_contains($stored, 'fixture-response-secret')
+        && !str_contains(Illuminate\Support\Facades\Crypt::decryptString($stored), 'fixture-signing-key'),
+        'Gateway content is encrypted and a signing key that was never transmitted is not added to the trace');
+
+    // Redirect-only channels record their full signed result through the same payment service.
+    $epay = Payment::create(['name'=>'Redirect fixture', 'payment'=>'EPay', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1,
+        'config'=>['url'=>'https://redirect.example.test', 'pid'=>'fixture-pid', 'key'=>'fixture-epay-key', 'type'=>'wxpay']]);
+    $redirect = new PaymentAttemptHistory((string) Str::uuid());
+    $redirect->identify($order, $epay->id);
+    $result = (new PaymentService('EPay', $epay->id))->pay($order->toArray() + ['stripe_token' => null], $redirect);
+    $redirect->finish('redirect_ready');
+    $redirectEvent = PaymentAttemptHistory::forOrder($order)['events'][0];
+    $assert($redirectEvent->has_raw_diagnostic && $redirectEvent->stage === 'provider'
+        && str_contains($result['data'], '/submit.php?'), 'Redirect-only channels retain the result without claiming a server exchange');
+
+    $legacySummary = ['format'=>'object', 'fields'=>['code'=>'missing']];
+    $legacyId = DB::table(PaymentAttemptHistory::TABLE)->insertGetId([
+        'order_id'=>$order->id, 'payment_id'=>$epay->id, 'provider'=>'EPay', 'stage'=>'gateway', 'result'=>'failed',
+        'gateway_response'=>json_encode($legacySummary), 'created_at'=>time(),
+    ]);
+    $legacy = PaymentAttemptHistory::forOrder($order)['events']->firstWhere('id', $legacyId);
+    $assert($legacy->gateway_response == $legacySummary && !$legacy->has_raw_diagnostic, 'Legacy summary remains available without raw history');
+
+    $makeUser = static fn (bool $admin) => User::create([
+        'email'=>'raw-diagnostic-' . (int) $admin . '@example.test', 'password'=>'fixture', 'is_admin'=>(int) $admin,
+        'token'=>App\Utils\Helper::guid(), 'uuid'=>App\Utils\Helper::guid(true),
+    ]);
+    $adminAuth = new AuthService($makeUser(true));
+    $userAuth = new AuthService($makeUser(false));
+    $adminToken = $adminAuth->generateAuthData(Request::create('/'))['auth_data'];
+    $userToken = $userAuth->generateAuthData(Request::create('/'))['auth_data'];
+    $adminPath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+    $readRaw = static function (string $kind, int $id, ?string $authorization) use ($app, $adminPath) {
+        $request = Request::create('/api/v1/' . $adminPath . '/payment/diagnostics/' . $kind . '/' . $id,
+            'GET', [], [], [], ['HTTP_ACCEPT' => 'application/json']);
+        if ($authorization !== null) $request->headers->set('Authorization', $authorization);
+        return $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
+    };
+    try {
+        $assert($readRaw('attempt', $event->id, null)->getStatusCode() === 403
+            && $readRaw('attempt', $event->id, $userToken)->getStatusCode() === 403
+            && $readRaw('callback', $callbackEvent->id, $userToken)->getStatusCode() === 403, 'Anonymous and ordinary users cannot read either raw diagnostic type');
+        $response = $readRaw('attempt', $event->id, $adminToken);
+        $sections = array_column(json_decode($response->getContent(), true)['data']['sections'], 'text', 'title');
+        $assert($response->isSuccessful() && str_contains($response->headers->get('Cache-Control'), 'no-store')
+            && $sections['请求内容 #1'] === $curl->body && $sections['响应内容 #1'] === $rawResponse
+            && $sections['响应头 #1'] === $curl->rawResponseHeaders, 'Admin receives exact gateway body and signed request from the private raw endpoint');
+        parse_str($sections['请求内容 #1'], $sent);
+        $assert($sent['notify_url'] === $mgate->notify_domain . '/api/v10/webhooks/payments/MGate/' . $mgate->uuid
+            && isset($sent['sign']), 'Actual callback and request signature remain visible to admin');
+        $response = $readRaw('callback', $callbackEvent->id, $adminToken);
+        $sections = array_column(json_decode($response->getContent(), true)['data']['sections'], 'text', 'title');
+        $assert($sections['回调请求'] === 'POST ' . $callbackPath && $sections['回调请求内容'] === $callbackBody
+            && str_contains($sections['回调请求头'], 'fixture-callback-secret') && !str_contains($sections['回调请求头'], 'fixture-browser-session'),
+            'Callbacks preserve signed payment data and exclude unrelated browser cookies');
+        $response = $readRaw('attempt', $redirectEvent->id, $adminToken);
+        $sections = array_column(json_decode($response->getContent(), true)['data']['sections'], 'text', 'title');
+        $assert(json_decode($sections['支付接口结果'], true) === $result, 'Admin sees the complete signed redirect URL');
+        $assert($readRaw('attempt', $legacyId, $adminToken)->getStatusCode() === 404, 'Legacy records without original data use the summary');
+    } finally {
+        $adminAuth->removeAllSession();
+        $userAuth->removeAllSession();
+    }
+
     ClientStrategy::updateOrCreate(['client_type'=>'fastai'], ['client_name'=>'FastAI', 'is_enabled'=>1, 'min_version'=>'v1.3.0']);
     config(['fastai.fastai_releases'=>[['platform'=>'windows', 'architecture'=>'x64', 'minimumVersion'=>'1.2.0', 'latestVersion'=>'1.2.5']]]);
     $row = (new ClientStrategyService())->getStrategies()->firstWhere('client_type', 'fastai');

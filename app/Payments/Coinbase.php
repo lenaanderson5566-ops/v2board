@@ -86,10 +86,9 @@ class Coinbase {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
-        curl_setopt(
-            $ch, CURLOPT_HTTPHEADER, array('X-CC-Api-Key:' .$this->config['coinbase_api_key'], 'X-CC-Version: 2018-03-22')
-        );
-        $result = curl_exec($ch);
+        $headers = ['X-CC-Api-Key:' . $this->config['coinbase_api_key'], 'X-CC-Version: 2018-03-22'];
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $result = \App\Services\PaymentGatewayTransport::executeCurl($ch, $url, $headers, $params);
         curl_close($ch);
         return $result;
     }

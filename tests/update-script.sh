@@ -278,9 +278,12 @@ grep -q 'migrate --path=database/migrations/2026_11_03_000001_add_traffic_reset_
 grep -q 'migrate --path=database/migrations/2026_11_04_000001_subscription_blacklist_expiry.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_04_000002_reconcile_mail_complaint_suppressions.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_09_000001_create_payment_attempt_events.php --force --no-interaction' calls.log
-awk '/migrate --path=database\/migrations\/2026_11_09_000001_create_payment_attempt_events.php --force --no-interaction/ { attempts=NR }
+awk '/migrate --path=database\/migrations\/2026_10_13_000001_create_payment_callback_events.php --force --no-interaction/ { callbacks=NR }
+     /migrate --path=database\/migrations\/2026_11_09_000001_create_payment_attempt_events.php --force --no-interaction/ { attempts=NR }
      /migrate --path=database\/migrations\/2026_11_09_000002_add_payment_gateway_response_summary.php --force --no-interaction/ { summary=NR }
-     END { exit !(attempts && summary > attempts) }' calls.log
+     /migrate --path=database\/migrations\/2026_11_09_000003_add_raw_payment_diagnostics.php --force --no-interaction/ { raw=NR }
+     END { exit !(callbacks && attempts && summary > attempts && raw > summary && raw > callbacks) }' calls.log
+grep -q 'Missing raw payment diagnostic column' calls.log
 grep -q 'Missing plan translation source column' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty

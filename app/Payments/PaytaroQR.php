@@ -141,21 +141,24 @@ class PaytaroQR
 
     private function request($path, array $payload)
     {
-        $ch = curl_init(self::API . $path);
+        $url = self::API . $path;
+        $payload = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'X-App-Secret: ' . $this->appSecret(),
+            'User-Agent: PaytaroQR-FastAI/' . $this->appId(),
+        ];
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_POST => true,
-            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_SLASHES),
+            CURLOPT_POSTFIELDS => $payload,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_CONNECTTIMEOUT => 10,
             CURLOPT_TIMEOUT => 30,
-            CURLOPT_HTTPHEADER => [
-                'Content-Type: application/json',
-                'Accept: application/json',
-                'X-App-Secret: ' . $this->appSecret(),
-                'User-Agent: PaytaroQR-FastAI/' . $this->appId(),
-            ],
+            CURLOPT_HTTPHEADER => $headers,
         ]);
-        $body = curl_exec($ch);
+        $body = \App\Services\PaymentGatewayTransport::executeCurl($ch, $url, $headers, $payload);
         $errno = curl_errno($ch);
         $status = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);

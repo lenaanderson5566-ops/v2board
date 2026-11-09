@@ -59,7 +59,8 @@ it("shows redacted gateway fields and the error summary from a channel failure",
         gateway_http_status: 200, gateway_response: { format: "object", fields: { code: "number", "data.trade_no": "missing", "data.pay_url": "masked" },
             codes: { code: 1 }, messages: ["商户 PID 缺失"], unrecognized_message: true, other_fields: { data: 1 } },
     }] }} />);
-    screen.getByText("查看脱敏响应").click();
+    expect(screen.queryByRole("button", { name: "查看原始诊断" })).toBeNull();
+    screen.getByText("查看历史脱敏摘要").click();
     expect(screen.getByText("网关提示：商户 PID 缺失")).toBeTruthy();
     expect(screen.getByText("data.trade_no").parentElement?.textContent).toContain("缺失");
     expect(screen.getByText("data.pay_url").parentElement?.textContent).toContain("已遮蔽");

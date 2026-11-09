@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Services\PaymentAttemptHistory;
+use App\Services\PaymentCallbackHistory;
+use App\Services\PaymentGatewayTrace;
 use App\Services\PaymentService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -50,7 +52,20 @@ class PaymentController extends Controller
 
     public function recentFailures(int $id)
     {
-        return response(['data' => PaymentAttemptHistory::forChannel($id)])->header('Cache-Control', 'no-store');
+        $history = PaymentAttemptHistory::forChannel($id) + ['callbackEvents' => PaymentCallbackHistory::forChannel($id)];
+        return response(['data' => $history])->header('Cache-Control', 'no-store');
+    }
+
+    public function diagnostics(string $kind, int $id)
+    {
+        $table = match ($kind) {
+            'attempt' => PaymentAttemptHistory::TABLE,
+            'callback' => PaymentCallbackHistory::TABLE,
+            default => abort(404),
+        };
+        $diagnostic = PaymentGatewayTrace::read($table, $id);
+        abort_if($diagnostic === null, 404, '没有可查看的支付诊断原文');
+        return response()->json(['data' => $diagnostic])->header('Cache-Control', 'private, no-store');
     }
 
     public function getPaymentForm(Request $request)

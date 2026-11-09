@@ -21,14 +21,37 @@ it("opens the selected channel's failure records and links to the affected order
         if (path.endsWith("/fetch")) return { data: [{ id: 7, name: "WeChat", payment: "EPayQrcode", enable: 1, recent_failure_count: 1 }] };
         if (path.endsWith("/getPaymentMethods")) return { data: ["EPayQrcode"] };
         if (path.endsWith("/payment/7/recentFailures")) return { data: { available: true, events: [
-            { id: 2, reason: "gateway_timeout", stage: "gateway", trade_no: "fixture-order", created_at: 1791849600 },
+            { id: 2, reason: "gateway_timeout", stage: "gateway", trade_no: "fixture-order", created_at: 1791849600, has_raw_diagnostic: true },
         ] } };
+        if (path.endsWith("/payment/diagnostics/attempt/2")) return { data: { sections: [{ title: "网关响应", text: '{"msg":"原始网关错误"}' }] } };
         throw new Error(`Unexpected endpoint: ${path}`);
     });
 
     render(<Payments />);
-    fireEvent.click(await screen.findByRole("button", { name: "查看 WeChat 的支付失败" }));
+    fireEvent.click(await screen.findByRole("button", { name: "查看 WeChat 的支付诊断" }));
     expect((await screen.findByRole("link", { name: "fixture-order" })).getAttribute("href")).toBe("#/orders?trade_no=fixture-order");
+    expect(api.request.mock.calls.some(([path]) => path.includes("payment/diagnostics/"))).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "查看原始诊断" }));
+    expect(await screen.findByText('{"msg":"原始网关错误"}')).toBeTruthy();
+});
+
+it("opens original unassociated callback diagnostics for a channel with no failed attempts", async () => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/fetch")) return { data: [{ id: 7, name: "WeChat", payment: "EPayQrcode", enable: 1, recent_failure_count: 0 }] };
+        if (path.endsWith("/getPaymentMethods")) return { data: ["EPayQrcode"] };
+        if (path.endsWith("/payment/7/recentFailures")) return { data: { available: true, events: [], callbackEvents: [
+            { id: 3, reason: "verify error", stage: "verification", result: "failed", created_at: 1791849600, has_raw_diagnostic: true },
+        ] } };
+        if (path.endsWith("/payment/diagnostics/callback/3")) return { data: { sections: [{ title: "回调请求", text: "sign=fixture" }] } };
+        throw new Error(`Unexpected endpoint: ${path}`);
+    });
+
+    render(<Payments />);
+    fireEvent.click(await screen.findByRole("button", { name: "查看 WeChat 的支付诊断" }));
+    expect(await screen.findByText("最近一小时没有记录到发起支付失败。")).toBeTruthy();
+    expect(screen.getByText("验签或通知内容校验失败")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "查看原始诊断" }));
+    expect(await screen.findByText("sign=fixture")).toBeTruthy();
 });
 
 it("enables and disables PaytaroQR using the existing backend show endpoint", async () => {

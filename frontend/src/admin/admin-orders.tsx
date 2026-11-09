@@ -660,6 +660,7 @@ function OrderDetail({
                                 ))}
                         </dl>
                         <PaymentCallbackHistory
+                            key={r.trade_no}
                             history={r.callback_history}
                             attempts={r.payment_attempt_history}
                             paidAt={r.paid_at}

@@ -1281,6 +1281,13 @@ body[data-console="admin"] .legacy-dashboard-shortcuts svg {
     display: grid;
     gap: 6px;
 }
+.payment-diagnostic-text {
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
 
 /* Clear operation summaries and responsive infrastructure controls. */
 body[data-console="admin"] .infrastructure-notice {

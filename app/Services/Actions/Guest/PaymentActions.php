@@ -4,6 +4,8 @@ namespace App\Services\Actions\Guest;
 
 
 use App\Models\Order;
+use App\Services\PaymentCallbackHistory;
+use App\Services\PaymentGatewayTrace;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use Illuminate\Http\Request;
@@ -14,25 +16,35 @@ class PaymentActions
     {
         $stage = 'channel';
         $verifiedTradeNo = null;
-        $record = function ($result, $reason = null) use ($method, $uuid, $request, &$stage, &$verifiedTradeNo) {
-            \App\Services\PaymentCallbackHistory::record($method, $uuid, $verifiedTradeNo, $stage, $result, $reason, $request->attributes->get('requestId'));
+        $trace = new PaymentGatewayTrace();
+        $trace->add('回调请求', $request->getMethod() . ' ' . $request->getRequestUri());
+        // Browser cookies belong to FastAI sessions, not to the payment gateway protocol.
+        $trace->add('回调请求头', array_diff_key($request->headers->all(), ['cookie' => true]));
+        $body = $request->getContent();
+        $trace->add('回调请求内容', $body);
+        if ($body === '' && $request->request->count() > 0) $trace->add('回调表单参数', $request->request->all());
+        $record = function ($result, $response, $reason = null) use ($method, $uuid, $request, $trace, &$stage, &$verifiedTradeNo) {
+            $trace->add('回调响应', $response);
+            $trace->add('回调处理错误', $reason);
+            PaymentCallbackHistory::record($method, $uuid, $verifiedTradeNo, $stage, $result, $reason, $request->attributes->get('requestId'), $trace);
         };
         try {
             $paymentService = new PaymentService($method, null, $uuid);
             $stage = 'verification';
-            $verify = $paymentService->notify($request->input());
-            if ($verify === 'success') { $record('acknowledged'); return 'success'; } // Verified provider event with no settlement.
+            $verify = $trace->run(fn () => $paymentService->notify($request->input()));
+            if ($verify === 'success') { $record('acknowledged', 'success'); return 'success'; } // Verified provider event with no settlement.
             if (!is_array($verify) || empty($verify['trade_no']) || empty($verify['callback_no'])) abort(500, 'verify error');
             $verifiedTradeNo = (string) $verify['trade_no'];
             $stage = 'settlement';
             if (!$this->handle($verify['trade_no'], $verify['callback_no'], $method, $uuid, $verify)) {
                 abort(500, 'handle error');
             }
-            $record('handled');
-            return(isset($verify['custom_result']) ? $verify['custom_result'] : 'success');
+            $response = $verify['custom_result'] ?? 'success';
+            $record('handled', $response);
+            return $response;
         } catch (\Throwable $e) {
-            $record('failed', $e->getMessage());
-            $knownReasons = \App\Services\PaymentCallbackHistory::REASONS;
+            $record('failed', 'fail', $e->getMessage());
+            $knownReasons = PaymentCallbackHistory::REASONS;
             \Illuminate\Support\Facades\Log::warning('Payment callback failed', [
                 'provider' => in_array($method, ['Paytaro', 'PaytaroQR'], true) ? $method : 'other',
                 'stage' => $stage,

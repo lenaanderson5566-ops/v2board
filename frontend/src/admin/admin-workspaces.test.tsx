@@ -210,6 +210,53 @@ it("keeps commission amounts, records and approval out of order management", asy
     for (const text of ["佣金金额", "实际佣金", "佣金记录", "佣金审核"])
         expect(screen.queryByText(text)).toBeNull();
 });
+it("loads original attempt and callback diagnostics only after opening the selected row", async () => {
+    const requestId = "12345678-1234-4234-8234-123456789abc";
+    const rawResponse = '<img src=x onerror="alert(1)">\nhttps://checkout.example/pay?secret=fixture';
+    const rawCallback = '{"sign":"fixture-signature","order":"order-1"}';
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("order/fetch")) return { data: [order], total: 1 };
+        if (path.endsWith("order/detail")) return { data: {
+            ...order,
+            payment_attempt_history: {
+                available: true,
+                events: [{
+                    id: 1, created_at: 1791849600, stage: "gateway", result: "failed", provider: "EPayQrcode",
+                    request_id: requestId, gateway_code: 1, has_raw_diagnostic: true,
+                }],
+            },
+            callback_history: {
+                available: true,
+                events: [{
+                    id: 1, created_at: 1791849601, stage: "verification", result: "failed", provider: "EPayQrcode",
+                    has_raw_diagnostic: true,
+                }],
+            },
+        } };
+        if (path.endsWith("payment/diagnostics/attempt/1")) return { data: { sections: [{ title: "网关响应", text: rawResponse }] } };
+        if (path.endsWith("payment/diagnostics/callback/1")) return { data: { sections: [{ title: "回调请求", text: rawCallback }] } };
+        return { data: [] };
+    });
+
+    render(<OrdersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "订单详情" }));
+    const attemptRow = (await screen.findByText("网关下单")).closest("tr")!;
+    expect(api.request.mock.calls.some(([path]) => path.includes("payment/diagnostics/"))).toBe(false);
+    fireEvent.click(within(attemptRow).getByRole("button", { name: "查看原始诊断" }));
+    const attempt = await screen.findByRole("dialog", { name: "原始支付诊断" });
+    await within(attempt).findByText("网关响应");
+    expect(attempt.querySelector("pre")?.textContent).toBe(rawResponse);
+    expect(attempt.querySelector("img, a")).toBeNull();
+    expect(api.request.mock.calls.some(([path]) => path === "test-admin/payment/diagnostics/attempt/1")).toBe(true);
+    fireEvent.click(within(attempt).getByRole("button", { name: "关闭" }));
+    expect(screen.queryByRole("dialog", { name: "原始支付诊断" })).toBeNull();
+
+    const callbackRow = screen.getByText("验签").closest("tr")!;
+    fireEvent.click(within(callbackRow).getByRole("button", { name: "查看原始诊断" }));
+    const callback = await screen.findByRole("dialog", { name: "原始支付诊断" });
+    expect(await within(callback).findByText(rawCallback)).toBeTruthy();
+    expect(api.request.mock.calls.some(([path]) => path === "test-admin/payment/diagnostics/callback/1")).toBe(true);
+});
 it("shows key dates with the order number before callback diagnostics and supports copying", async () => {
     const writeText = vi.fn().mockResolvedValueOnce(undefined).mockRejectedValueOnce(new Error("clipboard denied"));
     vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });

@@ -30,9 +30,9 @@ const retentionFields = [
         "payment_callback_retention_days",
         "支付回调诊断",
         1,
-        "默认保留 30 天；仅记录脱敏阶段和结果。",
+        "默认保留 30 天，包含仅管理员可查看的回调原始诊断。",
     ],
-    ["payment_attempt_retention_days", "支付发起诊断", 1, "默认保留 30 天。"],
+    ["payment_attempt_retention_days", "支付发起诊断", 1, "默认保留 30 天，包含仅管理员可查看的下单原始诊断。"],
     ["system_log_retention_days", "系统日志", 1, "默认 30 天。"],
     ["connection_log_retention_days", "连接日志", 1, "默认 30 天。"],
     [

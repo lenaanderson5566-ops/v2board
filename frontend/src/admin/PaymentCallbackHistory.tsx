@@ -1,5 +1,6 @@
-import { date, type Row } from "../shared/api";
-import { Table } from "../shared/ui";
+import { useState } from "react";
+import { admin, date, type Row } from "../shared/api";
+import { Modal, State, Table, useData } from "../shared/ui";
 
 const stages: Record<string, string> = {
     preflight: "站内检查",
@@ -80,14 +81,13 @@ const responseTypes: Record<string, string> = {
     masked: "已遮蔽", invalid_url: "链接无效，已遮蔽",
 };
 
-function GatewayResponse({ response, provider }: { response: Row; provider?: string }) {
+function GatewayResponse({ response }: { response: Row }) {
     const format = responseTypes[response.format] || "未知";
     return <details>
-        <summary>查看脱敏响应</summary>
+        <summary>查看历史脱敏摘要</summary>
         <p>响应类型：{format}</p>
         {response.messages?.length > 0 && <p>网关提示：{response.messages.join("、")}</p>}
         {response.unrecognized_message && <p>网关返回了未识别的提示，原文已遮蔽。</p>}
-        {provider === "EPayQrcode" && <p>易支付下单成功时，三个支付入口字段中有一个可用即可。</p>}
         <ul>
             {Object.entries(response.fields ?? {}).map(([field, kind]) => (
                 <li key={field}>
@@ -102,19 +102,65 @@ function GatewayResponse({ response, provider }: { response: Row; provider?: str
     </details>;
 }
 
-const gatewayColumn: (typeof columns)[number] = ["gateway_host", "网关信息", (r) => <>
-    {[
-        r.gateway_host,
-        r.gateway_http_status ? `HTTP ${r.gateway_http_status}` : null,
-        r.gateway_code != null ? `网关码 ${r.gateway_code}` : null,
-        r.gateway_order ? `网关单号 ${r.gateway_order}` : null,
-        r.gateway_actions ? `返回字段 ${r.gateway_actions}` : null,
-        r.duration_ms != null ? `${r.duration_ms} ms` : null,
-    ].filter(Boolean).join(" · ") || "—"}
-    {r.gateway_response && <GatewayResponse response={r.gateway_response} provider={r.provider} />}
-</>];
+type DiagnosticKind = "attempt" | "callback";
+type DiagnosticSections = { sections: { title: string; text: string }[] };
 
-export function PaymentCallbackHistory({ history, attempts, paidAt }: { history?: Row; attempts?: Row; paidAt?: number }) {
+function RawPaymentDiagnostic({ kind, id, close }: {
+    kind: DiagnosticKind;
+    id: number | string;
+    close: () => void;
+}) {
+    const diagnostic = useData<DiagnosticSections>(
+        admin(`payment/diagnostics/${kind}/${encodeURIComponent(id)}`),
+    );
+    return <Modal title="原始支付诊断" variant="modal" close={close}>
+        <div className="pad">
+            <State
+                loading={diagnostic.loading}
+                error={diagnostic.error ? "无法读取原始支付诊断。" : ""}
+                retry={diagnostic.reload}
+                retryAt={diagnostic.retryAt}
+            >
+                {diagnostic.data?.sections?.length ? diagnostic.data.sections.map((section, index) => (
+                    <section key={index}>
+                        <h3>{section.title}</h3>
+                        <pre className="payment-diagnostic-text">{section.text}</pre>
+                    </section>
+                )) : <p>这条记录没有原始诊断。</p>}
+            </State>
+        </div>
+    </Modal>;
+}
+
+function DiagnosticDetails({ event, kind }: { event: Row; kind: DiagnosticKind }) {
+    const [open, setOpen] = useState(false);
+    const summary = [
+        event.gateway_host,
+        event.gateway_http_status ? `HTTP ${event.gateway_http_status}` : null,
+        event.gateway_code != null ? `网关码 ${event.gateway_code}` : null,
+        event.gateway_order ? `网关单号 ${event.gateway_order}` : null,
+        event.gateway_actions ? `返回字段 ${event.gateway_actions}` : null,
+        event.duration_ms != null ? `${event.duration_ms} ms` : null,
+    ].filter(Boolean).join(" · ");
+    const hasRaw = event.has_raw_diagnostic === true && event.id != null;
+    return <>
+        {summary && <div>{summary}</div>}
+        {hasRaw ? <>
+            <button type="button" onClick={() => setOpen(true)}>查看原始诊断</button>
+            {open && <RawPaymentDiagnostic kind={kind} id={event.id} close={() => setOpen(false)} />}
+        </> : event.gateway_response ? <GatewayResponse response={event.gateway_response} /> : !summary && "—"}
+    </>;
+}
+
+const gatewayColumn: (typeof columns)[number] = ["gateway_host", "网关信息", (row) => (
+    <DiagnosticDetails event={row} kind={row.type === "callback" ? "callback" : "attempt"} />
+)];
+
+export function PaymentCallbackHistory({ history, attempts, paidAt }: {
+    history?: Row;
+    attempts?: Row;
+    paidAt?: number;
+}) {
     const attemptEvents: Row[] = attempts?.events || [];
     const callbackEvents: Row[] = history?.events || [];
     const timeline = [
@@ -131,7 +177,7 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: { history?
             {paidAt ? <p><strong>站点已记录付款</strong> · {date(paidAt)}</p> : null}
             {latest && <p><strong>最近进展</strong> · {diagnosis(latest)}{origin && <> · 前一笔：{diagnosis(origin)}</>}</p>}
             <p className="muted">
-                各显示最近 20 条发起和回调记录。脱敏响应仅记录功能上线后的下单请求，到账以订单状态及支付时间为准。
+                各显示最近 20 条发起和回调记录。原始诊断仅管理员可查看，从启用统一记录后开始保存。到账以订单状态及支付时间为准。
             </p>
             {timeline.length > 0 && <Table data={timeline} columns={[...columns, gatewayColumn]} />}
             {!attempts?.available ? <p className="muted">支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>
@@ -147,7 +193,7 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: { history?
                         订单创建后、最近 24
                         小时内的渠道事件，未确认属于本订单，仅供排障参考。
                     </p>
-                    <Table data={history.channelEvents} columns={columns} />
+                    <Table data={history.channelEvents.map((event: Row) => ({ ...event, type: "callback" }))} columns={[...columns, gatewayColumn]} />
                 </details>
             )}
         </section>
@@ -155,15 +201,34 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: { history?
 }
 
 export function PaymentChannelFailures({ history }: { history: Row }) {
-    if (!history.available) return <p>支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>;
-    if (!history.events.length) return <p>最近一小时没有记录到发起支付失败。</p>;
-
+    const attemptEvents: Row[] = history.events ?? [];
+    const callbackEvents: Row[] | undefined = history.callbackEvents;
+    const orderColumn: (typeof columns)[number] = [
+        "trade_no", "订单号",
+        (row) => row.trade_no ? <a href={`#/orders?trade_no=${encodeURIComponent(row.trade_no)}`}>{row.trade_no}</a> : "—",
+    ];
     return <>
-        <p className="muted">最近一小时内的 20 条发起失败记录。</p>
-        <Table data={history.events} columns={[
-            ["trade_no", "订单号", (r) => r.trade_no ? <a href={`#/orders?trade_no=${encodeURIComponent(r.trade_no)}`}>{r.trade_no}</a> : "—"],
-            ...columns.filter(([key]) => key !== "provider" && key !== "result"),
-            gatewayColumn,
-        ]} />
+        <section>
+            <h3>发起支付失败</h3>
+            {!history.available ? <p>支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>
+                : attemptEvents.length > 0 ? <>
+                    <p className="muted">最近一小时内最多 20 条发起失败记录。</p>
+                    <Table data={attemptEvents} columns={[
+                        orderColumn,
+                        ...columns.filter(([key]) => key !== "provider" && key !== "result"),
+                        gatewayColumn,
+                    ]} />
+                </> : <p>最近一小时没有记录到发起支付失败。</p>}
+        </section>
+        {callbackEvents && <section>
+            <h3>支付回调</h3>
+            {callbackEvents.length > 0 ? <>
+                <p className="muted">最近一小时内最多 20 条回调记录，包含尚未关联到订单的回调。</p>
+                <Table
+                    data={callbackEvents.map((event) => ({ ...event, type: "callback" }))}
+                    columns={[orderColumn, ...columns.filter(([key]) => key !== "provider"), gatewayColumn]}
+                />
+            </> : <p>最近一小时没有回调记录。</p>}
+        </section>}
     </>;
 }

@@ -3,6 +3,7 @@
 namespace App\Payments;
 
 use App\Services\PaymentAttemptHistory;
+use App\Services\PaymentGatewayTransport;
 use \Curl\Curl;
 
 /**
@@ -73,10 +74,10 @@ class EPayQrcode
         $endpoint = $this->mapiUrl();
         $diagnostic?->sending($endpoint);
         try {
-            $curl->post($endpoint, http_build_query($params));
+            PaymentGatewayTransport::post($curl, $endpoint, http_build_query($params));
             $result = $curl->response;
             if (is_string($result)) $result = json_decode($result);
-            $diagnostic?->received($curl, $result->code ?? null, null, $result, 'EPayQrcode');
+            $diagnostic?->received($curl, $result->code ?? null, $result->trade_no ?? null, $result);
 
             if (!is_object($result)) abort(500, '支付接口网络异常或返回内容无法解析');
             if ($curl->error || !isset($result->code) || (int) $result->code !== 1) {

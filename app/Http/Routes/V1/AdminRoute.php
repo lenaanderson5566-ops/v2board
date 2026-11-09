@@ -213,6 +213,8 @@ class AdminRoute
             // Payment
             $router->get ('/payment/fetch', 'V1\\Admin\\PaymentController@fetch');
             $router->get('/payment/{id}/recentFailures', 'V1\\Admin\\PaymentController@recentFailures')->where('id', '[0-9]+');
+            $router->get('/payment/diagnostics/{kind}/{id}', 'V1\\Admin\\PaymentController@diagnostics')
+                ->where(['kind' => 'attempt|callback', 'id' => '[0-9]+']);
             $router->get ('/payment/getPaymentMethods', 'V1\\Admin\\PaymentController@getPaymentMethods');
             $router->post('/payment/getPaymentForm', 'V1\\Admin\\PaymentController@getPaymentForm');
             $router->post('/payment/save', 'V1\\Admin\\PaymentController@save');

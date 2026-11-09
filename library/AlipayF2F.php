@@ -1,6 +1,7 @@
 <?php
 namespace Library;
 
+use App\Services\PaymentGatewayTransport;
 use Illuminate\Support\Facades\Http;
 
 class AlipayF2F {
@@ -71,7 +72,8 @@ class AlipayF2F {
 
     public function send()
     {
-        $response = Http::get('https://openapi.alipay.com/gateway.do', $this->buildParam())->json();
+        $response = Http::withMiddleware(PaymentGatewayTransport::middleware())
+            ->get('https://openapi.alipay.com/gateway.do', $this->buildParam())->json();
         $resKey = str_replace('.', '_', $this->method) . '_response';
         if (!isset($response[$resKey])) throw new \Exception('从支付宝请求失败');
         $response = $response[$resKey];

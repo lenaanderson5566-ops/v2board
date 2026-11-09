@@ -36,7 +36,7 @@ class WechatPayNative {
 
     public function pay($order)
     {
-        $gateway = Omnipay::create('WechatPay_Native');
+        $gateway = Omnipay::create('WechatPay_Native', \App\Services\PaymentGatewayTransport::omnipayClient());
         $gateway->setAppId($this->config['app_id']);
         $gateway->setMchId($this->config['mch_id']);
         $gateway->setApiKey($this->config['api_key']);
@@ -65,7 +65,7 @@ class WechatPayNative {
     public function notify($params)
     {
         $data = Helper::xml2array(request()->getContent() ?: json_encode($_POST));
-        $gateway = Omnipay::create('WechatPay');
+        $gateway = Omnipay::create('WechatPay', \App\Services\PaymentGatewayTransport::omnipayClient());
         $gateway->setAppId($this->config['app_id']);
         $gateway->setMchId($this->config['mch_id']);
         $gateway->setApiKey($this->config['api_key']);

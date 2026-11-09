@@ -101,7 +101,7 @@ export function Payments() {
                             ["name", "显示名称"],
                             ["payment", "支付接口"],
                             ["recent_failure_count", "近一小时发起失败", (r) => (
-                                <button type="button" onClick={() => setDiagnosticChannel(r)} aria-label={`查看 ${r.name} 的支付失败`}>
+                                <button type="button" onClick={() => setDiagnosticChannel(r)} aria-label={`查看 ${r.name} 的支付诊断`}>
                                     {r.recent_failure_count ?? "查看"}
                                 </button>
                             )],
@@ -145,7 +145,7 @@ export function Payments() {
                     />
                 </State>
             </Panel>
-            {diagnosticChannel && <Modal title={`${diagnosticChannel.name} · 支付失败`} close={() => setDiagnosticChannel(null)}>
+            {diagnosticChannel && <Modal title={`${diagnosticChannel.name} · 支付诊断`} close={() => setDiagnosticChannel(null)}>
                 <RecentPaymentFailures channelId={diagnosticChannel.id} />
             </Modal>}
             {editing && (

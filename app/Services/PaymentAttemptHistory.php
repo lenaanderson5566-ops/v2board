@@ -26,6 +26,7 @@ final class PaymentAttemptHistory
     private string $reason = 'internal_error';
     private ?string $previousRequestId = null;
     private array $gateway = [];
+    private ?PaymentGatewayTrace $trace = null;
     private ?int $startedAt = null;
 
     public function __construct(private readonly ?string $requestId) {}
@@ -46,23 +47,30 @@ final class PaymentAttemptHistory
         $this->previousRequestId = self::uuid($attempt['request_id'] ?? null);
     }
 
-    public function provider(): void
+    public function provider(): PaymentGatewayTrace
     {
         $this->stage = 'provider';
         $this->reason = 'gateway_result_unknown';
+        $this->startedAt = hrtime(true);
+        return $this->trace = new PaymentGatewayTrace();
     }
 
     public function sending(string $url): void
     {
         $this->stage = 'gateway';
         $this->startedAt = hrtime(true);
+        $this->gatewayHost($url);
+    }
+
+    private function gatewayHost(string $url): void
+    {
         $host = parse_url($url, PHP_URL_HOST);
         if (is_string($host) && filter_var($host, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             $this->gateway['gateway_host'] = strtolower($host);
         }
     }
 
-    public function received(object $curl, mixed $code, mixed $gatewayOrder, mixed $actions, ?string $provider = null): void
+    public function received(object $curl, mixed $code, mixed $gatewayOrder, mixed $actions): void
     {
         if ($this->startedAt !== null) $this->gateway['duration_ms'] = (int) ((hrtime(true) - $this->startedAt) / 1000000);
         $status = (int) ($curl->httpStatusCode ?? 0);
@@ -70,11 +78,8 @@ final class PaymentAttemptHistory
         if ((is_int($code) || is_string($code)) && preg_match('/\A-?[0-9]{1,9}\z/D', (string) $code)) {
             $this->gateway['gateway_code'] = (int) $code;
         }
-        if ($provider === null && (is_int($gatewayOrder) || is_string($gatewayOrder)) && preg_match('/\A[a-zA-Z0-9_-]{1,64}\z/D', (string) $gatewayOrder)) {
+        if ((is_int($gatewayOrder) || is_string($gatewayOrder)) && preg_match('/\A[a-zA-Z0-9_-]{1,64}\z/D', (string) $gatewayOrder)) {
             $this->gateway['gateway_order'] = (string) $gatewayOrder;
-        }
-        if ($provider !== null) {
-            $this->gateway['gateway_response'] = json_encode(PaymentGatewayResponse::summarize($curl->response ?? null, $provider), JSON_UNESCAPED_UNICODE);
         }
         $fields = [];
         foreach (['qrcode', 'urlscheme', 'payurl', 'pay_url'] as $field) {
@@ -97,9 +102,16 @@ final class PaymentAttemptHistory
 
         try {
             $provider = $this->paymentId ? Payment::whereKey($this->paymentId)->value('payment') : null;
-            $gateway = $this->gateway;
-            if (isset($gateway['gateway_response']) && !Schema::hasColumn(self::TABLE, 'gateway_response')) unset($gateway['gateway_response']);
-            DB::table(self::TABLE)->insert($gateway + [
+            $exchange = $this->trace?->lastExchange();
+            if ($exchange !== null && $this->stage === 'provider') {
+                $this->stage = 'gateway';
+                $this->gatewayHost($exchange['url']);
+                if ($exchange['status'] >= 100 && $exchange['status'] <= 599) {
+                    $this->gateway['gateway_http_status'] = $exchange['status'];
+                    if ($exchange['status'] >= 400 && $this->reason === 'gateway_result_unknown') $this->reason = 'gateway_http_error';
+                }
+            }
+            DB::table(self::TABLE)->insert($this->gateway + ($this->trace?->storageFields(self::TABLE) ?? []) + [
                 'order_id' => $this->orderId,
                 'payment_id' => $provider === null ? null : $this->paymentId,
                 'provider' => $provider,
@@ -113,11 +125,16 @@ final class PaymentAttemptHistory
                 'created_at' => time(),
             ]);
         } catch (\Throwable $error) {
-            try {
-                Log::warning('Payment attempt diagnostics unavailable', ['requestId' => self::uuid($this->requestId)]);
-            } catch (\Throwable $loggingError) {
-                // Diagnostics must not change the checkout response even if logging is unavailable.
-            }
+            self::diagnosticUnavailable($this->requestId);
+        }
+    }
+
+    private static function diagnosticUnavailable(?string $requestId): void
+    {
+        try {
+            Log::warning('Payment attempt diagnostics unavailable', ['requestId' => self::uuid($requestId)]);
+        } catch (\Throwable $loggingError) {
+            // Diagnostics must not change the checkout response even if logging is unavailable.
         }
     }
 
@@ -144,7 +161,7 @@ final class PaymentAttemptHistory
                 ->orderByDesc('created_at')->orderByDesc('id')->limit(20), [
                     'id', 'provider', 'payment_id', 'stage', 'result', 'reason', 'request_id', 'previous_request_id',
                     'gateway_host', 'gateway_http_status', 'gateway_code', 'gateway_order', 'gateway_actions', 'duration_ms', 'created_at',
-                ], 'gateway_response'),
+                ]),
         ];
     }
 
@@ -167,15 +184,17 @@ final class PaymentAttemptHistory
                 ->orderByDesc('event.created_at')->orderByDesc('event.id')->limit(20), [
                     'event.id', 'event.provider', 'event.stage', 'event.result', 'event.reason', 'event.request_id', 'event.created_at', 'orders.trade_no',
                     'event.gateway_host', 'event.gateway_http_status', 'event.gateway_code', 'event.gateway_order', 'event.gateway_actions', 'event.duration_ms',
-                ], 'event.gateway_response'),
+                ], 'event'),
         ];
     }
 
-    private static function events(\Illuminate\Database\Query\Builder $query, array $columns, string $responseColumn): \Illuminate\Support\Collection
+    private static function events(\Illuminate\Database\Query\Builder $query, array $columns, ?string $alias = null): \Illuminate\Support\Collection
     {
-        if (Schema::hasColumn(self::TABLE, 'gateway_response')) $columns[] = $responseColumn;
-        return $query->get($columns)->each(function ($event) {
+        if (Schema::hasColumn(self::TABLE, 'gateway_response')) $columns[] = $alias ? $alias . '.gateway_response' : 'gateway_response';
+        $query->select($columns);
+        return PaymentGatewayTrace::selectAvailability($query, self::TABLE, $alias)->get()->each(function ($event) {
             $event->gateway_response = json_decode($event->gateway_response ?? 'null', true);
+            $event->has_raw_diagnostic = (bool) $event->has_raw_diagnostic;
         });
     }
 

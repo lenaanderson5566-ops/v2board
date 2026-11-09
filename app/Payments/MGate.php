@@ -3,6 +3,7 @@
 namespace App\Payments;
 
 use App\Services\PaymentAttemptHistory;
+use App\Services\PaymentGatewayTransport;
 use Curl\Curl;
 
 class MGate
@@ -77,18 +78,12 @@ class MGate
             $curl->setOpt(CURLOPT_CONNECTTIMEOUT, 10);
             $curl->setOpt(CURLOPT_TIMEOUT, 30);
             $diagnostic?->sending($endpoint);
-            $curl->post($endpoint, http_build_query($params));
+            PaymentGatewayTransport::post($curl, $endpoint, http_build_query($params));
             $result = $curl->response;
-            $diagnostic?->received($curl, $result->code ?? null, null, $result->data ?? null, 'MGate');
+            $diagnostic?->received($curl, $result->code ?? null, $result->data->trade_no ?? null, $result->data ?? null);
             if (!$result) abort(500, 'MGate：网络异常');
             if ($curl->error) {
-                $message = is_object($result) && isset($result->message) && is_string($result->message) ? $result->message : '接口请求失败';
-                if (isset($result->errors)) {
-                    foreach ((array) $result->errors as $errors) {
-                        if (is_array($errors) && isset($errors[0]) && is_string($errors[0])) { $message = $errors[0]; break; }
-                    }
-                }
-                abort(500, 'MGate：' . $message);
+                abort(500, 'MGate：接口请求失败');
             }
             $payUrl = $result->data->pay_url ?? null;
             if (empty($result->data->trade_no) || !is_string($payUrl) || !filter_var($payUrl, FILTER_VALIDATE_URL) || !in_array(strtolower(parse_url($payUrl, PHP_URL_SCHEME) ?? ''), ['http', 'https'], true)) {

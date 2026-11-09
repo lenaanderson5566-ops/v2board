@@ -89,7 +89,7 @@ class BTCPay {
         // Do not forward store API credentials to redirect targets.
         $url = rtrim($this->config['btcpay_url'], '/') . '/api/v1/stores/'
             . rawurlencode($this->config['btcpay_storeId']) . '/invoices/' . rawurlencode($id);
-        $response = (new \GuzzleHttp\Client())->get($url, ['headers'=>[
+        $response = \App\Services\PaymentGatewayTransport::guzzle()->get($url, ['headers'=>[
             'Authorization'=>'token '.$this->config['btcpay_api_key'], 'Accept'=>'application/json'],
             'connect_timeout'=>5, 'timeout'=>15, 'allow_redirects'=>false]);
         abort_unless($response->getStatusCode() === 200, 502, 'Invoice verification failed');
@@ -106,10 +106,9 @@ class BTCPay {
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
         curl_setopt($ch, CURLOPT_TIMEOUT, 300);
         curl_setopt($ch, CURLOPT_POSTFIELDS, $params);
-        curl_setopt(
-            $ch, CURLOPT_HTTPHEADER, array('Authorization:' .'token '.$this->config['btcpay_api_key'], 'Content-Type: application/json')
-        );
-        $result = curl_exec($ch);
+        $headers = ['Authorization:token ' . $this->config['btcpay_api_key'], 'Content-Type: application/json'];
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+        $result = \App\Services\PaymentGatewayTransport::executeCurl($ch, $url, $headers, $params);
         curl_close($ch);
         return $result;
     }

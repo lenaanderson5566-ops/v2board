@@ -144,7 +144,7 @@ php tests/console-ui-fixtures.php cleanup
 
 ## 记录与未验证事项
 
-生产构建后可运行 `npm run test:browser`。首次运行先在 `frontend` 目录执行 `npx playwright install chromium`。浏览器读取 `public/console` 的待发布文件，在 390 × 844 的触屏视口中验证跳转付款、返回订单、重复点击保护，以及后台切页时的草稿确认和历史记录。测试拦截全部请求，只提供合成账户、订单和收银台。
+生产构建后可运行 `npm run test:browser`。首次运行先在 `frontend` 目录执行 `npx playwright install chromium`。浏览器读取 `public/console` 的待发布文件，在 390 × 844 的触屏视口中验证跳转付款、返回订单、重复点击保护、后台切页时的草稿确认，以及注册模式保存和账户安全切页。测试拦截全部请求，只使用合成数据。
 
 报告绑定提交/锁及发布资源，说明命令、环境、退出码、实际浏览器/尺寸/语言、合成数据范围、失败/跳过和复验。日志、截图和临时预览保存在忽略的 `storage/app/test-organization/`，不进入发布目录；既往结果通过 Git 与对应 Actions run 查阅。工具连接/审批/沙箱 TEMP 故障、仅准备预览或只跑组件都不能记作视觉通过，修复环境后保留原断言重试并记录范围。
 

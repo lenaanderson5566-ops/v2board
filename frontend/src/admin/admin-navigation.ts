@@ -27,6 +27,14 @@ export const adminWorkspaces = [
         ],
     },
     {
+        root: "registration-settings",
+        label: "账户与注册",
+        tabs: [
+            ["registration-settings", "注册设置"],
+            ["account-settings", "账户安全"],
+        ],
+    },
+    {
         root: "notification-settings",
         label: "通知设置",
         tabs: [
@@ -61,7 +69,7 @@ export const adminWorkspaces = [
             ["invitations?tab=commissions", "佣金审核"],
             ["invitations?tab=reviews", "异常复核"],
             ["invitations?tab=emails", "邀请邮件"],
-            ["invitation-rules", "佣金规则"],
+            ["invitation-rules", "奖励与佣金"],
         ],
     },
     {
@@ -143,6 +151,7 @@ export const settingSections: Record<string, string> = {
     "footer-settings": "footer",
     "notification-settings": "email",
     "telegram-settings": "telegram",
+    "registration-settings": "registration",
     "account-settings": "safe",
     "subscription-settings": "subscribe",
     "ticket-settings": "ticket",

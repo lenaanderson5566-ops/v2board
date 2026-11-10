@@ -19,6 +19,7 @@ vi.mock("../shared/api", async (original) => ({
 }));
 import { AnalyticsCollectionSettings } from "./AnalyticsCollectionSettings";
 import { Settings } from "./admin-settings";
+import { adminEditorField } from "./admin-editor-fields";
 import { TargetStatisticsSettings, AdminTargetStatistics } from "./AdminTargetStatistics";
 import * as sharedUI from "../shared/ui";
 afterEach(() => {
@@ -68,17 +69,61 @@ it("clears the time zone review on revert and requires a new review after changi
     expect((screen.getByRole("checkbox") as HTMLInputElement).checked).toBe(false);
     expect(api.request.mock.calls.some(([path])=>path==="test-admin/config/save")).toBe(false);
 });
-it("retains an unavailable trial plan while saving unrelated site settings", async () => {
+it("retains an unavailable trial plan and paused registration while saving another registration setting", async () => {
     api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("config/fetch")
-        ? { site: { app_name: "Existing", try_out_plan_id: 99 } }
+        ? { site: { stop_register: 1, try_out_plan_id: 99, tos_url: "https://example.test/terms" }, invite: { invite_force: 1 } }
         : path.endsWith("plan/fetch") ? [{ id: 7, name: "Basic" }] : {} }));
-    render(<Settings section="site" />);
-    const plan = await screen.findByRole("combobox", { name: "注册试用" }) as HTMLSelectElement;
+    render(<Settings section="registration" />);
+    const plan = await screen.findByRole("combobox", { name: "试用套餐" }) as HTMLSelectElement;
+    await screen.findByRole("option", { name: "Basic" });
     expect(plan.value).toBe("99");
     expect(plan.selectedOptions[0].textContent).toBe("套餐已删除或不可用 (#99)");
-    fireEvent.change(screen.getByRole("textbox", { name: "站点名称" }), { target: { value: "Updated" } });
+    expect(screen.getByRole("combobox", { name: "注册方式" })).toHaveProperty("value", "paused");
+    fireEvent.change(screen.getByLabelText("服务条款网址"), { target: { value: "https://example.test/new-terms" } });
     fireEvent.submit(plan.closest("form")!);
-    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", { app_name: "Updated" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", { tos_url: "https://example.test/new-terms" }));
+});
+
+it.each([
+    [0, 1, "仅限邮件邀请", "暂停注册", { stop_register: 1 }],
+    [1, 1, "暂停注册", "公开注册", { stop_register: 0, invite_force: 0 }],
+    [1, 0, "暂停注册", "仅限邮件邀请", { stop_register: 0, invite_force: 1 }],
+])("saves the selected registration mode from %s / %s without sending synthetic fields", async (stop, invite, initial, next, expected) => {
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("plan/fetch")) throw new Error("Plan directory offline");
+        return { data: path.endsWith("config/fetch") ? {
+            site: { stop_register: stop },
+            invite: { invite_force: invite, invite_gen_limit: 0 },
+            safe: { email_verify: 1 },
+        } : {} };
+    });
+    render(<sharedUI.EditorFieldContext.Provider value={adminEditorField}>
+        <Settings section="registration" />
+    </sharedUI.EditorFieldContext.Provider>);
+    expect((await screen.findByRole("button", { name: initial })).getAttribute("aria-pressed")).toBe("true");
+    const option = screen.getByRole("button", { name: next });
+    fireEvent.click(option);
+    expect(option.getAttribute("aria-pressed")).toBe("true");
+    expect(Boolean(screen.queryByText(/发送上限为 0 时无法发出新邀请/))).toBe(next === "仅限邮件邀请");
+    expect(screen.getByText(/试用套餐列表加载失败，仍可保存其他注册设置/)).toBeTruthy();
+    expect(api.request.mock.calls.some(([path]) => path.endsWith("config/save"))).toBe(false);
+    fireEvent.submit(option.closest("form")!);
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", expected));
+    expect(api.request.mock.calls.filter(([path]) => path.endsWith("config/save"))).toHaveLength(1);
+});
+
+it("keeps subscription addresses and timed link settings together with a flat save", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("config/fetch") ? {
+        site: { subscribe_url: "https://subscriptions.example.test", subscribe_path: "/custom" },
+        subscribe: { show_subscribe_method: 2, show_subscribe_expire: 5 },
+    } : path.endsWith("server/group/fetch") ? [] : {} }));
+    render(<Settings section="subscribe" />);
+    const address = await screen.findByLabelText("订阅域名");
+    expect(address).toHaveProperty("value", "https://subscriptions.example.test");
+    expect(screen.getByLabelText("限时订阅链接有效时间（分钟）")).toHaveProperty("value", "5");
+    fireEvent.change(address, { target: { value: "https://new.example.test" } });
+    fireEvent.submit(address.closest("form")!);
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/config/save", { subscribe_url: "https://new.example.test" }));
 });
 
 it("keeps ordinary settings saves free of a time zone confirmation",async()=>{

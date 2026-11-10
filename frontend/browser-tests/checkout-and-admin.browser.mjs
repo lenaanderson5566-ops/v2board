@@ -120,3 +120,35 @@ test("mobile admin navigation protects a settings draft and restores the tab on 
     await expect(page).toHaveURL(url);
     await expect(field).toHaveValue("30");
 });
+
+test("mobile registration settings save a pause and keep account security in its own tab", async ({ page, context }) => {
+    const changes = [];
+    const config = { site: { stop_register: 0 }, invite: { invite_force: 1, invite_gen_limit: 5 }, safe: { secure_path: "test-admin" } };
+    await consoleFixture(context, "admin", (path, request) => {
+        if (path === "/api/v1/test-admin/config/fetch") return config;
+        if (path === "/api/v1/test-admin/console/configSchema") return {};
+        if (path === "/api/v1/test-admin/plan/fetch") return [];
+        if (path === "/api/v1/test-admin/config/save" && request.method() === "POST") {
+            const body = request.postDataJSON();
+            changes.push(body);
+            Object.assign(config.site, body);
+            return true;
+        }
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/registration-settings`);
+    const modes = page.getByRole("group", { name: "注册方式" });
+    await expect(modes.getByRole("button", { name: "仅限邮件邀请" })).toHaveAttribute("aria-pressed", "true");
+    const pause = modes.getByRole("button", { name: "暂停注册" });
+    await pause.click();
+    await expect(pause).toHaveAttribute("aria-pressed", "true");
+    const bounds = await pause.boundingBox();
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
+    await page.getByRole("button", { name: "保存", exact: true }).click();
+    await expect.poll(() => changes).toEqual([{ stop_register: 1 }]);
+    await expect(page.getByText("设置已保存")).toBeVisible();
+
+    await page.getByRole("tab", { name: "账户安全" }).click();
+    await expect(page).toHaveURL(`${consoleOrigin}/admin.html#/account-settings`);
+    await expect(page.getByLabel("后台入口路径")).toHaveValue("test-admin");
+    await expect(modes).toHaveCount(0);
+});

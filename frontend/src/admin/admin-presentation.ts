@@ -11,6 +11,7 @@ export function settingsPresentation(group: string, fields: Field[]): Field[] {
                         label: string;
                         hint?: string;
                         placeholder?: string;
+                        section?: string;
                         child: boolean;
                         line?: number;
                     }
@@ -18,9 +19,6 @@ export function settingsPresentation(group: string, fields: Field[]): Field[] {
             >
         )[group] || {};
     return fields
-        .filter(
-            (field) => !(group === "site" && field.key === "currency_symbol"),
-        )
         .map((field) => ({ ...field, ...entries[field.key] }))
         .sort(
             (a, b) =>

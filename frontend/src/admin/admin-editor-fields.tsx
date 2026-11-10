@@ -2,6 +2,7 @@ import { TimeZonePicker } from "../shared/TimeZonePicker";
 import { lazy, Suspense } from "react";
 import { nodeIdentityControl } from "./NodeIdentityFields";
 import { AdminMultiSelect } from "./admin-multiselect";
+import { AdminChoiceGroup } from "./AdminChoices";
 import type { EditorFieldRenderer } from "../shared/ui";
 
 const AdminMarkdown = lazy(() =>
@@ -23,6 +24,15 @@ export const adminEditorField: EditorFieldRenderer = (
 ) => {
     const identity = nodeIdentityControl(field, value, onChange, values);
     if (identity !== undefined) return identity;
+    if (field.key === "registration_mode")
+        return (
+            <AdminChoiceGroup
+                label={field.label}
+                options={(field.options || []).map(([value, label]) => ({ value, label }))}
+                value={String(value)}
+                onChange={onChange}
+            />
+        );
     if (field.key === "system_timezone")
         return (
             <TimeZonePicker

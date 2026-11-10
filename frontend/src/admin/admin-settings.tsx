@@ -55,11 +55,12 @@ function mailTestRequirement(saved: Row, stream: "transactional" | "announcement
 const sectionTitles: Record<string, string> = {
     site: "基础信息",
     footer: "页脚 HTML",
-    safe: "账户与注册",
+    registration: "注册设置",
+    safe: "账户安全",
     browser: "浏览器引导",
     subscribe: "订阅设置",
     server: "节点通讯",
-    invite: "邀请与佣金",
+    invite: "奖励与佣金",
     email: "邮件发送",
     telegram: "Telegram",
     ticket: "工单设置",
@@ -67,11 +68,47 @@ const sectionTitles: Record<string, string> = {
     app: "专用客户端下载",
     entrypoints: "服务入口",
 };
+
+const registrationFields: Record<string, readonly string[]> = {
+    site: ["stop_register", "tos_url", "try_out_plan_id", "try_out_hour"],
+    safe: ["email_verify", "email_whitelist_enable", "email_whitelist_suffix", "email_gmail_limit_enable", "register_limit_by_ip_enable", "register_limit_count", "register_limit_expire"],
+    invite: ["invite_force", "invite_gen_limit"],
+};
+const subscriptionAddressFields = ["subscribe_url", "subscribe_path"];
+const billingFields = ["new_user_currency", "currency", "currency_symbol"];
+const registrationModes: [string, string][] = [
+    ["public", "公开注册"],
+    ["invite", "仅限邮件邀请"],
+    ["paused", "暂停注册"],
+];
+
+function sectionValues(data: Row | null, group: string): Row {
+    if (!data) return {};
+    if (group === "registration") {
+        const fields = Object.fromEntries(Object.entries(registrationFields).flatMap(([source, keys]) =>
+            Object.entries(data[source] || {}).filter(([key]) => keys.includes(key)),
+        ));
+        const { stop_register, invite_force, ...values } = fields;
+        return {
+            ...values,
+            registration_mode: Number(stop_register) ? "paused" : Number(invite_force) ? "invite" : "public",
+        };
+    }
+    if (group === "subscribe") {
+        const address = Object.fromEntries(Object.entries(data.site || {}).filter(([key]) => subscriptionAddressFields.includes(key)));
+        return { ...address, ...data.subscribe };
+    }
+    return Object.fromEntries(Object.entries(data[group === "browser" ? "safe" : group] || {}).filter(([key]) =>
+        !registrationFields[group]?.includes(key) &&
+        (group !== "site" || (!subscriptionAddressFields.includes(key) && !billingFields.includes(key))),
+    ));
+}
+
 export function Settings({ section: group }: { section: string }) {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
     const [saved, setSaved] = useState("");
-    const plans = useData<Row[]>(group === "site" ? admin("plan/fetch") : "");
+    const plans = useData<Row[]>(group === "registration" ? admin("plan/fetch") : "");
     const creditGroups = useData<Row[]>(group === "subscribe" ? admin("server/group/fetch") : "");
     const [saving, setSaving] = useState(false);
     const [dirty, setDirty] = useState(false);
@@ -130,15 +167,15 @@ export function Settings({ section: group }: { section: string }) {
     const [confirmedTimezone, setConfirmedTimezone] = useState("");
     const timezoneInput = useRef<string | undefined>(undefined);
     const timezoneReviewId = useId();
-    const latestSource = d.data?.[group === "browser" ? "safe" : group];
+    const latestSource = sectionValues(d.data, group);
     const editSource = useRef<{ group: string; value: Row } | undefined>(undefined);
     // A background refresh must not replace the baseline of an unsaved form.
     // Saving still sends only fields changed from this editing snapshot.
     if (editSource.current?.group !== group || (!dirty && !saving && !d.loading && !d.error))
-        editSource.current = { group, value: latestSource || {} };
+        editSource.current = { group, value: latestSource };
     const source = editSource.current?.value || {};
     const loadedGroup = useRef<string | undefined>(undefined);
-    if (d.data && schema.data && (group !== "site" || plans.data) && (group !== "subscribe" || creditGroups.data))
+    if (d.data && schema.data && (group !== "subscribe" || creditGroups.data))
         loadedGroup.current = group;
     const raw: Row = Object.fromEntries(
         Object.entries(source).filter(
@@ -171,7 +208,9 @@ export function Settings({ section: group }: { section: string }) {
                     !k.startsWith("fastai_entrypoint"),
             )
             .map(([k, v]) =>
-                k === "landing_style"
+                k === "registration_mode"
+                    ? { key: k, label: "注册方式", type: "select" as const, options: registrationModes, groupedControl: true }
+                    : k === "landing_style"
                     ? {
                           key: k,
                           label: "落地页样式",
@@ -231,7 +270,7 @@ export function Settings({ section: group }: { section: string }) {
                           : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
     ).map((field) => mailCredentialField(field, raw));
-    const savedTimezone = String(latestSource?.system_timezone || raw.system_timezone || "");
+    const savedTimezone = String(latestSource.system_timezone || raw.system_timezone || "");
     const hasTimezoneField = fields.some(field => field.key === "system_timezone");
     const timezoneChangeKey = (value: unknown) => `${group}:${savedTimezone}:${String(value || "")}`;
     function timezoneReview(values: Row) {
@@ -265,23 +304,20 @@ export function Settings({ section: group }: { section: string }) {
                 <section className="admin-settings-content">
                     <State
                         data={loadedGroup.current === group ? true : undefined}
-                        retryAt={Math.max(d.retryAt || 0, schema.retryAt || 0, plans.retryAt || 0, creditGroups.retryAt || 0)}
+                        retryAt={Math.max(d.retryAt || 0, schema.retryAt || 0, creditGroups.retryAt || 0)}
                         loading={
                             d.loading ||
                             schema.loading ||
-                            plans.loading ||
                             creditGroups.loading
                         }
                         error={
                             d.error ||
                             schema.error ||
-                            plans.error ||
                             creditGroups.error
                         }
                         retry={() => {
                             d.reload();
                             schema.reload();
-                            plans.reload();
                             creditGroups.reload();
                         }}
                     >
@@ -341,6 +377,9 @@ export function Settings({ section: group }: { section: string }) {
                                 </p>
                             </div>
                         )}
+                        {group === "invite" && (
+                            <p className="pad muted">注册方式和邮件邀请上限在<a href="#/registration-settings">注册设置</a>中管理。</p>
+                        )}
                         {group !== "entrypoints" && (
                             <Editor
                                 key={group + JSON.stringify(raw)}
@@ -353,7 +392,12 @@ export function Settings({ section: group }: { section: string }) {
                                     setPreviewValues(values);
                                 }}
                                 preview={timezoneReview}
-                                resolveFields={settingsFields}
+                                resolveFields={(available, values) => settingsFields(available, values).map(field => {
+                                    if (field.key === "invite_gen_limit" && values.registration_mode === "invite" && Number(values.invite_gen_limit) === 0) {
+                                        return { ...field, hint: "当前仅限邮件邀请，发送上限为 0 时无法发出新邀请。已发出的有效邀请仍可接受。" };
+                                    }
+                                    return field;
+                                })}
                                 linkValues={linkSettings}
                                 onBusyChange={setSaving}
                                 onDirtyChange={setDirty}
@@ -362,8 +406,15 @@ export function Settings({ section: group }: { section: string }) {
                                     setActionResults({});
                                 }}
                                 validate={validateSettings}
+                                onlyChanged={group === "registration"}
                                 onSave={async (body) => {
-                                    const changes = changedSettings(body, raw);
+                                    const { registration_mode: registrationMode, ...changes } = changedSettings(body, raw);
+                                    if (registrationMode === "paused") {
+                                        changes.stop_register = 1;
+                                    } else if (registrationMode === "public" || registrationMode === "invite") {
+                                        changes.stop_register = 0;
+                                        changes.invite_force = registrationMode === "invite" ? 1 : 0;
+                                    }
                                     if (Object.prototype.hasOwnProperty.call(changes, "system_timezone") && String(changes.system_timezone) !== savedTimezone) {
                                         if (d.loading || d.error) throw new Error(tx("timeZoneChangeReload", { ns: "experience", defaultValue: "Reload the settings successfully before confirming a time zone change." }));
                                         if (confirmedTimezone !== timezoneChangeKey(changes.system_timezone)) throw new Error(tx("timeZoneChangeNeedsConfirm", { ns: "experience", defaultValue: "Review and confirm the time zone change before saving." }));
@@ -390,6 +441,12 @@ export function Settings({ section: group }: { section: string }) {
                                     d.reload();
                                 }}
                             />
+                        )}
+                        {group === "registration" && plans.error && (
+                            <p className="pad muted" role="status">
+                                试用套餐列表加载失败，仍可保存其他注册设置。{" "}
+                                <button type="button" onClick={plans.reload} disabled={plans.loading}>重试加载套餐</button>
+                            </p>
                         )}
                         {group === "browser" && (
                             <AdminBrowserPreview

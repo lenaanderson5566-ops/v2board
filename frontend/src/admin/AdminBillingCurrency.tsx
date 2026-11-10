@@ -5,6 +5,7 @@ import { State, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
 import { AdminSectionHead, AdminOperationNotice, AdminDetails } from "./admin-section";
 import { useAdminOperation } from "./admin-operation";
+import { AdminChoiceGroup } from "./AdminChoices";
 import { parseUsdPrice } from "./billing-price-input";
 import { adminPlanOptions } from "./admin-plan-reference";
 
@@ -20,13 +21,18 @@ const periods = {
 } as const;
 type Period = keyof typeof periods;
 const periodKeys = Object.keys(periods) as Period[];
+const currencies = [
+    { value: "CNY", label: "人民币（CNY）" },
+    { value: "USD", label: "美元（USD）" },
+] as const;
+type Currency = (typeof currencies)[number]["value"];
 type PlanPrices = {
     id: number;
     name: string;
     usd_prices: Partial<Record<Period, number | null>> | null;
 };
 type CurrencySettings = {
-    default_currency: "CNY" | "USD";
+    default_currency: Currency;
     rate: {
         usd_cny_micros: number | null;
         quoted_at: number | null;
@@ -39,27 +45,58 @@ type CurrencySettings = {
 const dateLabel = (timestamp: number | null | undefined) =>
     timestamp ? formatInstant(timestamp) : "—";
 
+function editableUsdPrice(plan: PlanPrices | undefined, key: Period) {
+    const cents = plan?.usd_prices?.[key];
+    return cents == null ? "" : String(cents / 100);
+}
+
 export function AdminBillingCurrency() {
     const data = useData<CurrencySettings>(admin("billing-currency/fetch"));
+    const settings = data.data;
+    const [currencyDraft, setCurrencyDraft] = useState<Currency | null>(null);
+    const [confirmedCurrency, setConfirmedCurrency] = useState<{
+        source: CurrencySettings;
+        value: Currency;
+    } | null>(null);
     const [selectedId, setSelectedId] = useState("");
     const [values, setValues] = useState<Partial<Record<Period, string>>>({});
     const operation = useAdminOperation();
-    const selected = data.data?.plans.find(
+    // Use the successful write while the previous fetch remains on screen.
+    const savedCurrency = confirmedCurrency && confirmedCurrency.source === settings
+        ? confirmedCurrency.value
+        : settings?.default_currency;
+    const currencyDirty = currencyDraft !== null && currencyDraft !== savedCurrency;
+    const selected = settings?.plans.find(
         (plan) => String(plan.id) === selectedId,
     );
-    const rate = data.data?.rate;
+    const pricesDirty = selected && periodKeys.some(
+        (key) => (values[key] ?? "") !== editableUsdPrice(selected, key),
+    );
+    const blocked = operation.busy || data.loading || !!data.error;
+    const rate = settings?.rate;
+
+    function saveCurrency(event: FormEvent) {
+        event.preventDefault();
+        if (!settings || !savedCurrency || !currencyDraft || !currencyDirty || blocked) return;
+        if (!window.confirm(`确认将新用户默认币种从 ${savedCurrency} 改为 ${currencyDraft}？变更仅对之后注册的账户生效。`)) return;
+
+        void operation.run(async () => {
+            await request(admin("config/save"), { new_user_currency: currencyDraft });
+            setConfirmedCurrency({ source: settings, value: currencyDraft });
+            setCurrencyDraft(null);
+            data.reload();
+            return `新用户默认币种已设为 ${currencyDraft}。`;
+        });
+    }
 
     function selectPlan(id: string) {
-        const plan = data.data?.plans.find((item) => String(item.id) === id);
+        if (id === selectedId || blocked) return;
+        if (pricesDirty && !window.confirm("当前套餐的美元价格尚未保存，确认切换套餐？")) return;
+        const plan = settings?.plans.find((item) => String(item.id) === id);
         setSelectedId(id);
         setValues(
             Object.fromEntries(
-                periodKeys.map((key) => [
-                    key,
-                    plan?.usd_prices?.[key] == null
-                        ? ""
-                        : String(plan.usd_prices[key] / 100),
-                ]),
+                periodKeys.map((key) => [key, editableUsdPrice(plan, key)]),
             ),
         );
         operation.clear();
@@ -67,7 +104,7 @@ export function AdminBillingCurrency() {
 
     function savePrices(event: FormEvent) {
         event.preventDefault();
-        if (!selected || data.loading || data.error) return;
+        if (!selected || blocked) return;
         void operation.run(async () => {
             const prices = Object.fromEntries(
                 periodKeys.map((key) => [
@@ -87,7 +124,7 @@ export function AdminBillingCurrency() {
     }
 
     return (
-        <section className="admin-commerce-page">
+        <section className="admin-commerce-page" data-saving={operation.busy || undefined}>
             <AdminSectionHead
                 icon={<Coins size={23} />}
                 title="价格与币种"
@@ -95,13 +132,40 @@ export function AdminBillingCurrency() {
             />
             <AdminOperationNotice notice={operation.notice} />
             <State {...data} retry={data.reload}>
+                {savedCurrency && (
+                    <section className="panel">
+                        <div className="panel-head">
+                            <h2>新用户默认币种</h2>
+                        </div>
+                        <form
+                            className="pad admin-commerce-form"
+                            onSubmit={saveCurrency}
+                            data-unsaved={currencyDirty || undefined}
+                        >
+                            <p className="muted">
+                                当前默认币种为 <strong>{savedCurrency}</strong>。新用户注册时采用此币种，创建账户后币种固定。
+                            </p>
+                            <AdminChoiceGroup
+                                label="新用户默认币种"
+                                options={currencies}
+                                value={currencyDraft ?? savedCurrency}
+                                disabled={blocked}
+                                onChange={(value) => {
+                                    setCurrencyDraft(value === savedCurrency ? null : value);
+                                    operation.clear();
+                                }}
+                            />
+                            <div className="actions">
+                                <button className="primary" disabled={blocked || !currencyDirty}>
+                                    <Save size={16} aria-hidden="true" />
+                                    保存默认币种
+                                </button>
+                            </div>
+                        </form>
+                    </section>
+                )}
                 <div className="admin-metric-grid">
-                    <div className="admin-metric">
-                        <span>新用户默认币种</span>
-                        <strong>{data.data?.default_currency}</strong>
-                        <small>在站点配置中修改</small>
-                    </div>
-                    {data.data?.paid_totals.map((row) => (
+                    {settings?.paid_totals.map((row) => (
                         <div className="admin-metric" key={row.currency}>
                             <span>已确认订单 · {row.currency}</span>
                             <strong>{money(row.amount, row.currency)}</strong>
@@ -144,11 +208,7 @@ export function AdminBillingCurrency() {
                             <div className="actions">
                                 <button
                                     type="button"
-                                    disabled={
-                                        operation.busy ||
-                                        data.loading ||
-                                        !!data.error
-                                    }
+                                    disabled={blocked}
                                     onClick={() =>
                                         void operation.run(async () => {
                                             const result = await request<{
@@ -195,16 +255,13 @@ export function AdminBillingCurrency() {
                             className="pad admin-commerce-form"
                             onSubmit={savePrices}
                             aria-busy={operation.busy}
+                            data-unsaved={pricesDirty || undefined}
                         >
                             <label>
                                 选择套餐
                                 <select
                                     value={selectedId}
-                                    disabled={
-                                        operation.busy ||
-                                        data.loading ||
-                                        !!data.error
-                                    }
+                                    disabled={blocked}
                                     onChange={(event) =>
                                         selectPlan(event.target.value)
                                     }
@@ -223,11 +280,7 @@ export function AdminBillingCurrency() {
                                         金额单位为美元，留空表示该周期不售卖。
                                     </p>
                                     <fieldset
-                                        disabled={
-                                            operation.busy ||
-                                            data.loading ||
-                                            !!data.error
-                                        }
+                                        disabled={blocked}
                                         className="admin-price-fields"
                                     >
                                         <legend className="sr-only">
@@ -258,9 +311,7 @@ export function AdminBillingCurrency() {
                                     <div className="actions">
                                         <button
                                             className="primary"
-                                            disabled={
-                                                operation.busy || data.loading
-                                            }
+                                            disabled={blocked}
                                         >
                                             <Save
                                                 size={16}

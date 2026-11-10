@@ -16,28 +16,29 @@ vi.mock("../shared/api", () => ({
     money: (value: number, currency: string) => `${currency} ${value / 100}`,
 }));
 vi.mock("../shared/timezone", () => ({ formatInstant: () => "2026-10-14" }));
+const settings = {
+    default_currency: "CNY",
+    paid_totals: [{ currency: "CNY", amount: 32800 }],
+    rate: {
+        usd_cny_micros: 7250000,
+        quoted_at: 100,
+        fetched_at: 100,
+        last_error: null,
+    },
+    plans: [
+        {
+            id: 7,
+            name: "Existing plan",
+            usd_prices: { month_price: 500 },
+        },
+    ],
+};
 vi.mock("../shared/ui", () => ({
     useData: () => ({
         loading: false,
         error: "",
         reload: api.reload,
-        data: {
-            default_currency: "CNY",
-            paid_totals: [{ currency: "CNY", amount: 32800 }],
-            rate: {
-                usd_cny_micros: 7250000,
-                quoted_at: 100,
-                fetched_at: 100,
-                last_error: null,
-            },
-            plans: [
-                {
-                    id: 7,
-                    name: "Existing plan",
-                    usd_prices: { month_price: 500 },
-                },
-            ],
-        },
+        data: settings,
     }),
     State: ({ children }: { children: React.ReactNode }) => children,
 }));
@@ -47,7 +48,10 @@ beforeEach(() => {
     vi.clearAllMocks();
     api.request.mockResolvedValue({ data: {} });
 });
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+});
 it("does not restore a stale notice after the view clears an in-flight operation", async () => {
     let resolve!: (message: string) => void;
     const {result}=renderHook(()=>useAdminOperation());
@@ -63,6 +67,8 @@ it("does not restore a stale notice after the view clears an in-flight operation
 
 it("saves only independent USD prices, preserving cents, zero and unavailable periods", async () => {
     render(<AdminBillingCurrency />);
+    const usd = screen.getByRole("button", { name: "美元（USD）" });
+    fireEvent.click(usd);
     fireEvent.change(screen.getByLabelText("选择套餐"), {
         target: { value: "7" },
     });
@@ -91,7 +97,65 @@ it("saves only independent USD prices, preserving cents, zero and unavailable pe
         },
     });
     expect(api.reload).toHaveBeenCalledOnce();
+    expect(usd.getAttribute("aria-pressed")).toBe("true");
+    expect(usd.closest("form")?.getAttribute("data-unsaved")).toBe("true");
 });
+
+it("confirms the default currency change and preserves a separate price draft", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<AdminBillingCurrency />);
+    const save = screen.getByRole<HTMLButtonElement>("button", { name: "保存默认币种" });
+    const plan = screen.getByLabelText<HTMLSelectElement>("选择套餐");
+    expect(save.disabled).toBe(true);
+    expect(screen.getByRole("button", { name: "人民币（CNY）" }).getAttribute("aria-pressed")).toBe("true");
+    fireEvent.change(plan, { target: { value: "7" } });
+    const price = screen.getByLabelText<HTMLInputElement>("月付（USD）");
+    fireEvent.change(price, { target: { value: "6.50" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "美元（USD）" }));
+    expect(save.closest("form")?.getAttribute("data-unsaved")).toBe("true");
+    fireEvent.click(save);
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("从 CNY 改为 USD"));
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("仅对之后注册的账户生效"));
+    expect(api.request).not.toHaveBeenCalled();
+
+    confirm.mockReturnValueOnce(true);
+    fireEvent.click(save);
+    await screen.findByText("新用户默认币种已设为 USD。");
+    expect(api.request).toHaveBeenCalledExactlyOnceWith("config/save", { new_user_currency: "USD" });
+    expect(api.reload).toHaveBeenCalledOnce();
+    expect(save.closest("form")?.hasAttribute("data-unsaved")).toBe(false);
+    expect(save.disabled).toBe(true);
+    expect(price.value).toBe("6.50");
+    expect(price.closest("form")?.getAttribute("data-unsaved")).toBe("true");
+    fireEvent.change(plan, { target: { value: "" } });
+    expect(plan.value).toBe("7");
+    expect(price.value).toBe("6.50");
+});
+
+it("shows the server error and keeps the default currency draft for retry", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    let reject!: (error: Error) => void;
+    api.request.mockImplementationOnce(() => new Promise((_, fail) => { reject = fail; }));
+    render(<AdminBillingCurrency />);
+    const usd = screen.getByRole("button", { name: "美元（USD）" });
+    const save = screen.getByRole<HTMLButtonElement>("button", { name: "保存默认币种" });
+    fireEvent.click(usd);
+    fireEvent.click(save);
+    fireEvent.click(save);
+    expect(save.closest('[data-saving="true"]')).toBeTruthy();
+    expect(api.request).toHaveBeenCalledOnce();
+    expect(screen.getByLabelText<HTMLSelectElement>("选择套餐").disabled).toBe(true);
+    reject(new Error("请先为至少一个在售套餐配置美元价格。"));
+    expect((await screen.findByRole("alert")).textContent).toBe("请先为至少一个在售套餐配置美元价格。");
+    expect(usd.getAttribute("aria-pressed")).toBe("true");
+    expect(save.closest("form")?.getAttribute("data-unsaved")).toBe("true");
+    expect(api.reload).not.toHaveBeenCalled();
+    fireEvent.click(save);
+    await screen.findByText("新用户默认币种已设为 USD。");
+    expect(api.request).toHaveBeenCalledTimes(2);
+});
+
 it("retains the draft on failure and blocks rapid duplicate saves", async () => {
     let reject!: (error: Error) => void;
     api.request.mockImplementation(

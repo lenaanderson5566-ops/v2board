@@ -34,60 +34,6 @@
       "child": false,
       "line": 5715
     },
-    "subscribe_url": {
-      "label": "订阅URL",
-      "hint": "用于订阅所使用，留空则为站点URL。如需多个订阅URL随机获取请使用逗号进行分割。",
-      "placeholder": "请输入订阅URL，末尾不要/。逗号分割支持多域名",
-      "child": false,
-      "line": 5725
-    },
-    "subscribe_path": {
-      "label": "订阅路径",
-      "hint": "留空时使用默认订阅地址 /api/v10/subscriptions/{subscriptionToken}。仅在需要自定义订阅入口时填写以 / 开头的路径，不要填写默认地址或 token 占位符。",
-      "placeholder": "留空使用默认订阅地址",
-      "child": false,
-      "line": 5734
-    },
-    "tos_url": {
-      "label": "用户条款(TOS)URL",
-      "hint": "用于跳转到用户条款(TOS)",
-      "placeholder": "请输入用户条款URL，末尾不要/",
-      "child": false,
-      "line": 5743
-    },
-    "stop_register": {
-      "label": "停止新用户注册",
-      "hint": "开启后任何人都将无法进行注册。",
-      "child": false,
-      "line": 5749
-    },
-    "try_out_plan_id": {
-      "label": "注册试用",
-      "hint": "选择需要试用的订阅，如果没有选项请先前往订阅管理添加。",
-      "placeholder": "请选择试用订阅",
-      "child": false,
-      "line": 5754
-    },
-    "try_out_hour": {
-      "label": "试用时间(小时)",
-      "placeholder": "请输入",
-      "child": true,
-      "line": 5774
-    },
-    "currency": {
-      "label": "当前结算币种",
-      "hint": "历史资金基准为人民币。新用户币种单独设置，余额不会自动转换。",
-      "placeholder": "CNY",
-      "child": false,
-      "line": 5783
-    },
-    "currency_symbol": {
-      "label": "当前货币标注",
-      "hint": "使用明确的 CNY 标注。",
-      "placeholder": "CNY",
-      "child": false,
-      "line": 5792
-    },
     "frontend_theme_sidebar": {
       "label": "边栏风格",
       "child": false,
@@ -97,114 +43,62 @@
       "label": "头部风格",
       "child": false,
       "line": 6198
-    },
-    "new_user_currency": {
-      "label": "新用户默认币种",
-      "hint": "账号创建后币种固定；老用户保留人民币。",
-      "child": false,
-      "line": 0
     }
   },
   "safe": {
-    "email_verify": {
-      "label": "邮箱验证",
-      "hint": "开启后将会强制要求用户进行邮箱验证。",
-      "child": false,
-      "line": 5803
-    },
-    "email_gmail_limit_enable": {
-      "label": "禁止使用Gmail多别名",
-      "hint": "开启后Gmail多别名将无法注册。",
-      "child": false,
-      "line": 5809
-    },
     "safe_mode_enable": {
       "label": "安全模式",
-      "hint": "开启后除了站点URL以外的绑定本站点的域名访问都将会被403。",
+      "hint": "开启后，用户端首页和工作区仅可通过站点网址对应的域名访问。",
       "child": false,
-      "line": 5815
+      "line": 5815,
+      "section": "后台与域名"
     },
     "secure_path": {
-      "label": "后台路径",
-      "hint": "后台管理路径，修改后将会改变原有的admin路径",
+      "label": "后台入口路径",
+      "hint": "修改后，请从新的后台入口登录。",
       "placeholder": "admin",
       "child": false,
       "line": 5824
     },
-    "email_whitelist_enable": {
-      "label": "邮箱后缀白名单",
-      "hint": "开启后在名单中的邮箱后缀才允许进行注册。",
-      "child": false,
-      "line": 5830
-    },
-    "email_whitelist_suffix": {
-      "label": "白名单后缀",
-      "hint": "请使用逗号进行分割，如：qq.com,gmail.com。",
-      "placeholder": "请输入后缀域名，逗号分割 如：qq.com,gmail.com",
-      "child": true,
-      "line": 5841
-    },
-    "register_limit_by_ip_enable": {
-      "label": "IP注册限制",
-      "hint": "开启后如果IP注册账户达到规则要求将会被限制注册，请注意IP判断可能因为CDN或前置代理导致问题。",
-      "child": false,
-      "line": 5873
-    },
-    "register_limit_count": {
-      "label": "次数",
-      "hint": "达到注册次数后开启惩罚。",
-      "placeholder": "请输入",
-      "child": true,
-      "line": 5883
-    },
-    "register_limit_expire": {
-      "label": "惩罚时间(分钟)",
-      "hint": "需要等待惩罚时间过后才可以再次注册。",
-      "placeholder": "请输入",
-      "child": true,
-      "line": 5893
-    },
     "password_limit_enable": {
-      "label": "防爆破限制",
+      "label": "限制登录失败次数",
       "hint": "开启后如果该账户尝试登陆失败次数过多将会被限制。",
       "child": false,
-      "line": 5899
+      "line": 5899,
+      "section": "登录保护"
     },
     "password_limit_count": {
-      "label": "次数",
+      "label": "登录失败次数上限",
       "hint": "达到失败次数后开启惩罚。",
       "placeholder": "请输入",
       "child": true,
       "line": 5909
     },
     "password_limit_expire": {
-      "label": "惩罚时间(分钟)",
+      "label": "登录限制时长（分钟）",
       "hint": "需要等待惩罚时间过后才可以再次登陆。",
       "placeholder": "请输入",
       "child": true,
       "line": 5919
     },
-    "show_subscribe_expire": {
-      "label": "订阅链接有效时间(分钟)",
-      "hint": "订阅链接获取后经过该时间将失效。",
-      "placeholder": "请输入",
-      "child": true,
-      "line": 6026
-    },
     "account_deletion_enable": {
       "label": "允许用户删除账户",
       "hint": "默认关闭。用户需近期完整登录及当前密码确认；余额、佣金或未完成订单须先处理。删除后撤销凭据并匿名化账号，保留必要账务与安全记录。",
-      "child": false
+      "child": false,
+      "section": "账户操作",
+      "line": 5923
     },
     "passkey_enable": {
       "label": "允许 Passkey 登录",
       "hint": "使用设备生物识别、PIN 或安全密钥登录。需 HTTPS 站点 URL 和 Passkey 数据表；账户在安全中心自行绑定，已有 MFA 继续生效。",
-      "child": false
+      "child": false,
+      "line": 5921
     },
     "mfa_enable": {
       "label": "允许用户开启 MFA",
       "hint": "默认关闭。开启后可设置邮件或身份验证器验证；关闭仅停止新增绑定，已有验证和恢复功能继续生效。",
-      "child": false
+      "child": false,
+      "line": 5922
     },
     "browser_policy_wechat": {
       "label": "微信访问策略",
@@ -302,7 +196,7 @@
       "label": "在订阅中展示订阅信息",
       "hint": "开启后将会在用户订阅节点时输出订阅信息。",
       "child": false,
-      "line": 6002
+      "line": 6003
     },
     "show_subscribe_method": {
       "label": "订阅链接生效模式",
@@ -310,6 +204,28 @@
       "placeholder": "请选择",
       "child": false,
       "line": 6007
+    },
+    "subscribe_url": {
+      "label": "订阅域名",
+      "hint": "用于订阅所使用，留空则为站点URL。如需多个订阅URL随机获取请使用逗号进行分割。",
+      "placeholder": "请输入订阅URL，末尾不要/。逗号分割支持多域名",
+      "child": false,
+      "line": 6001,
+      "section": "订阅链接"
+    },
+    "subscribe_path": {
+      "label": "订阅路径",
+      "hint": "留空时使用默认订阅地址 /api/v10/subscriptions/{subscriptionToken}。仅在需要自定义订阅入口时填写以 / 开头的路径，不要填写默认地址或 token 占位符。",
+      "placeholder": "留空使用默认订阅地址",
+      "child": false,
+      "line": 6002
+    },
+    "show_subscribe_expire": {
+      "label": "限时订阅链接有效时间（分钟）",
+      "hint": "订阅链接获取后经过该时间将失效。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 6026
     }
   },
   "deposit": {
@@ -330,31 +246,13 @@
     }
   },
   "invite": {
-    "invite_force": {
-      "label": "开启强制邀请",
-      "hint": "开启后只能使用发送至本人邮箱的专属邀请注册。邀请有效期7天且只能接受一次。",
-      "child": false,
-      "line": 6073
-    },
     "invite_commission": {
       "label": "直推佣金比例（%）",
       "hint": "订单按佣金比例计算后，全部应发佣金归直属邀请人。可在用户管理为邀请人单独设置比例。",
       "placeholder": "请输入",
       "child": false,
-      "line": 6082
-    },
-    "invite_gen_limit": {
-      "label": "待接受邮件邀请上限",
-      "hint": "每位用户同时有效且尚未接受的邮件邀请上限，0表示禁止发送。另有每天20次发送及同一邮箱60秒重发限制。",
-      "placeholder": "请输入",
-      "child": false,
-      "line": 6090
-    },
-    "invite_never_expire": {
-      "label": "邀请码永不失效",
-      "hint": "开启后邀请码被使用后将不会失效，否则使用过后即失效。",
-      "child": false,
-      "line": 6096
+      "line": 6082,
+      "section": "直推佣金"
     },
     "commission_first_time_enable": {
       "label": "佣金仅首次发放",
@@ -386,14 +284,16 @@
       "label": "关闭提现",
       "hint": "关闭后将禁止用户申请提现，且邀请佣金将会直接进入用户余额。",
       "child": false,
-      "line": 6133
+      "line": 6110,
+      "section": "提现"
     },
     "invite_registration_gb": {
       "label": "受邀注册奖励（GiB）",
       "hint": "留空或 0 关闭；仅适用于新邮件受邀注册。需先配置额度基础权限组。首次使用奖励按注册时规则保留，每人仅一次。",
       "placeholder": "0",
       "child": false,
-      "line": 999
+      "line": 999,
+      "section": "邀请奖励"
     },
     "invite_credit_months": {
       "child": false,
@@ -795,6 +695,90 @@
       "placeholder": "https://xxxx.com/xxx.apk",
       "child": false,
       "line": 6495
+    }
+  },
+  "registration": {
+    "registration_mode": {
+      "label": "注册方式",
+      "hint": "公开注册也可接受邮件邀请。暂停注册会停止新用户注册和发送新邀请，已有用户仍可登录及找回密码。",
+      "child": false,
+      "line": 0
+    },
+    "email_verify": {
+      "label": "注册邮箱验证",
+      "hint": "开启后，新用户需输入邮箱验证码，受邀注册也需验证。",
+      "child": false,
+      "line": 10,
+      "section": "邮箱验证与注册限制"
+    },
+    "email_whitelist_enable": {
+      "label": "限制可注册的邮箱域名",
+      "hint": "仅允许名单中的邮箱域名注册或接收邀请。",
+      "child": false,
+      "line": 11
+    },
+    "email_whitelist_suffix": {
+      "label": "允许的邮箱域名",
+      "hint": "请使用逗号进行分割，如：qq.com,gmail.com。",
+      "placeholder": "请输入后缀域名，逗号分割 如：qq.com,gmail.com",
+      "child": true,
+      "line": 12
+    },
+    "email_gmail_limit_enable": {
+      "label": "限制 Gmail 别名注册",
+      "hint": "限制使用点号或加号变体的 Gmail 地址注册。",
+      "child": false,
+      "line": 13
+    },
+    "register_limit_by_ip_enable": {
+      "label": "限制同一 IP 注册",
+      "hint": "开启后如果IP注册账户达到规则要求将会被限制注册，请注意IP判断可能因为CDN或前置代理导致问题。",
+      "child": false,
+      "line": 14
+    },
+    "register_limit_count": {
+      "label": "同一 IP 注册次数上限",
+      "hint": "达到注册次数后开启惩罚。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 15
+    },
+    "register_limit_expire": {
+      "label": "注册限制时长（分钟）",
+      "hint": "需要等待惩罚时间过后才可以再次注册。",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 16
+    },
+    "invite_gen_limit": {
+      "label": "待接受邮件邀请上限",
+      "hint": "每位用户同时可保留的有效待接受邀请数，0 表示停止发送。邀请有效期为 7 天；发送依赖站点网址和事务邮件通道。",
+      "placeholder": "请输入",
+      "child": false,
+      "line": 20,
+      "section": "邮件邀请"
+    },
+    "tos_url": {
+      "label": "服务条款网址",
+      "hint": "在用户注册页显示服务条款链接。",
+      "placeholder": "请输入用户条款URL，末尾不要/",
+      "child": false,
+      "line": 30,
+      "section": "注册页面"
+    },
+    "try_out_plan_id": {
+      "label": "试用套餐",
+      "hint": "新用户注册成功后获得该试用套餐。选择「不指定套餐」可关闭试用。",
+      "placeholder": "请选择试用订阅",
+      "child": false,
+      "line": 40,
+      "section": "注册试用"
+    },
+    "try_out_hour": {
+      "label": "试用时长（小时）",
+      "placeholder": "请输入",
+      "child": true,
+      "line": 41
     }
   }
 }

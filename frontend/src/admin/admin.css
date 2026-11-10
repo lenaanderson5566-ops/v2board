@@ -497,11 +497,11 @@ body[data-console="admin"] .modal .field-grid {
     grid-template-columns: 1fr;
     gap: 20px;
 }
-body[data-console="admin"] .field-grid > label {
+body[data-console="admin"] .field-grid > :is(label, .field-group-row) {
     font-size: 14px;
     color: var(--admin-text);
 }
-body[data-console="admin"] .field-grid > label > small {
+body[data-console="admin"] .field-grid > :is(label, .field-group-row) > small {
     font-size: 12px;
 }
 body[data-console="admin"] .form-bottom {
@@ -521,7 +521,7 @@ body[data-console="admin"] .settings-panel .editor {
 body[data-console="admin"] .settings-panel .field-grid {
     display: block;
 }
-body[data-console="admin"] .settings-panel .field-grid > label {
+body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) {
     display: grid;
     grid-template-columns: minmax(180px, 35%) 1fr;
     padding: 20px 24px;
@@ -533,14 +533,14 @@ body[data-console="admin"] .settings-panel .field-grid > label > .input-control 
     min-width: 0;
     align-self: stretch;
 }
-body[data-console="admin"] .settings-panel .field-grid > label > small {
+body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) > small {
     grid-column: 1;
     grid-row: 2;
 }
 body[data-console="admin"]
     .settings-panel
     .field-grid
-    > label
+    > :is(label, .field-group-row)
     > :not(span):not(small) {
     grid-column: 2;
     grid-row: 1/3;
@@ -917,9 +917,13 @@ body[data-console="admin"] .alert {
         display: flex;
         padding: 16px;
     }
-    body[data-console="admin"] .settings-panel .field-grid > label {
+    body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) {
         display: flex;
         padding: 16px;
+    }
+    body[data-console="admin"] .settings-panel .field-group-row {
+        flex-direction: column;
+        gap: 8px;
     }
     body[data-console="admin"] .overlay.admin-wide-drawer .modal {
         width: 100vw;

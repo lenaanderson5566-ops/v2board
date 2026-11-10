@@ -25,6 +25,7 @@ export interface Field {
     section?: string;
     unit?: string;
     child?: boolean;
+    groupedControl?: boolean;
     suggestions?: string[];
     key: string;
     label: string;
@@ -367,12 +368,15 @@ export function Editor({
                         (next) => updateValue(f.key, next),
                         value,
                     );
+                    const groupedControl = f.groupedControl && extension !== undefined;
+                    const FieldRow = groupedControl ? "div" : "label";
+                    const wideField = f.type === "textarea" || f.type === "json" || f.type === "multiselect";
                     return (
                         <Fragment key={f.key}>
                             {f.section && (
                                 <div className="field-section">{f.section}</div>
                             )}
-                            <label
+                            <FieldRow
                                 style={
                                     boot.mode === "admin"
                                         ? {
@@ -385,13 +389,7 @@ export function Editor({
                                     invalidField === f.key || undefined
                                 }
                                 data-child={f.child || undefined}
-                                className={
-                                    f.type === "textarea" ||
-                                    f.type === "json" ||
-                                    f.type === "multiselect"
-                                        ? "wide"
-                                        : ""
-                                }
+                                className={groupedControl ? "field-group-row" : wideField ? "wide" : ""}
                                 key={f.key}
                             >
                                 <span>
@@ -677,7 +675,7 @@ export function Editor({
                                         {error}
                                     </small>
                                 )}
-                            </label>
+                            </FieldRow>
                         </Fragment>
                     );
                 })}

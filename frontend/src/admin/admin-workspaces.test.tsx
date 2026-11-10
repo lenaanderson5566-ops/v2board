@@ -1439,7 +1439,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/journey") || path.includes("view=conversion"))).toBe(false);
 });
 
-it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist","node-forwarding","server-lightsail"])("opens relocated route %s directly", async current => {
+it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","registration-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist","node-forwarding","server-lightsail"])("opens relocated route %s directly", async current => {
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
     const view=render(<AdminContent route={current}/>);
@@ -1502,7 +1502,7 @@ it("switches financial currency without mixing amounts or requesting legacy tren
 });
 
 
-it.each(["email", "browser", "safe", "server", "footer", "app", "invite", "deposit", "telegram", "ticket", "entrypoints"])("does not fetch unrelated plan and group options for %s settings", async section => {
+it.each(["site", "email", "browser", "safe", "server", "footer", "app", "invite", "deposit", "telegram", "ticket", "entrypoints"])("does not fetch unrelated plan and group options for %s settings", async section => {
     const { Settings } = await import("./admin-settings");
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));
@@ -1516,6 +1516,8 @@ it("shows direct referral commission and omits retired multi-level settings from
     api.request.mockImplementation(async (path: string) => {
         if (path.endsWith("config/fetch")) {
             return { data: { invite: {
+                invite_force: 1,
+                invite_gen_limit: 5,
                 invite_commission: 10,
                 commission_distribution_enable: 1,
                 commission_distribution_l1: 80,
@@ -1527,6 +1529,9 @@ it("shows direct referral commission and omits retired multi-level settings from
     });
     const view = render(<Settings section="invite" />);
     const rate = await screen.findByRole("spinbutton", { name: /^直推佣金比例/ });
+    expect(screen.getByRole("link", { name: "注册设置" }).getAttribute("href")).toBe("#/registration-settings");
+    expect(screen.queryByLabelText("开启强制邀请")).toBeNull();
+    expect(screen.queryByLabelText("待接受邮件邀请上限")).toBeNull();
     expect(screen.getByText("订单按佣金比例计算后，全部应发佣金归直属邀请人。可在用户管理为邀请人单独设置比例。")).toBeTruthy();
     expect(view.container.querySelector('[data-field^="commission_distribution_"]')).toBeNull();
     fireEvent.change(rate, { target: { value: "12" } });

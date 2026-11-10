@@ -36,7 +36,9 @@ vi.mock("../shared/api", async (importOriginal) => ({
 }));
 import { Infrastructure } from "./Infrastructure";
 import { AdminDDNS } from "./AdminDDNS";
-import { Nodes, ResourcePage, resources } from "./admin";
+import { ResourcePage } from "./admin";
+import { Nodes } from "./admin-nodes";
+import { resources } from "./admin-resources";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDnsObservation } from "./NodeDnsObservation";
 import { NodeDeployment } from "./NodeDeployment";

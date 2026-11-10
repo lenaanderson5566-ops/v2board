@@ -1,5 +1,7 @@
 {
   "translation": {
+    "暂时无法确认工单创建权限，请重试。已有工单仍可查看。": "Impossible de vérifier les droits de création d’une demande d’assistance. Réessayez. Les demandes existantes restent accessibles.",
+    "刷新回复": "Actualiser les réponses",
     "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "Le quota du forfait était épuisé lors de cette requête. Vérifiez votre forfait ou ajoutez des données, puis actualisez la configuration.",
     "此次请求时独立额度已过期，请购买有效额度后更新配置。": "Les données indépendantes avaient expiré lors de cette requête. Achetez des données valides, puis actualisez la configuration.",
     "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "Les données indépendantes étaient épuisées lors de cette requête. Achetez des données ou un forfait, puis actualisez la configuration.",
@@ -787,6 +789,9 @@
     "resetFailed": "Réinitialisation en attente de nouvelle tentative : {{date}}"
   },
   "experience": {
+    "authorizationSwitchAccount": "Utiliser un autre compte",
+    "authorizationSwitching": "Déconnexion…",
+    "authorizationSwitchFailed": "La déconnexion n’a pas pu être confirmée. Vérifiez votre connexion et réessayez. Le compte n’a pas été changé.",
     "adminRefreshing": "Mise à jour ; affichant les données précédemment chargées…",
     "adminStale": "La mise à jour a échoué. Les données précédemment chargées sont affichées ci-dessous.",
     "adminUnsaved": "Modifications non enregistrées",
@@ -968,6 +973,7 @@
     "version": "Version minimale : {{version}}. Mettez d'abord à jour votre client."
   },
   "clientDownload": {
+    "macCompatibility": "Avant l’installation, vérifiez les exigences du système et de la puce sur la page officielle de téléchargement.",
     "title": "Télécharger le client",
     "official": "Téléchargement officiel",
     "mirror": "Téléchargement miroir",

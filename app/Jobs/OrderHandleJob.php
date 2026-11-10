@@ -5,18 +5,27 @@ namespace App\Jobs;
 use App\Models\Order;
 use App\Services\OrderService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-class OrderHandleJob implements ShouldQueue
+class OrderHandleJob implements ShouldQueue, ShouldBeUnique
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+    public const PENDING_EXPIRY_SECONDS = 2 * 3600;
     protected $tradeNo;
 
     public $tries = 3;
     public $timeout = 5;
+    // Bound recovery time if a queued job is lost before the worker can release the lock.
+    public $uniqueFor = 300;
+
+    public function uniqueId(): string
+    {
+        return (string) $this->tradeNo;
+    }
     /**
      * Create a new job instance.
      *
@@ -43,7 +52,7 @@ class OrderHandleJob implements ShouldQueue
         $orderService = new OrderService($order);
         switch ($order->status) {
             case 0:
-                if ($order->created_at <= (time() - 3600 * 2)) {
+                if ($order->created_at <= (time() - self::PENDING_EXPIRY_SECONDS)) {
                     $orderService->cancel();
                 }
                 break;

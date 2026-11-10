@@ -5,7 +5,7 @@ import { useTranslation } from "react-i18next";
 import { ArrowRight, ArrowUpRight, ChevronDown, Download, Globe, KeyRound, ShieldAlert } from "lucide-react";
 import { boot } from "../shared/api";
 import { Modal } from "../shared/ui";
-import { clients, type ClientId } from "../shared/import-links";
+import { clients, supportedClients, type ClientId } from "../shared/import-links";
 import type { Device } from "../shared/user-experience";
 export const iosDownloads: Partial<Record<ClientId, string>> = {
     shadowrocket: "https://apps.apple.com/app/id932747118",
@@ -15,6 +15,22 @@ export const iosDownloads: Partial<Record<ClientId, string>> = {
     stash: "https://apps.apple.com/app/id1596063349",
     surge: "https://nssurge.com/",
 };
+export function officialClientDownload(client: ClientId, device: Device): string | undefined {
+    if (!supportedClients(device).some(item => item.id === client)) return;
+    if (client === "singbox")
+        return `https://sing-box.sagernet.org/clients/${device === "windows" || device === "linux" ? "desktop/" : device === "ios" || device === "macos" ? "apple/" : device === "android" ? "android/" : ""}`;
+    if (device === "ios") return iosDownloads[client];
+    if (device === "macos") {
+        if (client === "shadowrocket") return iosDownloads.shadowrocket;
+        if (client === "surge") return "https://nssurge.com/";
+        if (client === "stash") return "https://stash.ws/macos";
+    }
+    return ({
+        cmfa: "https://github.com/MetaCubeX/ClashMetaForAndroid/releases",
+        flclash: "https://github.com/chen08209/FlClash/releases",
+        clash: "https://github.com/clash-verge-rev/clash-verge-rev/releases",
+    } as Partial<Record<ClientId, string>>)[client];
+}
 export function safeDownloadUrl(value?: string): string | undefined {
     try {
         const url = new URL(value || "");
@@ -43,7 +59,7 @@ export function ClientDownload({
 }: {
     client: ClientId;
     device: Device;
-    official: string;
+    official?: string;
     close: () => void;
 }) {
     const { t } = useTranslation("clientDownload");
@@ -83,6 +99,11 @@ export function ClientDownload({
                         defaultValue: "Install the client, then return here to import your subscription.",
                     })}
                 </p>
+                {device === "macos" && <p className="muted">
+                    {t("macCompatibility", {
+                        defaultValue: "Check the system and chip requirements on the official download page before installing.",
+                    })}
+                </p>}
                 {officialUrl ? (
                     <a
                         className="download-source"

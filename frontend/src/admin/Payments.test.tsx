@@ -12,7 +12,7 @@ vi.mock("../shared/api", async (importOriginal) => ({
     request: api.request,
     readRequest: api.request,
 }));
-import { Payments } from "./admin";
+import { Payments } from "./admin-payments";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
@@ -28,7 +28,9 @@ it("opens the selected channel's failure records and links to the affected order
     });
 
     render(<Payments />);
-    fireEvent.click(await screen.findByRole("button", { name: "查看 WeChat 的支付诊断" }));
+    const diagnostics = await screen.findByRole("button", { name: "查看 WeChat 的支付诊断" });
+    expect(diagnostics.textContent).toBe("查看诊断 · 1 笔");
+    fireEvent.click(diagnostics);
     expect((await screen.findByRole("link", { name: "fixture-order" })).getAttribute("href")).toBe("#/orders?trade_no=fixture-order");
     expect(api.request.mock.calls.some(([path]) => path.includes("payment/diagnostics/"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "查看原始诊断" }));
@@ -89,11 +91,19 @@ it("keeps the disabled state and displays activation errors", async () => {
 it("has one enable control and prevents duplicate deletion while showing errors inline", async () => {
     let reject!: (reason: Error) => void;
     api.request.mockImplementation((path: string) => path.endsWith("/drop") ? new Promise((_, fail) => {reject = fail;}) : Promise.resolve({data:path.endsWith("getPaymentMethods") ? ["Stripe"] : [{id:1,name:"Card",payment:"Stripe",enable:1}]}));
-    const confirm = vi.spyOn(window,"confirm").mockReturnValue(true);
+    const confirm = vi.spyOn(window,"confirm").mockReturnValue(false);
     try {
         render(<Payments/>);
-        const button = await screen.findByRole("button",{name:"删除"});
+        const more = await screen.findByRole("button", { name: "更多操作" });
+        expect(screen.queryByRole("button", { name: "删除" })).toBeNull();
         expect(screen.queryByRole("button",{name:"切换启用"})).toBeNull();
+        fireEvent.click(more);
+        const button = screen.getByRole("button", { name: "删除" });
+        fireEvent.click(button);
+        expect(confirm).toHaveBeenCalledWith("确认删除支付方式「Card」？");
+        expect(api.request.mock.calls.some(([p]) => p.endsWith("/drop"))).toBe(false);
+        confirm.mockReturnValue(true);
+        fireEvent.click(more);
         fireEvent.click(button);fireEvent.click(button);
         expect(api.request.mock.calls.filter(([p]) => p.endsWith("/drop"))).toHaveLength(1);
         reject(new Error("操作失败"));
@@ -142,6 +152,7 @@ it("retains channels during a failed refresh, disables stale writes and recovers
     fireEvent.click(screen.getByRole("button", { name: "刷新" }));
     await screen.findByText("渠道刷新失败");
     expect(screen.getByText("Existing card")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     for (const name of ["编辑", "删除", "添加支付方式"])
         expect((screen.getByRole("button", { name }) as HTMLButtonElement).disabled).toBe(true);
     expect((screen.getByRole("switch") as HTMLButtonElement).disabled).toBe(true);

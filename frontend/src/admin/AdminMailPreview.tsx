@@ -1,5 +1,5 @@
 import { languages as languageOptions } from "../shared/language-options";
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import "./admin-mail.css";
 import { admin, request } from "../shared/api";
 export const mailLanguages = Object.fromEntries(
@@ -28,18 +28,25 @@ export function AdminMailPreview({
 }) {
     const [language, setLanguage] = useState("zh-CN");
     const [template, setTemplate] = useState("verify");
-    const [preview, setPreview] = useState<{
+    type Preview = {
         subject: string;
         html: string;
         text: string;
-    }>();
-    const [busy, setBusy] = useState(false);
-    const [error, setError] = useState("");
-    const [plain, setPlain] = useState(false);
+    };
     const custom = subject !== undefined;
-    useEffect(() => {
-        setPreview(undefined);
-    }, [subject, content, fixedLanguage]);
+    const selectedTemplate = custom ? "notify" : template;
+    const selectedLanguage = fixedLanguage || language;
+    const input = useMemo(() => ({
+        template: selectedTemplate,
+        language: selectedLanguage,
+        subject,
+        content,
+    }), [selectedTemplate, selectedLanguage, subject, content]);
+    const [result, setResult] = useState<{ input: typeof input; preview?: Preview; error?: string }>();
+    // A slow response belongs to the selection that initiated it.
+    const { preview, error } = result?.input === input ? result : {};
+    const [busy, setBusy] = useState(false);
+    const [plain, setPlain] = useState(false);
     return (
         <section className="mail-preview">
             <h3>邮件预览</h3>
@@ -52,10 +59,7 @@ export function AdminMailPreview({
                         邮件类型{" "}
                         <select
                             value={template}
-                            onChange={(e) => {
-                                setTemplate(e.target.value);
-                                setPreview(undefined);
-                            }}
+                            onChange={(e) => setTemplate(e.target.value)}
                         >
                             {Object.entries(templates).map(([value, label]) => (
                                 <option key={value} value={value}>
@@ -70,10 +74,7 @@ export function AdminMailPreview({
                         邮件语言{" "}
                         <select
                             value={language}
-                            onChange={(e) => {
-                                setLanguage(e.target.value);
-                                setPreview(undefined);
-                            }}
+                            onChange={(e) => setLanguage(e.target.value)}
                         >
                             {Object.entries(mailLanguages).map(
                                 ([value, label]) => (
@@ -90,22 +91,12 @@ export function AdminMailPreview({
                     disabled={busy}
                     onClick={async () => {
                         setBusy(true);
-                        setError("");
-                        setPreview(undefined);
+                        setResult(undefined);
                         try {
-                            const result = await request<{
-                                subject: string;
-                                html: string;
-                                text: string;
-                            }>(admin("config/previewMail"), {
-                                template: custom ? "notify" : template,
-                                language: fixedLanguage || language,
-                                subject,
-                                content,
-                            });
-                            setPreview(result.data);
+                            const response = await request<Preview>(admin("config/previewMail"), input);
+                            setResult({ input, preview: response.data });
                         } catch (e) {
-                            setError((e as Error).message);
+                            setResult({ input, error: (e as Error).message });
                         } finally {
                             setBusy(false);
                         }

@@ -12,12 +12,12 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { boot, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
-import { adminWorkspace } from "./admin-navigation";
+import { adminRoot, adminSubpages } from "./admin-navigation";
 import { AdminDisplayTimeZoneDialog, useAdminDisplayTimeZone } from "./AdminDisplayTimeZone";
 import "./admin-shell-experience.css";
 
 // Stable menu order and canonical navigation; styling is owned by admin.css.
-export const legacyAdminMenu = [
+export const adminMenu = [
     ["overview", "仪表盘", "speedometer", "概览"],
     ["users", "用户管理", "users", "用户与支持"],
     ["online", "在线用户", "users", "用户与支持"],
@@ -38,7 +38,6 @@ export const legacyAdminMenu = [
     ["routes", "路由管理", "shuffle", "节点与接入"],
     ["client-downloads", "专用客户端下载", "screen-smartphone", "客户端"],
     ["clients", "客户端访问与接入", "shield", "客户端"],
-    ["client-releases", "第三方客户端", "screen-smartphone", "客户端"],
     ["account-settings", "账户与注册", "shield", "安全与风控"],
     ["risk", "风控规则", "shield", "安全与风控"],
     ["access-blacklist", "订阅访问黑名单", "ban", "安全与风控"],
@@ -74,6 +73,7 @@ export function AdminShell({
     const timeZoneOpening = useRef(false);
     const accountTrigger = useRef<HTMLButtonElement>(null);
     const mobileToggle = useRef<HTMLButtonElement>(null);
+    const closeNavigation = useRef<HTMLButtonElement>(null);
     const sidebar = useRef<HTMLElement>(null);
     const searchInput = useRef<HTMLInputElement>(null);
     const currentPage = useRef(page);
@@ -119,7 +119,7 @@ export function AdminShell({
         const previousOverflow = document.body.style.overflow;
         const openedPage = page;
         document.body.style.overflow = "hidden";
-        searchInput.current?.focus();
+        closeNavigation.current?.focus();
         const trap = (event: KeyboardEvent) => {
             if (event.key !== "Tab") return;
             const targets = Array.from(
@@ -159,46 +159,12 @@ export function AdminShell({
             document.removeEventListener("keydown", escape);
         };
     }, []);
-    const rootTitle =
-        legacyAdminMenu.find(
-            ([key]) =>
-                key ===
-                ([
-                    "overview-risk",
-                    "overview-analytics",
-                    "overview-system",
-                ].includes(current)
-                    ? "overview"
-                    : current),
-        )?.[1] ||
-        (
-            {
-                system: "系统状态",
-                operations: "运营概览",
-                clients: "访问与版本策略",
-                translations: "套餐翻译",
-                security: "管理员账户安全",
-                ddns: "动态域名",
-            } as Record<string, string>
-        )[current] ||
-        "页面未找到";
-    const group = legacyAdminMenu.find(([key]) => key === current)?.[3];
-    const tab = adminWorkspace(page)?.tabs.find(
-        ([route]) => route === page,
-    )?.[1];
-    const title =
-        page !== current
-            ? tab ||
-              (
-                  {
-                      "overview-risk": "风控概览",
-                      "overview-analytics": "经营分析",
-                      "overview-system": "系统状态",
-                      "plans-translations": "套餐翻译",
-                  } as Record<string, string>
-              )[page] ||
-              rootTitle
-            : rootTitle;
+    const root = adminRoot(current);
+    const menuEntry = adminMenu.find(([key]) => key === root);
+    const rootTitle = menuEntry?.[1] ?? (root === "security" ? "管理员账户安全" : "页面未找到");
+    const group = menuEntry?.[3];
+    const tab = adminSubpages(root).find(([route]) => route === page)?.[1];
+    const title = page !== root ? tab || rootTitle : rootTitle;
     const previousPage = useRef(page);
     const initialTitle = useRef(document.title);
     useEffect(() => {
@@ -216,27 +182,31 @@ export function AdminShell({
         [],
     );
     const term = search.trim().toLocaleLowerCase();
-    const navigation = legacyAdminMenu.flatMap(([key, label, icon, group]) => {
+    const activeLink = term ? page : root;
+    const navigation = adminMenu.flatMap(([key, label, icon, group]) => {
+        const subpages = adminSubpages(key);
         const entry = {
             key: String(key),
             label: String(label),
             icon,
             group,
             parent: "",
+            alias: subpages.find(([route]) => route === key)?.[1] || "",
         };
         if (!term) return [entry];
         return [
             entry,
-            ...(adminWorkspace(key)
-                ?.tabs.filter(([route]) => route !== key)
+            ...subpages
+                .filter(([route]) => route !== key)
                 .map(([route, child]) => ({
                     ...entry,
                     key: route,
                     label: child,
                     parent: label,
-                })) || []),
+                    alias: "",
+                })),
         ].filter((item) =>
-            `${item.label} ${item.parent} ${item.group} ${item.key}`
+            `${item.label} ${item.alias} ${item.parent} ${item.group} ${item.key}`
                 .toLocaleLowerCase()
                 .includes(term),
         );
@@ -303,6 +273,7 @@ export function AdminShell({
                         </a>
                         <button
                             className="admin-mobile-toggle"
+                            ref={closeNavigation}
                             aria-label="关闭导航"
                             onClick={() => setOpen(false)}
                         >
@@ -347,20 +318,8 @@ export function AdminShell({
                                             </div>
                                         )}
                                     <a
-                                        className={`nav-main-link ${parent ? "is-subpage " : ""}${(term ? page : ["overview-risk", "overview-analytics", "overview-system"].includes(current) ? "overview" : current) === key ? "active" : ""}`}
-                                        aria-current={
-                                            (term
-                                                ? page
-                                                : [
-                                                        "overview-risk",
-                                                        "overview-analytics",
-                                                        "overview-system",
-                                                    ].includes(current)
-                                                  ? "overview"
-                                                  : current) === key
-                                                ? "page"
-                                                : undefined
-                                        }
+                                        className={`nav-main-link ${parent ? "is-subpage " : ""}${activeLink === key ? "active" : ""}`}
+                                        aria-current={activeLink === key ? "page" : undefined}
                                         href={`#/${key}`}
                                         onClick={() => {
                                             if (page === key) setOpen(false);

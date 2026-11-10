@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AdminTabs } from "./AdminChoices";
 import "./admin-management.css";
 import { AnalyticsCollectionSettings } from "./AnalyticsCollectionSettings";
@@ -55,19 +55,14 @@ const retentionFields = [
     ],
     ["ddns_log_retention_days", "DDNS 日志", 1, "默认 30 天。"],
 ] as const;
-export function AdminLogSettings() {
-    const initial = new URLSearchParams(window.location.hash.split("?")[1]).get(
-        "tab",
-    );
-    const [tab, setTab] = useState(
-        initial === "analytics" || initial === "targets"
-            ? initial
-            : "retention",
-    );
+export function AdminLogSettings({ route }: { route: string }) {
+    const requested = new URLSearchParams(route.split("?")[1]).get("tab");
+    const tab = requested === "analytics" || requested === "targets" ? requested : "retention";
     const [dirty, setDirty] = useState(false);
     const [busy, setBusy] = useState(false);
+    useEffect(() => setDirty(false), [tab]);
     return (
-        <div className="admin-management-page">
+        <div className="admin-management-page" data-unsaved={dirty || undefined} data-saving={busy || undefined}>
             <Panel padded title="日志与保留策略">
                 <p className="muted">
                     按数据类型管理采集和保留时间。缩短保留期会永久清理过期数据。
@@ -77,16 +72,8 @@ export function AdminLogSettings() {
                 label="日志策略分类"
                 value={tab}
                 onChange={(next) => {
-                    if (
-                        busy ||
-                        (dirty &&
-                            !window.confirm(
-                                "当前分类有未保存的修改，确认放弃并切换？",
-                            ))
-                    )
-                        return;
-                    setDirty(false);
-                    setTab(next);
+                    if (busy) return;
+                    window.location.hash = next === "retention" ? "/log-settings" : `/log-settings?tab=${next}`;
                 }}
                 options={[
                     { value: "retention", label: "日志保留", disabled: busy },

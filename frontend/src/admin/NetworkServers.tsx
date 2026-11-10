@@ -34,6 +34,7 @@ export function NetworkServers({
     }
 
     const budgets = useData<Row[]>(admin("server/traffic-budget/fetch"));
+    const budgetsReady = !budgets.loading && !budgets.error && Array.isArray(budgets.data);
     const budgetMap = useMemo(() => {
         const result = new Map<number, Row>(),
             owners = new Map<string, number>(),
@@ -76,19 +77,26 @@ export function NetworkServers({
     );
     function editServer(server: Row) {
         setCommand("");
-        if (budgets.loading || budgets.error) {
-            setError("请先成功加载流量额度后再编辑服务器");
-            return false;
-        }
+        setBudgetDraftLoaded(budgetsReady);
         setServerDirty(false);setDetailDirty(false);setDetailBusy(false);
         setEditing({ ...server, ...trafficDraft(budgetFor(server.id)) });
-        return true;
     }
 
     const roots: Row[] = (data.credentials || []).filter(
         (a: Row) => a.root_domain,
     );
     const [editing, setEditing] = useState<Row | null>(null);
+    const [budgetDraftLoaded, setBudgetDraftLoaded] = useState(false);
+    const editingId = editing?.id;
+    const canSaveConfig = budgetsReady && (!editingId || budgetDraftLoaded);
+    useEffect(() => {
+        if (!editingId || budgetDraftLoaded || !budgetsReady) return;
+        // A successful retry seeds the quota draft before the full save is enabled.
+        setEditing(current => current?.id === editingId
+            ? { ...current, ...trafficDraft(budgetMap.get(Number(editingId))) }
+            : current);
+        setBudgetDraftLoaded(true);
+    }, [editingId, budgetDraftLoaded, budgetsReady, budgetMap]);
     const liveServer = servers.find(s => Number(s.id) === Number(editing?.id)) || editing;
     const [error, setError] = useState("");
     const [notice, setNotice] = useState("");
@@ -133,7 +141,7 @@ export function NetworkServers({
         if (path === "enroll" || path === "reset") setCommand("");
         try {
             if (path === "save") {
-                if (budgets.loading || budgets.error)
+                if (!canSaveConfig)
                     throw new Error("请先成功加载流量额度后再保存");
                 const traffic = trafficPayload(editing || {});
                 const old = budgetFor(Number(body.id));
@@ -221,7 +229,7 @@ export function NetworkServers({
                                 "服务器",
                                 (r) => (
                                     <span>
-                                        <button className="link" disabled={busy || budgets.loading || !!budgets.error} onClick={()=>editServer(r)}>{r.name}</button>
+                                        <button className="link" disabled={busy} onClick={()=>editServer(r)}>{r.name}</button>
                                         {!r.enabled && (
                                             <small className="muted">
                                                 {" "}
@@ -365,7 +373,7 @@ export function NetworkServers({
                                 "操作",
                                 (r: Row) => (
                                     <div className="actions">
-                                        <button disabled={busy || budgets.loading || !!budgets.error} onClick={()=>editServer(r)}>管理</button>
+                                        <button disabled={busy} onClick={()=>editServer(r)}>管理</button>
                                         <AdminRowMenu label={`${r.name} 更多操作`}>
                                         <button
                                             disabled={busy}
@@ -463,12 +471,19 @@ export function NetworkServers({
                         }}
                     >
                         <h3 id={`${sectionId}-config`} tabIndex={-1}>基本配置</h3><p className="server-management-guide">管理本机名称、地址类型与流量额度。节点协议和证书在节点管理中配置。</p>
+                        {!canSaveConfig && (
+                            <p role={budgets.error ? "alert" : "status"}>
+                                {budgets.error ? "流量额度暂时无法加载，服务器配置暂不可保存。" : "正在读取流量额度…"}
+                                {budgets.error && <button type="button" disabled={budgets.loading} onClick={budgets.reload}>重试加载额度</button>}
+                            </p>
+                        )}
                         <label>
                             服务器名称
                             <input
                                 required
                                 maxLength={100}
                                 value={editing.name}
+                                disabled={busy || !canSaveConfig}
                                 onChange={(e) => {
                                     setEditing({
                                         ...editing,
@@ -483,6 +498,7 @@ export function NetworkServers({
                             <AdminSwitch
                                 label="允许 IP 上报与解析同步"
                                 checked={!!editing.enabled}
+                                disabled={busy || !canSaveConfig}
                                 onChange={async (enabled) => {
                                     setEditing({
                                         ...editing,
@@ -499,6 +515,7 @@ export function NetworkServers({
                             地址类型
                             <select
                                 value={editing.family}
+                                disabled={busy || !canSaveConfig}
                                 onChange={(e) => {
                                     setEditing({
                                         ...editing,
@@ -517,17 +534,17 @@ export function NetworkServers({
                             </select>
                         </label>
                         <details className="server-management-quota"><summary>流量额度与计费周期</summary>
-                        <ServerTrafficFields
+                        {canSaveConfig ? <ServerTrafficFields
                             value={editing}
                             onChange={(value) => {
                                 setEditing(value);
                                 setServerDirty(true);
                             }}
-                        />
+                        /> : <p className="muted">成功读取额度后可查看和修改额度设置。</p>}
 
                         </details>
                         {!editing.id && (
-                            <fieldset>
+                            <fieldset disabled={busy || !canSaveConfig}>
                                 <legend>服务器用途</legend>
                                 <p className="muted">代理服务器运行 V2Box；中转入口服务器配置入口域名与四层转发。用途根据实际关联自动更新，支持混合使用。</p>
                                 <label>预设用途<select aria-label="预设用途" disabled={!editing.enabled || busy} value={editing.configureEntry ? "entry" : "proxy"} onChange={e=>{setEditing({...editing,configureEntry:e.target.value==="entry"});setServerDirty(true);}}><option value="proxy">代理服务器</option><option value="entry">中转入口服务器</option></select></label>
@@ -554,8 +571,7 @@ export function NetworkServers({
                             className="primary"
                             disabled={
                                 busy || detailBusy ||
-                                budgets.loading ||
-                                !!budgets.error ||
+                                !canSaveConfig ||
                                 (!!editing.configureEntry && !roots.length)
                             }
                         >

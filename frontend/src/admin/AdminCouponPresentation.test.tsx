@@ -63,6 +63,7 @@ it("preserves other translations and only sends presentation fields", async () =
             "ja-JP": { name: "Japanese coupon" },
         },
     });
+    expect(screen.getByLabelText("默认活动标题").closest("form")?.hasAttribute("data-unsaved")).toBe(false);
 });
 it("clears only the selected language", async () => {
     mocks.request.mockResolvedValue({ data: true });
@@ -85,5 +86,6 @@ it("retains a failed draft for retry", async () => {
     expect(
         (screen.getByLabelText("默认活动标题") as HTMLInputElement).value,
     ).toBe("Draft title");
+    expect(screen.getByLabelText("默认活动标题").closest("form")?.getAttribute("data-unsaved")).toBe("true");
     expect(mocks.reload).not.toHaveBeenCalled();
 });

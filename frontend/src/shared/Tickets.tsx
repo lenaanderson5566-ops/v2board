@@ -2,6 +2,7 @@ import { StatusBadge } from "./StatusBadge";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import { boot, request, rows, query, date, type Row } from "./api";
 import { tx } from "./i18n";
+import { useRetryCountdown } from "./use-retry-countdown";
 import {
     useData,
     State,
@@ -50,6 +51,8 @@ export function Tickets({
     const prefix = isAdmin ? boot.adminPath : "user";
     const ticketAccount = useData(isAdmin ? "" : "user/info");
     const ticketPolicy = ticketAccount.data?.ticket_creation;
+    const accountRetryIn = useRetryCountdown(ticketAccount.retryAt);
+    const creationDraftKey = orderTradeNo ? `ticket-new-order-${orderTradeNo}` : "ticket-new";
     const [id, setId] = useState<number | null>(()=>{const value=Number(new URLSearchParams(location.hash.split("?")[1]).get("ticketId"));return !isAdmin && Number.isSafeInteger(value) && value>0 ? value:null;}),
         [creating, setCreating] = useState(false);
     const d = useData<Row[]>(
@@ -77,8 +80,21 @@ export function Tickets({
     const openTicket = unresolvedTicket(d.data || []);
     const closingRef = useRef(false);
     const [closing, setClosing] = useState(false);
+    const [replyBusy, setReplyBusy] = useState(false);
     const [closeTarget, setCloseTarget] = useState<number | null>(null);
     const [closeError, setCloseError] = useState("");
+    const detailRetryIn = useRetryCountdown(detail.retryAt);
+    const refreshBlocked = detail.loading || detailRetryIn > 0 || replyBusy || closing;
+    useEffect(() => {
+        if (isAdmin || !id || !detail.data || Number(detail.data.status) !== 0 ||
+            detail.loading || replyBusy || closing || closeTarget !== null) return;
+        const timer = window.setInterval(() => {
+            if (document.visibilityState !== "hidden" && navigator.onLine !== false &&
+                !(detail.retryAt > Date.now())) detail.reload();
+        }, detail.error ? 60000 : 30000);
+        return () => window.clearInterval(timer);
+    }, [isAdmin, id, detail.data?.status, detail.loading, detail.error, detail.retryAt,
+        detail.reload, replyBusy, closing, closeTarget]);
     async function closeTicket() {
         if (!closeTarget || closingRef.current) return;
         closingRef.current = true;
@@ -115,6 +131,17 @@ export function Tickets({
                             </span>
                         )}
                     </p>
+                    {ticketAccount.error && (
+                        <div className="alert" role="alert">
+                            <p>{tx("暂时无法确认工单创建权限，请重试。已有工单仍可查看。")}</p>
+                            <button type="button" disabled={ticketAccount.loading || accountRetryIn > 0}
+                                onClick={ticketAccount.reload}>
+                                {accountRetryIn > 0
+                                    ? tx("retryIn", { ns: "pricing", seconds: accountRetryIn })
+                                    : tx("重试")}
+                            </button>
+                        </div>
+                    )}
                 </div>
             )}
             <Panel
@@ -210,8 +237,12 @@ export function Tickets({
             </Panel>
             {creating && (isAdmin || (!ticketAccount.loading && !ticketAccount.error && ticketPolicy === "allowed")) && (
                 <Modal title={tx("创建工单")} close={() => setCreating(false)}>
+                    {orderTradeNo && <p className="pad muted">
+                        {tx("关联订单")}: <span dir="ltr" style={{ overflowWrap: "anywhere" }}>{orderTradeNo}</span>
+                    </p>}
                     <Editor
-                        draftKey="ticket-new"
+                        key={creationDraftKey}
+                        draftKey={creationDraftKey}
                         fields={[
                             {
                                 key: "topic",
@@ -251,7 +282,6 @@ export function Tickets({
                         initial={{
                             level: 0,
                             topic: orderTradeNo ? "payment" : "other",
-                            order_trade_no: orderTradeNo || "",
                         }}
                         onSave={async (body) => {
                             const latest = await request("user/ticket/fetch");
@@ -268,7 +298,7 @@ export function Tickets({
                             }
                             await request(
                                 "user/ticket/save",
-                                supportPayload(body, tx),
+                                supportPayload({ ...body, order_trade_no: orderTradeNo || "" }, tx),
                             );
                             setCreating(false);
                             d.reload();
@@ -300,6 +330,13 @@ export function Tickets({
                         }
                     }}
                 >
+                    {!isAdmin && detail.data && <div className="pad actions">
+                        <button type="button" disabled={refreshBlocked} onClick={detail.reload}>
+                            {detailRetryIn > 0
+                                ? tx("retryIn", { ns: "pricing", seconds: detailRetryIn })
+                                : tx(detail.loading ? "正在加载…" : "刷新回复")}
+                        </button>
+                    </div>}
                     <State {...detail} retry={detail.reload}>
                         <div className="messages">
                             {rows(detail.data?.message).map((m) => (
@@ -332,6 +369,7 @@ export function Tickets({
                                     draftKey={`ticket-reply-${id}`}
                                     initial={{ id }}
                                     submit={tx("发送回复")}
+                                    onBusyChange={setReplyBusy}
                                     onSave={async (body) => {
                                         await request(
                                             `${prefix}/ticket/reply`,

@@ -57,7 +57,7 @@ knowledge, ticket conversations, invitations, profile and active sessions.
 Admin: overview, users, plans, nodes and routing, payments, coupons, gift cards,
 notices, knowledge, ticket conversations, translations, client strategies, risk
 rules and settings, IP/UA blacklists, online users, usage and logs, system settings.
-The previous `/ops-center/*` bookmarks redirect to the matching admin hash route.
+Open the admin console at the configured path and use its sidebar to reach operations pages.
 
 Theme discovery, selection and theme configuration routes have been removed.
 Custom footer HTML is available in System Settings → 页脚 HTML, persisted as
@@ -132,9 +132,10 @@ attribution are in `storage/geoip/SOURCE.txt`; hashes are in `SHA256SUMS.txt`.
 
 ## Module ownership
 
-- `src/admin/admin.tsx` owns the resource registry and shared resource page. Settings, payments and node management live in `admin-settings.tsx`, `admin-payments.tsx` and `admin-nodes.tsx`, loaded by `admin-entry.tsx` when needed. Its historical exports remain compatibility entry points; new page imports should use the owning module. Feature modules must not import the compatibility facade.
+- `src/admin/admin-resources.tsx` owns resource definitions, and `admin.tsx` owns the shared resource page. The route entry loads settings, payments, node management, plan translations and system monitoring as needed.
 - `src/admin/admin-fields.ts` owns common field/column constructors; `admin-presentation.ts` owns shared labels and presentation metadata. Keep validation and payload conversion in their existing domain helpers (`admin-linkage`, `payment-fields`, `node-settings`) rather than copying them into pages.
 - `src/user/SubscriptionPurchase.tsx` owns the plan catalog. `PlanSelection.tsx` owns period/coupon confirmation and order submission; `PurchaseSteps.tsx` owns the progress indicator. Checkout and usage pages import the widgets directly. Pricing calculations remain in `billing-flow.ts` and `shared/order-price.ts`.
+- `src/user/usePaymentCheckout.ts` owns payment submission, status checks and recovery. `PaymentCheckout.tsx` renders those states and manages the payment controls.
 - Reuse `shared/useCooldown.ts` for verification-code resend deadlines. Authentication pages own their form state and API calls; timers should not be reimplemented per form.
 - `src/shared` may depend on neither application. User/admin code must not import each other. The production build and existing bundle-isolation tests enforce these boundaries. Keep API field projections in sync between `docs/api-v10/contracts.json` and `src/shared/v10-contracts.json`; the V10 request transport is shared, not reimplemented by pages.
 

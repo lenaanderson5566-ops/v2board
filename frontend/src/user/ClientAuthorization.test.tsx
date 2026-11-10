@@ -30,6 +30,41 @@ beforeEach(() => {
     });
 });
 describe("client browser authorization", () => {
+    it("waits for account switching and prevents approval or duplicate sign-out while it is pending", async () => {
+        mocks.request.mockResolvedValue({ data: { platform: "windows" } });
+        let finish!: () => void;
+        const onSwitchAccount = vi.fn(() => new Promise<void>(resolve => { finish = resolve; }));
+        render(<ClientAuthorization user={{ email: "old@example.test" }} onSwitchAccount={onSwitchAccount} />);
+        await waitFor(() => expect((screen.getByRole("button", { name: "确认登录" }) as HTMLButtonElement).disabled).toBe(false));
+        fireEvent.click(screen.getByRole("button", { name: "authorizationSwitchAccount" }));
+        fireEvent.click(screen.getByRole("button", { name: "authorizationSwitching" }));
+        fireEvent.click(screen.getByRole("button", { name: "确认登录" }));
+        expect(onSwitchAccount).toHaveBeenCalledExactlyOnceWith(id);
+        expect((screen.getByRole("button", { name: "取消" }) as HTMLButtonElement).disabled).toBe(true);
+        expect(mocks.request).toHaveBeenCalledTimes(1);
+        await act(async () => finish());
+    });
+    it("keeps the visible account and offers retry if switching fails without approving it", async () => {
+        mocks.request.mockResolvedValue({ data: { platform: "windows" } });
+        const onSwitchAccount = vi.fn().mockRejectedValueOnce(new TypeError("offline")).mockResolvedValue(undefined);
+        render(<ClientAuthorization user={{ email: "old@example.test" }} onSwitchAccount={onSwitchAccount} />);
+        fireEvent.click(screen.getByRole("button", { name: "authorizationSwitchAccount" }));
+        expect(await screen.findByRole("alert")).toHaveProperty("textContent", "authorizationSwitchFailed");
+        expect(screen.getByText("old@example.test")).toBeTruthy();
+        expect(location.assign).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole("button", { name: "authorizationSwitchAccount" }));
+        await waitFor(() => expect(onSwitchAccount).toHaveBeenCalledTimes(2));
+        expect(mocks.request.mock.calls.every(([path]) => !path.endsWith("/approve"))).toBe(true);
+    });
+    it("does not offer an account switch for an invalid authorization id", async () => {
+        location.hash = "#/client-authorize?authorizationId=https://evil.example";
+        const onSwitchAccount = vi.fn();
+        render(<ClientAuthorization user={{ email: "old@example.test" }} onSwitchAccount={onSwitchAccount} />);
+        await screen.findByRole("alert");
+        expect(screen.queryByRole("button", { name: "authorizationSwitchAccount" })).toBeNull();
+        expect(onSwitchAccount).not.toHaveBeenCalled();
+        expect(mocks.request).not.toHaveBeenCalled();
+    });
     it("maps authenticated reads and consent onto V10 resources", () => {
         expect(
             v10Request("user/client-authorization?authorization_id=" + id).url,

@@ -1,5 +1,7 @@
 {
   "translation": {
+    "暂时无法确认工单创建权限，请重试。已有工单仍可查看。": "Không thể kiểm tra quyền tạo yêu cầu hỗ trợ. Hãy thử lại. Bạn vẫn có thể xem các yêu cầu hiện có.",
+    "刷新回复": "Làm mới phản hồi",
     "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "Lưu lượng của gói đã hết tại thời điểm yêu cầu này. Hãy kiểm tra gói hoặc mua thêm dung lượng rồi cập nhật cấu hình.",
     "此次请求时独立额度已过期，请购买有效额度后更新配置。": "Dung lượng độc lập đã hết hạn tại thời điểm yêu cầu này. Hãy mua dung lượng còn hiệu lực rồi cập nhật cấu hình.",
     "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "Dung lượng độc lập đã dùng hết tại thời điểm yêu cầu này. Hãy mua dung lượng hoặc gói rồi cập nhật cấu hình.",
@@ -785,6 +787,9 @@
     "resetFailed": "Đang chờ thử đặt lại: {{date}}"
   },
   "experience": {
+    "authorizationSwitchAccount": "Dùng tài khoản khác",
+    "authorizationSwitching": "Đang đăng xuất…",
+    "authorizationSwitchFailed": "Chưa thể xác nhận đăng xuất. Hãy kiểm tra kết nối và thử lại. Tài khoản chưa được chuyển.",
     "adminRefreshing": "Đang cập nhật; hiển thị dữ liệu trước đó…",
     "adminStale": "Cập nhật thất bại. Dữ liệu trước đó được hiển thị bên dưới.",
     "adminUnsaved": "Có thay đổi chưa lưu",
@@ -966,6 +971,7 @@
     "version": "Phiên bản tối thiểu: {{version}}. Hãy cập nhật trước."
   },
   "clientDownload": {
+    "macCompatibility": "Kiểm tra yêu cầu về hệ thống và chip trên trang tải xuống chính thức trước khi cài đặt.",
     "title": "Tải ứng dụng",
     "official": "Tải chính thức",
     "mirror": "Tải từ máy chủ dự phòng",

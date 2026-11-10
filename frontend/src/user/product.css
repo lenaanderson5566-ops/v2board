@@ -1474,6 +1474,14 @@
     align-items: center;
     gap: 8px;
 }
+.client-authorization-switch {
+    justify-self: start;
+    min-height: 40px;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    color: var(--brand);
+}
 .app.user .notification-options {
     padding: 4px 24px;
 }

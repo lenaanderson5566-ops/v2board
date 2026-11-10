@@ -19,6 +19,7 @@ import { AdminSwitch } from "./admin-switch";
 import { tx } from "../shared/i18n";
 import { SortButton } from "./admin-tools";
 import { PaymentChannelFailures } from "./PaymentCallbackHistory";
+import { AdminRowMenu } from "./AdminRowMenu";
 import {
     paymentFields,
     paymentInitial,
@@ -102,7 +103,7 @@ export function Payments() {
                             ["payment", "支付接口"],
                             ["recent_failure_count", "近一小时发起失败", (r) => (
                                 <button type="button" onClick={() => setDiagnosticChannel(r)} aria-label={`查看 ${r.name} 的支付诊断`}>
-                                    {r.recent_failure_count ?? "查看"}
+                                    查看诊断{r.recent_failure_count == null ? "" : ` · ${r.recent_failure_count} 笔`}
                                 </button>
                             )],
                             ["notify_url", "通知地址"],
@@ -119,27 +120,29 @@ export function Payments() {
                                 <button disabled={deleting || d.loading || Boolean(d.error) || methods.loading || Boolean(methods.error) || !methods.data?.length} onClick={() => setEditing(r)}>
                                     编辑
                                 </button>
-                                <button
-                                    className="danger"
-                                    disabled={deleting || d.loading || Boolean(d.error)}
-                                    onClick={async () => {
-                                        if (pending.current || !confirm(`确认删除支付方式「${r.name}」？`)) return;
-                                        pending.current = true;
-                                        setDeleting(true);
-                                        setError("");
-                                        try {
-                                            await request(admin("payment/drop"), { id: r.id });
-                                            d.reload();
-                                        } catch (e) {
-                                            setError((e as Error).message);
-                                        } finally {
-                                            pending.current = false;
-                                            setDeleting(false);
-                                        }
-                                    }}
-                                >
-                                    删除
-                                </button>
+                                <AdminRowMenu label={`${r.name} 的支付渠道操作`}>
+                                    <button
+                                        className="danger"
+                                        disabled={deleting || d.loading || Boolean(d.error)}
+                                        onClick={async () => {
+                                            if (pending.current || !confirm(`确认删除支付方式「${r.name}」？`)) return;
+                                            pending.current = true;
+                                            setDeleting(true);
+                                            setError("");
+                                            try {
+                                                await request(admin("payment/drop"), { id: r.id });
+                                                d.reload();
+                                            } catch (e) {
+                                                setError((e as Error).message);
+                                            } finally {
+                                                pending.current = false;
+                                                setDeleting(false);
+                                            }
+                                        }}
+                                    >
+                                        删除
+                                    </button>
+                                </AdminRowMenu>
                             </>
                         )}
                     />

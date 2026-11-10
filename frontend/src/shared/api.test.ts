@@ -1,8 +1,8 @@
 import { afterEach, beforeAll, beforeEach, describe, it, expect, vi } from "vitest";
 
-const session = vi.hoisted(() => ({ active: true, identity: "user:42", forgotten: vi.fn() }));
+const session = vi.hoisted(() => ({ active: true, identity: "user:42", forgotten: vi.fn(), queuedLogout: vi.fn() }));
 vi.mock("./browser-session", () => ({
-    queueBrowserLogout: vi.fn(),
+    queueBrowserLogout: session.queuedLogout,
     browserSessionKey: () => session.identity,
     browserFetch: (url: string, options: RequestInit = {}) => fetch(url, { ...options, credentials: "include", headers: { ...options.headers, "X-Browser-Client": "user", "X-CSRF-Token": "csrf-test" } }),
     hasBrowserSession: () => session.active,
@@ -88,9 +88,43 @@ describe("API client", () => {
         await logoutSession();
         expect(session.active).toBe(false);
     });
+    it.each(["network", "server"])("keeps the current session when account-switch sign-out is unconfirmed: %s", async (failure) => {
+        vi.stubGlobal("fetch", failure === "network"
+            ? vi.fn().mockRejectedValue(new TypeError("offline"))
+            : vi.fn().mockResolvedValue(new Response(null, { status: 503 })));
+        await expect(logoutSession({ requireServerConfirmation: true })).rejects.toThrow();
+        expect(session.active).toBe(true);
+        expect(session.forgotten).not.toHaveBeenCalled();
+        expect(session.queuedLogout).not.toHaveBeenCalled();
+    });
+    it.each([204, 401])("allows account switching after sign-out is confirmed or already complete: %s", async (status) => {
+        vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status })));
+        await logoutSession({ requireServerConfirmation: true });
+        expect(session.active).toBe(false);
+        expect(session.forgotten).toHaveBeenCalledTimes(1);
+        expect(session.queuedLogout).not.toHaveBeenCalled();
+    });
+    it("ends a stalled account-switch sign-out after the deadline without forgetting the session", async () => {
+        vi.useFakeTimers();
+        try {
+            vi.stubGlobal("fetch", vi.fn((_url, options: RequestInit) => new Promise((_resolve, reject) => {
+                options.signal?.addEventListener("abort", () => reject(new DOMException("Aborted", "AbortError")));
+            })));
+            const pending = expect(logoutSession({ requireServerConfirmation: true })).rejects.toThrow("Aborted");
+            await vi.advanceTimersByTimeAsync(15000);
+            await pending;
+            expect(session.active).toBe(true);
+            expect(session.forgotten).not.toHaveBeenCalled();
+            expect(session.queuedLogout).not.toHaveBeenCalled();
+        } finally {
+            vi.useRealTimers();
+        }
+    });
     beforeEach(() => {
         storage.clear();
         session.active = true;
+        session.forgotten.mockClear();
+        session.queuedLogout.mockClear();
         vi.restoreAllMocks();
     });
     it("sends authenticated JSON without leaking credentials into URL", async () => {

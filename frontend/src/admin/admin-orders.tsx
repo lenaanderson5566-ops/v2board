@@ -8,10 +8,13 @@ import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-
 import { useEffect, useState } from "react";
 import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
-import { ResourcePage, resources } from "./admin";
+import { ResourcePage, type Resource } from "./admin";
+import { resources } from "./admin-resources";
 import { AssignOrder } from "./admin-users";
 import { tx } from "../shared/i18n";
 import { AdminRowMenu } from "./AdminRowMenu";
+import { AdminUserDetails } from "./AdminUserDetails";
+import { AdminUserActivityLink } from "./AdminUserActivity";
 
 const orderSearchFields = [
     ["trade_no", "订单号"],
@@ -29,8 +32,15 @@ function orderFilterValue(filter: Row) {
         : filter.key === "commission_status" ? ["待确认", "有效", "已发放", "无效"] : null;
     return statuses?.[Number(filter.value)] || String(filter.value);
 }
-const commissionResource = {
+
+function canReviewCommission(row: Row) {
+    return [1, 3, 4].includes(Number(row.status)) &&
+        row.commission_status != null && [0, 1, 3].includes(Number(row.commission_status)) &&
+        Number(row.commission_balance) > 0;
+}
+const commissionResource: Resource = {
     ...resources.orders,
+    kind: "commissions",
     title: "佣金审核",
     actions: [],
     columns: [
@@ -129,6 +139,7 @@ export function OrdersPage({
     const [draft, setDraft] = useState<Row[]>(filter),
         [showFilter, setShowFilter] = useState(false),
         [selected, setSelected] = useState<Row | null>(null),
+        [selectedUser, setSelectedUser] = useState<Row | null>(null),
         [assign, setAssign] = useState(false),
         [revision, setRevision] = useState(0),
         [commission, setCommission] = useState<Row | null>(null);
@@ -316,27 +327,16 @@ export function OrdersPage({
                 extraActions={(r, context, secondary) => (
                     <>
                         <button onClick={() => setSelected(r)}>订单详情</button>
-                        <AdminRowMenu context={context} label={`${tx("订单")} ${r.trade_no}`}>
-                        <a
-                            className="button"
-                            href={`#/users?user_id=${r.user_id}`}
-                        >
-                            查看用户
-                        </a>
-                        {commissionMode && (
-                            <button
-                                disabled={
-                                    r.status === 0 ||
-                                    r.status === 2 ||
-                                    !r.commission_balance ||
-                                    r.commission_status === 2
-                                }
-                                onClick={() => setCommission(r)}
-                            >
-                                佣金审核
-                            </button>
+                        {commissionMode && canReviewCommission(r) && (
+                            <button onClick={() => setCommission(r)}>佣金审核</button>
                         )}
-                        {secondary}
+                        <AdminRowMenu context={context} label={`${tx("订单")} ${r.trade_no}`}>
+                            {r.user_id && (
+                                <button type="button" onClick={() => setSelectedUser({ id: r.user_id, email: r.email })}>
+                                    查看用户
+                                </button>
+                            )}
+                            {secondary}
                         </AdminRowMenu>
                     </>
                 )}
@@ -530,6 +530,7 @@ export function OrdersPage({
                     />
                 </Modal>
             )}
+            {selectedUser && <AdminUserDetails row={selectedUser} close={() => setSelectedUser(null)} />}
             {assign && (
                 <Modal
                     title="分配订单"
@@ -646,7 +647,7 @@ function OrderDetail({
                                                     key.includes("balance")
                                                   ? money(r[key], r.currency)
                                                   : key === "user_id"
-                                                    ? adminUserLabel(r)
+                                                    ? <AdminUserActivityLink row={r} />
                                                     : key === "plan_id"
                                                       ? adminOrderPlan(r, plans)
                                                     : adminStatusCell(

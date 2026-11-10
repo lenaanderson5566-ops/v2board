@@ -36,6 +36,11 @@ export function AdminCouponPresentation() {
         [translations, setTranslations] = useState<Record<string, Variant>>({});
     const operation = useAdminOperation();
     const variant = translations[language] || {};
+    const dirty = selected !== null && (
+        title.trim() !== (selected.activity_title || "").trim() ||
+        description.trim() !== (selected.activity_description || "").trim() ||
+        JSON.stringify(translations) !== JSON.stringify(selected.translations || {})
+    );
     return (
         <section className="panel">
             <div className="panel-head">
@@ -69,6 +74,7 @@ export function AdminCouponPresentation() {
                             value={selected?.id || ""}
                             disabled={operation.busy}
                             onChange={(event) => {
+                                if (dirty && !window.confirm("当前优惠券有未保存的文案，确认放弃并切换？")) return;
                                 const coupon =
                                     data.data?.find(
                                         (row) =>
@@ -108,16 +114,19 @@ export function AdminCouponPresentation() {
             {selected && (
                 <form
                     className="pad admin-commerce-form"
+                    data-unsaved={dirty || undefined}
+                    aria-busy={operation.busy}
                     onSubmit={(event) => {
                         event.preventDefault();
                         void operation.run(async () => {
-                            await request(admin("coupon-presentation/save"), {
-                                id: selected.id,
+                            const presentation = {
                                 activity_title: title.trim() || null,
                                 activity_description:
                                     description.trim() || null,
                                 translations,
-                            });
+                            };
+                            await request(admin("coupon-presentation/save"), { id: selected.id, ...presentation });
+                            setSelected({ ...selected, ...presentation });
                             data.reload();
                             return "活动文案及翻译已保存，已发出的券保持原快照。";
                         });

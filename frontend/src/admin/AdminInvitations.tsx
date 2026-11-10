@@ -1,16 +1,14 @@
 import { AdminFilterBar } from "./AdminFilterBar";
-import { AdminTabs } from "./AdminChoices";
+import { AdminRouteTabs } from "./AdminChoices";
 import { InvitationEmails } from "./InvitationEmails";
 import { InvitationReviews } from "./InvitationReviews";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
 import { ResourcePage } from "./admin";
 import { OrdersPage } from "./admin-orders";
 import { adminUserLabel } from "./admin-user-label";
 
-function readReviewId() {
-    const params = new URLSearchParams(window.location.hash.split("?")[1] || "");
-    const id = params.get("review_id");
+function validatedReviewId(id: string | null) {
     return id && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id))
         ? id
         : undefined;
@@ -52,37 +50,10 @@ const invitationResource = {
         ],
     ] as Parameters<typeof ResourcePage>[0]["resource"]["columns"],
 };
-export function AdminInvitations() {
-    const readTab = (): "relations" | "commissions" | "reviews" | "emails" => {
-        const value = new URLSearchParams(
-            window.location.hash.split("?")[1] || "",
-        ).get("tab");
-        return value === "commissions" ||
-            value === "reviews" ||
-            value === "emails"
-            ? value
-            : "relations";
-    };
-    const [tab, setTab] = useState(readTab);
-    const [reviewId, setReviewId] = useState(readReviewId);
-    useEffect(() => {
-        const changed = () => {
-            setTab(readTab());
-            setReviewId(readReviewId());
-        };
-        window.addEventListener("hashchange", changed);
-        return () => window.removeEventListener("hashchange", changed);
-    }, []);
-    const selectTab = (
-        value: "relations" | "commissions" | "reviews" | "emails",
-    ) => {
-        setTab(value);
-        setReviewId(undefined);
-        window.location.hash =
-            value === "relations"
-                ? "#/invitations"
-                : `#/invitations?tab=${value}`;
-    };
+export function AdminInvitations({ route }: { route: string }) {
+    const params = new URLSearchParams(route.split("?", 2)[1]);
+    const tab = params.get("tab");
+    const reviewId = validatedReviewId(params.get("review_id"));
     const [searchField, setSearchField] = useState("invite_by_email");
     const [activeField, setActiveField] = useState("invite_by_email");
     const [email, setEmail] = useState("");
@@ -106,15 +77,13 @@ export function AdminInvitations() {
                     </a>
                 </div>
             </section>
-            <AdminTabs label="邀请管理视图" value={tab} onChange={selectTab} options={[
-                {value:"relations",label:"邀请关系"},{value:"commissions",label:"佣金审核"},{value:"reviews",label:"异常复核"},{value:"emails",label:"邀请邮件"}
-            ]}>
+            <AdminRouteTabs route={route}>
             {tab === "emails" ? (
                 <InvitationEmails />
             ) : tab === "reviews" ? (
                 <InvitationReviews key={reviewId ?? "all-reviews"} reviewId={reviewId} />
             ) : tab === "commissions" ? (
-                <OrdersPage commissionMode />
+                <OrdersPage key={route} commissionMode />
             ) : (
                 <ResourcePage
                     key={activeField + search}
@@ -188,7 +157,7 @@ export function AdminInvitations() {
                     )}
                 />
             )}
-            </AdminTabs>
+            </AdminRouteTabs>
         </>
     );
 }

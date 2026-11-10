@@ -5,6 +5,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
@@ -12,11 +13,21 @@ final class PaymentCallbackHistory
 {
     public const TABLE = 'v2_payment_callback_event';
     public const REASONS = ['gate is not found', 'Payment channel not found', 'gate is not enable', 'verify error', 'handle error', 'order is not found', 'channel mismatch', 'payment amount mismatch'];
+    private const UNVERIFIED_SAMPLE_SECONDS = 60;
+    private const UNVERIFIED_RAW_BYTES = 8192;
 
-    public static function record(string $provider, string $uuid, ?string $verifiedTradeNo, string $stage, string $result, ?string $reason, ?string $requestId, ?PaymentGatewayTrace $trace = null): void
+    public static function record(string $provider, string $uuid, ?string $verifiedTradeNo, string $stage, string $result, ?string $reason, ?string $requestId, ?PaymentGatewayTrace $trace = null): bool
     {
+        $unverifiedFailure = $result === 'failed' && $stage !== 'settlement';
+        $sampled = false;
         try {
             $payment = Payment::where('uuid', $uuid)->where('payment', $provider)->first();
+            if ($unverifiedFailure) {
+                // Unknown provider names and endpoint IDs must not create new buckets.
+                $bucket = $payment?->id ?? 'unknown';
+                $sampled = Cache::add('payment:callback:unverified:'.$bucket, true, self::UNVERIFIED_SAMPLE_SECONDS);
+                if (!$sampled) return false;
+            }
             $order = $verifiedTradeNo ? Order::where('trade_no', $verifiedTradeNo)->first() : null;
             $associated = $payment && $order && ((int) $order->payment_id === (int) $payment->id
                 || isset($order->payment_snapshot['channels'][(string) $payment->id]));
@@ -29,14 +40,18 @@ final class PaymentCallbackHistory
                 'reason' => $reason === null ? null : (in_array($reason, self::REASONS, true) ? $reason : 'internal_error'),
                 'request_id' => is_string($requestId) && \Illuminate\Support\Str::isUuid($requestId) ? $requestId : null,
                 'created_at' => time(),
-            ] + ($payment ? ($trace?->storageFields(self::TABLE) ?? []) : []));
+            ] + ($payment ? ($trace?->storageFields(self::TABLE, $unverifiedFailure ? self::UNVERIFIED_RAW_BYTES : null) ?? []) : []));
+            return true;
         } catch (\Throwable $error) {
             // Diagnostic storage must never change the provider acknowledgement or settlement.
+            // A failed sampling cache must not turn every invalid callback into a log write.
+            if ($unverifiedFailure && !$sampled) return false;
             try {
                 \Illuminate\Support\Facades\Log::warning('Payment callback history unavailable');
             } catch (\Throwable) {
                 // Ignore failures of the diagnostic log sink as well.
             }
+            return false;
         }
     }
 

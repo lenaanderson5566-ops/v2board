@@ -14,6 +14,7 @@ export const adminWorkspaces = [
         tabs: [
             ["clients", "访问与版本策略"],
             ["client-entrypoints", "服务入口"],
+            ["client-releases", "第三方客户端"],
         ],
     },
     {
@@ -38,7 +39,9 @@ export const adminWorkspaces = [
         root: "plans",
         label: "套餐与订阅",
         tabs: [
-            ["plans", "套餐管理"],
+            ["plans", "套餐列表"],
+            ["plans-translations", "套餐翻译"],
+            ["plans-currencies", "价格与币种"],
             ["subscription-settings", "订阅设置"],
         ],
     },
@@ -54,7 +57,10 @@ export const adminWorkspaces = [
         root: "invitations",
         label: "邀请与奖励",
         tabs: [
-            ["invitations", "邀请与奖励"],
+            ["invitations", "邀请关系"],
+            ["invitations?tab=commissions", "佣金审核"],
+            ["invitations?tab=reviews", "异常复核"],
+            ["invitations?tab=emails", "邀请邮件"],
             ["invitation-rules", "佣金规则"],
         ],
     },
@@ -90,11 +96,47 @@ export const adminWorkspaces = [
         ],
     },
 ];
-export function adminWorkspace(current: string) {
+// These pages already own their tabs, but their links still belong in search.
+const additionalSubpages: Record<string, string[][]> = {
+    overview: [
+        ["overview-analytics", "访问与转化"],
+        ["overview-risk", "风控概览"],
+        ["overview-system", "系统监控"],
+    ],
+    "log-settings": [
+        ["log-settings?tab=analytics", "访问统计"],
+        ["log-settings?tab=targets", "节点访问目标设置"],
+    ],
+};
+
+export function adminWorkspace(path: string) {
     return adminWorkspaces.find((group) =>
-        group.tabs.some(([route]) => route === current),
+        group.tabs.some(([route]) => route === path),
     );
 }
+
+export function adminSubpages(root: string) {
+    return adminWorkspace(root)?.tabs ?? additionalSubpages[root] ?? [];
+}
+
+export function adminRoot(path: string) {
+    const workspace = adminWorkspace(path);
+    if (workspace) return workspace.root;
+
+    for (const [root, tabs] of Object.entries(additionalSubpages)) {
+        if (tabs.some(([route]) => route === path)) return root;
+    }
+    return path;
+}
+
+export function adminTabRoute(route: string) {
+    const [path, query] = route.split("?", 2);
+    const tab = new URLSearchParams(query).get("tab");
+    const target = `${path}?tab=${tab}`;
+    return tab && adminSubpages(adminRoot(path)).some(([candidate]) => candidate === target)
+        ? target : path;
+}
+
 export const settingSections: Record<string, string> = {
     "site-settings": "site",
     "browser-settings": "browser",

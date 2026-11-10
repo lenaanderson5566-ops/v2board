@@ -47,7 +47,11 @@ curl -fL https://raw.githubusercontent.com/lenaanderson5566-ops/v2board/codex/pa
 bash /tmp/fastai-update.sh --php /www/server/php/84/bin/php --composer "$PWD/composer.phar" --check
 ```
 
-预检通过并完成数据库备份后，去掉 `--check` 执行相同命令，使用默认自动维护流程。普通更新不需要 `--lock-file` 或 `--resolve-dependencies`；只有本地额外依赖或已验证覆盖锁文件的情况才按下文添加。PHP-FPM、Horizon 和调度器使用与 CLI 相同的 PHP 8.4+；成功后核对本站 PHP-FPM/OPcache 是否加载新代码。
+预检成功会输出 `FASTAI_UPDATE_TARGET=<完整提交 SHA>`。完成数据库备份后，去掉 `--check`，在相同命令中加上 `--expect-commit <预检输出的完整提交 SHA>`。若分支在两次命令间变化，脚本会在备份和维护前停止，需重新预检并核对新目标。省略该参数仍按已有行为更新到获取时的分支最新提交。
+
+首次升级建议先下载目标版本的新脚本。如果已有脚本支持自动交接到目标版本，但尚不识别 `--expect-commit`，可以在命令前设置 `FASTAI_EXPECT_COMMIT=<同一个完整 SHA>`，该变量会传递给新版脚本。两种写法同时提供时，提交号必须相同。
+
+普通更新沿用目标锁文件。需要保留本地额外依赖或覆盖锁文件时按下文处理。PHP-FPM、Horizon 和调度器使用与 CLI 相同的 PHP 8.4+。升级成功后，从实际 HTTPS 地址检查用户端和后台入口、静态资源及登录，核对 PHP-FPM/OPcache 已加载目标版本。
 
 `--jobs-stopped` 保留为手动模式，并在成功后保留维护。站点原本已处于维护时也不会擅自开放；失败时保留维护且不回滚数据库。`--database-backup` 可选，提供时仍验证并复制到文件备份。`--check` 不进入维护，不迁移。首次从旧版脚本升级，先获取新版脚本（原脚本可能在 fetch 之前拒绝执行）。
 

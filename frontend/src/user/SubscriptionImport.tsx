@@ -1,4 +1,4 @@
-import { iosDownloads, ClientDownload } from "./ClientDownload";
+import { officialClientDownload, ClientDownload } from "./ClientDownload";
 import { trackCopyFailure } from "./product-analytics";
 import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
 import { useEffect, useId, useRef, useState } from "react";
@@ -130,19 +130,7 @@ export function SubscriptionImport({
             setError(tx("复制失败，请使用一键导入或扫码。"));
         }
     }
-    const downloads: Partial<Record<ClientId, string>> = {
-        cmfa: "https://github.com/MetaCubeX/ClashMetaForAndroid/releases",
-        flclash: "https://github.com/chen08209/FlClash/releases",
-        clash: "https://github.com/clash-verge-rev/clash-verge-rev/releases",
-        hiddify: "https://github.com/hiddify/hiddify-app/releases",
-        singbox: "https://sing-box.sagernet.org/clients/",
-    };
-    const downloadUrl =
-        selected === "singbox"
-            ? `https://sing-box.sagernet.org/clients/${device === "windows" || device === "linux" ? "desktop/" : device === "ios" || device === "macos" ? "apple/" : device === "android" ? "android/" : ""}`
-            : device === "ios"
-              ? iosDownloads[selected]
-              : downloads[selected];
+    const downloadUrl = officialClientDownload(selected, device);
     const content = (
         <div className="pad import-content">
             <header className="client-family-header third-party">
@@ -258,15 +246,13 @@ export function SubscriptionImport({
                 )}
                 {enabled(selected) && (
                     <div className="quick-actions">
-                        {downloadUrl && (
-                            <button
-                                className="button import-download"
-                                onClick={() => setDownloadOpen(true)}
-                            >
-                                {tx("获取客户端")}
-                                <ArrowUpRight size={16} />
-                            </button>
-                        )}
+                        <button
+                            className="button import-download"
+                            onClick={() => setDownloadOpen(true)}
+                        >
+                            {tx("获取客户端")}
+                            <ArrowUpRight size={16} />
+                        </button>
                         <a
                             className="button primary import-open"
                             href={link}
@@ -386,7 +372,7 @@ export function SubscriptionImport({
         <ClientDownload
             client={selected}
             device={device}
-            official={downloadUrl!}
+            official={downloadUrl}
             close={() => setDownloadOpen(false)}
         />
     );

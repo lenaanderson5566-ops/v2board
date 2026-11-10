@@ -21,9 +21,8 @@ import { useRetryCountdown } from "../shared/use-retry-countdown";
 import "./admin-shell-experience.css";
 
 export default function AdminApp() {
-    const [path, setPath] = useState(
-        location.hash.slice(2).split("?")[0] || "",
-    );
+    const [route, setRoute] = useState(() => location.hash.slice(2));
+    const path = route.split("?", 1)[0];
     const [user, setUser] = useState<Row | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
@@ -76,7 +75,7 @@ export default function AdminApp() {
                 authenticated.current &&
                 !loggingOut.current &&
                 document.querySelector(
-                    '.admin-content [data-saving="true"], .admin-content form[aria-busy="true"]',
+                    ':is(.admin-content, .modal) :is([data-saving="true"], form[aria-busy="true"])',
                 )
             ) {
                 history.replaceState(history.state, "", acceptedUrl);
@@ -94,7 +93,7 @@ export default function AdminApp() {
             }
             expiring = false;
             acceptedUrl = location.href;
-            setPath(location.hash.slice(2).split("?")[0] || "");
+            setRoute(location.hash.slice(2));
         };
         const expired = () => {
             expiring = true;
@@ -216,5 +215,5 @@ export default function AdminApp() {
                 <AdminAuth key={path} mode={path} onLogin={updateUser} />
             </>
         );
-    return <AdminWorkspace path={path} user={user} logout={logout} />;
+    return <AdminWorkspace path={route} user={user} logout={logout} />;
 }

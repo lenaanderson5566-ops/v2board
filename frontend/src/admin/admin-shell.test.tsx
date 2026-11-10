@@ -66,6 +66,29 @@ it("finds workspace subpages directly and restores the full menu after clearing 
         "未找到匹配页面，请尝试其他关键词。",
     );
 });
+it("finds dashboard, subscription and query-based subpages by name", () => {
+    render(
+        <AdminShell current="invitations" page="invitations?tab=reviews" user={user} logout={vi.fn()}>
+            <p>Content</p>
+        </AdminShell>,
+    );
+    const search = screen.getByRole("searchbox", { name: "搜索后台页面" });
+    for (const [label, route] of [
+        ["系统监控", "overview-system"],
+        ["套餐翻译", "plans-translations"],
+        ["第三方客户端", "client-releases"],
+        ["访问统计", "log-settings?tab=analytics"],
+        ["异常复核", "invitations?tab=reviews"],
+    ]) {
+        fireEvent.change(search, { target: { value: label } });
+        const link = screen.getByRole("link", { name: new RegExp(`^${label}`) });
+        expect(link.getAttribute("href")).toBe(`#/${route}`);
+        expect(link.getAttribute("aria-current")).toBe(route.endsWith("reviews") ? "page" : null);
+    }
+    fireEvent.change(search, { target: { value: "套餐列表" } });
+    expect(screen.getByRole("link", { name: "套餐与订阅" }).getAttribute("href")).toBe("#/plans");
+    expect(screen.getByRole("heading", { level: 1, name: "异常复核" })).toBeTruthy();
+});
 it("labels and focuses the actual subpage while keeping its workspace highlighted", () => {
     const view = render(
         <AdminShell
@@ -137,9 +160,7 @@ it("confines mobile navigation focus, blocks background interaction and restores
     expect(
         view.container.querySelector("#page-header")?.hasAttribute("inert"),
     ).toBe(true);
-    expect(document.activeElement).toBe(
-        screen.getByRole("searchbox", { name: "搜索后台页面" }),
-    );
+    expect(document.activeElement).toBe(within(dialog).getByRole("button", { name: "关闭导航" }));
     expect(document.body.style.overflow).toBe("hidden");
     const first = within(dialog).getByRole("link", { name: "Test console" });
     const last = within(dialog).getByRole("link", { name: "字典维护" });

@@ -3,13 +3,15 @@ import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-fi
 import { useState } from "react";
 import type { Row } from "../shared/api";
 
+export type AdminLogKind = "login" | "subscribe" | "connection" | "risk";
+
 export function AdminLogFilters({
     kind,
     onApply,
     initialFilters = {},
 }: {
     initialFilters?: Row;
-    kind: string;
+    kind: AdminLogKind;
     onApply: (filters: Row) => void;
 }) {
     const [draft, setDraft] = useState<Row>(() =>

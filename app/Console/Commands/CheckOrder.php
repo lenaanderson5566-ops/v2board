@@ -39,12 +39,12 @@ class CheckOrder extends Command
      */
     public function handle()
     {
-        ini_set('memory_limit', -1);
-        $orders = Order::whereIn('status', [0, 1])
-            ->orderBy('created_at', 'ASC')
-            ->get();
-        foreach ($orders as $order) {
-            OrderHandleJob::dispatch($order->trade_no);
-        }
+        $cutoff = time() - OrderHandleJob::PENDING_EXPIRY_SECONDS;
+        Order::query()->select(['id', 'trade_no'])
+            ->where(fn ($query) => $query->where('status', 1)
+                ->orWhere(fn ($unpaid) => $unpaid->where('status', 0)->where('created_at', '<=', $cutoff)))
+            ->chunkById(200, static function ($orders) {
+                foreach ($orders as $order) OrderHandleJob::dispatch($order->trade_no);
+            });
     }
 }

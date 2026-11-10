@@ -5,32 +5,31 @@ const request=vi.fn().mockResolvedValue({data:true});
 vi.mock("../shared/api",()=>({admin:(s:string)=>s,request:(...args:any[])=>request(...args)}));
 vi.mock("../shared/ui",()=>({useData:()=>({data:{app:{}},reload:vi.fn()}),State:({children}:any)=><>{children}</>}));
 vi.mock("./AdminClientReleases",()=>({AdminClientReleases:()=> <p>Smart updates</p>}));
-vi.mock("./admin",()=>({resources:{clients:{}},ResourcePage:()=> <p>Policy editor</p>}));
+vi.mock("./admin",()=>({ResourcePage:()=> <p>Policy editor</p>}));
+vi.mock("./admin-resources",()=>({resources:{clients:{}}}));
 import { AdminClients } from "./AdminClients";
 afterEach(()=>{cleanup();vi.clearAllMocks();});
-it("combines recommendations and policy editing in one page",async()=>{
- const view=render(<AdminClients/>);
+it("edits recommendations and leaves navigation to the workspace",async()=>{
+ const view=render(<AdminClients view="updates"/>);
  fireEvent.change(screen.getByLabelText("macOS 主推荐"),{target:{value:"flclash"}});
  fireEvent.click(screen.getByRole("button",{name:"保存推荐"}));
  await waitFor(()=>expect(request).toHaveBeenCalledWith("config/save",{client_primary_macos:"flclash"}));
- fireEvent.click(screen.getByRole("button",{name:"访问与版本策略"}));
- expect(window.location.hash).toBe("#/clients");
- view.rerender(<AdminClients initialTab="policy"/>);
+ expect(screen.queryByRole("button",{name:"访问与版本策略"})).toBeNull();
+ view.rerender(<AdminClients view="policy"/>);
  expect(screen.getByText("Policy editor")).toBeTruthy();
- fireEvent.click(screen.getByRole("button",{name:"推荐与智能更新"}));
- expect(window.location.hash).toBe("#/client-releases");
- view.rerender(<AdminClients/>);
+ expect(screen.queryByRole("button",{name:"推荐与智能更新"})).toBeNull();
+ view.rerender(<AdminClients view="updates"/>);
  expect(screen.getByText("Smart updates")).toBeTruthy();
 });
 it("opens the policy route without loading recommendation settings",()=>{
- render(<AdminClients initialTab="policy"/>);
+ render(<AdminClients view="policy"/>);
  expect(screen.getByText("Policy editor")).toBeTruthy();
 });
 
 it("submits recommendations once and preserves the selection after a failed save", async () => {
  let reject!: (reason: Error) => void;
  request.mockImplementationOnce(() => new Promise((_resolve, fail) => { reject=fail; }));
- render(<AdminClients/>);
+ render(<AdminClients view="updates"/>);
  fireEvent.change(screen.getByLabelText("macOS 主推荐"), {target:{value:"flclash"}});
  const save=screen.getByRole("button",{name:"保存推荐"});
  fireEvent.click(save);fireEvent.click(save);

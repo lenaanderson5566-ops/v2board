@@ -1,6 +1,7 @@
 import "./admin-controls.css";
 import type { ReactNode } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
+import { adminTabRoute, adminWorkspace } from "./admin-navigation";
 
 export type AdminChoice<T extends string = string> = { value: T; label: ReactNode; disabled?: boolean };
 type ChoiceProps<T extends string> = { label: string; options: readonly AdminChoice<T>[]; value: T; onChange: (value: T) => void };
@@ -32,4 +33,25 @@ export function AdminTabs<T extends string>({ label, options, value, onChange, c
         <AdminTabList label={label} options={options} />
         <Tabs.Content key={value} value={value}>{children}</Tabs.Content>
     </Tabs.Root>;
+}
+
+export function AdminRouteTabs({ route, children }: { route: string; children: ReactNode }) {
+    const workspace = adminWorkspace(route.split("?", 1)[0]);
+    if (!workspace) return children;
+
+    return (
+        <AdminTabs
+            label={workspace.label}
+            value={adminTabRoute(route)}
+            options={workspace.tabs.map(([value, label]) => ({ value, label }))}
+            onChange={(next) => {
+                if (document.querySelector(
+                    '.admin-content [data-saving="true"], .admin-content form[aria-busy="true"]',
+                )) return;
+                window.location.hash = "/" + next;
+            }}
+        >
+            {children}
+        </AdminTabs>
+    );
 }

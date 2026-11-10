@@ -8,6 +8,8 @@ SCRIPT_PATH=$(realpath "${BASH_SOURCE[0]}")
 PHASE=preflight
 CURRENT_MIGRATION=
 BRANCH=codex/payment-icon-picker
+EXPECTED_COMMIT=${FASTAI_EXPECT_COMMIT-}
+EXPECTED_COMMIT_SET=${FASTAI_EXPECT_COMMIT+1}
 PROJECT=$PWD
 PHP_BIN=php
 COMPOSER_BIN=
@@ -113,6 +115,8 @@ usage() {
 Usage: bash update.sh [options]
   --project PATH          Existing Git checkout (default: current directory)
   --branch NAME           Default: codex/payment-icon-picker
+  --expect-commit SHA     Stop unless the fetched branch matches the full preflight SHA
+                         FASTAI_EXPECT_COMMIT also works through older updater handoff
   --php PATH              PHP matching the website PHP-FPM
   --composer PATH         Existing Composer executable or phar
   --lock-file PATH        Override the committed target composer.lock
@@ -244,10 +248,13 @@ trap cleanup EXIT
 trap 'report_failure "$LINENO"' ERR
 while (( $# )); do
     case "$1" in
-        --project|--branch|--php|--composer|--lock-file|--database-backup|--backup-dir|--web-user|--jobs-restart-timeout)
+        --project|--branch|--expect-commit|--php|--composer|--lock-file|--database-backup|--backup-dir|--web-user|--jobs-restart-timeout)
             (( $# >= 2 )) || die "Missing value for $1"
             case "$1" in
                 --project) PROJECT=$2;; --branch) BRANCH=$2;; --php) PHP_BIN=$2;;
+                --expect-commit)
+                    [[ -z "$EXPECTED_COMMIT_SET" || "$EXPECTED_COMMIT" == "$2" ]] || die 'Conflicting expected commits'
+                    EXPECTED_COMMIT=$2; EXPECTED_COMMIT_SET=1;;
                 --composer) COMPOSER_BIN=$2;; --lock-file) LOCK_FILE=$2;;
                 --database-backup) DATABASE_BACKUP=$2;; --backup-dir) BACKUP_DIR=$2;;
                 --web-user) WEB_USER=$2;; --jobs-restart-timeout) JOBS_RESTART_TIMEOUT=$2;;
@@ -260,6 +267,7 @@ while (( $# )); do
         *) die "Unknown option: $1";;
     esac
 done
+[[ -z "$EXPECTED_COMMIT_SET" || "$EXPECTED_COMMIT" =~ ^([0-9a-f]{40}|[0-9a-f]{64})$ ]] || die 'Invalid expected commit; use the full lowercase SHA from preflight'
 [[ "$JOBS_RESTART_TIMEOUT" =~ ^[0-9]{1,3}$ ]] || die 'Invalid jobs restart timeout; use 2-600 seconds'
 JOBS_RESTART_TIMEOUT=$((10#$JOBS_RESTART_TIMEOUT))
 (( JOBS_RESTART_TIMEOUT >= 2 && JOBS_RESTART_TIMEOUT <= 600 )) || die 'Invalid jobs restart timeout; use 2-600 seconds'
@@ -330,7 +338,8 @@ fi
 OLD_COMMIT=$(git rev-parse HEAD)
 OLD_BRANCH=$(git symbolic-ref --short -q HEAD || true)
 git fetch origin "refs/heads/$BRANCH"
-TARGET=$(git rev-parse FETCH_HEAD)
+TARGET=$(git rev-parse --verify 'FETCH_HEAD^{commit}')
+[[ -z "$EXPECTED_COMMIT" || "$TARGET" == "$EXPECTED_COMMIT" ]] || die "Fetched target $TARGET differs from expected commit $EXPECTED_COMMIT; review the new target and rerun preflight"
 # Run the updater from the fetched target, outside the checkout. The running Bash
 # file must not be overwritten by git merge, and an old allowlist cannot omit new migrations.
 WORK_DIR=$(mktemp -d "${TMPDIR:-/tmp}/fastai-update.XXXXXXXX")
@@ -497,6 +506,7 @@ while IFS= read -r -d '' file; do
     fi
 done < <(git ls-tree -r --name-only -z "$TARGET")
 printf 'Preflight passed. Current: %s\nTarget: %s (%s)\n' "$OLD_COMMIT" "$TARGET" "$BRANCH"
+printf 'FASTAI_UPDATE_TARGET=%s\n' "$TARGET"
 if (( CHECK_ONLY == 1 )); then exit 0; fi
 if [[ -n "$DATABASE_BACKUP" ]]; then
     DATABASE_BACKUP=$(realpath "$DATABASE_BACKUP")

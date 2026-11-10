@@ -4,6 +4,7 @@ import { adminInstant as formatInstant } from "./admin-log-time";
 import { useRef, useState } from "react";
 import { admin, request, Row } from "../shared/api";
 import { Empty, Modal, Panel, State, useData } from "../shared/ui";
+import { AdminRowMenu } from "./AdminRowMenu";
 import { languages } from "../shared/i18n";
 import {
     bannerUrl,
@@ -133,12 +134,11 @@ export function AdminBanners() {
                             <button disabled={busy} onClick={() => action(row)}>
                                 {row.show ? "停用" : "启用"}
                             </button>
-                            <button
-                                disabled={busy}
-                                onClick={() => action(row, true)}
-                            >
-                                删除
-                            </button>
+                            <AdminRowMenu label={`${row.title} 更多操作`}>
+                                <button className="danger" disabled={busy} onClick={() => action(row, true)}>
+                                    删除
+                                </button>
+                            </AdminRowMenu>
                         </div>
                     </article>
                 ))}

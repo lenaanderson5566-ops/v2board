@@ -41,7 +41,9 @@ npm run build
 
 ## CI、依赖与发布资源
 
-[GitHub Actions](../.github/workflows/quality.yml) 对配置分支的 push/PR 执行四项锁文件审计、V10 契约生成检查、前端全量测试/构建及显式列出的后端关键模块。前端当次 `public/console` 连同隐藏 `.vite` 清单作为短期 artifact 传给后端，避免检查旧产物。后端使用 PHP 8.4、临时 MySQL/Redis、随机且掩码的应用密钥和既有运行器；随后在同一安装树实际执行 `composer install --no-dev`，只运行生产兼容的 `framework-upgrade`、`console-verify`。
+[GitHub Actions](../.github/workflows/quality.yml) 对配置分支的 push/PR 执行四项锁文件审计、V10 契约生成检查、前端全量测试与构建，以及后端关键模块。前端在重建前只读核对提交里的 `public/console` 源码和资源指纹，并在 Chromium 检查这份产物。后端同样检查提交里的发布产物，使用 PHP 8.4、临时 MySQL/Redis、随机且掩码的应用密钥和既有运行器。独立升级步骤运行旧库迁移、停止和恢复队列等回归，随后以 `composer install --no-dev` 重跑生产兼容的 `framework-upgrade` 和 `console-verify`。
+
+`commerce-migration` 在隔离空库重建旧支付诊断表结构，并依次应用尝试记录、响应摘要和原始诊断三个迁移。验证已有回调和尝试记录、旧摘要、可空新列及重复执行，另由升级脚本夹具核对迁移调用顺序。两类检查分别覆盖真实 SQL 行为和模拟升级编排，生产数据、代理层、PHP-FPM 和真实支付需按发布环境验收。
 
 审计 job 不安装项目依赖，分别检查 Composer/npm 的全依赖和生产依赖；前一步失败后继续收集其余结果，任一步失败仍使 job 失败。每周三 UTC 03:23 的 schedule 只审计，完整应用回归用于 push/PR 和可用的手动触发。当前默认分支为 `master`；只推送 `codex/payment-icon-picker` 不会使计划任务或 Dependabot 在默认分支生效，须合入默认分支后再核对。[GitHub 计划任务规则](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
 

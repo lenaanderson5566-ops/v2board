@@ -2,12 +2,12 @@ import { formatNumber, formatPercent } from "../shared/number-format";
 import "./admin-dashboard.css";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { adminUserLabel } from "./admin-user-label";
-import { System } from "./admin";
 import { RiskOverview } from "./AdminRisk";
 import { lazy, Suspense, useEffect, useState } from "react";
 const AdminAnalytics = lazy(() =>
     import("./AdminAnalytics").then((m) => ({ default: m.AdminAnalytics })),
 );
+const AdminSystem = lazy(() => import("./AdminSystem"));
 import { admin, bytes as usageBytes, money, type Row } from "../shared/api";
 import { Panel, State, Table, Reload, Metric, useData } from "../shared/ui";
 
@@ -48,7 +48,9 @@ export function Overview({
                 ) : tab === "risk" ? (
                     <RiskOverview />
                 ) : tab === "system" ? (
-                    <System />
+                    <Suspense fallback={<p className="pad" role="status">正在加载页面…</p>}>
+                        <AdminSystem />
+                    </Suspense>
                 ) : (
                     <IncomeOverview />
                 )}

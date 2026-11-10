@@ -25,11 +25,38 @@ import {
     settingsPresentation,
 } from "./admin-presentation";
 import { mailCredentialField, mailProviders } from "./mail-settings";
-const groupNames: Record<string, string> = {
-    site: "站点设置",
+import { AdminOperationNotice } from "./admin-section";
+import type { OperationNotice } from "./admin-operation";
+
+type SettingsAction = "transactional" | "announcement" | "apple" | "telegram";
+function mailTestRequirement(saved: Row, stream: "transactional" | "announcement") {
+    if (stream === "announcement" && !saved.email_announcement_separate)
+        return "请先启用并保存推广独立通道。";
+    const prefix = stream === "announcement" ? "email_announcement_" : "email_";
+    const read = (field: string) => saved[prefix + field];
+    if (!read("from_address")) return "请先填写并保存发件地址。";
+    switch (read("provider") || "smtp") {
+        case "mailgun":
+            if (!read("mailgun_domain") || !read("mailgun_key_configured"))
+                return "请先保存 Mailgun 发件域名和 API 密钥。";
+            break;
+        case "resend":
+            if (!read("resend_key_configured")) return "请先保存 Resend API 密钥。";
+            break;
+        case "ses":
+            if (!read("ses_region") || (read("ses_auth") === "key" && !read("ses_key_configured")))
+                return "请先保存 SES 区域和所选鉴权方式需要的凭据。";
+            break;
+        default:
+            if (!read("host")) return "请先填写并保存 SMTP 服务器地址。";
+    }
+    return "";
+}
+const sectionTitles: Record<string, string> = {
+    site: "基础信息",
     footer: "页脚 HTML",
-    safe: "安全与注册",
-    browser: "浏览器访问",
+    safe: "账户与注册",
+    browser: "浏览器引导",
     subscribe: "订阅设置",
     server: "节点通讯",
     invite: "邀请与佣金",
@@ -40,53 +67,27 @@ const groupNames: Record<string, string> = {
     app: "专用客户端下载",
     entrypoints: "服务入口",
 };
-const settingsCategories = [
-    { label: "站点与体验", keys: ["site", "footer", "browser"] },
-    {
-        label: "账户与业务",
-        keys: ["safe", "subscribe", "invite", "deposit", "ticket"],
-    },
-    {
-        label: "通知与接入",
-        keys: ["email", "telegram", "server", "entrypoints"],
-    },
-];
-const groupDescriptions: Record<string, string> = {
-    site: "站点信息、展示与默认偏好",
-    footer: "页脚内容与自定义 HTML",
-    browser: "内置浏览器访问规则与引导预览",
-    safe: "注册、登录与账户保护",
-    subscribe: "订阅交付、试用与额度权限",
-    invite: "邀请奖励和直属邀请人佣金规则",
-    deposit: "账户充值与奖励规则",
-    ticket: "工单提交与服务支持",
-    email: "发送通道、投递回调与测试",
-    telegram: "机器人通知与用户群",
-    server: "节点 API 与通讯设置",
-    entrypoints: "服务地址与入口配置",
-    app: "客户端分发与下载账号",
-};
-export function Settings({ section }: { section?: string } = {}) {
+export function Settings({ section: group }: { section: string }) {
     const d = useData(admin("config/fetch"));
     const schema = useData(admin("console/configSchema"));
-    const [group, setGroup] = useState(section || "site"),
-        [saved, setSaved] = useState("");
+    const [saved, setSaved] = useState("");
     const plans = useData<Row[]>(group === "site" ? admin("plan/fetch") : "");
     const creditGroups = useData<Row[]>(group === "subscribe" ? admin("server/group/fetch") : "");
-    const [categorySearch, setCategorySearch] = useState("");
     const [saving, setSaving] = useState(false);
-    const [dirty, setDirty] = useState(false),
-        [actionBusy, setActionBusy] = useState(false),
-        [actionResult, setActionResult] = useState("");
+    const [dirty, setDirty] = useState(false);
+    const [activeAction, setActiveAction] = useState<SettingsAction | null>(null);
+    const [actionResults, setActionResults] = useState<Partial<Record<SettingsAction, OperationNotice>>>({});
+    const actionBusy = activeAction !== null;
     const actionPending = useRef(false);
     async function runAction(
+        action: SettingsAction,
         endpoint: string,
         body: Record<string, unknown> = {},
     ) {
         if (actionPending.current) return;
         actionPending.current = true;
-        setActionBusy(true);
-        setActionResult("");
+        setActiveAction(action);
+        setActionResults(previous => ({ ...previous, [action]: undefined }));
         try {
             const response = await request(admin(endpoint), body);
             const log = (
@@ -112,16 +113,17 @@ export function Settings({ section }: { section?: string } = {}) {
                         .filter(Boolean)
                         .join(" · "),
                 );
-            setActionResult(
-                endpoint === "config/testSendMail"
+            setActionResults(previous => ({ ...previous, [action]: {
+                kind: "success",
+                message: endpoint === "config/testSendMail"
                     ? "邮件已被发送服务接受，请检查收件箱；最终投递结果需核查服务商记录。"
                     : "操作成功",
-            );
+            } }));
         } catch (e) {
-            setActionResult((e as Error).message);
+            setActionResults(previous => ({ ...previous, [action]: { kind: "error", message: (e as Error).message } }));
         } finally {
             actionPending.current = false;
-            setActionBusy(false);
+            setActiveAction(null);
         }
     }
     const [previewValues, setPreviewValues] = useState<Row | null>(null);
@@ -146,6 +148,9 @@ export function Settings({ section }: { section?: string } = {}) {
                     : group !== "safe" || !key.startsWith("browser_policy_")),
         ),
     );
+    const mailTestReady = !dirty && !saving && !d.loading && !d.error && !actionBusy;
+    const mailTestReason = group === "email" ? mailTestRequirement(raw, "transactional") : "";
+    const promotionTestReason = group === "email" ? mailTestRequirement(raw, "announcement") : "";
     const fields = settingsPresentation(
         group === "browser" ? "safe" : group,
         Object.entries(raw)
@@ -253,98 +258,11 @@ export function Settings({ section }: { section?: string } = {}) {
     }
     return (
         <Panel
-            title={section ? ({site:"基础信息",browser:"浏览器引导",safe:"账户与注册"} as Record<string,string>)[section] || groupNames[section] : "系统配置"}
+            title={sectionTitles[group]}
             className="settings-panel"
         >
-            <div
-                data-saving={saving || actionBusy ? "true" : undefined}
-                className={section ? "" : "admin-settings-layout"}
-            >
-                {!section && (
-                    <nav
-                        className="admin-settings-nav"
-                        aria-label="系统设置分类"
-                    >
-                        <label className="admin-settings-search">
-                            搜索设置分类
-                            <input
-                                type="search"
-                                value={categorySearch}
-                                placeholder="站点、邮件、节点…"
-                                onChange={(e) =>
-                                    setCategorySearch(e.target.value)
-                                }
-                            />
-                        </label>
-                        {settingsCategories.map((category) => {
-                            const keys = category.keys.filter((key) =>
-                                (groupNames[key] + groupDescriptions[key])
-                                    .toLowerCase()
-                                    .includes(
-                                        categorySearch.trim().toLowerCase(),
-                                    ),
-                            );
-                            return keys.length ? (
-                                <section key={category.label}>
-                                    <h3>{category.label}</h3>
-                                    {keys.map((key) => (
-                                        <button
-                                            type="button"
-                                            key={key}
-                                            aria-pressed={key === group}
-                                            disabled={saving || actionBusy}
-                                            onClick={() => {
-                                                if (key === group) return;
-                                                if (
-                                                    dirty &&
-                                                    !window.confirm(
-                                                        "当前分类有未保存的修改，确认放弃并切换？",
-                                                    )
-                                                )
-                                                    return;
-                                                setPreviewValues(null);
-                                                setConfirmedTimezone("");
-                                                timezoneInput.current = undefined;
-                                                setGroup(key);
-                                                setSaved("");
-                                                setDirty(false);
-                                                setActionResult("");
-                                            }}
-                                        >
-                                            {groupNames[key]}
-                                        </button>
-                                    ))}
-                                </section>
-                            ) : null;
-                        })}
-                        {categorySearch &&
-                            !settingsCategories.some((category) =>
-                                category.keys.some((key) =>
-                                    (groupNames[key] + groupDescriptions[key])
-                                        .toLowerCase()
-                                        .includes(
-                                            categorySearch.trim().toLowerCase(),
-                                        ),
-                                ),
-                            ) && <p className="muted">没有匹配的设置分类</p>}
-                    </nav>
-                )}
+            <div data-saving={saving || actionBusy ? "true" : undefined}>
                 <section className="admin-settings-content">
-                    {!section && (
-                        <header className="admin-settings-heading">
-                            <div>
-                                <h3>{groupNames[group]}</h3>
-                                <p className="muted">
-                                    {groupDescriptions[group]}
-                                </p>
-                            </div>
-                            {dirty && (
-                                <span className="admin-unsaved">
-                                    有未保存的修改
-                                </span>
-                            )}
-                        </header>
-                    )}
                     <State
                         data={loadedGroup.current === group ? true : undefined}
                         retryAt={Math.max(d.retryAt || 0, schema.retryAt || 0, plans.retryAt || 0, creditGroups.retryAt || 0)}
@@ -441,7 +359,7 @@ export function Settings({ section }: { section?: string } = {}) {
                                 onDirtyChange={setDirty}
                                 onDirty={() => {
                                     setSaved("");
-                                    setActionResult("");
+                                    setActionResults({});
                                 }}
                                 validate={validateSettings}
                                 onSave={async (body) => {
@@ -494,41 +412,32 @@ export function Settings({ section }: { section?: string } = {}) {
                                 <button
                                     disabled={dirty || actionBusy}
                                     onClick={() =>
-                                        runAction("config/testAppleAccount")
+                                        runAction("apple", "config/testAppleAccount")
                                     }
                                 >
                                     测试下载账号连接
                                 </button>
+                                <AdminOperationNotice notice={actionResults.apple ?? null} />
                             </div>
                         )}
                         {group === "email" && (
                             <div className="pad">
+                                <h3>测试邮件通道</h3>
                                 <p className="muted">
                                     测试邮件发往当前管理员邮箱，使用已保存的发送通道。修改邮件配置后需重启队列服务。发送成功仅代表服务商接受。
                                 </p>
+                                {dirty && <p className="muted">请先保存配置，再执行测试或连接操作。</p>}
+                                <h4>事务通道</h4>
                                 <button
-                                    disabled={
-                                        dirty ||
-                                        actionBusy ||
-                                        (raw.email_provider === "mailgun"
-                                            ? !raw.email_mailgun_domain ||
-                                              !raw.email_mailgun_key_configured
-                                            : raw.email_provider === "resend"
-                                              ? !raw.email_resend_key_configured
-                                              : raw.email_provider === "ses"
-                                                ? !raw.email_ses_region ||
-                                                  (raw.email_ses_auth ===
-                                                      "key" &&
-                                                      !raw.email_ses_key_configured)
-                                                : !raw.email_host) ||
-                                        !raw.email_from_address
-                                    }
+                                    disabled={!mailTestReady || !!mailTestReason}
                                     onClick={() =>
-                                        runAction("config/testSendMail")
+                                        runAction("transactional", "config/testSendMail")
                                     }
                                 >
-                                    发送测试邮件
+                                    {activeAction === "transactional" ? "发送测试邮件中…" : "发送测试邮件"}
                                 </button>
+                                {mailTestReason && <p className="muted">{mailTestReason}</p>}
+                                <AdminOperationNotice notice={actionResults.transactional ?? null} />
                                 <p className="muted">
                                     {raw.email_provider === "ses" &&
                                     raw.email_ses_auth !== "key"
@@ -546,20 +455,19 @@ export function Settings({ section }: { section?: string } = {}) {
                                           )}
                                     <a href="#/mail-logs">查看邮件日志</a>
                                 </p>
+                                <h4>推广通道</h4>
                                 <button
-                                    disabled={
-                                        dirty ||
-                                        actionBusy ||
-                                        !raw.email_announcement_separate
-                                    }
+                                    disabled={!mailTestReady || !!promotionTestReason}
                                     onClick={() =>
-                                        runAction("config/testSendMail", {
+                                        runAction("announcement", "config/testSendMail", {
                                             stream: "announcement",
                                         })
                                     }
                                 >
-                                    测试推广通道（发往管理员）
+                                    {activeAction === "announcement" ? "测试推广通道中…" : "测试推广通道（发往管理员）"}
                                 </button>
+                                {promotionTestReason && <p className="muted">{promotionTestReason}</p>}
+                                <AdminOperationNotice notice={actionResults.announcement ?? null} />
                                 <details>
                                     <summary>投递回调配置</summary>
                                     <p className="muted">
@@ -600,24 +508,20 @@ export function Settings({ section }: { section?: string } = {}) {
                                         !raw.telegram_bot_token
                                     }
                                     onClick={() =>
-                                        runAction("config/setTelegramWebhook")
+                                        runAction("telegram", "config/setTelegramWebhook")
                                     }
                                 >
                                     设置 Telegram Webhook
                                 </button>
+                                <AdminOperationNotice notice={actionResults.telegram ?? null} />
                                 <AdminTelegramCommunity
                                     disabled={dirty || actionBusy}
                                 />
                             </div>
                         )}
-                        {dirty && ["email", "telegram"].includes(group) && (
+                        {dirty && group === "telegram" && (
                             <p className="pad muted">
                                 请先保存配置，再执行测试或连接操作。
-                            </p>
-                        )}
-                        {actionResult && (
-                            <p className="pad" role="status">
-                                {actionResult}
                             </p>
                         )}
                         {saved && (

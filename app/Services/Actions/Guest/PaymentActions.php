@@ -26,7 +26,7 @@ class PaymentActions
         $record = function ($result, $response, $reason = null) use ($method, $uuid, $request, $trace, &$stage, &$verifiedTradeNo) {
             $trace->add('回调响应', $response);
             $trace->add('回调处理错误', $reason);
-            PaymentCallbackHistory::record($method, $uuid, $verifiedTradeNo, $stage, $result, $reason, $request->attributes->get('requestId'), $trace);
+            return PaymentCallbackHistory::record($method, $uuid, $verifiedTradeNo, $stage, $result, $reason, $request->attributes->get('requestId'), $trace);
         };
         try {
             $paymentService = new PaymentService($method, null, $uuid);
@@ -43,15 +43,20 @@ class PaymentActions
             $record('handled', $response);
             return $response;
         } catch (\Throwable $e) {
-            $record('failed', 'fail', $e->getMessage());
-            $knownReasons = PaymentCallbackHistory::REASONS;
-            \Illuminate\Support\Facades\Log::warning('Payment callback failed', [
-                'provider' => in_array($method, ['Paytaro', 'PaytaroQR'], true) ? $method : 'other',
-                'stage' => $stage,
-                'hasAppSecretHeader' => $request->hasHeader('X-App-Secret'),
-                'reason' => in_array($e->getMessage(), $knownReasons, true) ? $e->getMessage() : 'internal_error',
-                'exceptionClass' => get_class($e),
-            ]);
+            $sampled = $record('failed', 'fail', $e->getMessage());
+            if ($sampled || $stage === 'settlement') {
+                try {
+                    \Illuminate\Support\Facades\Log::warning('Payment callback failed', [
+                        'provider' => in_array($method, ['Paytaro', 'PaytaroQR'], true) ? $method : 'other',
+                        'stage' => $stage,
+                        'hasAppSecretHeader' => $request->hasHeader('X-App-Secret'),
+                        'reason' => in_array($e->getMessage(), PaymentCallbackHistory::REASONS, true) ? $e->getMessage() : 'internal_error',
+                        'exceptionClass' => get_class($e),
+                    ]);
+                } catch (\Throwable) {
+                    // Log storage is independent of the gateway response.
+                }
+            }
             abort(500, 'fail');
         }
     }

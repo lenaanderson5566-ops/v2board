@@ -3,7 +3,8 @@ $app = require __DIR__.'/support/bootstrap.php';
 require __DIR__.'/commerce-bootstrap.php';
 if (!getenv('COMMERCE_TEST_DATABASE')) throw new RuntimeException('Requires isolated commerce database');
 set_exception_handler(function($e){fwrite(STDERR,get_class($e).': '.$e->getMessage().' at '.basename($e->getFile()).':'.$e->getLine().PHP_EOL);exit(1);});
-use Illuminate\Support\Facades\{DB,Schema,Http};
+use Illuminate\Support\Facades\{Artisan,DB,Schema,Http,Queue};
+use App\Jobs\OrderHandleJob;
 use App\Models\{User,Plan,Order,Payment,Coupon};
 use App\Services\{BillingCurrency,ExchangeRate,CouponWallet,OrderService,PaymentQuote};
 use App\Services\Actions\User\OrderActions;
@@ -22,6 +23,31 @@ try {
     config(['fastai.new_user_currency'=>'CNY','fastai.telegram_bot_enable'=>0,'fastai.deposit_bounus'=>['100:10'],'fastai.invite_commission'=>10,'fastai.withdraw_close_enable'=>0]);
     $user=User::create(['email'=>'legacy-'.uniqid().'@example.test','password'=>'test','token'=>bin2hex(random_bytes(16)),'uuid'=>Illuminate\Support\Str::uuid(),'balance'=>5000,'transfer_enable'=>0,'expired_at'=>0]);
     $plan=Plan::create(['name'=>'Dual currency fixture','group_id'=>1,'transfer_enable'=>100,'month_price'=>3000,'year_price'=>30000,'show'=>1,'renew'=>1,'usd_prices'=>['month_price'=>500,'year_price'=>5000]]);
+
+    $now = time();
+    $cutoff = $now - OrderHandleJob::PENDING_EXPIRY_SECONDS;
+    $makeSweepOrder = fn (int $status, int $createdAt) => [
+        'user_id' => $user->id, 'plan_id' => $plan->id, 'trade_no' => bin2hex(random_bytes(16)),
+        'period' => 'month_price', 'type' => 1, 'status' => $status, 'total_amount' => 3000,
+        'created_at' => $createdAt, 'updated_at' => $now,
+    ];
+    $dueOrders = [$makeSweepOrder(0, $cutoff), $makeSweepOrder(1, $now)];
+    for ($i = 0; $i < 199; $i++) $dueOrders[] = $makeSweepOrder(0, $cutoff - 1);
+    $skippedOrders = [$makeSweepOrder(0, $cutoff + 120), $makeSweepOrder(2, $cutoff), $makeSweepOrder(3, $cutoff)];
+    $fixtureOrders = array_merge($dueOrders, $skippedOrders);
+    Order::query()->insert($fixtureOrders);
+    $fixtureTrades = array_column($fixtureOrders, 'trade_no');
+    $dueTrades = array_column($dueOrders, 'trade_no');
+    sort($dueTrades);
+    Queue::fake();
+    for ($i = 0; $i < 2; $i++) {
+        $assert(Artisan::call('check:order') === 0, 'The order sweep completes');
+        $enqueued = Queue::pushed(OrderHandleJob::class)->map(fn (OrderHandleJob $job) => $job->uniqueId())
+            ->filter(fn (string $tradeNo) => in_array($tradeNo, $fixtureTrades, true))->sort()->values()->all();
+        $assert($enqueued === $dueTrades, 'Every eligible order across chunks is queued once, including the expiration boundary and pending activation');
+    }
+    Order::whereIn('trade_no', $fixtureTrades)->delete();
+
     // The plan catalog and direct detail must honor the same switching policy as orders.
     $policyUser=$user->replicate();$policyUser->email='plan-policy-'.uniqid().'@example.test';$policyUser->token=bin2hex(random_bytes(16));$policyUser->uuid=Illuminate\Support\Str::uuid();$policyUser->plan_id=$plan->id;$policyUser->transfer_enable=1073741824;$policyUser->expired_at=time()+86400;$policyUser->save();
     $otherPlan=$plan->replicate();$otherPlan->name='Other visible plan';$otherPlan->save();

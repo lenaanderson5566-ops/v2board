@@ -16,10 +16,15 @@ final class PaymentGatewayTrace
     private static ?self $current = null;
 
     private array $sections = [];
-    private int $bytesLeft = self::BYTE_LIMIT;
+    private int $bytesLeft;
     private int $exchanges = 0;
     private bool $truncated = false;
     private ?array $lastExchange = null;
+
+    public function __construct(int $byteLimit = self::BYTE_LIMIT)
+    {
+        $this->bytesLeft = $byteLimit;
+    }
 
     public function run(callable $operation): mixed
     {
@@ -93,14 +98,19 @@ final class PaymentGatewayTrace
         }
     }
 
-    public function storageFields(string $table): array
+    public function storageFields(string $table, ?int $byteLimit = null): array
     {
         if (!$this->sections) return [];
 
         try {
             if (!Schema::hasColumn($table, self::COLUMN)) return [];
-            $sections = $this->sections;
-            if ($this->truncated) $sections[] = ['title' => '记录说明', 'text' => '诊断内容超过记录上限，或存在无法记录的内容。'];
+            $sample = $this;
+            if ($byteLimit !== null) {
+                $sample = new self($byteLimit);
+                foreach ($this->sections as $section) $sample->add($section['title'], $section['text']);
+            }
+            $sections = $sample->sections;
+            if ($this->truncated || $sample->truncated) $sections[] = ['title' => '记录说明', 'text' => '诊断内容超过记录上限，或存在无法记录的内容。'];
             return [self::COLUMN => Crypt::encryptString(json_encode(['sections' => $sections],
                 JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR))];
         } catch (\Throwable) {

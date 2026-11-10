@@ -34,11 +34,9 @@ vi.mock("./PaymentCategoryEditor", () => ({
 import { Overview, RankChart, HistoryChart } from "./admin-dashboard";
 import { UsersPage } from "./admin-users";
 import { OrdersPage } from "./admin-orders";
-import { AdminInvitations } from "./AdminInvitations";
-import { AdminSubscriptions } from "./AdminSubscriptions";
 import AdminContent from "./admin-entry";
-import { legacyAdminMenu } from "./admin-shell";
-import { resources } from "./admin";
+import { adminMenu } from "./admin-shell";
+import { resources } from "./admin-resources";
 import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
@@ -119,7 +117,7 @@ beforeEach(() => {
 });
 
 it("restores log filters after leaving and reopening a list", async () => {
-    const { ResourcePage, resources } = await import("./admin");
+    const { ResourcePage } = await import("./admin");
     api.request.mockResolvedValue({ data: [], total: 0 });
     const view = render(<ResourcePage resource={resources["access-logs-subscriptions"]} />);
     fireEvent.change(screen.getByLabelText("日志关键词"), {
@@ -282,15 +280,16 @@ it("shows key dates with the order number before callback diagnostics and suppor
 });
 it("keeps order details primary and moves secondary actions into more without enabling completed-order writes", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    window.location.hash = "#/orders?trade_no=order-1";
     try {
         const view = render(<OrdersPage />);
         await screen.findByRole("button", { name: "订单详情" });
         const actions = view.container.querySelector(".table-actions > .actions")!;
         expect(within(actions as HTMLElement).getAllByRole("button").map(button => button.textContent)).toEqual(["订单详情", "更多操作"]);
-        expect(screen.queryByRole("link", { name: "查看用户" })).toBeNull();
+        expect(screen.queryByRole("button", { name: "查看用户" })).toBeNull();
         expect(screen.queryByRole("button", { name: "标记已付款" })).toBeNull();
         fireEvent.click(within(actions as HTMLElement).getByRole("button", { name: "更多操作" }));
-        expect(screen.getByRole("link", { name: "查看用户" }).getAttribute("href")).toBe("#/users?user_id=7");
+        const openUser = screen.getByRole("button", { name: "查看用户" });
         for (const name of ["标记已付款", "取消"]) {
             const button = screen.getByRole("button", { name });
             expect((button as HTMLButtonElement).disabled).toBe(true);
@@ -298,6 +297,11 @@ it("keeps order details primary and moves secondary actions into more without en
         }
         expect(confirm).not.toHaveBeenCalled();
         expect(api.request.mock.calls.some(([path]) => /order\/(paid|cancel)$/.test(String(path)))).toBe(false);
+        fireEvent.click(openUser);
+        const drawer = await screen.findByRole("dialog", { name: /用户详情.*guest@example.com/ });
+        fireEvent.click(within(drawer).getByRole("button", { name: "关闭" }));
+        expect(window.location.hash).toBe("#/orders?trade_no=order-1");
+        expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("order-1");
     } finally { confirm.mockRestore(); }
 });
 it.each([["标记已付款", "order/paid"], ["取消", "order/cancel"]])("preserves confirmation and the existing API for unpaid order action %s", async (label, endpoint) => {
@@ -322,7 +326,7 @@ it("keeps all order actions flat in the context menu", async () => {
     fireEvent.contextMenu(view.container.querySelector("tbody tr")!, { clientX: 100, clientY: 100 });
     const context = screen.getByRole("menu");
     expect(within(context).getByRole("button", { name: "订单详情" })).toBeTruthy();
-    expect(within(context).getByRole("link", { name: "查看用户" })).toBeTruthy();
+    expect(within(context).getByRole("button", { name: "查看用户" })).toBeTruthy();
     expect(within(context).queryByRole("button", { name: "更多操作" })).toBeNull();
     expect((within(context).getByRole("button", { name: "标记已付款" }) as HTMLButtonElement).disabled).toBe(true);
     expect((within(context).getByRole("button", { name: "取消" }) as HTMLButtonElement).disabled).toBe(true);
@@ -361,7 +365,7 @@ it("restores order search from applied filters and queries email without droppin
 });
 it("clears the user email draft together with its applied filter chip", async () => {
     render(<UsersPage />);
-    await screen.findByRole("button", { name: "分配订单" });
+    await screen.findByRole("button", { name: "编辑" });
     fireEvent.change(screen.getByLabelText("搜索所有用户邮箱"), { target: { value: "guest@example.com" } });
     fireEvent.submit(screen.getByRole("form", { name: "用户搜索与筛选" }));
     fireEvent.click(screen.getByRole("button", { name: "移除筛选条件 1" }));
@@ -381,8 +385,8 @@ it("requires a fresh successful mail audience check after a repeated check fails
         return { data: [] };
     });
     render(<UsersPage />);
-    await screen.findByRole("button", { name: "分配订单" });
-    fireEvent.click(screen.getByText("操作", { selector: "summary" }));
+    await screen.findByRole("button", { name: "编辑" });
+    fireEvent.click(screen.getByText("批量操作", { selector: "summary" }));
     const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
     await waitFor(() => expect(sendMail.disabled).toBe(false));
     fireEvent.click(sendMail);
@@ -425,8 +429,8 @@ it("keeps a mail draft when closing is cancelled and prevents dismissing a pendi
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     try {
         render(<UsersPage />);
-        await screen.findByRole("button", { name: "分配订单" });
-        fireEvent.click(screen.getByText("操作", { selector: "summary" }));
+        await screen.findByRole("button", { name: "编辑" });
+        fireEvent.click(screen.getByText("批量操作", { selector: "summary" }));
         const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
         await waitFor(() => expect(sendMail.disabled).toBe(false));
         fireEvent.click(sendMail);
@@ -469,8 +473,8 @@ it("requires a new audience confirmation after a send conflict and retains the m
         return { data: [] };
     });
     render(<UsersPage />);
-    await screen.findByRole("button", { name: "分配订单" });
-    fireEvent.click(screen.getByText("操作", { selector: "summary" }));
+    await screen.findByRole("button", { name: "编辑" });
+    fireEvent.click(screen.getByText("批量操作", { selector: "summary" }));
     const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
     await waitFor(() => expect(sendMail.disabled).toBe(false));
     fireEvent.click(sendMail);
@@ -553,6 +557,7 @@ it("ignores a late clipboard failure after a different user action has opened de
     render(<UsersPage />);
     fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
     fireEvent.click(screen.getByRole("button", { name: "复制订阅链接" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     fireEvent.click(screen.getByRole("button", { name: "分配订单" }));
     const dialog = await screen.findByRole("dialog");
     reject(new Error("clipboard denied"));
@@ -589,7 +594,7 @@ it("searches invitation relationships and submits commission approval through th
         } };
         return existingRequest(path, ...args);
     });
-    render(<AdminInvitations />);
+    const view = render(<AdminContent route="invitations" />);
     await screen.findByText(/inviter@example.com/);
     fireEvent.change(screen.getByRole("textbox", { name: "查询邮箱" }), {
         target: { value: "inviter@example.com" },
@@ -603,7 +608,8 @@ it("searches invitation relationships and submits commission approval through th
         ).toBe(true),
     );
     fireEvent.mouseDown(screen.getByRole("tab", { name: "佣金审核" }), { button: 0, ctrlKey: false });
-    fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
+    expect(window.location.hash).toBe("#/invitations?tab=commissions");
+    view.rerender(<AdminContent route="invitations?tab=commissions" />);
     fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
     const dialog = within(screen.getByRole("dialog"));
     expect(await dialog.findByText("USD 2.50")).toBeTruthy();
@@ -639,7 +645,6 @@ it("requires fresh commission facts when detail is incomplete and explains an is
         return existingRequest(path, ...args);
     });
     render(<OrdersPage commissionMode />);
-    fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
     fireEvent.click(await screen.findByRole("button", { name: "佣金审核" }));
     const dialog = within(await screen.findByRole("dialog"));
     expect(await dialog.findByText("订单或佣金状态无记录，暂不可审核。")).toBeTruthy();
@@ -668,7 +673,7 @@ it("loads the linked invitation review and keeps the draft after a revision conf
         }
         return { data: true };
     });
-    render(<AdminInvitations />);
+    render(<AdminContent route={window.location.hash.slice(2)} />);
     fireEvent.click(await screen.findByRole("button", { name: "查看并审核" }));
     const dialog = within(await screen.findByRole("dialog"));
     const decision = dialog.getByRole("button", { name: /证据不足/ });
@@ -693,14 +698,14 @@ it("loads the linked invitation review and keeps the draft after a revision conf
     });
 });
 it("removes operations grouping and keeps each new group contiguous", () => {
-    expect(legacyAdminMenu.some((item) => String(item[3]) === "运营中台")).toBe(
+    expect(adminMenu.some((item) => String(item[3]) === "运营中台")).toBe(
         false,
     );
-    expect(legacyAdminMenu.some(([key]) => (key as string) === "usage")).toBe(
+    expect(adminMenu.some(([key]) => (key as string) === "usage")).toBe(
         false,
     );
-    expect(legacyAdminMenu.find(([key]) => key === "online")?.[3]).toBe("用户与支持");
-    const groups = legacyAdminMenu
+    expect(adminMenu.find(([key]) => key === "online")?.[3]).toBe("用户与支持");
+    const groups = adminMenu
         .map((item) => item[3])
         .filter((group, index, all) => group !== all[index - 1]);
     expect(new Set(groups).size).toBe(groups.length);
@@ -719,10 +724,11 @@ it("opens system monitoring only on its dashboard tab", async () => {
     ).toBe(true);
 });
 it("loads translations from subscription management and supports old links", async () => {
-    const view = render(<AdminSubscriptions />);
+    const view = render(<AdminContent route="plans" />);
     expect(
-        screen.getByRole("tab", { name: "套餐列表", selected: true }),
+        await screen.findByRole("tab", { name: "套餐列表", selected: true }),
     ).toBeTruthy();
+    expect(screen.getAllByRole("tablist")).toHaveLength(1);
     expect(
         api.request.mock.calls.some(([path]) => path.includes("ops/i18n/plan")),
     ).toBe(false);
@@ -731,6 +737,8 @@ it("loads translations from subscription management and supports old links", asy
         button: 0,
         ctrlKey: false,
     });
+    expect(window.location.hash).toBe("#/plans-translations");
+    view.rerender(<AdminContent route="plans-translations" />);
     await screen.findByText("选择套餐后开始翻译");
     expect(
         api.request.mock.calls.some(([path]) =>
@@ -738,7 +746,7 @@ it("loads translations from subscription management and supports old links", asy
         ),
     ).toBe(true);
     view.unmount();
-    render(<AdminContent current="plans-translations" />);
+    render(<AdminContent route="plans-translations" />);
     expect(
         await screen.findByRole("tab", { name: "套餐翻译", selected: true }),
     ).toBeTruthy();
@@ -805,19 +813,19 @@ it("requires an explicit review to keep an outdated manual translation", async (
     } finally { confirm.mockRestore(); }
 });
 it("consolidates settings and monitoring navigation", () => {
-    expect(legacyAdminMenu.some(([key]) => String(key) === "notification-blocklist")).toBe(false);
-    expect(legacyAdminMenu.find(([key]) => key === "notification-settings")?.[1]).toBe("通知设置");
+    expect(adminMenu.some(([key]) => String(key) === "notification-blocklist")).toBe(false);
+    expect(adminMenu.find(([key]) => key === "notification-settings")?.[1]).toBe("通知设置");
     for (const key of ["system", "risk-settings", "translations"])
-        expect(legacyAdminMenu.some(([item]) => String(item) === key)).toBe(
+        expect(adminMenu.some(([item]) => String(item) === key)).toBe(
             false,
         );
-    expect(legacyAdminMenu.find(([key]) => key === "log-settings")?.[3]).toBe(
+    expect(adminMenu.find(([key]) => key === "log-settings")?.[3]).toBe(
         "日志与诊断",
     );
 });
 
 it("renders the backend 24-hour client count", async () => {
-    const { ResourcePage, resources } = await import("./admin");
+    const { ResourcePage } = await import("./admin");
     api.request.mockResolvedValue({
         data: [
             {
@@ -849,7 +857,7 @@ it("renders the backend 24-hour client count", async () => {
 });
 
 it("keeps recommendations out of dedicated client settings", async () => {
-    const { Settings } = await import("./admin");
+    const { Settings } = await import("./admin-settings");
     api.request.mockResolvedValue({
         data: {
             site: { app_name: "Test" },
@@ -869,7 +877,7 @@ it("keeps recommendations out of dedicated client settings", async () => {
 });
 
 it("places subscription blocking in risk rules and removes the duplicate whitelist", async () => {
-    render(<AdminContent current="risk" />);
+    render(<AdminContent route="risk" />);
     expect(await screen.findByText("订阅访问拦截")).toBeTruthy();
     expect(await screen.findByLabelText("每账号 24 小时窗口上限")).toBeTruthy();
     expect(screen.queryByLabelText("开启 UA 白名单")).toBeNull();
@@ -877,7 +885,6 @@ it("places subscription blocking in risk rules and removes the duplicate whiteli
 });
 
 it("makes every user column selectable and orders the activity times", async () => {
-    const { resources } = await import("./admin");
     const keys = resources.users.columns.map(([key]) => key);
     expect(keys[keys.indexOf("last_connected_at") + 1]).toBe(
         "last_subscribe_at",
@@ -930,7 +937,7 @@ it("restores saved user columns and can reset defaults", () => {
 
 it("opens coupon template editing with issued-rights notice and without batch generation", async () => {
     api.request.mockImplementation(async (path: string) => ({ data: path.includes("coupon/fetch") ? [{ id: 41, name: "Issued coupon", type: 2, value: 10, started_at: 1700000000, ended_at: 2000000000, show: 1, limit_use: 0, code: "issued" }] : [], total: 1 }));
-    const { ResourcePage, resources } = await import("./admin");
+    const { ResourcePage } = await import("./admin");
     render(<ResourcePage resource={resources.coupons} />);
     fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
     const dialog = await screen.findByRole("dialog");
@@ -1003,12 +1010,43 @@ it("preserves unavailable coupon plan restrictions alongside named selections", 
 });
 
 it("exposes wallet coupon templates without legacy code controls", async () => {
-    const { resources } = await import("./admin");
     for (const key of ["code", "generate_codes", "limit_use_with_user"]) {
         expect(resources.coupons.fields.some(field => field.key === key)).toBe(false);
         expect(resources.coupons.columns.some(column => column[0] === key)).toBe(false);
     }
     expect(resources.coupons.fields.some(field => field.key === "public_claim")).toBe(true);
+});
+
+it("uses the accepted ticket deep link and filters the selected queue without losing email or focus", async () => {
+    const { AdminTickets } = await import("./admin-content");
+    const ticketQuery = () => new URLSearchParams(
+        api.request.mock.calls.filter(([path]) => String(path).includes("ticket/fetch?")).at(-1)?.[0].split("?")[1],
+    );
+    const view = render(<AdminTickets route="tickets?status=0&reply_status=0" />);
+    const queue = within(screen.getByRole("group", { name: "工单队列" }));
+    expect(queue.getByRole("button", { name: "待回复" }).getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => expect(ticketQuery().get("reply_status[0]")).toBe("0"));
+
+    const blockedRoute = "tickets?status=1&reply_status=0";
+    window.location.hash = `#/${blockedRoute}`;
+    fireEvent(window, new HashChangeEvent("hashchange"));
+    expect(queue.getByRole("button", { name: "待回复" }).getAttribute("aria-pressed")).toBe("true");
+
+    fireEvent.change(screen.getByLabelText("工单用户邮箱"), { target: { value: "guest@example.com" } });
+    fireEvent.click(screen.getByRole("button", { name: "搜索" }));
+    const replied = queue.getByRole("button", { name: "已回复" });
+    replied.focus();
+    fireEvent.click(replied);
+    await waitFor(() => expect(ticketQuery().get("reply_status[0]")).toBe("1"));
+    expect(ticketQuery().get("status")).toBe("0");
+    expect(ticketQuery().get("email")).toBe("guest@example.com");
+    expect(document.activeElement).toBe(replied);
+    expect(screen.queryByLabelText("工单回复状态")).toBeNull();
+
+    view.rerender(<AdminTickets route={blockedRoute} />);
+    await waitFor(() => expect(ticketQuery().get("status")).toBe("1"));
+    expect(ticketQuery().get("reply_status[0]")).toBe("0");
+    expect((screen.getByLabelText("工单回复状态") as HTMLSelectElement).value).toBe("0");
 });
 
 it("keeps ticket replies open and opens the selected user drawer without rendering HTML", async () => {
@@ -1027,7 +1065,7 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
         if (path.includes("ticket/fetch")) return { data: new URLSearchParams(path.split("?")[1]).has("id") ? { ...ticket } : [{ ...ticket }], total: 1 };
         return { data: [] };
     });
-    render(<AdminTickets />);
+    render(<AdminTickets route="tickets" />);
     fireEvent.click(await screen.findByRole("button", { name: "查看对话" }));
     const dialog = await screen.findByRole("dialog", { name: "Support fixture" });
     expect(await within(dialog).findByText(attack)).toBeTruthy();
@@ -1053,7 +1091,7 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
 });
 
 it("shares display preferences across resource lists without leaking selected columns", async () => {
-    const { ResourcePage, resources } = await import("./admin");
+    const { ResourcePage } = await import("./admin");
     localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
     api.request.mockResolvedValue({ data: [], total: 0 });
     const view = render(<ResourcePage resource={resources.orders} />);
@@ -1129,7 +1167,7 @@ it("keeps shared filter submissions and reset actions separate", async () => {
     expect(submit).toHaveBeenCalledOnce();
 });
 
-it.each(legacyAdminMenu.map(([key, title]) => [key, title]))("renders menu page %s with its shell and without page failures", async (key, title) => {
+it.each(adminMenu.map(([key, title]) => [key, title]))("renders menu page %s with its shell and without page failures", async (key, title) => {
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     const { default: AdminWorkspace } = await import("./admin-workspace");
     const { MfaRecoveryProvider } = await import("../shared/MfaRecovery");
@@ -1149,9 +1187,22 @@ it.each(["access-logs", "access-logs-subscriptions", "access-logs-connections", 
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     configureTimeZone("Asia/Shanghai", true);
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));
-    render(<AdminContent current={current} />);
+    render(<AdminContent route={current} />);
     expect((await screen.findByTestId("log-time-zone")).textContent).toContain("Asia/Shanghai");
     expect(screen.getAllByText(/Asia\/Shanghai/)).toHaveLength(1);
+});
+
+it.each([
+    ["access-logs", "日志登录结果", "is_success", "0", "log/login/fetch"],
+    ["access-logs-subscriptions", "日志订阅结果", "status", "failed", "log/subscribe/fetch"],
+])("applies the outcome filter from the current %s route", async (route, label, key, value, endpoint) => {
+    api.request.mockResolvedValue({ data: [], total: 0 });
+    render(<AdminContent route={route} />);
+    fireEvent.change(await screen.findByLabelText(label), { target: { value } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) =>
+        path.includes(endpoint) && new URLSearchParams(path.split("?")[1]).get(key) === value,
+    )).toBe(true));
 });
 
 it.each([
@@ -1173,7 +1224,7 @@ it.each([
     render(<UsersPage />);
     fireEvent.change(screen.getByLabelText("搜索所有用户邮箱"), {target:{value:"guest@example.com"}});
     fireEvent.submit(screen.getByRole("form", {name:"用户搜索与筛选"}));
-    fireEvent.click(screen.getByText("操作", {selector:"summary"}));
+    fireEvent.click(screen.getByText("批量操作", {selector:"summary"}));
     const action = screen.getByRole("button", {name:open}) as HTMLButtonElement;
     await waitFor(() => expect(action.disabled).toBe(false));
     fireEvent.click(action);
@@ -1244,7 +1295,7 @@ it("adds the language column to existing user views and respects later visibilit
 it("removes account generation and CSV export while preserving user management", async () => {
     render(<UsersPage />);
     await waitFor(() => expect((screen.getByRole("button", {name:"刷新"}) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByText("操作", {selector:"summary"}));
+    fireEvent.click(screen.getByText("批量操作", {selector:"summary"}));
     expect(screen.queryByText("导出 CSV")).toBeNull();
     expect(screen.queryByText("生成用户")).toBeNull();
     expect(screen.getByRole("button", {name:"发送邮件"})).toBeTruthy();
@@ -1284,20 +1335,26 @@ it("keeps destructive user actions inside more and retains cancellation and conf
     const confirm=vi.spyOn(window,"confirm").mockReturnValue(false);
     try {
         const view=render(<UsersPage/>);
-        await screen.findByRole("button",{name:"分配订单"});
-        fireEvent.click(screen.getByRole('button',{name:'更多操作'}));
+        await screen.findByRole("button", { name: "编辑" });
+        const more = screen.getByRole("button", { name: "更多操作" });
+        expect(screen.queryByRole("button", { name: "分配订单" })).toBeNull();
+        fireEvent.click(more);
         const menu=document.querySelector('.admin-row-popover')!;
         const reset=within(menu as HTMLElement).getByText("重置订阅");
         const remove=within(menu as HTMLElement).getByText("删除",{exact:true});
-        expect(view.container.querySelectorAll('.table-actions > .actions > button')).toHaveLength(3);
+        expect(within(menu as HTMLElement).getByRole("button", { name: "分配订单" })).toBeTruthy();
+        expect(within(menu as HTMLElement).queryByRole("button", { name: "用户详情" })).toBeNull();
+        expect(view.container.querySelectorAll('.table-actions > .actions > button')).toHaveLength(2);
         expect(screen.queryByText("TA 的订单")).toBeNull();
         fireEvent.click(reset);
         expect(confirm).toHaveBeenCalledWith(expect.stringContaining("旧链接和客户端凭据将失效"));
         expect(api.request.mock.calls.some(([path])=>path.includes("resetSecret"))).toBe(false);
+        fireEvent.click(more);
         fireEvent.click(remove);
         expect(confirm).toHaveBeenCalledWith(expect.stringContaining("永久删除"));
         expect(api.request.mock.calls.some(([path])=>path.includes("delUser"))).toBe(false);
         confirm.mockReturnValue(true);
+        fireEvent.click(more);
         fireEvent.click(reset);
         await waitFor(()=>expect(api.request).toHaveBeenCalledWith("test-admin/user/resetSecret",expect.objectContaining({id:98})));
     } finally { confirm.mockRestore();delete (HTMLElement.prototype as any).hidePopover; }
@@ -1366,8 +1423,8 @@ it("shows an empty trend without drawing invalid values", () => {
 });
 
 it("groups target logs in diagnostics and loads dashboard analytics only on selection", async () => {
-    expect(legacyAdminMenu.find(([key]) => key === "log-targets")?.[3]).toBe("日志与诊断");
-    expect(legacyAdminMenu.some(([key]) => String(key) === "analytics")).toBe(false);
+    expect(adminMenu.find(([key]) => key === "log-targets")?.[3]).toBe("日志与诊断");
+    expect(adminMenu.some(([key]) => String(key) === "analytics")).toBe(false);
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));
     render(<Overview />);
@@ -1385,7 +1442,7 @@ it("groups target logs in diagnostics and loads dashboard analytics only on sele
 it.each(["browser-settings","footer-settings","notification-settings","telegram-settings","account-settings","subscription-settings","ticket-settings","node-settings","client-entrypoints","payment-deposit","invitation-rules","access-blacklist-ua","access-logs-subscriptions","access-logs-connections","access-logs-risk","notification-blocklist","node-forwarding","server-lightsail"])("opens relocated route %s directly", async current => {
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
-    const view=render(<AdminContent current={current}/>);
+    const view=render(<AdminContent route={current}/>);
     await waitFor(()=>expect(view.container.querySelector(".panel")).toBeTruthy());
     await waitFor(()=>expect(screen.queryByText("正在加载页面…")).toBeNull());
     expect(screen.queryByText("页面未找到")).toBeNull();
@@ -1394,7 +1451,7 @@ it.each(["browser-settings","footer-settings","notification-settings","telegram-
 it("routes site settings tabs by URL and blocks navigation during a save", async () => {
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
-    const view=render(<AdminContent current="site-settings"/>);
+    const view=render(<AdminContent route="site-settings"/>);
     const tab=await screen.findByRole("tab",{name:"浏览器引导"});
     const content=document.createElement("div");content.className="admin-content";
     const marker=document.createElement("div");marker.dataset.saving="true";content.append(marker);document.body.append(content);
@@ -1411,7 +1468,7 @@ it("routes site settings tabs by URL and blocks navigation during a save", async
 it.each(["service-entrypoints","deposit-settings","settings","config/system","dashboard","usage","generate","analytics","operations","system","translations","ddns","risk-settings","invitation-settings","mail-blocklist","blacklist-ip","blacklist-ua","log-login","log-subscribe","log-connection","log-risk"])("rejects retired address %s without redirecting", async path => {
     const {adminPage}=await import("./admin-shell");
     expect(adminPage(path)).toBe(path);
-    render(<AdminContent current={adminPage(path)} />);
+    render(<AdminContent route={adminPage(path)} />);
     expect(await screen.findByText("页面未找到")).toBeTruthy();
 });
 
@@ -1422,7 +1479,7 @@ it.each([
     const {default: AdminWorkspace} = await import("./admin-workspace");
     const {adminPageFixture} = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path:string)=>adminPageFixture(path));
-    expect(legacyAdminMenu.some(([key])=>String(key)===route)).toBe(false);
+    expect(adminMenu.some(([key])=>String(key)===route)).toBe(false);
     render(<AdminWorkspace path={route} user={{email:"preview@example.com"}} logout={()=>{}}/>);
     expect(screen.getByRole("heading",{level:1,name:tab})).toBeTruthy();
     expect(await screen.findByRole("tab",{name:tab,selected:true})).toBeTruthy();
@@ -1441,7 +1498,7 @@ it("switches financial currency without mixing amounts or requesting legacy tren
     expect(screen.queryByText("CNY 123.45")).toBeNull();
     expect(api.request.mock.calls.some(([p])=>p.includes("stat/getOrder"))).toBe(false);
     expect(resources["access-blacklist"].title).toBe("订阅 IP 黑名单");
-    expect(legacyAdminMenu.find(([key])=>key==="access-blacklist")?.[1]).toBe("订阅访问黑名单");
+    expect(adminMenu.find(([key])=>key==="access-blacklist")?.[1]).toBe("订阅访问黑名单");
 });
 
 
@@ -1494,18 +1551,16 @@ it("locks duplicate destructive resource actions and unlocks after a failure", a
     } finally { confirm.mockRestore(); }
 });
 
-it("keeps an unsaved subscription editor when a tab switch is cancelled", async () => {
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const view = render(<div className="admin-content"><div data-unsaved="true"/><AdminSubscriptions/></div>);
-    try {
-        const tab = screen.getByRole("tab",{name:"套餐翻译"});
-        fireEvent.mouseDown(tab,{button:0,ctrlKey:false});
-        expect(confirm).toHaveBeenCalledTimes(1);
-        expect(screen.getByRole("tab",{name:"套餐列表"}).getAttribute("aria-selected")).toBe("true");
-        view.container.querySelector('[data-unsaved]')?.setAttribute("data-saving","true");
-        fireEvent.mouseDown(tab,{button:0,ctrlKey:false});
-        expect(confirm).toHaveBeenCalledTimes(1);
-    } finally { confirm.mockRestore(); }
+it("keeps the subscription page open during a save and routes the price tab when ready", async () => {
+    window.location.hash = "#/plans";
+    const view = render(<div className="admin-content"><div data-saving="true"/><AdminContent route="plans" /></div>);
+    const tab = await screen.findByRole("tab", { name: "价格与币种" });
+    fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
+    expect(window.location.hash).toBe("#/plans");
+    expect(screen.getByRole("tab", { name: "套餐列表", selected: true })).toBeTruthy();
+    view.container.querySelector('[data-saving]')?.removeAttribute("data-saving");
+    fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
+    expect(window.location.hash).toBe("#/plans-currencies");
 });
 
 it("opens row actions without native popover APIs and supports keyboard dismissal", async () => {
@@ -1600,7 +1655,7 @@ it("measures row menu height before placing it near the viewport edge", async ()
 
 it("provides peer infrastructure workspaces with bookmarkable task tabs", () => {
     for(const key of ["nodes","servers","node-domains"]){
-        expect(legacyAdminMenu.find(([route])=>String(route)===key)?.[3]).toBe("节点与接入");
+        expect(adminMenu.find(([route])=>String(route)===key)?.[3]).toBe("节点与接入");
     }
     expect(adminWorkspace("node-services")).toBeUndefined();
     expect(adminWorkspace("node-forwarding")?.root).toBe("servers");

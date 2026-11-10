@@ -13,7 +13,8 @@ import {
     type Row,
 } from "../shared/api";
 import { Modal, Editor, State, useData } from "../shared/ui";
-import { ResourcePage, resources } from "./admin";
+import { ResourcePage } from "./admin";
+import { resources } from "./admin-resources";
 import {
     userFilterFields,
     userSortFields,
@@ -232,7 +233,7 @@ export function UsersPage() {
                         </form>
                         <div className="actions user-toolbar-actions">
                             <details className="admin-bulk-menu">
-                                <summary>操作</summary>
+                                <summary>批量操作</summary>
                                 <div className="admin-bulk-content">
                                     <AdminUsageReset
                                         filters={filters}
@@ -327,9 +328,11 @@ export function UsersPage() {
                 }
                 extraActions={(row, context, secondary) => (
                     <>
-                        <button onClick={() => setDetail({kind:"assign",row})}>分配订单</button>
+                        {!optionalColumns.includes("id") && (
+                            <button onClick={() => setDetail({ kind: "profile", row })}>用户详情</button>
+                        )}
                         <AdminRowMenu context={context}>
-                            <button onClick={() => setDetail({kind:"profile",row})}>用户详情</button>
+                            <button onClick={() => setDetail({ kind: "assign", row })}>分配订单</button>
                             <button onClick={() => copy(row)}>复制订阅链接</button>
                             <AdminUsageReset single filters={[{key:"id",condition:"=",value:row.id}]} count={1}
                                 onComplete={() => {refresh();setNotice("储备重置次数已发放");}} />

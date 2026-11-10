@@ -5,9 +5,10 @@
     "type": "module",
     "scripts": {
         "dev": "vite --host 127.0.0.1",
-        "build": "tsc --noEmit && vite build && node scripts/package-frontends.mjs",
+        "build": "tsc --noEmit && node scripts/build-console.mjs",
         "package:frontends": "node scripts/package-frontends.mjs",
         "test": "vitest run",
+        "test:browser": "playwright test",
         "test:payments": "vitest run src/user/BillingFlow.test.tsx src/user/PaymentCheckout.test.tsx src/user/PaymentMethodPicker.test.tsx src/user/PaymentPolling.test.tsx src/user/OrderHelp.test.tsx src/user/PendingOrderNotice.test.tsx src/shared/order-price.test.ts src/shared/field-values.test.ts src/shared/v10-api.test.ts src/admin/payment-fields.test.ts src/admin/Payments.test.tsx src/admin/PaymentCallbackHistory.test.tsx src/admin/billing-price-input.test.ts src/admin/AdminBillingCurrency.test.tsx",
         "test:mfa": "vitest run Mfa Passkey passkey UserAuth.test AdminAuth.test",
         "test:mail": "vitest run AdminMail MailHealth EmailInvites",
@@ -36,6 +37,7 @@
         }
     },
     "devDependencies": {
+        "@playwright/test": "1.65.0",
         "@testing-library/react": "^16.3.3",
         "@types/node": "^26.6.3",
         "@types/react": "^19.0.0",

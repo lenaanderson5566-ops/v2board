@@ -175,7 +175,7 @@ export default function UserWorkspace() {
             ? location.hash.slice(2)
             : undefined,
     );
-    async function handleLogout() {
+    async function endSession(authorizationId?: string) {
         if (loggingOut.current) return;
         loggingOut.current = true;
         sessionEpoch.current += 1;
@@ -185,17 +185,34 @@ export default function UserWorkspace() {
         setLanguagePending(false);
         setLanguageBusy(false);
         try {
-            await logoutSession();
+            await logoutSession(authorizationId ? { requireServerConfirmation: true } : undefined);
+            if (authorizationId) {
+                // Store only a verified local authorization route, never an arbitrary return URL.
+                const current = /^#\/client-authorize\?authorizationId=([a-f0-9]{64})$/.exec(location.hash);
+                authorizationReturn.current = current
+                    ? `client-authorize?authorizationId=${current[1]}` : undefined;
+            }
             purchaseReturn.current = undefined;
             setUser(null);
-            navigate("login");
+            // Keep the validated consent route so refreshing sign-in can resume it too.
+            if (!authorizationId || !authorizationReturn.current) navigate("login");
         } catch (reason) {
+            if (authorizationId) throw reason;
             setUser(null);
             setError((reason as Error).message);
             navigate("login");
         } finally {
             loggingOut.current = false;
         }
+    }
+    function handleLogout() {
+        void endSession();
+    }
+    async function switchAuthorizationAccount(authorizationId: string) {
+        if (!/^[a-f0-9]{64}$/.test(authorizationId) ||
+            location.hash !== `#/client-authorize?authorizationId=${authorizationId}`)
+            throw new Error("Invalid authorization request");
+        await endSession(authorizationId);
     }
     useEffect(() => {
         const media = matchMedia("(max-width: 800px)");
@@ -411,7 +428,7 @@ export default function UserWorkspace() {
         return (
             <div className="access-page">
                 <React.Suspense fallback={<WorkspaceSkeleton full />}>
-                    <ClientAuthorization user={user} />
+                    <ClientAuthorization user={user} onSwitchAccount={switchAuthorizationAccount} />
                 </React.Suspense>
                 <AnalyticsPrivacyFooter />
             </div>

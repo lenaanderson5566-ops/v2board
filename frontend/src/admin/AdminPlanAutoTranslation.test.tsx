@@ -195,22 +195,28 @@ it("rejects incomplete generated version metadata instead of saving without guar
 });
 
 it("reports busy and dirty state, honors the editor lock and confirms discarding candidates", async () => {
-    const permission = confirm(); mocks.request.mockResolvedValue(candidate("English"));
+    const permission = confirm();
+    let resolveTranslation!: (response: Row) => void;
+    mocks.request.mockReturnValueOnce(new Promise<Row>(resolve => { resolveTranslation = resolve; }));
     const dirty = vi.fn(), busy = vi.fn();
     const props = { plan: "2", locales: ["en-US"], snapshot: snapshot(), onSaved: () => {}, onDirtyChange: dirty, onBusyChange: busy };
     const view = render(<AdminPlanAutoTranslation {...props} disabled />);
     expect((screen.getByRole("button", { name: "生成待同步译文" }) as HTMLButtonElement).disabled).toBe(true);
     view.rerender(<AdminPlanAutoTranslation {...props} />);
-    generate(); await expectCandidate("English");
-    expect(busy).toHaveBeenCalledWith(true);
-    expect(dirty).toHaveBeenLastCalledWith(true);
+    generate();
+    await waitFor(() => expect(busy).toHaveBeenLastCalledWith(true));
+    await act(async () => resolveTranslation(candidate("English")));
+    await expectCandidate("English");
+    await waitFor(() => expect(dirty).toHaveBeenLastCalledWith(true));
     expect(screen.getByRole("region", { name: "套餐翻译同步" }).getAttribute("data-unsaved")).toBe("true");
     permission.mockReturnValueOnce(false);
     fireEvent.click(screen.getByRole("button", { name: "放弃全部候选" }));
     expect(screen.getByDisplayValue("English")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "放弃全部候选" }));
-    await waitFor(() => expect(screen.queryByDisplayValue("English")).toBeNull());
-    expect(dirty).toHaveBeenLastCalledWith(false);
+    await waitFor(() => {
+        expect(screen.queryByDisplayValue("English")).toBeNull();
+        expect(dirty).toHaveBeenLastCalledWith(false);
+    });
 });
 
 it("loads status without transmitting content to the translator and recovers from read failure", async () => {

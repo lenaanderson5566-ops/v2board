@@ -1,4 +1,4 @@
-import { adminWorkspace } from "./admin-navigation";
+import { adminRoot, adminTabRoute } from "./admin-navigation";
 import { AdminTimeZoneScope } from "./admin-log-time";
 import { clearListViews } from "./list-view-state";
 import { AdminShell, adminPage } from "./admin-shell";
@@ -29,23 +29,13 @@ export default function AdminWorkspace({
 function AdminWorkspaceContent({ path, user, logout }: { path: string; user: Row; logout: () => void }) {
     // Repaint existing records without remounting pages, discarding drafts or refetching.
     useSyncExternalStore(subscribeTimeZone, timeZoneSnapshot, timeZoneSnapshot);
-    const current = adminPage(path);
+    const route = adminPage(path);
+    const current = route.split("?", 1)[0];
     return (
         <EditorFieldContext.Provider value={adminEditorField}>
             <AdminShell
-                page={current}
-                current={
-                    adminWorkspace(current)
-                        ? adminWorkspace(current)!.root
-                        : current === "invitation-rules"
-                          ? "invitations"
-                          : current === "overview-system" ||
-                              current === "overview-risk"
-                            ? "overview"
-                            : current === "plans-translations"
-                              ? "plans"
-                              : current
-                }
+                page={adminTabRoute(route)}
+                current={adminRoot(current)}
                 user={user}
                 logout={() => {
                     clearListViews();
@@ -53,7 +43,7 @@ function AdminWorkspaceContent({ path, user, logout }: { path: string; user: Row
                 }}
             >
                 <AdminTimeZoneScope>
-                    <AdminContent current={current} />
+                    <AdminContent route={route} />
                 </AdminTimeZoneScope>
             </AdminShell>
         </EditorFieldContext.Provider>

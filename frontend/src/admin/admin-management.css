@@ -2,81 +2,8 @@
     display: grid;
     gap: 16px;
 }
-.admin-settings-layout {
-    display: grid;
-    grid-template-columns: 220px minmax(0, 1fr);
-    align-items: start;
-}
-.admin-settings-nav {
-    padding: 18px;
-    border-right: 1px solid var(--border, #e2e8f0);
-    display: grid;
-    gap: 20px;
-}
-.admin-settings-search {
-    display: grid;
-    gap: 8px;
-    font-size: 12px;
-    color: var(--muted);
-}
-.admin-settings-search input {
-    width: 100%;
-    min-width: 0;
-}
-.admin-settings-nav section {
-    display: grid;
-    gap: 4px;
-}
-.admin-settings-nav h3 {
-    margin: 0 8px 6px;
-    font-size: 12px;
-    color: var(--muted);
-    font-weight: 600;
-}
-.admin-settings-nav button {
-    width: 100%;
-    text-align: left;
-    margin: 0;
-    padding: 10px 12px;
-    border: 1px solid transparent;
-    border-radius: 8px;
-    background: transparent;
-    box-shadow: none;
-}
-.admin-settings-nav button:hover {
-    background: #f5f7fa;
-}
-.admin-settings-nav button[aria-pressed="true"] {
-    color: #22528b;
-    background: #eef4fc;
-    border-color: #dbe7f7;
-    font-weight: 600;
-}
 .admin-settings-content {
     min-width: 0;
-}
-.admin-settings-heading {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 20px 24px;
-    border-bottom: 1px solid var(--border, #e2e8f0);
-}
-.admin-settings-heading h3 {
-    margin: 0 0 6px;
-    font-size: 17px;
-}
-.admin-settings-heading p {
-    margin: 0;
-}
-.admin-unsaved {
-    color: #855e1a;
-    background: #fff8e7;
-    padding: 5px 9px;
-    border-radius: 6px;
-    font-size: 12px;
-    white-space: nowrap;
 }
 .admin-settings-summary {
     display: flex;
@@ -185,33 +112,6 @@
 .admin-deployment-tools dt { font-weight: 600; margin-top: 14px; }
 .admin-deployment-tools dd { margin: 6px 0 0; line-height: 1.7; overflow-wrap: anywhere; }
 @media (max-width: 760px) {
-    .admin-settings-layout {
-        grid-template-columns: 1fr;
-    }
-    .admin-settings-nav {
-        border-right: 0;
-        border-bottom: 1px solid var(--border, #e2e8f0);
-        gap: 12px;
-        padding: 14px;
-    }
-    .admin-settings-nav section {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-    }
-    .admin-settings-nav h3 {
-        width: 100%;
-        margin: 4px 0;
-    }
-    .admin-settings-nav button {
-        width: auto;
-        padding: 8px 10px;
-    }
-    .admin-settings-heading {
-        align-items: flex-start;
-        flex-direction: column;
-        padding: 16px;
-    }
     .admin-settings-summary {
         padding: 14px 16px;
     }

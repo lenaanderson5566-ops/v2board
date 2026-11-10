@@ -1,8 +1,9 @@
 import { AdminDetails } from "./admin-section";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
 import { lightsailFailure } from "./lightsail-status";
+import { AdminRowMenu } from "./AdminRowMenu";
 const labels: Record<string, string> = {
     ready: "待操作",
     queued: "等待队列",
@@ -27,10 +28,32 @@ export function AdminLightsail({
         [busy, setBusy] = useState(false),
         [error, setError] = useState("");
     const [observed, setObserved] = useState<Record<number, string>>({});
-    async function inspect(row: Row) {
-        if (busy) return;
+    const pending = useRef(false);
+    const initialEditing = useRef<Row | null>(null);
+    const initialCredential = useRef<Row | null>(null);
+    function startAction() {
+        if (pending.current) return false;
+        pending.current = true;
         setBusy(true);
         setError("");
+        return true;
+    }
+    function finishAction() {
+        pending.current = false;
+        setBusy(false);
+    }
+    function editConfiguration(draft: Row) {
+        setError("");
+        initialEditing.current = draft;
+        setEditing(draft);
+    }
+    function openOperation(row: Row, action: "rotate" | "resume" | "restore") {
+        setError("");
+        setConfirmation("");
+        setOperation({ ...row, action });
+    }
+    async function inspect(row: Row) {
+        if (!startAction()) return;
         try {
             const result = await request<Row>(
                 admin(`server/lightsail/inspect?id=${row.id}`),
@@ -42,7 +65,7 @@ export function AdminLightsail({
         } catch (e) {
             setError((e as Error).message);
         } finally {
-            setBusy(false);
+            finishAction();
         }
     }
     const active = (data.data || []).some((r) =>
@@ -56,9 +79,7 @@ export function AdminLightsail({
         return () => window.clearInterval(timer);
     }, [active, data.loading, data.error, data.reload, busy, editing, operation, credentialEditing]);
     async function send(path: string, body: Row) {
-        if (busy) return;
-        setBusy(true);
-        setError("");
+        if (!startAction()) return;
         try {
             await request(admin("server/lightsail/" + path), body);
             setEditing(null);
@@ -69,36 +90,37 @@ export function AdminLightsail({
         } catch (e) {
             setError((e as Error).message);
         } finally {
-            setBusy(false);
+            finishAction();
         }
     }
     async function manageCredential(path: string, body: Row) {
-        if (busy) return;
-        setBusy(true); setError("");
+        if (!startAction()) return;
         try {
             const result = await request<Row>(admin(`server/lightsail/credentials/${path}`), body);
             if (path === "save" && !body.id && editing) setEditing({ ...editing, credential_id: result.data.id });
             setCredentialEditing(null);
             credentials.reload();
         } catch (e) { setError((e as Error).message); }
-        finally { setBusy(false); }
+        finally { finishAction(); }
     }
     function editCredential(row?: Row) {
         setError("");
-        setCredentialEditing({ ...row, name: row?.name || "", accessKey: "", secretKey: "", sessionToken: "", confirmSharedUpdate: false });
+        const draft = { ...row, name: row?.name || "", accessKey: "", secretKey: "", sessionToken: "", confirmSharedUpdate: false };
+        initialCredential.current = draft;
+        setCredentialEditing(draft);
     }
     function remove(row: Row) {
-        if (busy) return;
+        if (pending.current) return;
         const saved = (data.data || []).find(item => item.id === row.id) || row;
-        const pending = saved.status === "failed";
+        const unfinished = saved.status === "failed";
         const resources = (saved.staticIpNames || []).join("、") || "请在 AWS 控制台核对";
-        if (window.confirm(`移除 ${saved.name} 的管理配置？\n实例：${saved.instance}（${saved.region}）\n只删除面板配置，不删除 AWS 实例、不解绑或释放静态 IP。${pending ? `\n将放弃未完成操作，不能再从面板继续或恢复。新旧静态 IP 可能仍产生费用，请自行核对和清理：${resources}` : ""}`)) {
-            send("drop", { id: saved.id, ...(pending ? { abandonOperation: true } : {}) });
+        if (window.confirm(`移除 ${saved.name} 的管理配置？\n实例：${saved.instance}（${saved.region}）\n只删除面板配置，不删除 AWS 实例、不解绑或释放静态 IP。${unfinished ? `\n将放弃未完成操作，不能再从面板继续或恢复。新旧静态 IP 可能仍产生费用，请自行核对和清理：${resources}` : ""}`)) {
+            send("drop", { id: saved.id, ...(unfinished ? { abandonOperation: true } : {}) });
         }
     }
     const content = (
         <>
-            <div className="lightsail-content">
+            <div className="lightsail-content" data-saving={busy || undefined}>
                 <div className="infrastructure-notice">
                     <strong>有计划地更换公网地址</strong>
                     <p>
@@ -121,7 +143,7 @@ export function AdminLightsail({
                     <button
                         disabled={busy}
                         onClick={() =>
-                            setEditing({
+                            editConfiguration({
                                 name: "",
                                 region: "ap-southeast-1",
                                 instance: "",
@@ -184,7 +206,18 @@ export function AdminLightsail({
                                     </div>;
                                 })()}
                                 <div className="actions">
+                                    {row.recoverable && (
+                                        <button className="primary" disabled={busy} onClick={() => openOperation(row, "resume")}>
+                                            继续操作
+                                        </button>
+                                    )}
+                                    {row.recoverable && row.canRestore && (
+                                        <button disabled={busy} onClick={() => openOperation(row, "restore")}>
+                                            恢复旧 IP
+                                        </button>
+                                    )}
                                     <button
+                                        className={row.recoverable ? undefined : "primary"}
                                         disabled={busy}
                                         onClick={() => inspect(row)}
                                     >
@@ -198,7 +231,7 @@ export function AdminLightsail({
                                             )
                                         }
                                         onClick={() =>
-                                            setEditing({
+                                            editConfiguration({
                                                 ...row,
                                                 abandonOperation: false,
                                             })
@@ -206,59 +239,27 @@ export function AdminLightsail({
                                     >
                                         编辑配置
                                     </button>
-                                    <button
-                                        className="danger"
-                                        disabled={busy || ["queued", "running"].includes(row.status)}
-                                        onClick={() => remove(row)}
-                                    >
-                                        移除配置
-                                    </button>
-                                    {[
+                                    {!row.recoverable && [
                                         "ready",
                                         "completed",
                                         "restored",
                                     ].includes(row.status) && (
                                         <button
                                             disabled={busy}
-                                            onClick={() => {
-                                                setConfirmation("");
-                                                setOperation({
-                                                    ...row,
-                                                    action: "rotate",
-                                                });
-                                            }}
+                                            onClick={() => openOperation(row, "rotate")}
                                         >
                                             更换 IP
                                         </button>
                                     )}
-                                    {row.recoverable && (
-                                        <>
-                                            <button
-                                                onClick={() => {
-                                                    setConfirmation("");
-                                                    setOperation({
-                                                        ...row,
-                                                        action: "resume",
-                                                    });
-                                                }}
-                                            >
-                                                继续操作
-                                            </button>
-                                            {row.canRestore && (
-                                                <button
-                                                    onClick={() => {
-                                                        setConfirmation("");
-                                                        setOperation({
-                                                            ...row,
-                                                            action: "restore",
-                                                        });
-                                                    }}
-                                                >
-                                                    恢复旧 IP
-                                                </button>
-                                            )}
-                                        </>
-                                    )}
+                                    <AdminRowMenu label={`${row.name} 更多操作`}>
+                                        <button
+                                            className="danger"
+                                            disabled={busy || ["queued", "running"].includes(row.status)}
+                                            onClick={() => remove(row)}
+                                        >
+                                            移除配置
+                                        </button>
+                                    </AdminRowMenu>
                                 </div>
                             </article>
                         ))}
@@ -278,6 +279,8 @@ export function AdminLightsail({
                                 : "添加 Lightsail 服务器"
                         }
                         close={() => setEditing(null)}
+                        dismissible={!busy}
+                        guardChanges
                         className="lightsail-dialog"
                     >
                         <div className="lightsail-content">
@@ -287,6 +290,8 @@ export function AdminLightsail({
                                 </p>
                             )}
                             <form
+                                aria-busy={busy}
+                                data-unsaved={editing !== initialEditing.current || undefined}
                                 onSubmit={(e) => {
                                     e.preventDefault();
                                     send("save", editing);
@@ -419,10 +424,11 @@ export function AdminLightsail({
                         </div>
                     </Modal>
                 )}
-                {credentialEditing && <Modal title={credentialEditing.id ? "编辑 AWS 密钥" : "添加 AWS 密钥"} close={() => { if (!busy) setCredentialEditing(null); }} dismissible={!busy} className="lightsail-dialog">
+                {credentialEditing && <Modal title={credentialEditing.id ? "编辑 AWS 密钥" : "添加 AWS 密钥"} close={() => setCredentialEditing(null)} dismissible={!busy} guardChanges className="lightsail-dialog">
                     <div className="lightsail-content">
                     {error && <p role="alert" className="alert">{error}</p>}
-                    <form onSubmit={e => { e.preventDefault(); manageCredential("save", credentialEditing); }}>
+                    <form aria-busy={busy} data-unsaved={credentialEditing !== initialCredential.current || undefined}
+                        onSubmit={e => { e.preventDefault(); manageCredential("save", credentialEditing); }}>
                         <fieldset disabled={busy} className="infrastructure-form">
                             <label>密钥名称<input required maxLength={100} value={credentialEditing.name} onChange={e => setCredentialEditing({ ...credentialEditing, name: e.target.value })} /></label>
                             {[["accessKey", "AWS Access Key ID"], ["secretKey", "AWS Secret Access Key"], ["sessionToken", "Session Token（临时凭据时填写）"]].map(([key, label]) => <label key={key}>{label}<input type={key === "accessKey" ? "text" : "password"} autoComplete="off" disabled={credentialEditing.active_count > 0} required={!credentialEditing.id && key !== "sessionToken"} value={credentialEditing[key]} onChange={e => setCredentialEditing({ ...credentialEditing, [key]: e.target.value })} /></label>)}
@@ -444,6 +450,7 @@ export function AdminLightsail({
                                   : "继续未完成操作"
                         }
                         close={() => setOperation(null)}
+                        dismissible={!busy}
                         className="lightsail-dialog"
                     >
                         <div className="lightsail-content">
@@ -461,6 +468,7 @@ export function AdminLightsail({
                                 输入实例名称确认
                                 <input
                                     value={confirmation}
+                                    disabled={busy}
                                     onChange={(e) =>
                                         setConfirmation(e.target.value)
                                     }
@@ -492,6 +500,7 @@ export function AdminLightsail({
         <Modal
             title="Lightsail 公网 IP 管理"
             close={close}
+            dismissible={!busy}
             wide
             className="lightsail-dialog"
         >

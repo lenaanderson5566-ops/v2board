@@ -11,14 +11,12 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 $n = 0;
 $assert = \Tests\Support\Assertions::counter($n);
 set_exception_handler(function ($e) { fwrite(STDERR,$e->getMessage()."\n".$e->getTraceAsString()."\n"); exit(1); });
+config(['cache.default' => 'array']);
 DB::beginTransaction();
 try {
     $payment = Payment::create(['name'=>'Diagnostic test', 'payment'=>'PaytaroQR', 'uuid'=>App\Utils\Helper::guid(), 'enable'=>1, 'config'=>['pid'=>'test', 'key'=>'test-secret']]);
     $order = Order::create(['user_id'=>1, 'plan_id'=>1, 'type'=>1, 'period'=>'month_price', 'trade_no'=>App\Utils\Helper::generateOrderNo(), 'total_amount'=>1000, 'status'=>0, 'payment_id'=>$payment->id]);
     $requestId = (string) Illuminate\Support\Str::uuid();
-    PaymentCallbackHistory::record('PaytaroQR', $payment->uuid, null, 'verification', 'failed', 'verify error', $requestId);
-    $history = PaymentCallbackHistory::forOrder($order);
-    $assert(count($history['events']) === 0 && count($history['channelEvents']) === 1, 'Unverified callback cannot be attributed to an order');
     PaymentCallbackHistory::record('PaytaroQR', $payment->uuid, $order->trade_no, 'settlement', 'failed', 'secret=should-not-be-stored', $requestId);
     $history = PaymentCallbackHistory::forOrder($order);
     $assert($history['events'][0]->reason === 'internal_error', 'Raw errors are redacted');
@@ -48,11 +46,52 @@ try {
         && PaymentCallbackHistory::forChannel($payment->id)->firstWhere('id', $history['events'][0]->id)->trade_no === $order->trade_no,
         'The channel lists unassociated callbacks and links only verified order associations');
     $assert($order->fresh()->status === 0, 'Diagnostic recording does not settle an order');
+    for ($i = 0; $i < 4; $i++) {
+        try {
+            (new App\Services\Actions\Guest\PaymentActions())->notify('PaytaroQR', $payment->uuid, $request);
+            throw new RuntimeException('Invalid callback unexpectedly accepted');
+        } catch (HttpException $error) {
+            $assert($error->getStatusCode() === 500, 'Sampled-out callback retains the failure response');
+        }
+    }
+    $assert(PaymentCallbackHistory::forChannel($payment->id)->where('stage', 'verification')->count() === 1,
+        'Repeated unverified callbacks on the same channel keep one sample');
+
+    $large = str_repeat('fixture-large-', 1024);
+    $largeTrace = new PaymentGatewayTrace();
+    $largeTrace->add('Fixture large body', $large);
+    PaymentCallbackHistory::record('PaytaroQR', $other->uuid, null, 'verification', 'failed', 'verify error', $requestId, $largeTrace);
+    $largeEvent = PaymentCallbackHistory::forChannel($other->id)->firstWhere('stage', 'verification');
+    $sections = array_column(PaymentGatewayTrace::read(PaymentCallbackHistory::TABLE, $largeEvent->id)['sections'], 'text');
+    $assert(strlen($sections[0]) === 8192 && str_starts_with($large, $sections[0]) && isset($sections[1]),
+        'A different known channel gets its own bounded raw sample with a truncation notice');
+
     $unknownTrace = new PaymentGatewayTrace();
     $unknownTrace->add('Fixture', 'unknown-endpoint-content');
-    PaymentCallbackHistory::record('PaytaroQR', 'unknown-endpoint', null, 'channel', 'failed', 'Payment channel not found', $requestId, $unknownTrace);
-    $assert(DB::table(PaymentCallbackHistory::TABLE)->where('provider', 'unknown')->where('request_id', $requestId)
-        ->whereNotNull('raw_diagnostic')->doesntExist(), 'Unknown callback endpoints do not collect raw payloads');
+    foreach (['PaytaroQR', 'FakeProvider', 'AnotherFakeProvider'] as $provider) {
+        PaymentCallbackHistory::record($provider, (string) Str::uuid(), null, 'channel', 'failed', 'Payment channel not found', $requestId, $unknownTrace);
+    }
+    $unknownEvents = DB::table(PaymentCallbackHistory::TABLE)->where('provider', 'unknown')->where('request_id', $requestId)->get();
+    $assert($unknownEvents->count() === 1 && $unknownEvents[0]->raw_diagnostic === null,
+        'Unknown endpoint IDs and provider names share one metadata-only sample');
+
+    // An authenticated callback that fails amount validation remains fully diagnosable.
+    $verifiedBody = json_encode(json_decode($callbackBody, true) + ['fixture_padding' => $large]);
+    $verifiedRequest = Request::create($callbackPath, 'POST', [], [], [], [
+        'CONTENT_TYPE' => 'application/json', 'HTTP_X_APP_SECRET' => 'test-secret',
+    ], $verifiedBody);
+    $app->instance('request', $verifiedRequest);
+    try {
+        (new App\Services\Actions\Guest\PaymentActions())->notify('PaytaroQR', $payment->uuid, $verifiedRequest);
+        throw new RuntimeException('Mismatched amount unexpectedly accepted');
+    } catch (HttpException $error) {
+        $assert($error->getStatusCode() === 500 && $order->fresh()->status === 0,
+            'A verified amount mismatch preserves the failure response and pending order');
+    }
+    $verifiedEvent = collect(PaymentCallbackHistory::forOrder($order)['events'])->firstWhere('reason', 'payment amount mismatch');
+    $assert($verifiedEvent !== null, 'Verified callback bypasses the unverified sample window and remains linked to its order');
+    $verifiedSections = array_column(PaymentGatewayTrace::read(PaymentCallbackHistory::TABLE, $verifiedEvent->id)['sections'], 'text', 'title');
+    $assert($verifiedSections['回调请求内容'] === $verifiedBody, 'Verified callback retains raw content larger than the unverified limit');
 
     // An HTTP adapter uses the common transport and keeps exact response bytes and signed request contents.
     config(['cache.default' => 'array', 'fastai.app_url' => 'https://panel.example.test']);

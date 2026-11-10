@@ -1,5 +1,7 @@
 {
   "translation": {
+    "暂时无法确认工单创建权限，请重试。已有工单仍可查看。": "No se pudieron comprobar los permisos para crear consultas de soporte. Inténtalo de nuevo. Puedes seguir viendo las consultas existentes.",
+    "刷新回复": "Actualizar respuestas",
     "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "Los datos del plan se habían agotado al realizar esta solicitud. Revisa tu plan o añade datos y actualiza la configuración.",
     "此次请求时独立额度已过期，请购买有效额度后更新配置。": "Los datos independientes habían caducado al realizar esta solicitud. Compra datos válidos y actualiza la configuración.",
     "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "Los datos independientes se habían agotado al realizar esta solicitud. Compra datos o un plan y actualiza la configuración.",
@@ -787,6 +789,9 @@
     "resetFailed": "Restablecimiento pendiente de reintento: {{date}}"
   },
   "experience": {
+    "authorizationSwitchAccount": "Usar otra cuenta",
+    "authorizationSwitching": "Cerrando sesión…",
+    "authorizationSwitchFailed": "No se pudo confirmar el cierre de sesión. Comprueba la conexión y vuelve a intentarlo. No se ha cambiado de cuenta.",
     "adminRefreshing": "Actualizando; se muestran los datos anteriores…",
     "adminStale": "No se pudo actualizar. Se muestran los datos anteriores.",
     "adminUnsaved": "Cambios sin guardar",
@@ -968,6 +973,7 @@
     "version": "Versión mínima: {{version}}. Actualiza primero tu cliente."
   },
   "clientDownload": {
+    "macCompatibility": "Antes de instalar, consulta los requisitos del sistema y del chip en la página oficial de descarga.",
     "title": "Descargar cliente",
     "official": "Descarga oficial",
     "mirror": "Descarga alternativa",

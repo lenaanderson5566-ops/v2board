@@ -29,9 +29,10 @@ vi.mock("../shared/browser-session", () => ({
 vi.mock("../shared/i18n", () => ({ tx: (text: string) => text }));
 vi.mock("./AdminAuth", () => ({ AdminAuth: () => <div>Admin login</div> }));
 vi.mock("./admin-workspace", () => ({
-    default: ({ logout }: { logout: () => void }) => (
-        <div>
+    default: ({ path, logout }: { path: string; logout: () => void }) => (
+        <div className="admin-content">
             Admin workspace<button onClick={logout}>Logout</button>
+            <output data-testid="workspace-path">{path}</output>
         </div>
     ),
 }));
@@ -194,3 +195,61 @@ it.each(["logout", "expired"])(
         }
     },
 );
+
+it("accepts same-workspace history changes only after checking a draft or save", async () => {
+    const reviews = "invitations?tab=reviews&review_id=42";
+    const commissions = "invitations?tab=commissions&user_id=7";
+    history.replaceState(null, "", `#/${reviews}`);
+    mocks.request.mockResolvedValue({ data: { email: "admin@example.test" } });
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<AdminApp />);
+    const path = await screen.findByTestId("workspace-path");
+    expect(path.textContent).toBe(reviews);
+    const editor = path.parentElement!;
+    const marker = document.createElement("div");
+    marker.dataset.unsaved = "true";
+    editor.append(marker);
+    function visitCommissions() {
+        history.pushState(null, "", `#/${commissions}`);
+        fireEvent(window, new HashChangeEvent("hashchange"));
+    }
+    try {
+        visitCommissions();
+        expect(confirm).toHaveBeenCalledOnce();
+        expect(location.hash).toBe(`#/${reviews}`);
+        expect(path.textContent).toBe(reviews);
+
+        marker.dataset.saving = "true";
+        visitCommissions();
+        expect(confirm).toHaveBeenCalledOnce();
+        expect(location.hash).toBe(`#/${reviews}`);
+        expect(path.textContent).toBe(reviews);
+
+        delete marker.dataset.saving;
+        const dialog = document.createElement("section");
+        dialog.className = "modal";
+        const form = document.createElement("form");
+        form.setAttribute("aria-busy", "true");
+        dialog.append(form);
+        document.body.append(dialog);
+        try {
+            visitCommissions();
+            expect(confirm).toHaveBeenCalledOnce();
+            expect(location.hash).toBe(`#/${reviews}`);
+            expect(path.textContent).toBe(reviews);
+        } finally {
+            dialog.remove();
+        }
+
+        confirm.mockReturnValue(true);
+        visitCommissions();
+        expect(path.textContent).toBe(commissions);
+        marker.remove();
+        history.back();
+        await waitFor(() => expect(path.textContent).toBe(reviews));
+        history.forward();
+        await waitFor(() => expect(path.textContent).toBe(commissions));
+    } finally {
+        marker.remove();
+    }
+});

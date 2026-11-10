@@ -134,6 +134,22 @@ grep -q 'Invalid jobs restart timeout' "$TMP/output"
 new_site check
 bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+grep -qx "FASTAI_UPDATE_TARGET=$TARGET" "$TMP/output"
+new_site invalidcommit
+reject --expect-commit "${TARGET:0:8}"
+grep -q 'Invalid expected commit' "$TMP/output"
+[[ ! -e calls.log && ! -e storage/framework/down ]]
+new_site advancedtarget
+git --git-dir="$TMP/origin.git" update-ref refs/heads/preflight-target "$TARGET"
+ARGS+=(--branch preflight-target --backup-dir "$TMP/advanced-target-backup")
+bash "$SOURCE" "${ARGS[@]}" --expect-commit "$TARGET" --check > "$TMP/output" 2>&1
+grep -qx "FASTAI_UPDATE_TARGET=$TARGET" "$TMP/output"
+advanced=$(git -C "$TMP/seed" commit-tree "$TARGET^{tree}" -p "$TARGET" -m advanced)
+git -C "$TMP/seed" push -q "$TMP/origin.git" "$advanced:refs/heads/preflight-target"
+rm -f calls.log
+reject --expect-commit "$TARGET" --jobs-stopped
+grep -q "Fetched target $advanced differs from expected commit $TARGET" "$TMP/output"
+[[ $(git rev-parse HEAD) == "$OLD" && ! -e calls.log && ! -e storage/framework/down && ! -e "$TMP/advanced-target-backup" ]]
 new_site canonicalconfig
 mv config/v2board.php config/fastai.php
 cp config/fastai.php "$TMP/canonical-config.expected"
@@ -304,7 +320,7 @@ grep -q 'artisan up' calls.log
 grep -q 'Site jobs drained' "$TMP/output"
 new_site success
 chmod 600 composer.json composer.lock
-bash "$SOURCE" "${ARGS[@]}" --jobs-stopped > "$TMP/output" 2>&1
+bash "$SOURCE" "${ARGS[@]}" --expect-commit "$TARGET" --jobs-stopped > "$TMP/output" 2>&1
 [[ $(git rev-parse HEAD) == "$TARGET" && -e storage/framework/down ]]
 grep -q original-key .env
 grep -q preserved config/v2board.php
@@ -429,12 +445,20 @@ bash "$SOURCE" "${ARGS[@]}" > "$TMP/output" 2>&1
 cd "$TMP/seed"
 printf '\n# newer updater fixture\n' >> update.sh
 git add update.sh; git commit -qm newer-updater
+newer_target=$(git rev-parse HEAD)
 git push -q "$TMP/origin.git" HEAD:codex/payment-icon-picker
 new_site targetupdater
 cd "$TMP"
 ARGS+=(--project targetupdater)
-bash "$SOURCE" "${ARGS[@]}" --check > "$TMP/output" 2>&1
+sed -e 's/^EXPECTED_COMMIT=.*/EXPECTED_COMMIT=/' -e 's/^EXPECTED_COMMIT_SET=.*/EXPECTED_COMMIT_SET=/' "$SOURCE" > "$TMP/legacy-update.sh"
+if FASTAI_EXPECT_COMMIT="$TARGET" bash "$TMP/legacy-update.sh" "${ARGS[@]}" --check > "$TMP/output" 2>&1; then
+    echo 'Legacy updater handoff lost the expected commit'; exit 1
+fi
 [[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
+grep -q "Fetched target $newer_target differs from expected commit $TARGET" "$TMP/output"
+FASTAI_EXPECT_COMMIT="$newer_target" bash "$TMP/legacy-update.sh" "${ARGS[@]}" --check > "$TMP/output" 2>&1
+[[ $(grep -c 'Using target updater' "$TMP/output") == 1 ]]
+grep -qx "FASTAI_UPDATE_TARGET=$newer_target" "$TMP/output"
 [[ ! -e "$TMP/targetupdater/storage/framework/down" ]]
 new_site targetupgrade
 git checkout -q "$TARGET"
@@ -628,4 +652,4 @@ for version in current initial; do
     done
 done
 
-echo 'Updater: 56 isolated scenarios passed'
+echo 'Updater: all isolated scenarios passed'

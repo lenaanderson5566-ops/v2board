@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -17,6 +18,19 @@ import { AdminMailComposer } from "./AdminMailComposer";
 afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+});
+it("discards a slow preview when the selected template changes", async () => {
+    let complete!: (response: unknown) => void;
+    api.request.mockReturnValueOnce(new Promise(resolve => { complete = resolve; }));
+    render(<AdminMailPreview />);
+    fireEvent.click(screen.getByRole("button", { name: "生成预览" }));
+    fireEvent.change(screen.getByLabelText("邮件类型"), { target: { value: "ticketReply" } });
+    await act(async () => complete({ data: { subject: "Old subject", html: "<p>Old</p>", text: "Old" } }));
+    expect(screen.queryByTitle("邮件内容预览")).toBeNull();
+    api.request.mockResolvedValueOnce({ data: { subject: "New subject", html: "<p>New</p>", text: "New" } });
+    fireEvent.click(screen.getByRole("button", { name: "生成预览" }));
+    await screen.findByTitle("邮件内容预览");
+    expect(api.request).toHaveBeenLastCalledWith("admin/config/previewMail", expect.objectContaining({ template: "ticketReply" }));
 });
 it("previews the selected language without sending and isolates HTML", async () => {
     api.request.mockResolvedValue({

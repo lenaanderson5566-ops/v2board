@@ -1,10 +1,10 @@
-import { AdminChoiceGroup } from "./AdminChoices";
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
 import { supportedClients } from "../shared/import-links";
 import { AdminClientReleases } from "./AdminClientReleases";
-import { ResourcePage, resources } from "./admin";
+import { ResourcePage } from "./admin";
+import { resources } from "./admin-resources";
 
 function Recommendations({ saved }: { saved: () => void }) {
     const d = useData<Row>(admin("config/fetch"));
@@ -100,19 +100,12 @@ function Recommendations({ saved }: { saved: () => void }) {
     );
 }
 
-export function AdminClients({
-    initialTab = "updates",
-}: {
-    initialTab?: "updates" | "policy";
-}) {
-    const tab = initialTab;
+export function AdminClients({ view }: { view: "updates" | "policy" }) {
     const [revision, setRevision] = useState(0);
     return (
         <div className="release-monitor">
-            <h2>{tab === "policy" ? "访问与版本策略" : "第三方客户端"}</h2>
-            <AdminChoiceGroup variant="navigation" label="客户端管理视图" value={tab} onChange={next => { window.location.hash = next === "policy" ? "/clients" : "/client-releases"; }}
-                options={[{value:"updates",label:"推荐与智能更新"},{value:"policy",label:"访问与版本策略"}]} />
-            {tab === "policy" ? (
+            <h2>{view === "policy" ? "访问与版本策略" : "第三方客户端"}</h2>
+            {view === "policy" ? (
                 <>
                     <p className="muted">
                         开启「允许订阅访问」，即可允许该行 UA 拉取订阅。按 UA

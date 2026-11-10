@@ -1,5 +1,7 @@
 {
   "translation": {
+    "暂时无法确认工单创建权限，请重试。已有工单仍可查看。": "Izin membuat tiket dukungan tidak dapat diperiksa. Coba lagi. Anda masih dapat melihat tiket yang sudah ada.",
+    "刷新回复": "Muat ulang balasan",
     "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "Kuota paket telah habis saat permintaan ini dibuat. Periksa paket atau tambahkan kuota, lalu perbarui konfigurasi.",
     "此次请求时独立额度已过期，请购买有效额度后更新配置。": "Kuota independen telah kedaluwarsa saat permintaan ini dibuat. Beli kuota yang masih berlaku, lalu perbarui konfigurasi.",
     "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "Kuota independen telah habis saat permintaan ini dibuat. Beli kuota atau paket, lalu perbarui konfigurasi.",
@@ -787,6 +789,9 @@
     "resetFailed": "Reset menunggu percobaan ulang: {{date}}"
   },
   "experience": {
+    "authorizationSwitchAccount": "Gunakan akun lain",
+    "authorizationSwitching": "Sedang keluar…",
+    "authorizationSwitchFailed": "Keluar akun belum dapat dikonfirmasi. Periksa koneksi dan coba lagi. Akun Anda belum diganti.",
     "adminRefreshing": "Memperbarui; menampilkan data yang dimuat sebelumnya…",
     "adminStale": "Pembaruan gagal. Data yang dimuat sebelumnya ditunjukkan di bawah ini.",
     "adminUnsaved": "Perubahan yang belum disimpan",
@@ -968,6 +973,7 @@
     "version": "Versi minimum: {{version}}. Perbarui klien Anda terlebih dahulu."
   },
   "clientDownload": {
+    "macCompatibility": "Sebelum menginstal, periksa persyaratan sistem dan chip di halaman unduhan resmi.",
     "title": "Unduh klien",
     "official": "Unduhan resmi",
     "mirror": "Unduhan cermin",

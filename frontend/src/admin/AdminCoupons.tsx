@@ -1,17 +1,28 @@
 import { AdminTabList } from "./AdminChoices";
 import { AdminCouponPresentation } from "./AdminCouponPresentation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { Gift, TicketPercent, History, Languages } from "lucide-react";
-import { ResourcePage, resources } from "./admin";
+import { ResourcePage } from "./admin";
+import { resources } from "./admin-resources";
 import { AdminSectionHead } from "./admin-section";
 import { AdminCouponIssue } from "./AdminCouponIssue";
 import { AdminCouponCampaigns } from "./AdminCouponCampaigns";
 
 export function AdminCoupons() {
     const [tab, setTab] = useState("templates");
+    const workspace = useRef<HTMLElement>(null);
+
+    function changeTab(next: string) {
+        const current = workspace.current;
+        if (current?.querySelector('[data-saving="true"], form[aria-busy="true"]')) return;
+        if (current?.querySelector('[data-unsaved="true"]') &&
+            !window.confirm("当前页有未保存的内容，确认放弃并切换？")) return;
+        setTab(next);
+    }
+
     return (
-        <section className="admin-commerce-page">
+        <section className="admin-commerce-page" ref={workspace}>
             <AdminSectionHead
                 icon={<TicketPercent size={23} />}
                 title="优惠券"
@@ -20,7 +31,7 @@ export function AdminCoupons() {
             <Tabs.Root
                 value={tab}
                 activationMode="manual"
-                onValueChange={setTab}
+                onValueChange={changeTab}
             >
                 <AdminTabList label="优惠券管理视图" options={[
                     {value:"templates",label:<><TicketPercent size={16} aria-hidden="true" />券模板与活动领取</>},

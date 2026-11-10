@@ -27,9 +27,10 @@ vi.mock("../shared/ui", () => ({
     }),
     State: ({ children }: any) => children,
     Panel: ({ title, children, actions }: any) => <section><h2>{title}</h2>{actions}{children}</section>,
-    Modal: ({ title, children }: any) => (
+    Modal: ({ title, children, dismissible = true, close }: any) => (
         <section role="dialog" aria-label={title}>
             <h2>{title}</h2>
+            {dismissible && <button onClick={close}>关闭 {title}</button>}
             {children}
         </section>
     ),
@@ -87,7 +88,7 @@ it("shows the AWS action and error while preserving recovery controls", () => {
     show();
     expect(screen.getByRole("status").textContent).toContain("lightsail:AllocateStaticIp");
     expect(screen.getByRole("status").textContent).toContain("aws:allocate:AccessDeniedException");
-    expect(screen.getByRole("button", { name: "继续操作" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "继续操作" }).classList.contains("primary")).toBe(true);
     expect(mocks.request).not.toHaveBeenCalled();
 });
 it("requires exact instance confirmation before submitting an IP change", async () => {
@@ -164,11 +165,14 @@ it("removes failed management configuration after warning without rotating IPs",
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     try {
         show();
+        expect(screen.queryByRole("button", { name: "移除配置" })).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
         fireEvent.click(screen.getByRole("button", { name: "移除配置" }));
         expect(mocks.request).not.toHaveBeenCalled();
         expect(confirm.mock.calls[0][0]).toContain("pending-ip");
         expect(confirm.mock.calls[0][0]).toContain("不删除 AWS 实例");
         confirm.mockReturnValue(true);
+        fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
         fireEvent.click(screen.getByRole("button", { name: "移除配置" }));
         await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("admin/server/lightsail/drop", { id: 1, abandonOperation: true }));
     } finally { confirm.mockRestore(); }
@@ -177,7 +181,24 @@ it("keeps editing and removal disabled while a worker may be active", () => {
     mocks.rows = [{ ...row, status: "running", recoverable: true }];
     show();
     expect((screen.getByRole("button", { name: "编辑配置" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     expect((screen.getByRole("button", { name: "移除配置" }) as HTMLButtonElement).disabled).toBe(true);
+});
+it("keeps the IP confirmation open until the request finishes and supports retry after failure", async () => {
+    let fail!: (reason: Error) => void;
+    mocks.request.mockReturnValueOnce(new Promise((_resolve, reject) => { fail = reject; }));
+    show();
+    fireEvent.click(screen.getByRole("button", { name: "更换 IP" }));
+    const dialog = screen.getByRole("dialog", { name: "确认更换公网 IP" });
+    const input = within(dialog).getByLabelText("输入实例名称确认") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "test-instance" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "确认操作" }));
+    expect(within(dialog).queryByRole("button", { name: "关闭 确认更换公网 IP" })).toBeNull();
+    expect(input.disabled).toBe(true);
+    fail(new Error("暂时不可用"));
+    await within(dialog).findByRole("alert");
+    expect(input.value).toBe("test-instance");
+    expect((within(dialog).getByRole("button", { name: "确认操作" }) as HTMLButtonElement).disabled).toBe(false);
 });
 it("opens editing from the standalone page and removes the saved target rather than an unsaved draft", () => {
     mocks.rows = [{ ...row, status: "failed" }];

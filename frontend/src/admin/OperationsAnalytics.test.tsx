@@ -219,6 +219,10 @@ it("shows review denominators, separate currencies, callback counts and honest l
     expect(screen.getByText("USD")).toBeTruthy();
     expect(screen.getByText("平均下单至付款")).toBeTruthy();
     expect(screen.getByText(/现有记录无法精确计算/)).toBeTruthy();
+    expect(screen.getByText(/未通过验证的失败按渠道采样/)).toBeTruthy();
+    const callbackTable = screen.getByRole("columnheader", { name: "诊断记录" }).closest("table")!;
+    const callbackRow = within(callbackTable).getByRole("row", { name: /示例渠道/ });
+    expect(within(callbackRow).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["示例渠道", "3", "2", "1", "0"]);
     expect(screen.getByText("预计清空耗时")).toBeTruthy();
     expect(screen.getByText("异常")).toBeTruthy();
     expect(screen.getByText("结果不确定")).toBeTruthy();

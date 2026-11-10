@@ -105,18 +105,26 @@ export function clearReadCache() {
     accountSettingsGeneration++;
     readCache.clear();
 }
-export async function logoutSession() {
+export async function logoutSession(options: { requireServerConfirmation?: boolean } = {}) {
+    let confirmed = false;
+    const controller = options.requireServerConfirmation ? new AbortController() : undefined;
+    const timer = controller ? setTimeout(() => controller.abort(), 15000) : undefined;
     try {
         const response = await browserFetch(
             apiUrl("/api/v10/auth/browser-session"),
-            { method: "DELETE" },
+            { method: "DELETE", ...(controller ? { signal: controller.signal } : {}) },
         );
-        if (!response.ok) throw new Error("Session revocation failed");
-    } catch {
+        if (!response.ok && response.status !== 401) throw new Error("Session revocation failed");
+        confirmed = true;
+    } catch (reason) {
+        if (options.requireServerConfirmation) throw reason;
         queueBrowserLogout();
     } finally {
-        clearReadCache();
-        forgetBrowserSession();
+        clearTimeout(timer);
+        if (confirmed || !options.requireServerConfirmation) {
+            clearReadCache();
+            forgetBrowserSession();
+        }
     }
 }
 /** Normalize untrusted JSON errors from both V10 problems and legacy envelopes. */

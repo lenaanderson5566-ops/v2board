@@ -33,7 +33,10 @@ export function clientCallback(value: string): string {
     return uri.href;
 }
 
-export default function ClientAuthorization({ user }: { user: Row }) {
+export default function ClientAuthorization({ user, onSwitchAccount }: {
+    user: Row;
+    onSwitchAccount?: (authorizationId: string) => Promise<void>;
+}) {
     const readId = () => new URLSearchParams(location.hash.split("?")[1]).get("authorizationId") || "";
     const [id, setId] = useState(readId);
     const currentId = useRef(id);
@@ -59,6 +62,9 @@ export default function ClientAuthorization({ user }: { user: Row }) {
     const [version, setVersion] = useState(0);
     const retryIn = useRetryCountdown(retryAt);
     const [callback, setCallback] = useState("");
+    const [switching, setSwitching] = useState(false);
+    const [switchError, setSwitchError] = useState("");
+    const changingAccount = useRef(false);
     const submitting = useRef(false);
     const querying = useRef(false);
     const revision = useRef(0);
@@ -90,6 +96,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
         setRecoverable(false);
         setRetryAt(0);
         setCallback("");
+        setSwitchError("");
         if (!/^[a-f0-9]{64}$/.test(id)) {
             setError(tx("授权已过期，请返回 App 重新登录。"));
             setLoading(false);
@@ -118,12 +125,12 @@ export default function ClientAuthorization({ user }: { user: Row }) {
         };
     }, [id, version]);
     function recheck() {
-        if (querying.current || submitting.current || retryIn > 0) return;
+        if (querying.current || submitting.current || changingAccount.current || retryIn > 0) return;
         querying.current = true;
         setVersion((value) => value + 1);
     }
     async function approve() {
-        if (submitting.current || loading || !details || error || retryIn > 0) return;
+        if (submitting.current || changingAccount.current || loading || !details || error || retryIn > 0) return;
         submitting.current = true;
         const requestRevision = revision.current;
         setBusy(true);
@@ -162,6 +169,25 @@ export default function ClientAuthorization({ user }: { user: Row }) {
             if (mounted.current) setBusy(false);
         }
     }
+    async function switchAccount() {
+        if (!onSwitchAccount || changingAccount.current || submitting.current || callback || !/^[a-f0-9]{64}$/.test(id)) return;
+        changingAccount.current = true;
+        setSwitching(true);
+        setSwitchError("");
+        const requestRevision = revision.current;
+        try {
+            await onSwitchAccount(id);
+        } catch {
+            if (mounted.current && currentId.current === id && revision.current === requestRevision)
+                setSwitchError(tx("authorizationSwitchFailed", {
+                    ns: "experience",
+                    defaultValue: "Could not confirm sign-out. Check your connection and retry. Your account has not been switched.",
+                }));
+        } finally {
+            changingAccount.current = false;
+            if (mounted.current) setSwitching(false);
+        }
+    }
     return (
         <main className="client-authorization">
             <section className="panel client-authorization-card">
@@ -190,6 +216,15 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                                 />{" "}
                                 FastAI · {details?.platform || "—"}
                             </span>
+                            {onSwitchAccount && /^[a-f0-9]{64}$/.test(id) && (
+                                <button type="button" className="client-authorization-switch" disabled={busy || switching}
+                                    onClick={switchAccount}>
+                                    {tx(switching ? "authorizationSwitching" : "authorizationSwitchAccount", {
+                                        ns: "experience",
+                                        defaultValue: switching ? "Signing out…" : "Use another account",
+                                    })}
+                                </button>
+                            )}
                         </div>
                         <p className="muted">
                             {tx("仅在你主动发起 App 登录时批准此请求。")}
@@ -201,6 +236,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                         {error}
                     </div>
                 )}
+                {switchError && <div className="alert" role="alert">{switchError}</div>}
                 {loading && <p role="status">{tx("正在加载…")}</p>}
                 {callback ? (
                     <a className="btn primary" href={callback}>
@@ -209,7 +245,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                 ) : (
                     <button
                         className="btn primary"
-                        disabled={busy || loading || retryIn > 0 || (!recoverable && (!details || !!error))}
+                        disabled={busy || switching || loading || retryIn > 0 || (!recoverable && (!details || !!error))}
                         onClick={recoverable ? recheck : approve}
                     >
                         {busy ? tx("正在授权…") : loading ? tx("正在加载…")
@@ -222,7 +258,7 @@ export default function ClientAuthorization({ user }: { user: Row }) {
                 {!callback && (
                     <button
                         className="btn"
-                        disabled={busy}
+                        disabled={busy || switching}
                         onClick={() => location.assign("#/dashboard")}
                     >
                         {tx("取消")}

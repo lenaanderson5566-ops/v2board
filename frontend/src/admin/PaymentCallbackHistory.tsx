@@ -200,7 +200,7 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: {
                     </summary>
                     <p className="muted">
                         订单创建后、最近 24
-                        小时内的渠道事件，未确认属于本订单，仅供排障参考。
+                        小时内的渠道事件，未确认属于本订单，仅供排障参考。未通过验证的失败按渠道采样。
                     </p>
                     <Table data={history.channelEvents.map((event: Row) => ({ ...event, type: "callback" }))} columns={[...columns, gatewayColumn]} />
                 </details>
@@ -232,7 +232,7 @@ export function PaymentChannelFailures({ history }: { history: Row }) {
         {callbackEvents && <section>
             <h3>支付回调</h3>
             {callbackEvents.length > 0 ? <>
-                <p className="muted">最近一小时内最多 20 条回调记录，包含尚未关联到订单的回调。</p>
+                <p className="muted">最近一小时内最多 20 条回调诊断记录。未通过验证的失败按渠道采样。</p>
                 <Table
                     data={callbackEvents.map((event) => ({ ...event, type: "callback" }))}
                     columns={[orderColumn, ...columns.filter(([key]) => key !== "provider"), gatewayColumn]}

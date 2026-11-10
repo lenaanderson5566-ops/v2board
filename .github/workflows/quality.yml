@@ -81,17 +81,15 @@ jobs:
           node-version: '24'
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Verify the committed deployable console files before rebuilding
+        run: node scripts/build-console.mjs --verify
       - run: npm ci --include=dev --ignore-scripts --no-audit --no-fund --registry=https://registry.npmjs.org
       - run: npm test -- --maxWorkers=4 --testTimeout=20000
+      - name: Install Chromium for browser regression
+        run: npx playwright install --with-deps chromium
+      - name: Test the committed console in Chromium
+        run: npm run test:browser
       - run: npm run build
-      - name: Pass this build to backend resource checks
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: console-build
-          path: public/console
-          include-hidden-files: true
-          if-no-files-found: error
-          retention-days: 3
 
   backend:
     name: Backend critical regressions
@@ -154,13 +152,6 @@ jobs:
           ini-values: date.timezone=UTC, memory_limit=512M
           tools: composer:2.10.3
           coverage: none
-      - name: Remove the previously tracked frontend build
-        run: rm -rf public/console
-      - name: Download this workflow's frontend build
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          name: console-build
-          path: public/console
       - name: Prepare disposable application configuration
         run: |
           for private_config in .env config/fastai.php config/v2board.php; do
@@ -184,7 +175,9 @@ jobs:
       - name: Run existing critical modules
         env:
           NAIVE_CLIENT_FIXTURE: storage/app/test-organization/ci-naive-client-fixture.json
-        run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,client-access-unified,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,fastai-entrypoints,fastai-entrypoint-check,framework-upgrade,lightsail,mfa-api,mfa,naive,node-v10,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,update-script,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
+        run: php tests/run.php --only=admin-diagnostics,admin-payment-diagnostics,api-route-audit,api-v10,auth-security,backend-security,browser-session,cache-prefix-upgrade,client-access-unified,commerce,commerce-concurrency,commission-transfer-concurrency,console-smoke,console-verify,credit-expiry,fastai-client-config,fastai-entrypoints,fastai-entrypoint-check,framework-upgrade,lightsail,mfa-api,mfa,naive,node-v10,notification-delivery,paytaro-qr-settlement,product-mail,protocol-compatibility,registration-policy,session-concurrency,subscription-client-policy,timezone-scheduler,timezones,traffic-credits,usage-resets,phpunit-unit --results=storage/app/test-organization/ci-backend-results.json
+      - name: Verify old schema migrations and updater recovery
+        run: php tests/run.php --only=commerce-migration,legacy-credit-migrations,legacy-operations-migrations,dashboard-telemetry-retirement,update-script,update-drain,update-restart --results=storage/app/test-organization/ci-upgrade-results.json
       - name: Run existing V2Box deployment workflow
         env:
           V2BOX_BOOTSTRAP_TEST: '1'

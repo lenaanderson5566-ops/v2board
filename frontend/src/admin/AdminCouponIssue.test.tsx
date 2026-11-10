@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -37,7 +38,12 @@ vi.mock("./UserFilters", () => ({
         </button><button onClick={() => onApply([{ key: "plan_id", condition: "=", value: "7" }])}>应用套餐筛选</button></>
     ),
 }));
+vi.mock("./admin", () => ({ ResourcePage: () => <p>优惠券模板列表</p> }));
+vi.mock("./admin-resources", () => ({ resources: { coupons: {} } }));
+vi.mock("./AdminCouponPresentation", () => ({ AdminCouponPresentation: () => null }));
+vi.mock("./AdminCouponCampaigns", () => ({ AdminCouponCampaigns: () => <p>发放记录列表</p> }));
 import { AdminCouponIssue } from "./AdminCouponIssue";
+import { AdminCoupons } from "./AdminCoupons";
 const preview = {
     id: 5,
     previewKey: "b6d1d4b7-4cd8-471b-b1d1-29936403a2c1",
@@ -150,4 +156,38 @@ it("shows the plan name in coupon audience summaries while preserving the ID pay
     expect(api.request).toHaveBeenCalledWith("coupon-campaign/preview", {
         coupon_id: 7, scope: "filtered", filter: [{ key: "plan_id", condition: "=", value: "7" }],
     });
+});
+
+it("keeps an active issuance preview when navigation is declined and blocks tab changes during confirmation", async () => {
+    let finish!: () => void;
+    api.request.mockImplementation((path: string) =>
+        path === "coupon-campaign/confirm"
+            ? new Promise(resolve => { finish = () => resolve({ data: preview }); })
+            : Promise.resolve({ data: preview }),
+    );
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    try {
+        render(<AdminCoupons />);
+        const selectTab = (name: string) =>
+            fireEvent.mouseDown(screen.getByRole("tab", { name }), { button: 0 });
+        selectTab("发放到用户券包");
+        fireEvent.change(screen.getByLabelText("优惠券"), { target: { value: "7" } });
+        fireEvent.change(screen.getByLabelText("发放范围"), { target: { value: "all" } });
+        fireEvent.click(screen.getByText("预览发放范围"));
+        await screen.findByText("发放预览 · Ten percent");
+
+        selectTab("券模板与活动领取");
+        expect(confirm).toHaveBeenCalledOnce();
+        expect(screen.getByText("发放预览 · Ten percent")).toBeTruthy();
+
+        fireEvent.click(screen.getByRole("checkbox"));
+        fireEvent.click(screen.getByText("确认分批发放"));
+        selectTab("券模板与活动领取");
+        expect(confirm).toHaveBeenCalledOnce();
+        expect(screen.queryByText("优惠券模板列表")).toBeNull();
+        await act(async () => finish());
+        expect(await screen.findByText("发放记录列表")).toBeTruthy();
+    } finally {
+        confirm.mockRestore();
+    }
 });

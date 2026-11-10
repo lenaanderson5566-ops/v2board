@@ -344,9 +344,127 @@ it.each([
         fireEvent.click(screen.getByRole("button", { name: "checkPayment" }));
         expect(reload).toHaveBeenCalled();
     } else {
-        expect((screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(false);
+        expect((screen.getByRole("button", { name: "确认支付" }) as HTMLButtonElement).disabled).toBe(true);
+        expect(screen.queryByRole("radio", { name: "WeChat Pay" })).toBeNull();
+        expect(mock.reloadMethods).toHaveBeenCalled();
     }
     expect(submit).toHaveBeenCalledTimes(1);
+});
+
+it.each([false, true])("refreshes and requires another channel after a preflight rejection (method refresh fails: %s)", async (refreshFails) => {
+    mock.methods = [originalMethods[0], { id: 11, name: "WeChat Pay", handling_fee_fixed: 0 } as any];
+    mock.reloadMethods.mockImplementation(() => {
+        if (refreshFails) mock.methodsError = "Payment methods temporarily unavailable";
+    });
+    mock.request.mockImplementation(async (path: string, body) => {
+        if (path !== "user/order/checkout") return { data: 0 };
+        if (body.method === 1) throw Object.assign(new Error("Gateway config error"), { code: "PAYMENT_CHANNEL_UNAVAILABLE", status: 422 });
+        return { type: 0, data: "other-channel-qr" };
+    });
+    const reload = vi.fn();
+    const view = renderCheckout({}, reload);
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    await screen.findByText("paymentChannelUnavailable");
+    expect(screen.queryByRole("radio", { name: "Alipay" })).toBeNull();
+    expect(mock.reloadMethods).toHaveBeenCalledOnce();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "确认支付" }).disabled).toBe(true);
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    fireEvent.click(screen.getByRole("radio", { name: "WeChat Pay" }));
+    if (refreshFails) {
+        expect(screen.getByRole<HTMLButtonElement>("button", { name: "确认支付" }).disabled).toBe(true);
+        mock.methodsError = "";
+        view.rerender(<PaymentCheckout order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: "test-order", plan: { name: "Plan" } }} reload={reload} renderCard={() => null} />);
+    }
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await screen.findByDisplayValue("other-channel-qr");
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(2);
+    expect(mock.request.mock.calls.find(([path, body]) => path === "user/order/checkout" && body.method === 11)?.[1]).toMatchObject({ trade_no: "test-order", method: 11 });
+});
+
+it("does not keep offering the only rejected channel even when refreshed methods still include it", async () => {
+    mock.methods = [originalMethods[0]];
+    mock.request.mockRejectedValue(Object.assign(new Error("Unavailable"), { code: "PAYMENT_CHANNEL_UNAVAILABLE", status: 422 }));
+    renderCheckout();
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    await screen.findByText("暂无可用支付方式，请联系客服。");
+    expect(screen.queryByRole("radio", { name: "Alipay" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "checkPayment" })).toBeNull();
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "确认支付" }).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(mock.reloadMethods).toHaveBeenCalledTimes(2);
+    expect(mock.request).toHaveBeenCalledTimes(1);
+});
+
+it("restores a repaired sole channel only after an explicit successful refresh and fresh confirmation", async () => {
+    mock.methods = [originalMethods[0]];
+    let repaired = false;
+    mock.request.mockImplementation(async (path: string) => {
+        if (path !== "user/order/checkout") return { data: 0 };
+        if (!repaired) throw Object.assign(new Error("Unavailable"), { code: "PAYMENT_CHANNEL_UNAVAILABLE", status: 422 });
+        return { type: 0, data: "repaired-channel-qr" };
+    });
+    const order = { status: 0, plan_id: 1, total_amount: 1000, trade_no: "repaired-order" };
+    const checkout = () => <PaymentCheckout order={order} reload={() => {}} renderCard={() => null} />;
+    const view = render(checkout());
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    await screen.findByText("暂无可用支付方式，请联系客服。");
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    mock.methodsError = "Refresh failed";
+    view.rerender(checkout());
+    expect(screen.queryByRole("radio", { name: "Alipay" })).toBeNull();
+    mock.methodsError = "";
+    mock.methods = [originalMethods[0]];
+    view.rerender(checkout());
+    expect(screen.queryByRole("radio", { name: "Alipay" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    mock.methods = [originalMethods[0]];
+    view.rerender(checkout());
+    const channel = await screen.findByRole<HTMLInputElement>("radio", { name: "Alipay" });
+    expect(channel.checked).toBe(false);
+    expect(screen.getByRole<HTMLButtonElement>("button", { name: "确认支付" }).disabled).toBe(true);
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+    repaired = true;
+    fireEvent.click(channel);
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await screen.findByDisplayValue("repaired-channel-qr");
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(2);
+});
+
+it("does not carry a channel rejection into a different order", async () => {
+    mock.methods = [originalMethods[0]];
+    mock.request.mockRejectedValue(Object.assign(new Error("Unavailable"), { code: "PAYMENT_CHANNEL_UNAVAILABLE", status: 422 }));
+    const checkout = (tradeNo: string) => <PaymentCheckout order={{ status: 0, plan_id: 1, total_amount: 1000, trade_no: tradeNo }} reload={() => {}} renderCard={() => null} />;
+    const view = render(checkout("first-order"));
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    await screen.findByText("暂无可用支付方式，请联系客服。");
+    view.rerender(checkout("second-order"));
+    expect(await screen.findByRole("radio", { name: "Alipay" })).toBeTruthy();
+    expect(mock.request).toHaveBeenCalledTimes(1);
+});
+
+it("keeps the original payment recoverable after another channel fails before initiation", async () => {
+    mock.methods = [originalMethods[0], { id: 11, name: "WeChat Pay", handling_fee_fixed: 0 } as any];
+    mock.request.mockImplementation(async (path: string, body) => {
+        if (path === "user/order/detail") return { data: { status: 0, payment_id: 1 } };
+        if (path !== "user/order/checkout") return { data: 0 };
+        if (body.resume_payment) return { type: 0, data: "original-valid-qr" };
+        throw Object.assign(new Error("Unavailable"), { code: "PAYMENT_CHANNEL_UNAVAILABLE", status: 422 });
+    });
+    renderCheckout({ payment_id: 1 });
+    await screen.findByDisplayValue("original-valid-qr");
+    fireEvent.click(screen.getByRole("button", { name: "reselectPayment" }));
+    fireEvent.click(screen.getByRole("button", { name: "继续" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    fireEvent.click(screen.getByRole("radio", { name: "WeChat Pay" }));
+    fireEvent.click(screen.getByRole("button", { name: "确认支付" }));
+    await screen.findByText("paymentChannelUnavailable");
+    fireEvent.click(screen.getByRole("radio", { name: "Alipay" }));
+    fireEvent.click(screen.getByRole("button", { name: "paymentOpenAgain" }));
+    await screen.findByDisplayValue("original-valid-qr");
+    expect(mock.request.mock.calls.filter(([path, body]) => path === "user/order/checkout" && !body.resume_payment)).toEqual([
+        ["user/order/checkout", expect.objectContaining({ method: 11, switch_from_payment_method: 1 }), { timeoutMs: 45000 }],
+    ]);
 });
 
 it("keeps the restored QR visible without a dismiss control or another checkout", async () => {

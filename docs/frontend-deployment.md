@@ -22,6 +22,8 @@ npm run test
 npm run build
 ```
 
+发布时使用默认 Vite 生产配置构建，并将完整 `public/console`（含 `.vite` 清单与 `build-provenance.json`）随源码提交。从 `frontend` 执行 `node scripts/build-console.mjs --verify` 可只读核对现有产物与源码指纹。构建来源记录只在完整构建后生成。GitHub Actions 在 Linux 重建前检查提交中的产物，允许 Windows 与 Linux 检出的文本换行差异。
+
 得到三份产物：
 
 - `public/console`：Laravel 当前部署使用，包含两端入口和完整生产清单。
@@ -39,6 +41,14 @@ php artisan console:verify --host=fastdog.ws
 ```
 
 此次改造不会自动变更线上域名或部署架构。
+
+### 调整后台登录入口
+
+在后台打开「安全与风控 → 账户与注册」，修改「后台入口路径」并保存。填写随机的单段路径，建议至少 24 个字母或数字，不加开头的斜杠。保存后，在另一个窗口打开 `https://你的域名/新路径#/login` 验证登录，并检查旧地址已不再展示后台。设置同时变更管理 API 的 `/api/v1/新路径/` 前缀。
+
+如果需要从服务器恢复入口，先备份站点配置，在 `config/fastai.php` 的配置数组里修改 `secure_path`。仅有旧版 `config/v2board.php` 的部署使用现有站点配置文件。修改后执行 `php artisan route:clear` 和 `php artisan config:cache`，有常驻 PHP 进程时按部署方式重载。
+
+随机路径用于减少扫描。需要限制谁能看到登录页时，把后台页面及管理接口放在受 VPN 或访问策略保护的入口，保留用户端共用的登录接口和支付回调。独立静态部署也要保护后台站点及其 `admin-config.json`，换路径后重新导出运行配置。
 
 ## 独立静态部署
 

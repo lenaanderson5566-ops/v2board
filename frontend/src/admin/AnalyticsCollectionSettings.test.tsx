@@ -172,7 +172,7 @@ it("disables collection edits before migrations and exposes read failures", asyn
     render(<AnalyticsCollectionSettings />);
     expect(await screen.findByText("读取失败")).toBeTruthy();
 });
-it("moves browser policies to a separate settings tab without changing saved keys", async () => {
+it("keeps browser policies in their own settings section and saves the same keys", async () => {
     api.request.mockImplementation(async (path: string) => ({
         data: path.endsWith("config/fetch")
             ? {
@@ -184,11 +184,11 @@ it("moves browser policies to a separate settings tab without changing saved key
               }
             : {},
     }));
-    render(<Settings />);
-    fireEvent.click(await screen.findByRole("button", { name: "安全与注册" }));
-    await screen.findByText("保存");
-    expect(screen.queryByText("微信访问策略")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "浏览器访问" }));
+    const account = render(<Settings section="safe" />);
+    await screen.findByRole("button", { name: "保存" });
+    expect(screen.queryByLabelText(/微信访问策略/)).toBeNull();
+    account.unmount();
+    render(<Settings section="browser" />);
     const policy = await screen.findByLabelText(/微信访问策略/);
     fireEvent.change(policy, { target: { value: "prompt" } });
     expect(screen.getByText("微信 · 提示后允许访问")).toBeTruthy();
@@ -234,30 +234,55 @@ it("retains unsaved settings and their editing baseline through loading, failure
     }
 });
 
-it("clears the settings dirty state after reverting fields and allows testing or switching without discard prompts", async () => {
+it("clears the navigation guard and enables mail testing after reverting an edit", async () => {
     api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("config/fetch")
         ? { site: {}, email: { email_provider: "smtp", email_host: "smtp.example.test", email_from_address: "admin@example.test" }, safe: {} }
         : {} }));
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    const view = render(<Settings />);
-    try {
-        fireEvent.click(await screen.findByRole("button", { name: "邮件发送" }));
-        const host = await screen.findByLabelText(/SMTP服务器地址/) as HTMLInputElement;
-        const test = screen.getByRole("button", { name: "发送测试邮件" }) as HTMLButtonElement;
-        expect(test.disabled).toBe(false);
-        fireEvent.change(host, { target: { value: "changed.example.test" } });
-        expect(test.disabled).toBe(true);
-        expect(screen.getAllByText("有未保存的修改").length).toBeGreaterThan(0);
-        fireEvent.change(host, { target: { value: "smtp.example.test" } });
-        await waitFor(() => expect(test.disabled).toBe(false));
-        expect(screen.queryAllByText("有未保存的修改")).toHaveLength(0);
-        fireEvent.click(screen.getByRole("button", { name: "安全与注册" }));
-        expect(confirm).not.toHaveBeenCalled();
-        expect(screen.getByRole("button", { name: "安全与注册" }).getAttribute("aria-pressed")).toBe("true");
-    } finally {
-        view.unmount();
-        confirm.mockRestore();
-    }
+    render(<Settings section="email" />);
+    const host = await screen.findByLabelText(/SMTP服务器地址/) as HTMLInputElement;
+    const test = screen.getByRole("button", { name: "发送测试邮件" }) as HTMLButtonElement;
+    expect(test.disabled).toBe(false);
+    fireEvent.change(host, { target: { value: "changed.example.test" } });
+    expect(test.disabled).toBe(true);
+    expect(host.closest("form")?.getAttribute("data-unsaved")).toBe("true");
+    fireEvent.change(host, { target: { value: "smtp.example.test" } });
+    await waitFor(() => expect(test.disabled).toBe(false));
+    expect(host.closest("form")?.hasAttribute("data-unsaved")).toBe(false);
+    fireEvent.click(test);
+    await screen.findByText(/邮件已被发送服务接受/);
+    expect(api.request).toHaveBeenCalledWith("test-admin/config/testSendMail", {});
+});
+
+it("shows missing mail setup beside the disabled test action", async () => {
+    api.request.mockImplementation(async (path: string) => ({ data: path.endsWith("config/fetch")
+        ? { email: { email_provider: "smtp", email_from_address: "admin@example.test" } }
+        : {} }));
+    render(<Settings section="email" />);
+    expect(await screen.findByRole("button", { name: "发送测试邮件" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("请先填写并保存 SMTP 服务器地址。")).toBeTruthy();
+    expect(screen.getByText("请先启用并保存推广独立通道。")).toBeTruthy();
+});
+
+it("keeps transactional success and promotional failure as separate test results", async () => {
+    api.request.mockImplementation(async (path: string, body?: { stream?: string }) => {
+        if (path.endsWith("config/fetch")) return { data: { email: {
+            email_provider: "smtp", email_host: "smtp.example.test", email_from_address: "admin@example.test",
+            email_announcement_separate: true, email_announcement_provider: "smtp",
+            email_announcement_host: "promo.example.test", email_announcement_from_address: "promo@example.test",
+        } } };
+        if (path.endsWith("testSendMail")) return body?.stream === "announcement"
+            ? { data: false, log: { error: "推广发送失败" } }
+            : { data: true };
+        return { data: {} };
+    });
+    render(<Settings section="email" />);
+    fireEvent.click(await screen.findByRole("button", { name: "发送测试邮件" }));
+    const accepted = await screen.findByText(/邮件已被发送服务接受/);
+    expect(accepted.closest('[role="status"]')).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "测试推广通道（发往管理员）" }));
+    const rejected = await screen.findByText("推广发送失败");
+    expect(rejected.closest('[role="alert"]')).toBeTruthy();
+    expect(screen.getByText(/邮件已被发送服务接受/)).toBe(accepted);
 });
 
 it("applies target user filters only on submit and keeps shared pagination", async () => {
@@ -324,20 +349,6 @@ it("distinguishes fixed cadence nodes from nodes supporting the setting", async 
     render(<AdminTargetStatistics />);
     expect(await screen.findByRole("option",{name:"旧节点（周期固定）"})).toBeTruthy();
     expect(screen.getByRole("option",{name:"新节点"})).toBeTruthy();
-});
-
-it("filters settings categories without hiding the current editor", async () => {
-    api.request.mockResolvedValue({data: {site: {}, safe: {}}});
-    render(<Settings />);
-    const search = screen.getByRole("searchbox", {name: "搜索设置分类"});
-    fireEvent.change(search, {target: {value: "邮件"}});
-    expect(screen.getByRole("button", {name: "邮件发送"})).toBeTruthy();
-    expect(screen.queryByRole("button", {name: "安全与注册"})).toBeNull();
-    expect(screen.getByRole("heading", {name: "站点设置"})).toBeTruthy();
-    fireEvent.change(search, {target: {value: "不存在的分类"}});
-    expect(screen.getByText("没有匹配的设置分类")).toBeTruthy();
-    fireEvent.change(search, {target: {value: ""}});
-    expect(screen.getByRole("button", {name: "安全与注册"})).toBeTruthy();
 });
 
 it("saves target retention independently and confirms shortening", async () => {

@@ -1,8 +1,7 @@
-import { adminWorkspace, settingSections } from "./admin-navigation";
-import { AdminTabs } from "./AdminChoices";
+import { settingSections } from "./admin-navigation";
+import { AdminRouteTabs } from "./AdminChoices";
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
-import { OperationsDetails } from "./OperationsAnalytics";
 import { lazy, Suspense } from "react";
 const AdminDictionary = lazy(() =>
     import("./AdminDictionary").then((m) => ({ default: m.AdminDictionary })),
@@ -42,11 +41,11 @@ const AdminLogSettings = lazy(() =>
         default: module.AdminLogSettings,
     })),
 );
-const AdminSubscriptions = lazy(() =>
-    import("./AdminSubscriptions").then((module) => ({
-        default: module.AdminSubscriptions,
-    })),
+const AdminPlanTranslations = lazy(() => import("./AdminPlanTranslations"));
+const AdminBillingCurrency = lazy(() =>
+    import("./AdminBillingCurrency").then(module => ({ default: module.AdminBillingCurrency })),
 );
+const AdminResourceRoute = lazy(() => import("./AdminResourceRoute"));
 const AdminInvitations = lazy(() =>
     import("./AdminInvitations").then((module) => ({
         default: module.AdminInvitations,
@@ -70,7 +69,6 @@ const AdminBanners = lazy(() =>
         default: module.AdminBanners,
     })),
 );
-import { ResourcePage, resources } from "./admin";
 const Settings = lazy(() =>
     import("./admin-settings").then((module) => ({ default: module.Settings })),
 );
@@ -103,32 +101,16 @@ const Overview = lazy(() =>
         default: module.Overview,
     })),
 );
-function AdminPageContent({ current }: { current: string }) {
-    const workspace = adminWorkspace(current);
-    const content = <AdminPageBody key={current} current={current} />;
-    return workspace ? (
-        <AdminTabs
-            label={workspace.label}
-            value={current}
-            options={workspace.tabs.map(([value, label]) => ({ value, label }))}
-            onChange={(next) => {
-                if (
-                    document.querySelector(
-                        '.admin-content [data-saving="true"], .admin-content form[aria-busy="true"]',
-                    )
-                )
-                    return;
-                window.location.hash = "/" + next;
-            }}
-        >
-            {content}
-        </AdminTabs>
-    ) : (
-        content
+function AdminPageContent({ current, route }: { current: string; route: string }) {
+    if (current === "invitations") return <AdminInvitations route={route} />;
+    return (
+        <AdminRouteTabs route={route}>
+            <AdminPageBody key={current} current={current} route={route} />
+        </AdminRouteTabs>
     );
 }
-function AdminPageBody({ current }: { current: string }) {
-    if (settingSections[current])
+function AdminPageBody({ current, route }: { current: string; route: string }) {
+    if (Object.hasOwn(settingSections, current))
         return <Settings key={current} section={settingSections[current]} />;
     if (current === "dictionary") return <AdminDictionary />;
     if (current === "overview-analytics")
@@ -141,10 +123,10 @@ function AdminPageBody({ current }: { current: string }) {
                 <PasskeySecurity />
             </>
         );
-    if (current === "plans" || current === "plans-translations")
-        return <AdminSubscriptions key={current} initialTab={current === "plans-translations" ? "translations" : "plans"} />;
+    if (current === "plans-translations") return <AdminPlanTranslations />;
+    if (current === "plans-currencies") return <AdminBillingCurrency />;
     if (current === "log-settings")
-        return <AdminLogSettings />;
+        return <AdminLogSettings route={route} />;
     if (current === "overview-system")
         return <Overview key="overview-system" initialTab="system" />;
     if (current === "notification-blocklist")
@@ -164,7 +146,6 @@ function AdminPageBody({ current }: { current: string }) {
     if (current === "client-diagnostics") return <AdminClientDiagnostics />;
     if (current === "client-downloads")
         return <Settings key="client-downloads" section="app" />;
-    if (current === "invitations") return <AdminInvitations />;
     if (current === "users") return <UsersPage />;
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")
@@ -174,23 +155,17 @@ function AdminPageBody({ current }: { current: string }) {
         return (
             <AdminClients
                 key={current}
-                initialTab={current === "clients" ? "policy" : "updates"}
+                view={current === "clients" ? "policy" : "updates"}
             />
         );
     if (current === "coupons") return <AdminCoupons />;
-    if (current === "access-logs-subscriptions") return <>
-        <ResourcePage key={current} resource={resources[current]} />
-        <OperationsDetails section="security" />
-    </>;
-    if (resources[current])
-        return <ResourcePage key={current} resource={resources[current]} />;
     switch (current) {
         case "banners":
             return <AdminBanners />;
         case "overview-risk":
             return <Overview key="risk" initialTab="risk" />;
         case "tickets":
-            return <AdminTickets />;
+            return <AdminTickets route={route} />;
         case "payments":
             return <Payments />;
         case "nodes":
@@ -198,19 +173,12 @@ function AdminPageBody({ current }: { current: string }) {
         case "overview":
             return <Overview />;
         default:
-            return (
-                <section className="panel pad">
-                    <h2>页面未找到</h2>
-                    <p className="muted">
-                        链接可能已变更，请从左侧导航选择功能。
-                    </p>
-                    <a href="#/overview">返回仪表盘</a>
-                </section>
-            );
+            return <AdminResourceRoute path={current} />;
     }
 }
 
-export default function AdminContent({ current }: { current: string }) {
+export default function AdminContent({ route }: { route: string }) {
+    const current = route.split("?", 1)[0];
     return (
         <ErrorBoundary
             key={current}
@@ -223,7 +191,7 @@ export default function AdminContent({ current }: { current: string }) {
                     </div>
                 }
             >
-                <AdminPageContent current={current} />
+                <AdminPageContent current={current} route={route} />
             </Suspense>
         </ErrorBoundary>
     );

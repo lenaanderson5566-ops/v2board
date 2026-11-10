@@ -25,8 +25,16 @@ body[data-console="admin"] :is(.section-tabs,.admin-display-settings,.admin-choi
 @media (max-width: 540px) {
     body[data-console="admin"] .admin-display-settings { padding: 16px; }
     body[data-console="admin"] .admin-display-grid { grid-template-columns: minmax(0,1fr); }
-    body[data-console="admin"] .section-tabs { padding: 0 4px; }
-    body[data-console="admin"] .section-tabs > :is(button,a.button) { padding: 10px 12px; }
+    body[data-console="admin"] .section-tabs { flex-wrap: wrap; padding: 0 4px; overflow: visible; }
+    body[data-console="admin"] .section-tabs > :is(button,a.button) {
+        flex-shrink: 1;
+        max-width: 100%;
+        min-height: 44px;
+        padding: 10px 12px;
+        white-space: normal;
+        overflow-wrap: anywhere;
+        text-align: center;
+    }
 }
 
 body[data-console="admin"] .section-tabs > button { gap: 8px; }

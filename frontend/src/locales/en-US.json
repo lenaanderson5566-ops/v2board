@@ -1,5 +1,7 @@
 {
   "translation": {
+    "暂时无法确认工单创建权限，请重试。已有工单仍可查看。": "Unable to check ticket creation permissions. Try again. You can still view existing tickets.",
+    "刷新回复": "Refresh replies",
     "此次请求时套餐流量已用尽，请查看套餐或补充额度后更新配置。": "The plan's data allowance was exhausted when this request was made. Review your plan or add credits, then update the configuration.",
     "此次请求时独立额度已过期，请购买有效额度后更新配置。": "The independent credits had expired when this request was made. Buy valid credits, then update the configuration.",
     "此次请求时独立额度已用尽，请购买额度或套餐后更新配置。": "The independent credits were exhausted when this request was made. Buy credits or a plan, then update the configuration.",
@@ -787,6 +789,9 @@
     "resetFailed": "Reset awaiting retry: {{date}}"
   },
   "experience": {
+    "authorizationSwitchAccount": "Use another account",
+    "authorizationSwitching": "Signing out…",
+    "authorizationSwitchFailed": "Could not confirm sign-out. Check your connection and retry. Your account has not been switched.",
     "adminRefreshing": "Updating; showing previously loaded data…",
     "adminStale": "Update failed. Previously loaded data is shown below.",
     "adminUnsaved": "Unsaved changes",
@@ -968,6 +973,7 @@
     "version": "Minimum version: {{version}}. Update your client first."
   },
   "clientDownload": {
+    "macCompatibility": "Check the system and chip requirements on the official download page before installing.",
     "title": "Download client",
     "official": "Official download",
     "mirror": "Mirror download",

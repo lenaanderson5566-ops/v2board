@@ -299,8 +299,10 @@ try {
         $assert($response->getStatusCode() === 422 && ($errors['email'][0] ?? null) === $catalog['Email can not be empty'], 'Localized validation failed: ' . $language);
     }
     app()->setLocale('zh-CN');
-    $response = $call('/' . $securePath . '/ops-center/risk');
-    $assert($response->getStatusCode() === 302 && strpos($response->headers->get('Location'), '#/risk') !== false, 'Legacy operations bookmark failed');
+    foreach (['', '/overview', '/risk', '/client', '/logs', '/i18n'] as $suffix) {
+        $path = '/' . $securePath . '/ops-center' . $suffix;
+        $assert($call($path)->getStatusCode() === 404, 'Retired operations route still active: ' . $suffix);
+    }
     foreach (['getThemes', 'getThemeConfig', 'saveThemeConfig'] as $method) {
         $response = $call('/api/v1/' . $securePath . '/theme/' . $method, $method === 'getThemes' ? null : [], $token);
         $assert($response->getStatusCode() === 404, 'Theme endpoint still active: ' . $method);

@@ -1,34 +1,66 @@
 import { AdminFilterBar } from "./AdminFilterBar";
+import { AdminChoiceGroup } from "./AdminChoices";
 import { StatusBadge } from "../shared/StatusBadge";
 import { AdminUserActivityLink } from "./AdminUserActivity";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { admin, query, date, type Row } from "../shared/api";
 import { Modal, State, Html, useData } from "../shared/ui";
-import { ResourcePage, resources } from "./admin";
+import { ResourcePage } from "./admin";
+import { resources } from "./admin-resources";
 import { Tickets } from "../shared/Tickets";
 import { AdminTicketConversation } from "./AdminTicketConversation";
-export function AdminTickets() {
-    const paramsFromHash = new URLSearchParams(
-        window.location.hash.split("?")[1] || "",
-    );
-    const [email, setEmail] = useState(""),
-        [draftEmail, setDraftEmail] = useState(""),
-        [status, setStatus] = useState(paramsFromHash.get("status") || "0"),
-        [reply, setReply] = useState(paramsFromHash.get("reply_status") || ""),
-        [pageSize, setPageSize] = useState(20);
+
+const ticketQueues = [
+    { value: "pending", label: "待回复", status: "0", reply: "0" },
+    { value: "replied", label: "已回复", status: "0", reply: "1" },
+    { value: "open", label: "处理中", status: "0", reply: "" },
+    { value: "closed", label: "已关闭", status: "1", reply: "" },
+    { value: "all", label: "全部", status: "", reply: "" },
+] as const;
+
+function readTicketQueue(route: string) {
+    const params = new URLSearchParams(route.split("?")[1]);
+    const status = params.get("status");
+    const reply = params.get("reply_status");
+    return {
+        status: status === "" || status === "1" ? status : "0",
+        reply: reply === "0" || reply === "1" ? reply : "",
+    };
+}
+
+export function AdminTickets({ route }: { route: string }) {
+    const [email, setEmail] = useState("");
+    const [draftEmail, setDraftEmail] = useState("");
+    const [{ status, reply }, setQueue] = useState(() => readTicketQueue(route));
+    const [pageSize, setPageSize] = useState(20);
+    useEffect(() => {
+        setQueue(readTicketQueue(route));
+    }, [route]);
+    const queue = ticketQueues.find(item => item.status === status && item.reply === reply)?.value
+        ?? (status === "1" ? "closed" : "all");
     const params = {
         email,
         status,
         reply_status: reply === "" ? undefined : [reply],
     };
-    return (
+    return <>
+        <AdminChoiceGroup
+            className="pad"
+            label="工单队列"
+            options={ticketQueues}
+            value={queue}
+            onChange={value => {
+                const next = ticketQueues.find(item => item.value === value);
+                if (next) setQueue({ status: next.status, reply: next.reply });
+            }}
+        />
         <Tickets
             key={JSON.stringify({ params, pageSize })}
             isAdmin
             renderAdminConversation={(props) => <AdminTicketConversation key={props.id} {...props} />}
             queryParams={params}
             pageSize={pageSize}
-                onPageSizeChange={setPageSize}
+            onPageSizeChange={setPageSize}
             heading="工单管理"
             adminColumns={[
                 ["id", "#"],
@@ -72,32 +104,27 @@ export function AdminTickets() {
                         onChange={(e) => setDraftEmail(e.target.value)}
                     />
                     <button>搜索</button>
-                    <select
-                        aria-label="工单状态"
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                    >
-                        <option value="">全部状态</option>
-                        <option value="0">处理中</option>
-                        <option value="1">已关闭</option>
-                    </select>
-                    <select
-                        aria-label="工单回复状态"
-                        value={reply}
-                        onChange={(e) => setReply(e.target.value)}
-                    >
-                        <option value="">全部回复状态</option>
-                        <option value="0">待回复</option>
-                        <option value="1">已回复</option>
-                    </select>
+                    {status !== "0" && (
+                        <select
+                            aria-label="工单回复状态"
+                            value={reply}
+                            onChange={event => {
+                                const next = event.target.value;
+                                setQueue({ status, reply: next === "0" || next === "1" ? next : "" });
+                            }}
+                        >
+                            <option value="">全部回复状态</option>
+                            <option value="0">待回复</option>
+                            <option value="1">已回复</option>
+                        </select>
+                    )}
 
                     <button
                         type="button"
                         onClick={() => {
                             setEmail("");
                             setDraftEmail("");
-                            setStatus("");
-                            setReply("");
+                            setQueue({ status: "", reply: "" });
                         }}
                     >
                         重置筛选
@@ -105,7 +132,7 @@ export function AdminTickets() {
                 </AdminFilterBar>
             }
         />
-    );
+    </>;
 }
 export function ContentPage({ kind }: { kind: "knowledge" | "notices" }) {
     const [selected, setSelected] = useState<Row | null>(null);

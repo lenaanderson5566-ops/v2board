@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {act,cleanup,fireEvent,render,screen,waitFor} from "@testing-library/react";
-const mocks=vi.hoisted(()=>({read:vi.fn(),language:vi.fn().mockResolvedValue(undefined),workspaceLanguage:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),workspaceLoaded:vi.fn(),gateAllowed:true,authenticated:true,brokenRoute:"",brokenHeader:false,logins:[] as Array<(account:any,options?:any)=>void>}));
-vi.mock("../shared/api",()=>({boot:{mode:"user",title:"Test",landing:false},request:vi.fn(),readRequest:mocks.read,navigate:vi.fn(),clearReadCache:vi.fn(),logoutSession:vi.fn()}));
+const mocks=vi.hoisted(()=>({read:vi.fn(),request:vi.fn(),logout:vi.fn(),navigate:vi.fn(),language:vi.fn().mockResolvedValue(undefined),workspaceLanguage:vi.fn().mockResolvedValue(undefined),initialize:vi.fn(),forget:vi.fn(),workspaceLoaded:vi.fn(),gateAllowed:true,authenticated:true,brokenRoute:"",brokenHeader:false,logins:[] as Array<(account:any,options?:any)=>void>}));
+vi.mock("../shared/api",()=>({boot:{mode:"user",title:"Test",landing:false},request:mocks.request,readRequest:mocks.read,navigate:mocks.navigate,clearReadCache:vi.fn(),logoutSession:mocks.logout}));
 vi.mock("../shared/browser-session",()=>({initializeBrowserSession:mocks.initialize,hasBrowserSession:()=>mocks.authenticated,forgetBrowserSession:mocks.forget}));
 vi.mock("../shared/i18n",()=>({tx:(key:string)=>key,locale:()=>"en-US",setLanguagePersistence:vi.fn(),applyAccountLanguage:mocks.language,prepareWorkspaceLanguage:mocks.workspaceLanguage}));
 vi.mock("react-i18next",()=>({useTranslation:()=>({})}));
@@ -30,6 +30,7 @@ import { ErrorBoundary } from "../shared/ErrorBoundary";
 import { browserHandoffUrl } from "../shared/browser-access";
 beforeEach(()=>{
     mocks.read.mockReset();mocks.language.mockReset().mockResolvedValue(undefined);mocks.brokenRoute="";mocks.brokenHeader=false;
+    mocks.request.mockReset();mocks.logout.mockReset();mocks.navigate.mockReset();
     mocks.workspaceLanguage.mockReset().mockResolvedValue(undefined);
     mocks.initialize.mockReset().mockResolvedValue(undefined);mocks.forget.mockClear();mocks.authenticated=true;mocks.gateAllowed=true;
     mocks.logins=[];
@@ -312,4 +313,55 @@ it("advances the visible personal calendar across midnight without fetching acco
         expect(today.textContent).toContain("November 3");
         expect(mocks.read).toHaveBeenCalledTimes(reads);
     } finally { cleanup(); vi.useRealTimers(); }
+});
+
+it("preserves the consent route across account switching and sign-in refresh then rechecks before a new consent", async () => {
+    const authorizationId = "a".repeat(64);
+    history.replaceState(null, "", `#/client-authorize?authorizationId=${authorizationId}`);
+    mocks.read.mockResolvedValue({data:{id:42,email:"old@example.test",language:"en-US",account_status:{state:"active"}}});
+    mocks.request.mockResolvedValue({data:{platform:"windows"}});
+    let finish!: () => void;
+    mocks.logout.mockImplementation(() => new Promise<void>(resolve => { finish = resolve; }));
+    const view = render(<App/>);
+    fireEvent.click(await screen.findByRole("button", {name:"authorizationSwitchAccount"}));
+    expect(mocks.logout).toHaveBeenCalledExactlyOnceWith({requireServerConfirmation:true});
+    expect(screen.getByText("old@example.test")).toBeTruthy();
+    expect(screen.queryByText("Sign in")).toBeNull();
+    await act(async () => finish());
+    expect(await screen.findByText("Sign in")).toBeTruthy();
+    expect(mocks.navigate).not.toHaveBeenCalled();
+    expect(location.hash).toBe(`#/client-authorize?authorizationId=${authorizationId}`);
+    expect(screen.getByTestId("login-return").textContent).toBe(`client-authorize?authorizationId=${authorizationId}`);
+    view.unmount();
+    mocks.authenticated = false;
+    render(<App/>);
+    await screen.findByText("Sign in");
+    expect(screen.getByTestId("login-return").textContent).toBe(`client-authorize?authorizationId=${authorizationId}`);
+    act(() => mocks.logins.at(-1)!({id:43,email:"new@example.test",language:"en-US",account_status:{state:"active"}}));
+    expect(await screen.findByText("new@example.test")).toBeTruthy();
+    await waitFor(() => expect(mocks.request).toHaveBeenCalledTimes(2));
+    expect(mocks.request.mock.calls.every(([path]) => path === `user/client-authorization?authorization_id=${authorizationId}`)).toBe(true);
+    expect(screen.getByRole("button", {name:"确认登录"})).toBeTruthy();
+});
+it("keeps the account on the consent page if confirmed sign-out fails", async () => {
+    history.replaceState(null, "", `#/client-authorize?authorizationId=${"a".repeat(64)}`);
+    mocks.read.mockResolvedValue({data:{id:42,email:"old@example.test",language:"en-US",account_status:{state:"active"}}});
+    mocks.request.mockResolvedValue({data:{platform:"windows"}});
+    mocks.logout.mockRejectedValue(new TypeError("offline"));
+    render(<App/>);
+    fireEvent.click(await screen.findByRole("button", {name:"authorizationSwitchAccount"}));
+    expect(await screen.findByText("authorizationSwitchFailed")).toBeTruthy();
+    expect(screen.getByText("old@example.test")).toBeTruthy();
+    expect(screen.queryByText("Sign in")).toBeNull();
+});
+it("does not use an authorization return target containing injected query parameters", async () => {
+    history.replaceState(null, "", `#/client-authorize?authorizationId=${"a".repeat(64)}&return=https://evil.example`);
+    mocks.read.mockResolvedValue({data:{id:42,email:"old@example.test",language:"en-US",account_status:{state:"active"}}});
+    mocks.request.mockResolvedValue({data:{platform:"windows"}});
+    render(<App/>);
+    fireEvent.click(await screen.findByRole("button", {name:"authorizationSwitchAccount"}));
+    expect(await screen.findByText("authorizationSwitchFailed")).toBeTruthy();
+    expect(mocks.logout).not.toHaveBeenCalled();
+    expect(screen.getByText("old@example.test")).toBeTruthy();
+    expect(screen.queryByText("Sign in")).toBeNull();
 });

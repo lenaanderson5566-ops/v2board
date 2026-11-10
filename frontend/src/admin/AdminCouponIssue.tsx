@@ -76,7 +76,10 @@ export function AdminCouponIssue({ onQueued }: { onQueued: () => void }) {
         preview != null &&
         preview.stock < preview.pending;
     return (
-        <section className="panel">
+        <section className="panel"
+            data-unsaved={Boolean(coupon || scope !== "filtered" || users.trim() || filters.length || preview) || undefined}
+            data-saving={operation.busy || undefined}
+        >
             <div className="panel-head">
                 <h2>发放到用户券包</h2>
             </div>

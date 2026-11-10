@@ -93,7 +93,7 @@ it("rejects reversed time bounds before querying", async () => {
 });
 it("keeps opt-in retention at zero and saves the selected duration", async () => {
     setup();
-    render(<AdminLogSettings />);
+    render(<AdminLogSettings route="log-settings" />);
     const field = await screen.findByLabelText(/登录日志保留天数/);
     expect((field as HTMLInputElement).value).toBe("0");
     fireEvent.change(field, { target: { value: "90" } });
@@ -122,23 +122,25 @@ it("renders log timestamps without a repeated zone suffix", async () => {
     expect(screen.getAllByText(/Asia\/Shanghai/)).toHaveLength(1);
 });
 
-it("loads only the selected retention category and protects unsaved changes", async () => {
-    window.location.hash = "#/log-settings";
+it("loads only the accepted log category and marks a dirty draft for the route guard", async () => {
+    history.replaceState(null, "", "#/log-settings");
     setup();
-    render(<AdminLogSettings />);
+    const view = render(<AdminLogSettings route="log-settings" />);
     const field = await screen.findByLabelText(/登录日志保留天数/);
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/settings"))).toBe(false);
     fireEvent.change(field, {target: {value: "90"}});
-    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
-    try {
-        const select = () => fireEvent.mouseDown(screen.getByRole("tab", {name: "访问统计"}), {button: 0, ctrlKey: false});
-        select();
-        expect(confirm).toHaveBeenCalledOnce();
-        expect((field as HTMLInputElement).value).toBe("90");
-        expect(api.request.mock.calls.some(([path]) => path.includes("analytics/settings"))).toBe(false);
-        confirm.mockReturnValue(true);
-        select();
-        expect(await screen.findByLabelText("开启访问统计")).toBeTruthy();
-        expect(screen.queryByLabelText(/登录日志保留天数/)).toBeNull();
-    } finally { confirm.mockRestore(); }
+    expect(field.closest('[data-unsaved="true"]')).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("tab", {name: "访问统计"}), {button: 0, ctrlKey: false});
+    expect(location.hash).toBe("#/log-settings?tab=analytics");
+    expect((field as HTMLInputElement).value).toBe("90");
+    expect(api.request.mock.calls.some(([path]) => path.includes("analytics/settings"))).toBe(false);
+
+    view.rerender(<AdminLogSettings route="log-settings?tab=analytics" />);
+    expect(await screen.findByLabelText("开启访问统计")).toBeTruthy();
+    expect(screen.queryByLabelText(/登录日志保留天数/)).toBeNull();
+
+    view.rerender(<AdminLogSettings route="log-settings" />);
+    const restored = await screen.findByLabelText(/登录日志保留天数/);
+    expect((restored as HTMLInputElement).value).toBe("0");
+    expect(restored.closest('[data-unsaved="true"]')).toBeNull();
 });

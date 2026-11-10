@@ -514,6 +514,42 @@ it.each([
 
 import { NetworkServers } from "./NetworkServers";
 import { nodeDomainProgress } from "./node-domain-progress";
+it("keeps server diagnostics reachable during a quota read failure and seeds the saved quota on retry", async () => {
+    let quotaAvailable = false;
+    const budget = { networkServerId: 10, limitBytes: 30 * 1073741824, resetDay: 7, countingMode: "both" };
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("traffic-budget/fetch")) {
+            if (!quotaAvailable) throw new Error("读取额度失败");
+            return { data: [budget] };
+        }
+        return { data: {} };
+    });
+    render(<NetworkServers reload={vi.fn()} data={{
+        servers: [{ id: 10, name: "入口一", family: "ipv4", enabled: true }],
+        assignments: [],
+        credentials: [],
+    }} />);
+    await screen.findByText(/流量额度加载失败/);
+    fireEvent.click(screen.getByRole("button", { name: "管理" }));
+    const detail = within(screen.getByRole("dialog", { name: "入口一 · 服务器管理" }));
+    const save = detail.getByRole("button", { name: "保存服务器配置" });
+    expect(save).toHaveProperty("disabled", true);
+    expect(detail.getByRole("button", { name: "配置服务器上报" })).toHaveProperty("disabled", false);
+    expect(detail.getByRole("heading", { name: "入口与转发" })).toBeTruthy();
+    expect(detail.queryByLabelText(/流量额度（GiB/)).toBeNull();
+    fireEvent.submit(save.closest("form")!);
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.endsWith("network/save"))).toBe(false));
+    quotaAvailable = true;
+    fireEvent.click(detail.getByRole("button", { name: "重试加载额度" }));
+    await waitFor(() => expect(save).toHaveProperty("disabled", false));
+    fireEvent.click(detail.getByText("流量额度与计费周期"));
+    expect(detail.getByLabelText(/流量额度（GiB/)).toHaveProperty("value", "30");
+    fireEvent.click(save);
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/server/network/save", expect.objectContaining({
+        id: 10,
+        traffic: { limitBytes: budget.limitBytes, resetDay: 7, countingMode: "both" },
+    })));
+});
 it("generates a physical server enrollment without a node ID", async () => {
     api.request.mockResolvedValue({
         data: {

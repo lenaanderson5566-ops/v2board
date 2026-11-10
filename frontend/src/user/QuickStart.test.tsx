@@ -89,6 +89,33 @@ it("lets users switch systems and copies the correct client format without openi
     expect(screen.getByText("开始使用")).toBeTruthy();
 });
 
+it.each([
+    ["shadowrocket", "Shadowrocket", "https://apps.apple.com/app/id932747118"],
+    ["surge", "Surge", "https://nssurge.com/"],
+    ["stash", "Stash", "https://stash.ws/macos"],
+])("keeps Mac download and import reachable for %s with the matching administrator mirror", (client, name, official) => {
+    const previous = boot.clientMirrors;
+    boot.clientMirrors = {
+        [`${client}_macos`]: `https://mirror.example/${client}-mac.dmg`,
+        [`${client}_ios`]: "https://mirror.example/wrong-platform",
+    };
+    try {
+        render(<SubscriptionImport inline url="https://example.com/sub?token=test" />);
+        fireEvent.click(screen.getByRole("button", { name: "macOS" }));
+        fireEvent.click(screen.getByRole("button", { name: "查看全部客户端" }));
+        fireEvent.click(screen.getByRole("button", { name: new RegExp(name) }));
+        fireEvent.click(screen.getByRole("button", { name: "获取客户端" }));
+        expect(screen.getByRole("link", { name: /官方下载/ }).getAttribute("href")).toBe(official);
+        expect(screen.getByRole("link", { name: /镜像下载/ }).getAttribute("href")).toBe(`https://mirror.example/${client}-mac.dmg`);
+        expect(screen.queryByRole("button", { name: /使用下载账户/ })).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: i18n.t("continueImport", { ns: "clientDownload" }) }));
+        expect(screen.queryByRole("dialog")).toBeNull();
+        expect(screen.getByRole("link", { name: new RegExp(`在 ${name}`) })).toBeTruthy();
+    } finally {
+        boot.clientMirrors = previous;
+    }
+});
+
 it("shows ranked recommendations and only compatible alternatives", () => {
  render(<SubscriptionImport inline url="https://example.com/sub?token=test"/>);
  fireEvent.click(screen.getByRole("button", {name: "Windows"}));

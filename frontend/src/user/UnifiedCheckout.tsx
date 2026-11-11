@@ -118,7 +118,7 @@ export function UnifiedCheckout({
                     navigate(catalogReturnPath(chosen?.id || planId, period, checkout ? undefined : couponIntentId));
                 }}
             >
-                <ArrowLeft size={16} />
+                <ArrowLeft size={16} aria-hidden="true" />
                 {tx("返回")}
             </button>
             {!finished && <PurchaseSteps step={2} />}

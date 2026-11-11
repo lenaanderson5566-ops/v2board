@@ -360,8 +360,7 @@
     font-size: 12px;
     line-height: 1.6;
 }
-.checkout-alternative-qr,
-.checkout-mobile-copy {
+.checkout-alternative-qr {
     font-size: 12px;
     color: var(--text-secondary);
 }
@@ -374,21 +373,18 @@
     min-height: 44px;
     box-sizing: border-box;
 }
-.checkout-mobile-copy {
-    margin-top: 12px;
-    text-align: center;
-}
-.checkout-mobile-copy button {
-    min-height: 44px;
-    width: 100%;
-}
-.checkout-mobile-copy p {
-    min-height: 1.5em;
-    margin: 4px 0 0;
-    line-height: 1.5;
-}
-.checkout-copy-error {
-    color: var(--danger);
-    font-size: 12px;
-    line-height: 1.6;
+@media (max-width: 800px) {
+    .checkout-open-help,
+    .checkout-alternative-qr,
+    .checkout-order-actions {
+        margin-top: 8px;
+    }
+    .checkout-page .checkout-qr,
+    .unified-checkout .checkout-inline .checkout-qr {
+        margin-top: 12px;
+        padding: 12px;
+    }
+    .checkout-payment-details input {
+        margin-block: 0 6px;
+    }
 }

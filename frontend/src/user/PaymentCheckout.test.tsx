@@ -582,16 +582,13 @@ it("keeps the current payment available when reselection receives an invalid ord
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 
-it("confirms successful copying on desktop without starting another payment", async () => {
+it("retains manual access to QR content on desktop without a copy button", async () => {
     vi.stubGlobal("innerWidth", 1280);
-    const copy = vi.fn().mockResolvedValue(undefined);
-    vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
     mock.request.mockImplementation(async (path: string) => path === "user/order/checkout"
-        ? { type: 0, data: "copy-this-payment" } : { data: 0 });
+        ? { type: 0, data: "manual-payment-content" } : { data: 0 });
     renderCheckout({ payment_id: 1 });
-    fireEvent.click(await screen.findByRole("button", { name: "复制" }));
-    await screen.findByRole("button", { name: "paymentCopied" });
-    expect(copy).toHaveBeenCalledWith("copy-this-payment");
+    expect((await screen.findByDisplayValue("manual-payment-content")).closest("details")?.open).toBe(false);
+    expect(screen.queryByRole("button", { name: "复制" })).toBeNull();
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });
 
@@ -1512,43 +1509,19 @@ it.each([
         ).toHaveLength(1);
     },
 );
-it.each([true, false])(
-    "keeps copying unknown mobile QR data available and reports only failures: %s",
-    async (succeeds) => {
-        const content = "TQsyntheticWalletAddress";
-        const copy = succeeds
-            ? vi.fn().mockResolvedValue(undefined)
-            : vi.fn().mockRejectedValue(new Error("denied"));
-        mock.request.mockImplementation(async (path: string) =>
-            path === "user/order/checkout"
-                ? { type: 0, data: content }
-                : { data: 0 },
-        );
-        renderMobilePayment("CoinPayments");
-        vi.stubGlobal("navigator", { clipboard: { writeText: copy } });
-        fireEvent.click(
-            await screen.findByRole("button", { name: "确认支付" }),
-        );
-        const action = await screen.findByRole("button", {
-            name: "copyPayment",
-        });
-        fireEvent.click(action);
-        if (succeeds) {
-            expect(await screen.findByText("paymentCopied")).toBeTruthy();
-            expect(mock.trackCopyFailure).not.toHaveBeenCalled();
-        } else {
-            await waitFor(() => expect(mock.trackCopyFailure).toHaveBeenCalledExactlyOnceWith("payment"));
-        }
-        expect(copy).toHaveBeenCalledWith(content);
-        expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
-        expect(
-            mock.request.mock.calls.filter(
-                ([path]) => path === "user/order/checkout",
-            ),
-        ).toHaveLength(1);
-    },
-);
-
+it("keeps scan-only mobile payment available without a copy button", async () => {
+    const content = "TQsyntheticWalletAddress";
+    mock.request.mockImplementation(async (path: string) =>
+        path === "user/order/checkout" ? { type: 0, data: content } : { data: 0 },
+    );
+    renderMobilePayment("CoinPayments");
+    fireEvent.click(await screen.findByRole("button", { name: "确认支付" }));
+    await screen.findByRole("img", { name: "付款内容" });
+    expect((await screen.findByDisplayValue(content)).closest("details")?.open).toBe(false);
+    expect(screen.queryByRole("button", { name: "copyPayment" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "openPayment" })).toBeNull();
+    expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
+});
 
 it.each([
     "alipays://platformapi/startapp?appId=20000067&appId=999&url=https%3A%2F%2Fexample.test",
@@ -1569,7 +1542,7 @@ it("preserves scan-only native WeChat responses without treating them as an H5 a
     fireEvent.click(await screen.findByRole("button", {name:"确认支付"}));
     await screen.findByDisplayValue(code);
     expect(screen.queryByRole("link", {name:"openPayment"})).toBeNull();
-    expect(screen.getByRole("button", {name:"copyPayment"})).toBeTruthy();
+    expect(screen.queryByRole("button", {name:"copyPayment"})).toBeNull();
     expect(screen.getByRole("button", {name:"checkPayment"})).toBeTruthy();
     expect(mock.request.mock.calls.filter(([path]) => path === "user/order/checkout")).toHaveLength(1);
 });

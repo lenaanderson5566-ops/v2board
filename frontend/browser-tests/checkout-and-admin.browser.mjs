@@ -67,6 +67,10 @@ test("mobile checkout opens a gateway, returns to the paid order and submits onl
         if (path === "/api/v10/me/notifications") return { items: [], ticketReplies: [], unread: 0 };
     });
     await page.goto(checkoutUrl);
+    const back = page.locator(".checkout-page > .receipt-back");
+    await expect(back).toBeVisible();
+    await expect(back).toHaveAttribute("href", "#/order");
+    expect((await back.boundingBox()).height).toBeGreaterThanOrEqual(44);
     try {
         await page.getByRole("button", { name: "确认支付" }).dblclick();
         await expect(page.getByRole("button", { name: "提交中…" })).toBeDisabled();

@@ -43,7 +43,7 @@ export function OrderReceipt({
         <article className="order-receipt">
             {!embedded && (
                 <a className="receipt-back" href="#/order">
-                    <ArrowLeft size={16} />
+                    <ArrowLeft size={16} aria-hidden="true" />
                     {c("back")}
                 </a>
             )}

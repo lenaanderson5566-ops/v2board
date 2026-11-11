@@ -976,6 +976,40 @@
     color: var(--muted);
     font-size: 14px;
 }
+@media (max-width: 800px) {
+    .app.user :is(.unified-checkout, .checkout-page, .order-receipt) > .receipt-back {
+        min-height: 44px;
+        gap: 6px;
+        padding: 0 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: var(--surface-soft);
+        color: var(--ink);
+        box-shadow: none;
+        font-size: 13px;
+        font-weight: 500;
+    }
+    .app.user :is(.unified-checkout, .checkout-page, .order-receipt) > .receipt-back:active {
+        background: var(--surface-tint);
+    }
+    .app.user :is(.unified-checkout, .checkout-page, .order-receipt) > .receipt-back:focus-visible {
+        outline: 2px solid var(--brand);
+        outline-offset: 2px;
+    }
+    .receipt-back > svg:dir(rtl) {
+        transform: scaleX(-1);
+    }
+    .app.user .checkout-page > .receipt-back + .checkout-heading {
+        margin-block-start: 8px;
+    }
+    .app.user .unified-checkout > .receipt-back + .purchase-steps {
+        margin-block: 8px 12px;
+    }
+    .app.user .unified-checkout > .receipt-back ~ h2,
+    .app.user .order-receipt > .receipt-back + .receipt-status {
+        margin-block-start: 12px;
+    }
+}
 .receipt-status {
     display: flex;
     align-items: flex-start;

@@ -1,4 +1,4 @@
-import { trackCopyFailure, useAnalyticsPage } from "./product-analytics";
+import { useAnalyticsPage } from "./product-analytics";
 import { OrderReceipt } from "./OrderReceipt";
 import { OrderHelp } from "./OrderHelp";
 import { BrowserHandoffHelp } from "./BrowserHandoffHelp";
@@ -52,7 +52,7 @@ export function PaymentCheckout({
     const {
         status, statusRefreshPending, deposit, due, fee, feeReady, paymentAmount, paymentCurrency,
         methods, method, selectableMethods, selected, refreshMethods, selectPaymentMethod,
-        hasUnavailableMethods, busy, paymentBusy, waiting, awaitingConfirmation, error, qr, paymentLink, openUrl,
+        hasUnavailableMethods, busy, paymentBusy, waiting, awaitingConfirmation, error, qr, openUrl,
         confirmLabel, paymentStatusMessage, confirmOrCheckPayment, checkPayment, checkingPayment,
         restoring, pollError, pollStopped, canSwitchPayment, showRecoveryHelp,
         canRetrySubmission, retryPayment, paymentOpened, retryOpen, setRetryOpen, choosePaymentMethod,
@@ -63,12 +63,6 @@ export function PaymentCheckout({
             ? "payment"
             : null,
     );
-    const [copied, setCopied] = useState(false);
-    const [copyError, setCopyError] = useState("");
-    useEffect(() => {
-        setCopied(false);
-        setCopyError("");
-    }, [qr, paymentLink]);
     const qrPanel = useRef<HTMLDivElement>(null);
     const paymentActionPanel = useRef<HTMLDivElement>(null);
     useEffect(() => {
@@ -107,36 +101,6 @@ export function PaymentCheckout({
                 : "smooth",
         });
     }, [embedded, smallScreen, openUrl]);
-    async function copyPayment() {
-        setCopied(false);
-        setCopyError("");
-        try {
-            await navigator.clipboard.writeText(qr || paymentLink);
-            setCopied(true);
-        } catch {
-            trackCopyFailure("payment");
-            setCopyError(tx("复制失败，请手动复制链接"));
-        }
-    }
-    const paymentDetails = (
-        <>
-            <input
-                aria-label={tx("付款内容")}
-                readOnly
-                value={qr || paymentLink}
-            />
-            {!smallScreen && (
-                <button type="button" onClick={copyPayment}>
-                    {copied ? pc("paymentCopied") : tx("复制")}
-                </button>
-            )}
-            {!smallScreen && copyError && (
-                <p role="alert" className="checkout-copy-error">
-                    {copyError}
-                </p>
-            )}
-        </>
-    );
     const secondaryActions = (
         <>
             <div className="checkout-secondary">
@@ -172,14 +136,10 @@ export function PaymentCheckout({
                     ? pc("mobileScanHelp")
                     : tx("扫码支付后，页面会自动检查结果。")}
             </p>
-            {compact ? (
-                <details className="checkout-payment-details">
-                    <summary>{tx("付款内容")}</summary>
-                    {paymentDetails}
-                </details>
-            ) : (
-                paymentDetails
-            )}
+            <details className="checkout-payment-details">
+                <summary>{tx("付款内容")}</summary>
+                <input aria-label={tx("付款内容")} readOnly value={qr} />
+            </details>
         </div>
     );
     if ([2, 3, 4].includes(status))
@@ -198,7 +158,7 @@ export function PaymentCheckout({
             <div className={compact ? "checkout-inline" : "checkout-page"}>
                 {!embedded && (
                     <a className="receipt-back" href="#/order">
-                        <ArrowLeft size={16} />
+                        <ArrowLeft size={16} aria-hidden="true" />
                         {tx("账单")}
                     </a>
                 )}
@@ -220,7 +180,7 @@ export function PaymentCheckout({
         >
             {!embedded && (
                 <a className="receipt-back" href="#/order">
-                    <ArrowLeft size={16} />
+                    <ArrowLeft size={16} aria-hidden="true" />
                     {tx("账单")}
                 </a>
             )}
@@ -566,24 +526,6 @@ export function PaymentCheckout({
                             </details>
                         ) : (
                             qrContent
-                        )}
-                        {smallScreen && (qr || paymentLink) && (
-                            <div className="checkout-mobile-copy">
-                                <button type="button" onClick={copyPayment}>
-                                    {pc("copyPayment")}
-                                </button>
-                                <p role="status" aria-live="polite">
-                                    {copied ? pc("paymentCopied") : "\u00a0"}
-                                </p>
-                                {copyError && (
-                                    <p
-                                        role="alert"
-                                        className="checkout-copy-error"
-                                    >
-                                        {copyError}
-                                    </p>
-                                )}
-                            </div>
                         )}
                         {openUrl && awaitingConfirmation && (
                             <p className="checkout-open-help">{pc("openPaymentHelp")}</p>

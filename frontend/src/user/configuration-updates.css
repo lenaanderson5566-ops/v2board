@@ -1,6 +1,6 @@
 .configuration-updates-back { display:inline-flex; align-items:center; gap:6px; margin-block-end:20px; }
 .configuration-updates-toolbar { display:flex; align-items:center; justify-content:space-between; gap:16px; padding-block-end:16px; }
-.configuration-updates-toolbar p { margin:0; font-size:13px; line-height:1.65; }
+.configuration-updates-toolbar p { margin:0; font-size:var(--user-font-body, 13px); line-height:1.65; }
 .configuration-updates-toolbar button { flex-shrink:0; }
 .configuration-updates-table { width:100%; border-collapse:collapse; table-layout:fixed; text-align:start; }
 .configuration-updates-table th { font-size:var(--record-meta-size); color:var(--text-secondary); font-weight:500; }
@@ -15,7 +15,7 @@ body[data-console="user"] .configuration-updates .configuration-request-status {
     overflow-wrap:anywhere;
 }
 .configuration-updates-empty { padding:32px 0; text-align:center; color:var(--text-secondary); }
-.configuration-updates-location { margin:16px 0 0; font-size:12px; line-height:1.6; }
+.configuration-updates-location { margin:16px 0 0; font-size:var(--user-font-caption, 12px); line-height:1.6; }
 @media(max-width:800px) {
     .configuration-updates-toolbar { align-items:flex-start; }
     .configuration-updates-table,.configuration-updates-table tbody { display:block; }

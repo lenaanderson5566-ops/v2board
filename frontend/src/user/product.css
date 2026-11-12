@@ -16,8 +16,8 @@
 .app.user {
     color: var(--ink);
     background: var(--surface);
-    --record-text-size: 0.875rem;
-    --record-meta-size: 0.75rem;
+    --record-text-size: var(--user-font-body, 0.875rem);
+    --record-meta-size: var(--user-font-caption, 0.75rem);
     --record-line-height: 1.5;
 }
 .app.user aside {
@@ -48,7 +48,7 @@
     flex-shrink: 0;
 }
 .app.user .brand small {
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
     font-weight: 400;
     margin-top: 6px;
 }
@@ -58,13 +58,13 @@
 .app.user .nav-group > small {
     padding: 0 12px;
     margin-bottom: 12px;
-    font-size: 10px;
+    font-size: var(--user-font-caption, 10px);
     color: var(--text-secondary);
 }
 .app.user aside nav a {
     min-height: 44px;
     border-radius: 10px;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     font-weight: 450;
 }
 .app.user aside nav a.active {
@@ -102,12 +102,12 @@
     align-items: center;
 }
 .app.user .page-heading h1 {
-    font-size: 28px;
+    font-size: var(--user-font-title, 28px);
     letter-spacing: -0.8px;
     font-weight: 600;
 }
 .app.user .today {
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     color: var(--text-secondary);
 }
 .app.user .panel {
@@ -120,13 +120,13 @@
     border-bottom-color: var(--surface-tint);
 }
 .app.user .panel-head h2 {
-    font-size: 15px;
+    font-size: var(--user-font-section, 15px);
     font-weight: 600;
 }
 .app.user :is(button, .button) {
     min-height: 40px;
     border-radius: 10px;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .app.user .dashboard-welcome {
     padding: 24px 28px;
@@ -136,11 +136,11 @@
     margin-bottom: 20px;
 }
 .app.user .dashboard-welcome h2 {
-    font-size: 20px;
+    font-size: var(--user-font-section, 20px);
     font-weight: 550;
 }
 .app.user .dashboard-welcome p {
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     line-height: 1.8;
 }
 .app.user .dashboard-welcome > .button {
@@ -148,7 +148,7 @@
 }
 .app.user .account-status-line {
     margin: 0 0 16px;
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
 }
 .app.user .badge.success {
     color: var(--success);
@@ -168,20 +168,20 @@
 .app.user .dashboard-grid .panel-head h2,
 .app.user .quota-card h3 {
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: var(--user-font-label, 13px);
     font-weight: 500;
 }
 .app.user .dashboard-grid .pad > h3 {
-    font-size: 28px;
+    font-size: var(--user-font-display, 28px);
     font-weight: 550;
 }
 .app.user .quota-value strong {
-    font-size: 44px;
+    font-size: var(--user-font-display, 44px);
     font-weight: 550;
     font-variant-numeric: tabular-nums;
 }
 .app.user .quota-value span {
-    font-size: 16px;
+    font-size: var(--user-font-control, 16px);
     color: var(--text-secondary);
 }
 .app.user .quota-progress {
@@ -230,7 +230,7 @@
     padding: 22px 24px;
 }
 .app.user .notice h3 {
-    font-size: 15px;
+    font-size: var(--user-font-body, 15px);
 }
 .app.user .notice small {
     color: var(--text-secondary);
@@ -262,7 +262,7 @@
     padding-top: 24px;
 }
 .app.user .entry-steps > div {
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .app.user .entry-steps span {
     background: var(--surface-tint);
@@ -286,7 +286,7 @@
     padding-top: 22px;
     border-top: 1px solid var(--surface-tint);
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
 }
 .user-auth {
     background: var(--surface-soft);
@@ -335,7 +335,7 @@
 }
 @media (max-width: 800px) {
     .app.user .main > main {
-        padding: 24px 18px 100px;
+        padding: 24px 18px calc(100px + env(safe-area-inset-bottom));
     }
     .app.user .main > header {
         padding: 10px 18px;
@@ -343,15 +343,9 @@
     .app.user .page-heading {
         margin-bottom: 20px;
     }
-    .app.user .page-heading h1 {
-        font-size: 25px;
-    }
     .app.user .dashboard-welcome {
         padding: 21px;
         gap: 16px;
-    }
-    .app.user .dashboard-welcome h2 {
-        font-size: 20px;
     }
     .app.user .dashboard-welcome > .button {
         width: 100%;
@@ -397,6 +391,9 @@
     .user-auth {
         padding: 24px 20px;
     }
+    .user-auth .auth-home {
+        font-size: var(--user-font-control);
+    }
     .user-auth .user-auth-card {
         padding: 26px 22px;
         border-radius: 20px;
@@ -405,7 +402,8 @@
         gap: 28px;
     }
     .user-auth .auth-title-row h2 {
-        font-size: 25px;
+        font-size: var(--user-font-title);
+        line-height: 1.3;
     }
 }
 @media (max-width: 380px) {
@@ -500,7 +498,7 @@
     margin-bottom: 36px;
 }
 .app.user .settings-section h2 {
-    font-size: 18px;
+    font-size: var(--user-font-section, 18px);
     font-weight: 600;
     margin: 0 0 14px;
 }
@@ -549,7 +547,7 @@
     background: var(--surface-tint);
 }
 .app.user .balance-amount {
-    font-size: 30px;
+    font-size: var(--user-font-display, 30px);
     font-weight: 600;
     letter-spacing: -0.6px;
 }
@@ -622,7 +620,7 @@
     border-bottom: 1px solid var(--border);
 }
 .app.user .reset-section-intro h2 {
-    font-size: 22px;
+    font-size: var(--user-font-section, 22px);
     font-weight: 500;
     margin-bottom: 10px;
 }
@@ -647,7 +645,7 @@
     border-radius: 18px;
     padding: 12px 18px;
     min-height: 44px;
-    font-size: 16px;
+    font-size: var(--user-font-body, 16px);
     font-weight: 400;
     color: inherit;
     box-shadow: none;
@@ -667,12 +665,12 @@
 }
 .app.user .reset-card .reset-empty {
     margin: 0;
-    font-size: 16px;
+    font-size: var(--user-font-body, 16px);
     line-height: 1.7;
 }
 .app.user .reset-card .reset-history-range {
     margin: 0 0 20px;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
 }
 .app.user .reset-expiry-list {
     list-style: none;
@@ -685,7 +683,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 6px 0;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     color: var(--muted);
 }
 .app.user .reset-history > .settings-row + .settings-row {
@@ -694,7 +692,7 @@
     padding-top: 16px;
 }
 .app.user .reset-history strong {
-    font-size: 14px;
+    font-size: var(--user-font-body, 14px);
     font-weight: 500;
 }
 .app.user .reset-history time {
@@ -800,7 +798,7 @@
     padding: 16px 20px;
 }
 .announcement-overlay .panel-head h2 {
-    font-size: 17px;
+    font-size: var(--user-font-section, 17px);
 }
 .announcement-overlay .icon-button {
     min-width: 40px;
@@ -814,7 +812,7 @@
     gap: 8px;
     padding: 10px 20px 14px;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     border-bottom: 1px solid var(--surface-tint);
 }
 .announcement-intro p {
@@ -855,12 +853,12 @@
     overflow-wrap: anywhere;
 }
 .announcement-unread {
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
     color: var(--success);
     white-space: nowrap;
 }
 .announcement-summary {
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     line-height: 1.65;
     color: var(--text-secondary);
     display: -webkit-box;
@@ -870,7 +868,7 @@
     overflow-wrap: anywhere;
 }
 .announcement-overlay time {
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     color: var(--text-secondary);
 }
 .announcement-empty {
@@ -893,7 +891,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 16px;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     color: var(--text-secondary);
 }
 .announcement-detail {
@@ -907,12 +905,12 @@
     border: 0;
     background: var(--surface-soft);
     border-radius: 24px;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     min-height: 40px;
     padding: 8px 12px;
 }
 .announcement-detail h3 {
-    font-size: 21px;
+    font-size: var(--user-font-section, 21px);
     line-height: 1.45;
     margin: 24px 0 8px;
 }
@@ -940,7 +938,7 @@
     padding: 12px;
     border-radius: 12px;
     margin-top: 16px;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 @media (max-width: 700px) {
     .announcement-overlay {
@@ -986,7 +984,7 @@
         background: var(--surface-soft);
         color: var(--ink);
         box-shadow: none;
-        font-size: 13px;
+        font-size: var(--user-font-label, 13px);
         font-weight: 500;
     }
     .app.user :is(.unified-checkout, .checkout-page, .order-receipt) > .receipt-back:active {
@@ -1027,7 +1025,7 @@
 }
 .receipt-status h1 {
     margin: 0 0 8px;
-    font-size: 24px;
+    font-size: var(--user-font-title, 24px);
 }
 .receipt-status p {
     margin: 0;
@@ -1039,7 +1037,7 @@
     padding: 26px;
 }
 .receipt-product h3 {
-    font-size: 20px;
+    font-size: var(--user-font-section, 20px);
     margin: 0 0 8px;
     overflow-wrap: anywhere;
 }
@@ -1047,7 +1045,7 @@
     margin: 24px 0 0;
     padding-top: 20px;
     border-top: 1px solid var(--border);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .receipt-reference > div {
     display: flex;
@@ -1103,7 +1101,7 @@
     min-height: 56px;
     border-radius: 14px;
     background: var(--surface);
-    font-size: 16px;
+    font-size: var(--user-font-control, 16px);
     padding: 12px;
 }
 .credit-price {
@@ -1114,6 +1112,17 @@
     flex-wrap: wrap;
     padding: 16px 0;
     border-top: 1px solid var(--border);
+}
+@media (max-width: 800px) {
+    .app.user .credit-add {
+        width: 44px;
+        height: 44px;
+    }
+    .credit-balance-card .balance-amount,
+    .receipt-status > div {
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+    }
 }
 @media (max-width: 640px) {
     .order-receipt {
@@ -1217,7 +1226,7 @@
     color: var(--ink);
 }
 .app.user .help-count {
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     margin-block: 0 12px;
 }
 .app.user .help-results details {
@@ -1367,7 +1376,7 @@
         min-width: 44px;
         min-height: 44px;
         padding: 6px 10px;
-        font-size: 12px;
+        font-size: var(--user-font-body);
     }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -1430,7 +1439,7 @@
     align-items: center;
 }
 .download-client span {
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     opacity: 0.65;
     font-weight: 400;
 }
@@ -1453,7 +1462,7 @@
     gap: 5px;
 }
 .download-source small {
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     font-weight: 400;
     opacity: 0.65;
     overflow-wrap: anywhere;
@@ -1469,7 +1478,7 @@
 
 .import-more {
     margin-block: 4px 12px;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .client-card:disabled {
     opacity: 0.5;
@@ -1533,13 +1542,13 @@
     min-width: 0;
 }
 .app.user .notification-description label {
-    font-size: 15px;
+    font-size: var(--user-font-control, 15px);
     font-weight: 600;
     cursor: pointer;
 }
 .app.user .notification-description p {
     margin: 6px 0 0;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     color: var(--muted);
 }
 .app.user :is(.notification-option, .analytics-setting) .toggle-control {
@@ -1557,7 +1566,7 @@
 .app.user .notification-feedback {
     min-height: 20px;
     margin-top: 5px;
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     color: var(--muted);
 }
 .app.user .notification-feedback[data-error="true"] {
@@ -1565,7 +1574,7 @@
 }
 .app.user .notification-autosave {
     margin: 14px 4px 0;
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     color: var(--muted);
 }
 @media (max-width: 600px) {
@@ -1633,11 +1642,11 @@ body[data-console="user"] .client-family-header p {
 }
 .client-authorization-eyebrow {
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     letter-spacing: 0.08em;
 }
 .client-authorization-card h1 {
-    font-size: clamp(24px, 5vw, 30px);
+    font-size: var(--user-font-title, clamp(24px, 5vw, 30px));
     letter-spacing: -0.03em;
 }
 .client-authorization-card > p {
@@ -1652,7 +1661,7 @@ body[data-console="user"] .client-family-header p {
     padding-top: 16px;
     border-top: 1px solid var(--border);
     color: var(--muted);
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     text-align: center;
 }
 .telegram-integration {
@@ -1712,7 +1721,7 @@ body[data-console="user"] .client-family-header p {
 }
 .telegram-integration .tg-identity span {
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: var(--user-font-label, 13px);
 }
 .telegram-integration .tg-actions {
     display: flex;
@@ -1776,11 +1785,11 @@ body[data-console="user"] .client-family-header p {
 }
 .usage-summary dt {
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
 }
 .usage-summary dd {
     margin: 6px 0 0;
-    font-size: 18px;
+    font-size: var(--user-font-section, 18px);
     font-weight: 600;
     overflow-wrap: anywhere;
 }
@@ -1802,7 +1811,7 @@ body[data-console="user"] .client-family-header p {
     align-items: center;
 }
 
-/* Coupon activities and wallet share readable, responsive cards. */
+/* Shared layout for coupon activities and the wallet. */
 .app.user .coupon-center-intro {
     display: flex;
     align-items: flex-start;
@@ -1850,7 +1859,7 @@ body[data-console="user"] .client-family-header p {
     color: var(--text-secondary);
 }
 .app.user .coupon-discount {
-    font-size: 24px;
+    font-size: var(--user-font-title, 24px);
     font-weight: 700;
     color: var(--brand);
 }
@@ -1889,7 +1898,7 @@ body[data-console="user"] .client-family-header p {
     color: var(--text-secondary);
 }
 .app.user .coupon-state {
-    font-size: 13px;
+    font-size: var(--user-font-label, 13px);
     font-weight: 600;
 }
 .coupon-picker-links {
@@ -1992,7 +2001,7 @@ body[data-console="user"] .client-family-header p {
 }
 .account-page-heading h2 {
     margin: 0 0 6px;
-    font-size: 22px;
+    font-size: var(--user-font-section, 22px);
 }
 .account-page-heading p {
     margin: 0;
@@ -2061,9 +2070,6 @@ body[data-console="user"] .client-family-header p {
     .account-page-heading {
         align-items: flex-start;
         gap: 12px;
-    }
-    .account-page-heading h2 {
-        font-size: 20px;
     }
 }
 
@@ -2141,7 +2147,7 @@ body[data-console="user"] .client-family-header p {
 }
 .app.user .activity-hero h2 {
     margin: 0 0 12px;
-    font-size: clamp(22px, 3vw, 32px);
+    font-size: var(--user-font-title, clamp(22px, 3vw, 32px));
     letter-spacing: -0.6px;
 }
 .app.user .activity-hero p {
@@ -2181,7 +2187,7 @@ body[data-console="user"] .client-family-header p {
     align-items: center;
     gap: 10px;
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     margin: 20px 0;
     line-height: 1.7;
 }
@@ -2196,7 +2202,7 @@ body[data-console="user"] .client-family-header p {
 }
 .app.user .activity-offer .coupon-discount {
     align-self: flex-start;
-    font-size: 24px;
+    font-size: var(--user-font-title, 24px);
     padding: 8px 12px;
     border-radius: 10px;
     background: var(--surface-tint);
@@ -2215,6 +2221,12 @@ body[data-console="user"] .client-family-header p {
         grid-template-columns: minmax(0, 1fr) 64px;
         gap: 14px;
     }
+    .activity-hero-copy,
+    .app.user .activity-hero > a {
+        min-inline-size: 0;
+        max-inline-size: 100%;
+        overflow-wrap: anywhere;
+    }
     .activity-hero-art {
         width: 64px;
         height: 80px;
@@ -2228,7 +2240,7 @@ body[data-console="user"] .client-family-header p {
 }
 .checkout-guidance {
     color: var(--text-secondary);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     line-height: 1.65;
     margin: 12px 0 20px;
 }
@@ -2237,7 +2249,7 @@ body[data-console="user"] .client-family-header p {
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 12px;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     line-height: 1.6;
 }
 .checkout-conversion strong {
@@ -2274,17 +2286,17 @@ body[data-console="user"] .client-family-header p {
 .app.user .subscription-name { font-size: 24px; line-height: 1.3; color: var(--ink); overflow-wrap: anywhere; }
 @media (max-width: 600px) {
     .app.user .subscription-name {
-        font-size: 20px;
+        font-size: var(--user-font-section, 20px);
         font-weight: 600;
         line-height: 1.3;
         overflow-wrap: anywhere;
     }
 }
-.app.user .subscription-expiry { color: var(--muted); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.app.user .subscription-expiry { color: var(--muted); font-size: var(--user-font-label, 13px); line-height: 1.6; overflow-wrap: anywhere; }
 .app.user .subscription-label {
     display: block;
     color: var(--brand);
-    font-size: 14px;
+    font-size: var(--user-font-body, 14px);
     font-weight: 650;
     overflow-wrap: anywhere;
     margin-bottom: 0;
@@ -2328,17 +2340,17 @@ body[data-console="user"] .client-family-header p {
 }
 .app.user .coupon-discount small {
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     font-weight: 600;
 }
 .app.user .coupon-discount strong {
-    font-size: 36px;
+    font-size: var(--user-font-display, 36px);
     line-height: 1.1;
     letter-spacing: -1px;
     font-variant-numeric: tabular-nums;
 }
 .app.user .coupon-discount strong span {
-    font-size: 20px;
+    font-size: var(--user-font-section, 20px);
     margin-inline-start: 3px;
 }
 .app.user .activity-offer .coupon-discount {
@@ -2348,32 +2360,102 @@ body[data-console="user"] .client-family-header p {
 .app.user .activity-offer {
     border-top: 1px solid var(--line);
 }
-.app.user .wallet-coupon {
-    position: relative;
-    border: 1px solid var(--line);
-    gap: 14px;
+.app.user .coupon-wallet-page .coupon-center-grid {
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+    align-items: start;
+    gap: 12px;
 }
-.app.user .wallet-coupon.available {
+.app.user .wallet-coupon {
+    display: grid;
+    min-inline-size: 0;
+    gap: 8px;
+    padding: 16px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
     background: var(--surface);
+    overflow-wrap: anywhere;
+}
+.wallet-coupon-summary {
+    display: grid;
+    grid-template-columns: minmax(3.75rem, 23%) minmax(0, 1fr);
+    align-items: start;
+    gap: 12px;
+}
+.app.user .wallet-coupon .coupon-discount {
+    color: var(--brand);
+}
+.app.user .wallet-coupon .coupon-discount strong {
+    font-size: var(--user-font-title, 28px);
+    letter-spacing: -.02em;
+}
+.wallet-coupon-heading {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+.wallet-coupon-heading h3 {
+    min-inline-size: 0;
+    margin: 0;
+    font-size: var(--user-font-control, 16px);
+    line-height: 1.35;
+}
+.wallet-coupon-info p {
+    margin: 4px 0 0;
+    color: var(--text-secondary);
+    font-size: var(--user-font-body, 14px);
+    line-height: 1.5;
 }
 .app.user .wallet-coupon .coupon-state {
-    border-top: 1px dashed var(--border);
-    padding-top: 14px;
-    margin-top: auto;
+    max-inline-size: 100%;
+    border-radius: 6px;
+    padding: 2px 6px;
+    background: var(--surface-tint);
     color: var(--text-secondary);
+    font-size: var(--user-font-caption, 12px);
+}
+.app.user .wallet-coupon.available .coupon-state {
+    background: var(--success-soft);
+    color: var(--success);
+}
+.wallet-coupon-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+}
+.wallet-coupon-footer > small {
+    flex: 1 1 8rem;
+    min-inline-size: 0;
+    color: var(--text-secondary);
+    font-size: var(--user-font-caption, 12px);
+    line-height: 1.5;
 }
 .app.user .wallet-coupon .button {
-    width: 100%;
+    max-inline-size: 100%;
+    min-block-size: 44px;
+    margin-inline-start: auto;
+    padding-inline: 10px;
+    text-align: center;
+    white-space: normal;
     color: var(--brand);
     background: var(--brand-soft);
     border: 1px solid transparent;
     border-radius: 10px;
 }
 .app.user .wallet-coupon.inactive {
-    border-top-color: var(--border);
+    background: var(--surface-soft);
 }
-.app.user .wallet-coupon.inactive :is(.coupon-discount, .coupon-state) {
+.app.user .wallet-coupon.inactive .coupon-discount {
     color: var(--text-secondary);
+}
+@media (max-width: 800px) {
+    .app.user .coupon-wallet-page .coupon-center-grid {
+        gap: 8px;
+    }
+    .app.user .wallet-coupon {
+        padding: 12px;
+    }
 }
 .app.user .coupon-wallet-tabs {
     gap: 8px;
@@ -2394,7 +2476,7 @@ body[data-console="user"] .client-family-header p {
     border-radius: 6px;
     background: var(--surface-tint);
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
     font-variant-numeric: tabular-nums;
 }
 .app.user .coupon-wallet-tabs button[aria-pressed="true"] .coupon-count {
@@ -2544,19 +2626,19 @@ body[data-console="user"] .client-family-header p {
 }
 
 .account-deletion-steps { display: flex; gap: 20px; list-style: none; padding: 0; margin: 0 0 28px; }
-.account-deletion-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 13px; line-height: 1.5; }
+.account-deletion-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: var(--user-font-label, 13px); line-height: 1.5; }
 .account-deletion-steps li[aria-current="step"] { color: var(--ink); font-weight: 600; }
 .account-deletion-step-number { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; width: 26px; height: 26px; border: 1px solid var(--border); border-radius: 50%; }
 .account-deletion-steps li[aria-current="step"] .account-deletion-step-number, .account-deletion-steps li[data-complete="true"] .account-deletion-step-number { border-color: var(--brand); background: var(--brand-soft); color: var(--brand); }
-.account-deletion-review-title { margin: 0; font-size: 17px; font-weight: 600; }
-.account-deletion-warning { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--warning-border); border-radius: 12px; background: var(--warning-soft); font-size: 13px; line-height: 1.65; }
+.account-deletion-review-title { margin: 0; font-size: var(--user-font-section, 17px); font-weight: 600; }
+.account-deletion-warning { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border: 1px solid var(--warning-border); border-radius: 12px; background: var(--warning-soft); font-size: var(--user-font-body, 13px); line-height: 1.65; }
 .account-deletion-warning > svg { flex: 0 0 auto; margin-top: 2px; color: var(--danger); }
 .account-deletion-effects { margin: 14px 0 22px; }
 .account-deletion-effects > div { display: grid; grid-template-columns: 24px minmax(0, 1fr); column-gap: 14px; min-width: 0; padding: 18px 0; }
 .account-deletion-effects > div + div { border-top: 1px solid var(--border); }
 .account-deletion-effects > div > svg { grid-row: span 2; color: var(--text-secondary); margin-top: 2px; }
 .account-deletion-effects dt { margin-bottom: 6px; font-weight: 600; font-size: 14px; }
-.account-deletion-effects dd { margin: 0; color: var(--text-secondary); font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
+.account-deletion-effects dd { margin: 0; color: var(--text-secondary); font-size: var(--user-font-body, 13px); line-height: 1.75; overflow-wrap: anywhere; }
 .account-deletion-blockers { margin-top: 18px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; }
 .account-deletion-blockers h3 { margin: 0; font-size: 14px; }
 .account-deletion-blockers ul { margin: 10px 0 0; padding-inline-start: 20px; line-height: 1.75; }
@@ -2565,10 +2647,10 @@ body[data-console="user"] .client-family-header p {
 .account-deletion-verification { min-width: 0; margin: 22px 0 0; padding: 0; border: 0; }
 .account-deletion-verification legend { padding: 0; font-size: 14px; font-weight: 600; }
 .account-deletion-verification > label { margin-top: 16px; }
-.app.user .settings-card .account-deletion-ready { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--text-secondary); font-size: 13px; }
+.app.user .settings-card .account-deletion-ready { display: flex; align-items: center; gap: 8px; margin-top: 18px; color: var(--text-secondary); font-size: var(--user-font-body, 13px); }
 .account-deletion-ready > svg, .account-deletion-success-icon { flex-shrink: 0; color: var(--brand); }
 .account-deletion-success-icon { margin-bottom: 16px; }
-.account-deletion-confirm .account-deletion-hint { margin: 6px 0 0; font-size: 12px; }
+.account-deletion-confirm .account-deletion-hint { margin: 6px 0 0; font-size: var(--user-font-caption, 12px); }
 .account-deletion-ack { display: flex; flex-direction: row; align-items: flex-start; gap: 10px; margin-block: 16px; line-height: 1.65; }
 .account-deletion-ack input[type="checkbox"] { width: 18px; min-width: 18px; height: 18px; margin: 3px 0 0; }
 @media (max-width: 700px) {
@@ -2577,5 +2659,5 @@ body[data-console="user"] .client-family-header p {
 }
 
 .app.user .billing-current-plan { background: linear-gradient(115deg, var(--brand-soft), var(--surface, #fff) 72%); }
-.app.user .usage-renewal-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 16px; margin-bottom: 18px; border: 1px solid var(--warning-border); border-radius: 12px; background: var(--warning-soft); color: var(--warning); font-size: 13px; line-height: 1.6; }
+.app.user .usage-renewal-note { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 12px 16px; margin-bottom: 18px; border: 1px solid var(--warning-border); border-radius: 12px; background: var(--warning-soft); color: var(--warning); font-size: var(--user-font-body, 13px); line-height: 1.6; }
 .app.user .usage-renewal-note a { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: inherit; font-weight: 600; }

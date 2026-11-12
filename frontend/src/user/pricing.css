@@ -43,7 +43,7 @@
     line-height: 1.6;
 }
 .app.user .pricing-total-note {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     margin: 0 0 8px;
 }
 .app.user .pricing-specs {
@@ -52,7 +52,7 @@
     margin: 16px 0 0;
     padding-block: 12px;
     border-block: 1px solid var(--border);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .app.user .pricing-specs:empty {
     display: none;
@@ -77,7 +77,7 @@
     flex-wrap: wrap;
     gap: 8px 16px;
     margin: 20px 0 0;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .app.user .pricing-summary {
     min-height: 72px;
@@ -87,7 +87,7 @@
     margin: 0 0 10px;
 }
 .app.user .pricing-note {
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     color: var(--text-secondary);
     line-height: 1.6;
 }
@@ -119,7 +119,7 @@
 }
 .app.user .pricing-toolbar p {
     margin: 0;
-    font-size: 14px;
+    font-size: var(--user-font-body, 14px);
 }
 .app.user .pricing-plans {
     gap: 20px;
@@ -189,19 +189,19 @@
         display: grid;
         gap: 3px;
         line-height: 1.5;
-        font-size: 12px;
+        font-size: var(--user-font-label, 12px);
     }
     .app.user .mobile-plan-picker strong {
         min-width: 0;
         max-width: 100%;
         font-weight: 600;
-        font-size: 14px;
+        font-size: var(--user-font-body, 14px);
     }
     .app.user .mobile-plan-price {
         font-variant-numeric: tabular-nums;
     }
     .app.user .mobile-plan-status {
-        font-size: 11px;
+        font-size: var(--user-font-caption, 11px);
     }
     .app.user .mobile-plan-picker button[aria-pressed="true"] {
         background: var(--brand);
@@ -223,15 +223,15 @@
         padding-block: 16px;
     }
     .app.user .pricing-summary .plan-price {
-        font-size: 34px;
+        font-size: var(--user-font-display, 34px);
         line-height: 1.15;
         margin-bottom: 8px;
     }
     .app.user .pricing-card-heading h2 {
-        font-size: 22px;
+        font-size: var(--user-font-section, 22px);
     }
     .app.user .pricing-plans .plan-feature-list li {
-        font-size: 14px;
+        font-size: var(--user-font-body, 14px);
         padding-block: 5px;
     }
 }
@@ -247,7 +247,7 @@
     background: var(--surface-tint);
     border-radius: 6px;
     padding: 2px 7px;
-    font-size: 12px;
+    font-size: var(--user-font-caption, 12px);
     white-space: nowrap;
 }
 .app.user .pricing-meta:empty {
@@ -258,7 +258,7 @@
     margin: 12px 0 4px;
 }
 .compact-selection .purchase-fee-note {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     color: var(--text-secondary);
     margin-bottom: 14px;
 }
@@ -305,17 +305,20 @@
     }
     .app.user .subscription-catalog .pending-order {
         flex-direction: row;
+        flex-wrap: wrap;
         align-items: center;
         padding: 8px 10px;
         gap: 8px;
     }
     .app.user .pending-order-summary {
         gap: 3px 6px;
-        font-size: 13px;
+        font-size: var(--user-font-body, 13px);
     }
     .app.user .subscription-catalog .pending-order-actions > .button {
         padding-inline: 10px;
-        font-size: 13px;
+        font-size: var(--user-font-label, 13px);
+        white-space: normal;
+        overflow-wrap: anywhere;
     }
     .app.user .pricing-plans .plan-feature-list li {
         line-height: 1.55;
@@ -387,7 +390,7 @@
     }
 }
 .purchase-body h3 {
-    font-size: 15px;
+    font-size: var(--user-font-section, 15px);
     margin: 0 0 12px;
 }
 .purchase-choices,
@@ -415,7 +418,7 @@
 .purchase-breakdown .checkout-lines dt small {
     display: block;
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
     margin-top: 4px;
 }
 .purchase-breakdown .discount-line {
@@ -442,7 +445,7 @@
 .purchase-body .period-options label strong {
     grid-column: 2;
     grid-row: 2;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     white-space: normal;
     overflow-wrap: anywhere;
     text-align: start;
@@ -452,7 +455,7 @@
     grid-row: 3;
     justify-self: start;
     white-space: normal;
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
 }
 .purchase-body .coupon-picker-compact {
     padding: 0;
@@ -471,18 +474,18 @@
     width: 100%;
     min-width: 0;
     min-height: 44px;
-    font-size: 13px;
+    font-size: var(--user-font-control, 13px);
     text-overflow: ellipsis;
 }
 .coupon-selected-detail {
     display: block;
     color: var(--text-secondary);
     margin-top: 6px;
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
 }
 .coupon-picker-compact .coupon-picker-links {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
 }
 .purchase-selection .purchase-footer {
     flex: 0 0 auto;
@@ -500,11 +503,11 @@
 }
 .purchase-footer-total > span,
 .purchase-footer-total small {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     color: var(--text-secondary);
 }
 .purchase-footer-total strong {
-    font-size: 24px;
+    font-size: var(--user-font-title, 24px);
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
 }
@@ -539,22 +542,48 @@
         gap: 12px;
         padding: 12px 16px max(12px, env(safe-area-inset-bottom));
     }
-    .purchase-footer-total strong {
-        font-size: 21px;
-    }
 }
 
 .plan-reset-rule {
     margin-block: 12px 0;
     margin-inline: 0;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     line-height: 1.6;
     color: var(--text-secondary);
     overflow-wrap: anywhere;
 }
 .purchase-rules .purchase-impact {
     margin: 8px 0;
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
     line-height: 1.65;
     overflow-wrap: anywhere;
+}
+
+@media (max-width: 800px) {
+    .app.user .pricing-specs > div,
+    .app.user .pricing-card-heading {
+        flex-wrap: wrap;
+        overflow-wrap: anywhere;
+    }
+    .app.user .pricing-card-heading .badge,
+    .app.user .pricing-saving {
+        max-inline-size: 100%;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    .app.user .pricing-summary .plan-price small {
+        font-size: var(--user-font-label);
+    }
+    .purchase-body .period-options label .period-name,
+    .purchase-body .period-options label .period-saving,
+    .purchase-breakdown .checkout-lines dt {
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+    }
+    .purchase-body .period-options label .period-name {
+        font-size: var(--user-font-body);
+    }
+    .purchase-breakdown .checkout-lines dd {
+        white-space: normal;
+    }
 }

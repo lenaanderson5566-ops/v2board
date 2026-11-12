@@ -3,8 +3,8 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 144796,
-      "startupBytes": 476316,
+      "startupGzipBytes": 145089,
+      "startupBytes": 477968,
       "startupFileCount": 17,
       "largestStartupAssets": [
         {
@@ -18,9 +18,9 @@
           "gzipBytes": 55042
         },
         {
-          "file": "assets/app-C3WoPjFI.js",
+          "file": "assets/app-CUqb3Df1.js",
           "bytes": 12755,
-          "gzipBytes": 5345
+          "gzipBytes": 5346
         },
         {
           "file": "assets/runtime-config-DXkPanaE.js",
@@ -38,52 +38,52 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 144796,
-          "bytes": 476316,
+          "gzipBytes": 145089,
+          "bytes": 477968,
           "fileCount": 17
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 212369,
-          "bytes": 784944,
+          "gzipBytes": 213758,
+          "bytes": 794449,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 225473,
-          "bytes": 827987,
+          "gzipBytes": 227138,
+          "bytes": 839390,
           "fileCount": 34
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 215696,
-          "bytes": 751541,
+          "gzipBytes": 217085,
+          "bytes": 761046,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 228800,
-          "bytes": 794584,
+          "gzipBytes": 230465,
+          "bytes": 805987,
           "fileCount": 34
         }
       ],
-      "totalBytes": 3548550,
+      "totalBytes": 3564475,
       "fileCount": 352
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 315850,
-      "startupBytes": 1048722,
+      "startupGzipBytes": 315853,
+      "startupBytes": 1048716,
       "startupFileCount": 27,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-CMAOMfvZ.js",
-          "bytes": 320231,
-          "gzipBytes": 91888
+          "file": "assets/AdminApp-5vO2ehe5.js",
+          "bytes": 320225,
+          "gzipBytes": 91889
         },
         {
           "file": "assets/render-app-Di9wnNui.js",
@@ -107,7 +107,7 @@
         }
       ],
       "budget": 460800,
-      "totalBytes": 5096301,
+      "totalBytes": 5096295,
       "fileCount": 131
     }
   ],

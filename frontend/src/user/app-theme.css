@@ -41,3 +41,15 @@ body[data-console="user"] {
     --muted: var(--text-secondary);
     --bg: var(--surface);
 }
+
+@media (max-width: 800px) {
+    body[data-console="user"] {
+        --user-font-caption: 0.75rem;
+        --user-font-label: 0.8125rem;
+        --user-font-body: 0.875rem;
+        --user-font-control: 1rem;
+        --user-font-section: 1.125rem;
+        --user-font-title: 1.5rem;
+        --user-font-display: 2rem;
+    }
+}

@@ -3,7 +3,7 @@
     margin-inline: auto;
 }
 .unified-checkout > h2 {
-    font-size: 24px;
+    font-size: var(--user-font-title, 24px);
     margin: 20px 0;
 }
 /* A page layout, independent of the compact modal confirmation styles. */
@@ -57,7 +57,7 @@
 }
 .checkout-product p {
     margin: 0;
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
     color: var(--text-secondary);
     line-height: 1.7;
 }
@@ -80,20 +80,20 @@
     .unified-checkout .purchase-selection:not(.has-confirmed-order) .purchase-footer {
         grid-row: 3;
     }
+    .unified-checkout .purchase-breakdown .checkout-lines {
+        min-block-size: max(108px, var(--checkout-lines-height, 0px));
+    }
 }
 .checkout-quote-status {
     min-block-size: 1.5em;
     margin: 0 0 8px;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     line-height: 1.5;
-}
-.unified-checkout .purchase-breakdown .checkout-lines {
-    min-block-size: 108px;
 }
 .unified-checkout .quote-snapshot-label {
     display: block;
     min-block-size: 1.5em;
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
     line-height: 1.5;
     color: var(--text-secondary);
     overflow-wrap: anywhere;
@@ -127,7 +127,7 @@
     color: var(--ink);
 }
 .checkout-qr-channel span {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     color: var(--text-secondary);
 }
 .checkout-method-section .alert {
@@ -135,6 +135,9 @@
     gap: 10px;
 }
 @media (max-width: 800px) {
+    .checkout-product {
+        overflow-wrap: anywhere;
+    }
     .unified-checkout .purchase-selection {
         display: block;
         padding: 0;
@@ -152,6 +155,23 @@
     }
     .unified-checkout .checkout-method-section {
         padding: 0;
+    }
+    .unified-checkout .quote-snapshot-label:empty {
+        display: none;
+    }
+    .unified-checkout .checkout-quote-status:empty {
+        min-block-size: 0;
+        margin: 0;
+    }
+    .unified-checkout :is(.purchase-breakdown, .checkout-method-section) > h3 {
+        margin-bottom: 8px;
+    }
+    .unified-checkout .purchase-breakdown .purchase-fee-note {
+        margin-bottom: 0;
+    }
+    .unified-checkout .purchase-fee-note summary {
+        min-block-size: 44px;
+        padding-block: 12px;
     }
     .unified-checkout .purchase-footer {
         position: sticky;
@@ -175,19 +195,15 @@
     }
 }
 @media (max-width: 480px) {
+    .unified-checkout .period-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
     .unified-checkout .period-options label strong,
     .unified-checkout .period-options label .period-saving {
         grid-column: 1 / -1;
         grid-row: auto;
         padding-inline-start: 0;
         max-width: 100%;
-    }
-    .unified-checkout .period-options label strong {
-        font-size: 12px;
-    }
-    .unified-checkout .period-options label .period-saving {
-        overflow-wrap: normal;
-        word-break: normal;
     }
 }
 
@@ -223,7 +239,7 @@
     margin-top: 8px;
 }
 .unified-checkout .checkout-inline .checkout-guidance {
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
     line-height: 1.6;
 }
 .unified-checkout .purchase-footer-confirmed {
@@ -239,7 +255,7 @@
     margin-top: 16px;
     padding-block: 14px;
     border-block: 1px solid var(--line);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .checkout-confirmed-coupon strong {
     font-variant-numeric: tabular-nums;
@@ -272,7 +288,7 @@
     min-block-size: 48px;
     padding-block: 8px;
     border-bottom: 1px solid var(--line);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .checkout-method-confirmed > span {
     display: grid;
@@ -282,13 +298,14 @@
 }
 .checkout-method-confirmed small {
     color: var(--text-secondary);
+    font-size: var(--user-font-label, smaller);
 }
 .unified-checkout .checkout-inline .checkout-qr > p {
     margin-block: 8px;
 }
 .checkout-payment-details,
 .checkout-order-actions {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     color: var(--text-secondary);
 }
 .checkout-payment-details > summary,
@@ -329,13 +346,13 @@
     padding-top: 14px;
     border-top: 1px solid var(--line);
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
     line-height: 1.65;
 }
 .purchase-rules h4 {
     margin: 0 0 6px;
     color: var(--ink);
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
     font-weight: 600;
 }
 .purchase-rules ul {
@@ -357,11 +374,11 @@
 .checkout-open-help {
     margin: 16px 0 0;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--user-font-body, 12px);
     line-height: 1.6;
 }
 .checkout-alternative-qr {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     color: var(--text-secondary);
 }
 .checkout-alternative-qr {
@@ -374,6 +391,10 @@
     box-sizing: border-box;
 }
 @media (max-width: 800px) {
+    .checkout-confirmed-coupon {
+        flex-wrap: wrap;
+        overflow-wrap: anywhere;
+    }
     .checkout-open-help,
     .checkout-alternative-qr,
     .checkout-order-actions {
@@ -386,5 +407,6 @@
     }
     .checkout-payment-details input {
         margin-block: 0 6px;
+        font-size: var(--user-font-control);
     }
 }

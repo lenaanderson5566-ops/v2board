@@ -815,6 +815,7 @@ it("requires an explicit review to keep an outdated manual translation", async (
 it("consolidates settings and monitoring navigation", () => {
     expect(adminMenu.some(([key]) => String(key) === "notification-blocklist")).toBe(false);
     expect(adminMenu.find(([key]) => key === "notification-settings")?.[1]).toBe("通知设置");
+    expect(adminMenu.find(([key]) => key === "registration-settings")?.[3]).toBe("系统设置");
     for (const key of ["system", "risk-settings", "translations"])
         expect(adminMenu.some(([item]) => String(item) === key)).toBe(
             false,

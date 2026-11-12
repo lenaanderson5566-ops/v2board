@@ -20,3 +20,28 @@
     font-size: 13px;
     line-height: 1.6;
 }
+
+@media (max-width: 800px) {
+    .fastai-download-panel {
+        overflow-wrap: anywhere;
+    }
+    .fastai-download-panel > h2 {
+        font-size: var(--user-font-section);
+    }
+    .fastai-download-panel :is(p, label, .actions > *) {
+        font-size: var(--user-font-body);
+    }
+    .fastai-download-panel .fastai-architecture p {
+        font-size: var(--user-font-label);
+    }
+    .fastai-download-panel select {
+        min-height: 44px;
+        max-width: 100%;
+        font-size: var(--user-font-control);
+    }
+    .fastai-download-panel .actions > * {
+        min-height: 44px;
+        max-width: 100%;
+        white-space: normal;
+    }
+}

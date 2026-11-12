@@ -46,6 +46,7 @@
 .app.user .account-preferences .preference-control .timezone-picker { width: 100%; min-width: 0; }
 .app.user .account-preferences .preference-control select:not([size]),
 .app.user .account-preferences .preference-readonly { min-height: 44px; width: 100%; box-sizing: border-box; border: 1px solid var(--outline); border-radius: 10px; background: var(--surface); color: var(--ink); padding: 10px 12px; font: inherit; font-size: 14px; line-height: 22px; }
+.app.user .account-preferences .preference-control select:not([size]) { font-size: var(--user-font-control, 14px); }
 .app.user .account-preferences .preference-readonly { display: block; background: var(--surface-soft); overflow-wrap: anywhere; user-select: text; }
 @media (max-width: 600px) {
     .app.user .account-preferences .preference-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }

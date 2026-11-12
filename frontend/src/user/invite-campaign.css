@@ -30,11 +30,11 @@
 }
 .app.user .invite-campaign strong {
     display: block;
-    font-size: 14px;
+    font-size: var(--user-font-body, 14px);
     font-weight: 600;
 }
 .app.user .invite-campaign p {
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     line-height: 1.5;
     margin: 6px 0 0;
     color: var(--text-secondary);
@@ -51,9 +51,18 @@
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
     font-weight: 500;
     margin-top: 12px;
+}
+@media (max-width: 800px) {
+    .app.user .invite-campaign-content > div,
+    .app.user .invite-campaign-action {
+        overflow-wrap: anywhere;
+    }
+    .app.user .invite-campaign-action svg {
+        flex-shrink: 0;
+    }
 }
 @media (max-height: 620px) {
     .app.user .invite-campaign {

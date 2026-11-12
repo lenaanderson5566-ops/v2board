@@ -329,6 +329,39 @@ textarea {
     justify-content: center;
 }
 @media (max-width: 800px) {
+    .language-trigger {
+        font-size: var(--user-font-label);
+    }
+    .language-popover > small {
+        font-size: var(--user-font-caption);
+    }
+    .language-popover > button {
+        font-size: var(--user-font-body);
+    }
+    .privacy-footer-links > a {
+        font-size: var(--user-font-label);
+    }
+    body[data-console="user"] .browser-notice .browser-notice-heading {
+        font-size: var(--user-font-title);
+    }
+    body[data-console="user"] .browser-notice-compact .browser-notice-heading {
+        font-size: var(--user-font-section);
+    }
+    body[data-console="user"] .browser-notice :is(h2, p, .browser-copy, .browser-continue) {
+        font-size: var(--user-font-body);
+    }
+    body[data-console="user"] .browser-notice :is(.browser-context, .browser-step-number) {
+        font-size: var(--user-font-caption);
+    }
+    body[data-console="user"] .browser-notice :is(.browser-entry-choice, .browser-manual, .browser-copy-feedback p, .browser-manual-address, .browser-session-note) {
+        font-size: var(--user-font-label);
+    }
+    body[data-console="user"] .browser-notice .browser-manual-address input {
+        font-size: var(--user-font-control);
+    }
+    body[data-console="user"] .browser-notice :is(.browser-copy, .browser-manual, .browser-continue) {
+        white-space: normal;
+    }
     .panel-head {
         padding: 18px;
         gap: 12px;

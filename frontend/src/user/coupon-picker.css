@@ -1,6 +1,6 @@
 .checkout-coupon {
     border-block: 1px solid var(--line);
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
 }
 .checkout-coupon > summary {
     display: flex;
@@ -30,7 +30,7 @@
 }
 .checkout-coupon-name {
     color: var(--text-secondary);
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
 }
 .checkout-coupon[open] > summary > svg:last-child {
     transform: rotate(180deg);
@@ -50,7 +50,7 @@
     border: 1px solid transparent;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     color: var(--ink);
 }
 .checkout-coupon-option.is-selected {
@@ -82,12 +82,12 @@
 }
 .checkout-coupon-option strong {
     display: block;
-    font-size: 13px;
+    font-size: var(--user-font-body, 13px);
     font-weight: 500;
 }
 .checkout-coupon-option small {
     display: block;
-    font-size: 11px;
+    font-size: var(--user-font-caption, 11px);
     color: var(--text-secondary);
     line-height: 1.6;
 }
@@ -108,6 +108,11 @@
     outline-offset: 1px;
 }
 @media (max-width: 400px) {
+    .checkout-coupon-heading {
+        flex-shrink: 1;
+        min-inline-size: 0;
+        overflow-wrap: anywhere;
+    }
     .checkout-coupon-option {
         flex-wrap: wrap;
     }
@@ -125,10 +130,16 @@
     gap: 8px;
     padding-block: 12px;
     color: var(--text-secondary);
-    font-size: 12px;
+    font-size: var(--user-font-label, 12px);
 }
 .checkout-coupon-recovery button {
     background: transparent;
     border: 0;
     color: var(--brand);
+}
+@media (max-width: 800px) {
+    .checkout-coupon-recovery button,
+    .checkout-coupon-unavailable > summary {
+        min-block-size: 44px;
+    }
 }

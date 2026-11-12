@@ -208,28 +208,36 @@ export function MyCoupons() {
                     {visible.map((coupon) => (
                         <article
                             key={coupon.id}
-                            className={`coupon-activity-card wallet-coupon ${coupon.status === "available" ? "available" : "inactive"}`}
+                            className={`wallet-coupon ${coupon.status === "available" ? "available" : "inactive"}`}
                         >
-                            <span className="coupon-discount">
-                                <small>{tx("减免")}</small>
-                                <strong>
-                                    {formatPercent(coupon.discountPercent, { maximumFractionDigits: 0 })}
-                                </strong>
-                            </span>
-                            <h3>{coupon.name}</h3>
-                            <p>{couponRestrictions(coupon)}</p>
-                            <small>
-                                {tx("有效期至")}{" "}
-                                {formatInstant(coupon.expiresAt, { second: undefined })}
-                            </small>
-                            <span className="coupon-state">
-                                {couponStatus(coupon)}
-                            </span>
-                            {availableCouponIntent(coupon) && (
-                                <a className="button soft-button" href={`#/${catalogReturnPath(undefined, undefined, coupon.id)}`}>
-                                    {tx("选择套餐使用")}
-                                </a>
-                            )}
+                            <div className="wallet-coupon-summary">
+                                <span className="coupon-discount">
+                                    <small>{tx("减免")}</small>
+                                    <strong>
+                                        {formatPercent(coupon.discountPercent, { maximumFractionDigits: 0 })}
+                                    </strong>
+                                </span>
+                                <div className="wallet-coupon-info">
+                                    <div className="wallet-coupon-heading">
+                                        <h3>{coupon.name}</h3>
+                                        <span className="coupon-state">
+                                            {couponStatus(coupon)}
+                                        </span>
+                                    </div>
+                                    <p>{couponRestrictions(coupon)}</p>
+                                </div>
+                            </div>
+                            <div className="wallet-coupon-footer">
+                                <small>
+                                    {tx("有效期至")}{" "}
+                                    {formatInstant(coupon.expiresAt, { second: undefined })}
+                                </small>
+                                {availableCouponIntent(coupon) && (
+                                    <a className="button soft-button" href={`#/${catalogReturnPath(undefined, undefined, coupon.id)}`}>
+                                        {tx("选择套餐使用")}
+                                    </a>
+                                )}
+                            </div>
                         </article>
                     ))}
                 </div>

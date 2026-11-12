@@ -3,3 +3,9 @@
 .browser-handoff-help > button > svg { flex: 0 0 auto; }
 .browser-handoff-help > button:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 .browser-handoff-help > button:disabled { cursor: wait; opacity: .6; }
+
+@media (max-width: 800px) {
+    .browser-handoff-help > button {
+        font-size: var(--user-font-label);
+    }
+}

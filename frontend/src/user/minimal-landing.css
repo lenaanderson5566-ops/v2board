@@ -50,19 +50,34 @@
 .minimal-landing a:focus-visible { outline: 2px solid var(--brand); outline-offset: 5px; }
 @keyframes minimal-breathe { 50% { transform: translateY(-5px); } }
 @media (max-width: 800px) {
-    .minimal-landing-screen { padding: 20px 24px; }
-    .minimal-landing-main { grid-template-columns: 1fr; gap: 32px; padding: 48px 0 32px; }
-    .minimal-landing-main h1 { max-width: 580px; }
+    .minimal-landing { overflow-wrap: anywhere; }
+    .minimal-landing-screen { padding: 20px clamp(16px, 5vw, 24px) calc(20px + env(safe-area-inset-bottom)); }
+    .minimal-landing-header { gap: 12px; }
+    .minimal-landing-brand { min-width: 0; font-size: var(--user-font-control); }
+    .minimal-brand-mark { flex-shrink: 0; }
+    .minimal-landing-main { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 36px 0 32px; }
+    .minimal-landing-main h1 { max-width: 580px; font-size: clamp(1.75rem, 6vw, var(--user-font-display)); }
+    .minimal-landing-copy > p { font-size: var(--user-font-body); }
+    .minimal-landing-actions { gap: 8px 16px; margin-top: 24px; }
+    .minimal-landing a.minimal-landing-enter { max-width: 100%; min-height: 44px; gap: 16px; font-size: var(--user-font-body); }
+    .minimal-enter-icon { flex-shrink: 0; }
+    .minimal-landing-login,
+    .minimal-landing-decision,
+    .minimal-scenarios,
+    .minimal-ai-panel .minimal-ai-note { font-size: var(--user-font-label); }
+    .minimal-landing-eyebrow,
+    .minimal-panel-heading,
+    .minimal-platforms { font-size: var(--user-font-caption); }
     .minimal-ai-core { height: 144px; margin: 12px 0; }
     .minimal-core-ring { width: 136px; height: 136px; }
     .minimal-core-ring-inner { width: 112px; height: 112px; }
     .minimal-core-mark { width: 82px; height: 82px; border-radius: 22px; }
-    .minimal-core-mark strong { font-size: 24px; }
-    .minimal-ai-service { flex-direction: row; justify-content: center; gap: 7px; padding: 14px 5px; font-size: 11px; }
-    .minimal-ai-service img { width: 20px; height: 20px; }
+    .minimal-core-mark strong { font-size: var(--user-font-title); }
+    .minimal-ai-service { justify-content: center; gap: 7px; padding: 14px 5px; font-size: var(--user-font-caption); }
+    .minimal-ai-service img { width: 22px; height: 22px; }
     .minimal-panel-index { display: none; }
-    .minimal-landing-footer { grid-template-columns: 1fr auto; gap: 12px; }
-    .minimal-platforms { max-width: 160px; line-height: 1.8; }
+    .minimal-landing-footer { gap: 8px 16px; }
+    .minimal-platforms { line-height: 1.8; }
 }
 @media (prefers-reduced-motion: reduce) {
     .minimal-core-mark { animation: none; }

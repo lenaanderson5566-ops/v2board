@@ -25,3 +25,24 @@
     line-height: 1.6;
 }
 .language-recovery button { min-height: 44px; flex-shrink: 0; }
+
+@media (max-width: 800px) {
+    .session-recovery {
+        padding: 48px 20px;
+        font-size: var(--user-font-body);
+        overflow-wrap: anywhere;
+    }
+    .session-recovery h1 {
+        font-size: var(--user-font-title);
+        line-height: 1.3;
+    }
+    .language-recovery,
+    .language-recovery button {
+        font-size: var(--user-font-label);
+    }
+    .session-recovery button,
+    .language-recovery button {
+        max-width: 100%;
+        white-space: normal;
+    }
+}

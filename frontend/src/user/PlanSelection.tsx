@@ -161,7 +161,7 @@ export function PlanSelection({
     useLayoutEffect(() => {
         const lines = quoteLines.current;
         if (!unified || !lines) return;
-        lines.style.minHeight = "";
+        lines.style.removeProperty("--checkout-lines-height");
         if (checkout) return;
         const { width, height } = lines.getBoundingClientRect();
         const minimum =
@@ -169,7 +169,7 @@ export function PlanSelection({
                 ? Math.max(height, quoteSize.current.height)
                 : height;
         quoteSize.current = { width, height: minimum };
-        lines.style.minHeight = `${Math.ceil(minimum)}px`;
+        lines.style.setProperty("--checkout-lines-height", `${Math.ceil(minimum)}px`);
     }, [unified, displayQuote, checkout]);
     useEffect(() => {
         if (serverQuote) setPaymentMethods(serverQuote.methods || []);
@@ -413,7 +413,7 @@ export function PlanSelection({
                             <span className="quote-snapshot-label">
                                 {showingPrevious
                                     ? pc("previousQuote")
-                                    : "\u00a0"}
+                                    : null}
                             </span>
                         )}
                         <dl
@@ -584,7 +584,7 @@ export function PlanSelection({
                                 >
                                     {preview.loading
                                         ? pc("quoteLoading")
-                                        : "\u00a0"}
+                                        : null}
                                 </p>
                                 {paymentMethods.length > 0 && (
                                     <PaymentMethodPicker
@@ -699,7 +699,7 @@ export function PlanSelection({
                             <span className="quote-snapshot-label">
                                 {showingPrevious
                                     ? pc("previousQuote")
-                                    : "\u00a0"}
+                                    : null}
                             </span>
                         )}
                         <strong>

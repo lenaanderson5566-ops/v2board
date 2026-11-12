@@ -14,6 +14,7 @@ import { adminOrderPeriod, adminOrderType } from "./admin-order-labels";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
 import { routeActionLabel, routeDetails } from "./route-form";
 import type { Resource } from "./admin";
+import { isMixedPlan, periodicPlanPrices } from "./admin-plan-products";
 
 const toggle = (key: string, label: string): Field => ({
     key,
@@ -32,87 +33,60 @@ const created: [string, string, ((r: Row) => ReactNode)?] = [
 const price = (key: string, label: string): Field => ({
     ...field(key, label + "（CNY）", "number"),
     scale: 100,
+    min: 0,
     step: 0.01,
-    hint:
-        key === "onetime_price"
-            ? "额度包价格；流量 (GiB) 为额度数量。仅在用户的额度入口展示，可独立使用，套餐重置不会补回额度。"
-            : "留空表示不提供该支付周期",
+    nullable: true,
+    hint: "留空表示不提供该支付周期",
 });
+const planResource = {
+    kind: "plans",
+    fetch: admin("plan/fetch"),
+    sort: admin("plan/sort"),
+    sortKind: "plans",
+    save: admin("plan/save"),
+    drop: admin("plan/drop"),
+    defaults: { transfer_enable: 100 },
+} as const;
+const planNameColumn: Resource["columns"][number] = [
+    "name",
+    "名称",
+    (plan) => <>
+        {plan.name}
+        {isMixedPlan(plan) && <> <span className="badge">混合商品</span></>}
+    </>,
+];
+const planAccessFields = [
+    field("group_id", "权限组 ID", "number", true),
+    field("device_limit", "设备数限制", "number"),
+    field("speed_limit", "速率 (Mbps)", "number"),
+    field("capacity_limit", "用户容量", "number"),
+];
+const periodicPrices = Object.entries(periodicPlanPrices);
+const planPriceColumn = (key: string, label: string): Resource["columns"][number] =>
+    [key, label, (plan) => (plan[key] == null ? "—" : money(plan[key]))];
+
 export const resources: Record<string, Resource> = {
     plans: {
-        kind: "plans",
-        title: "套餐管理",
-        fetch: admin("plan/fetch"),
-        sort: admin("plan/sort"),
-        sortKind: "plans",
-        save: admin("plan/save"),
-        drop: admin("plan/drop"),
+        ...planResource,
+        planView: "periodic",
+        title: "周期套餐",
         columns: [
-            nameColumn,
+            planNameColumn,
             ["show", "展示"],
             ["renew", "允许续费"],
             ["count", "统计"],
             ["transfer_enable", "流量 (GiB)", (record) => formatNumber(record.transfer_enable)],
             ["device_limit", "设备数限制"],
-            ...[
-                "month_price",
-                "quarter_price",
-                "half_year_price",
-                "year_price",
-                "two_year_price",
-                "three_year_price",
-                "onetime_price",
-                "reset_price",
-            ].map(
-                (key, i) =>
-                    [
-                        key,
-                        [
-                            "月付",
-                            "季付",
-                            "半年付",
-                            "年付",
-                            "两年付",
-                            "三年付",
-                            "额度包",
-                            "重置包",
-                        ][i],
-                        (r: Row) => (r[key] == null ? "—" : money(r[key])),
-                    ] as [string, string, (r: Row) => ReactNode],
-            ),
+            ...periodicPrices.map(([key, label]) => planPriceColumn(key, label)),
+            planPriceColumn("reset_price", "重置包"),
             ["group_id", "权限组"],
         ],
         fields: [
             field("name", "套餐名称", "text", true),
-            field("group_id", "权限组 ID", "number", true),
             field("transfer_enable", "流量 (GiB)", "number", true),
-            field("device_limit", "设备数限制", "number"),
-            field("speed_limit", "速率 (Mbps)", "number"),
-            field("capacity_limit", "用户容量", "number"),
-            ...[
-                "month_price",
-                "quarter_price",
-                "half_year_price",
-                "year_price",
-                "two_year_price",
-                "three_year_price",
-                "onetime_price",
-                "reset_price",
-            ].map((k, i) =>
-                price(
-                    k,
-                    [
-                        "月付",
-                        "季付",
-                        "半年付",
-                        "年付",
-                        "两年付",
-                        "三年付",
-                        "额度包",
-                        "重置流量",
-                    ][i],
-                ),
-            ),
+            ...planAccessFields,
+            ...periodicPrices.map(([key, label]) => price(key, label)),
+            price("reset_price", "重置流量"),
             {
                 key: "reset_traffic_method",
                 label: "流量重置模式",
@@ -126,7 +100,37 @@ export const resources: Record<string, Resource> = {
                 hint: "同步设备、速率和权限组；流量配额仅更新未转换为额度的套餐用户，已购额度保持不变。",
             },
         ],
-        defaults: { transfer_enable: 100 },
+    },
+    "plans-credits": {
+        ...planResource,
+        planView: "credits",
+        title: "额度包",
+        columns: [
+            planNameColumn,
+            ["show", "展示"],
+            ["transfer_enable", "流量额度 (GiB)", (plan) => formatNumber(plan.transfer_enable)],
+            planPriceColumn("onetime_price", "人民币价格"),
+            ["onetime_price_usd", "美元价格", (plan) => {
+                const amount = plan.usd_prices?.onetime_price;
+                return amount == null ? "—" : money(amount, "USD");
+            }],
+            ["group_id", "权限组"],
+        ],
+        fields: [
+            field("name", "额度包名称", "text", true),
+            field("content", "额度包描述", "textarea"),
+            { ...field("transfer_enable", "流量额度", "number", true), unit: "GiB" },
+            {
+                ...price("onetime_price", "额度包价格"),
+                label: "额度包价格",
+                unit: "CNY",
+                section: "售价设置",
+                hint: "仅售美元时，可留空并保存，再到「价格与币种」设置美元价格。",
+            },
+            ...planAccessFields.map((item) =>
+                item.key === "group_id" ? { ...item, section: "接入设置" } : item,
+            ),
+        ],
     },
     groups: {
         kind: "groups",

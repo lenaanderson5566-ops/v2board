@@ -315,6 +315,34 @@ test("mobile admin navigation protects a settings draft and restores the tab on 
     await expect(field).toHaveValue("30");
 });
 
+test("mobile admin plan workspace opens a focused credit package editor", async ({ page, context }) => {
+    const access = { group_id: 1, transfer_enable: 100, show: 1 };
+    await consoleFixture(context, "admin", path => {
+        if (path === "/api/v1/test-admin/config/fetch") return {};
+        if (path === "/api/v1/test-admin/server/group/fetch") return [{ id: 1, name: "测试权限组" }];
+        if (path === "/api/v1/test-admin/plan/fetch") return [
+            { ...access, id: 1, name: "测试周期商品", month_price: 2000 },
+            { ...access, id: 2, name: "测试额度商品", onetime_price: 3500 },
+            { ...access, id: 3, name: "测试混合商品", month_price: 2000, onetime_price: 3500 },
+        ];
+    });
+
+    await page.goto(`${consoleOrigin}/admin.html#/plans`);
+    await expect(page.getByRole("tab", { name: "周期套餐" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("row").filter({ hasText: "测试周期商品" })).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: "测试额度商品" })).toHaveCount(0);
+    await page.getByRole("tab", { name: "额度包", exact: true }).click();
+    await expect(page).toHaveURL(`${consoleOrigin}/admin.html#/plans-credits`);
+    await expect(page.getByRole("row").filter({ hasText: "测试混合商品" }).getByText("混合商品", { exact: true })).toBeVisible();
+    const creditRow = page.getByRole("row").filter({ hasText: "测试额度商品" });
+    await creditRow.getByRole("button", { name: "编辑" }).click();
+    const editor = page.getByRole("dialog", { name: "编辑 · 额度包" });
+    await expect(editor.getByLabel("额度包名称")).toHaveValue("测试额度商品");
+    await expect(editor.getByLabel("额度包价格")).toHaveValue("35");
+    await expect(editor.getByLabel("月付")).toHaveCount(0);
+    await expectPageWidth(page, 390);
+});
+
 test("mobile registration settings save a pause and keep account security in its own tab", async ({ page, context }) => {
     const changes = [];
     const config = { site: { stop_register: 0 }, invite: { invite_force: 1, invite_gen_limit: 5 }, safe: { secure_path: "test-admin" } };

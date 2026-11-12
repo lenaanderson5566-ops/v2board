@@ -47,7 +47,8 @@ export const adminWorkspaces = [
         root: "plans",
         label: "套餐与订阅",
         tabs: [
-            ["plans", "套餐列表"],
+            ["plans", "周期套餐"],
+            ["plans-credits", "额度包"],
             ["plans-translations", "套餐翻译"],
             ["plans-currencies", "价格与币种"],
             ["subscription-settings", "订阅设置"],

@@ -16,7 +16,7 @@ const periods = {
     year_price: "年付",
     two_year_price: "两年",
     three_year_price: "三年",
-    onetime_price: "流量包",
+    onetime_price: "额度包",
     reset_price: "流量重置",
 } as const;
 type Period = keyof typeof periods;

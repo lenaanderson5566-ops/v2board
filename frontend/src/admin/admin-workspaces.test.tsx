@@ -726,7 +726,7 @@ it("opens system monitoring only on its dashboard tab", async () => {
 it("loads translations from subscription management and supports old links", async () => {
     const view = render(<AdminContent route="plans" />);
     expect(
-        await screen.findByRole("tab", { name: "套餐列表", selected: true }),
+        await screen.findByRole("tab", { name: "周期套餐", selected: true }),
     ).toBeTruthy();
     expect(screen.getAllByRole("tablist")).toHaveLength(1);
     expect(
@@ -750,6 +750,109 @@ it("loads translations from subscription management and supports old links", asy
     expect(
         await screen.findByRole("tab", { name: "套餐翻译", selected: true }),
     ).toBeTruthy();
+});
+
+it("lists periodic products and credit packs in their own tabs with all products still reachable", async () => {
+    const products = [
+        { id: 1, name: "Monthly product", month_price: 1000 },
+        { id: 2, name: "Mixed product", month_price: 1000, onetime_price: 2000 },
+        { id: 3, name: "Unpriced draft", month_price: null, onetime_price: null },
+        { id: 4, name: "Reset-only product", reset_price: 500 },
+        { id: 5, name: "Zero-price credit pack", onetime_price: 0 },
+        { id: 6, name: "USD credit pack", usd_prices: { onetime_price: 200 } },
+        { id: 7, name: "USD periodic product", usd_prices: { month_price: 100 } },
+    ];
+    api.request.mockImplementation(async (path: string) => ({
+        data: path.includes("plan/fetch") ? products : [],
+    }));
+    const view = render(<AdminContent route="plans" />);
+    await screen.findByText("Monthly product");
+    expect(screen.getByRole("button", { name: "新建周期套餐" })).toBeTruthy();
+    for (const name of ["Mixed product", "Unpriced draft", "Reset-only product", "USD periodic product"])
+        expect(screen.getByText(name)).toBeTruthy();
+    expect(screen.queryByText("Zero-price credit pack")).toBeNull();
+    expect(screen.queryByText("USD credit pack")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "查看全部商品" }));
+    expect(screen.getByText("USD credit pack")).toBeTruthy();
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "额度包" }), { button: 0, ctrlKey: false });
+    expect(window.location.hash).toBe("#/plans-credits");
+    view.rerender(<AdminContent route="plans-credits" />);
+    await screen.findByRole("tab", { name: "额度包", selected: true });
+    await screen.findByText("Zero-price credit pack");
+    expect(screen.getByRole("button", { name: "新建额度包" })).toBeTruthy();
+    expect(screen.getByText("Mixed product")).toBeTruthy();
+    expect(screen.getByText("USD credit pack")).toBeTruthy();
+    for (const name of ["Monthly product", "Unpriced draft", "Reset-only product", "USD periodic product"])
+        expect(screen.queryByText(name)).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "允许续费" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "查看全部商品" }));
+    expect(screen.getByText("Monthly product")).toBeTruthy();
+});
+
+it.each([
+    { route: "plans", price: "month_price", omitted: ["onetime_price", "usd_prices"] },
+    {
+        route: "plans-credits", price: "onetime_price",
+        omitted: [
+            "month_price", "quarter_price", "half_year_price", "year_price", "two_year_price", "three_year_price",
+            "reset_price", "reset_traffic_method", "renew", "force_update", "usd_prices",
+        ],
+    },
+])("keeps mixed-product edits scoped to $route fields", async ({ route, price, omitted }) => {
+    const product = {
+        id: 8, name: "Mixed product", group_id: 1, transfer_enable: 50,
+        device_limit: 4, speed_limit: 100, capacity_limit: 30,
+        month_price: 1000, onetime_price: 2000, reset_price: 500,
+        reset_traffic_method: 0, renew: 1, usd_prices: { month_price: 100, onetime_price: 200 },
+    };
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("plan/fetch")) return { data: [product] };
+        if (path.includes("server/group/fetch")) return { data: [{ id: 1, name: "Default group" }] };
+        if (path.includes("plan/save")) return { data: true };
+        return { data: [] };
+    });
+    render(<AdminContent route={route} />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    const dialog = await screen.findByRole("dialog");
+    for (const field of ["transfer_enable", "group_id", "device_limit", "speed_limit", "capacity_limit"])
+        expect(dialog.querySelector(`[data-field="${field}"]`)).toBeTruthy();
+    for (const field of omitted)
+        expect(dialog.querySelector(`[data-field="${field}"]`)).toBeNull();
+    const input = dialog.querySelector(`[data-field="${price}"] input`);
+    expect(input).toBeTruthy();
+    fireEvent.change(input!, { target: { value: "29.50" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith(
+        "test-admin/plan/save", expect.objectContaining({ id: product.id, [price]: 2950 }),
+    ));
+    const body = api.request.mock.calls.find(([path]) => path === "test-admin/plan/save")?.[1];
+    for (const field of omitted) expect(body).not.toHaveProperty(field);
+});
+
+it("keeps a credit pack reachable after clearing its only price", async () => {
+    let product = { id: 8, name: "Credit pack draft", group_id: 1, transfer_enable: 50, onetime_price: 2000 };
+    api.request.mockImplementation(async (path: string, body) => {
+        if (path.includes("plan/fetch")) return { data: [product] };
+        if (path.includes("server/group/fetch")) return { data: [{ id: 1, name: "Default group" }] };
+        if (path.includes("plan/save")) {
+            product = { ...product, ...body };
+            return { data: true };
+        }
+        return { data: [] };
+    });
+    render(<AdminContent route="plans-credits" />);
+    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    const dialog = await screen.findByRole("dialog");
+    const price = dialog.querySelector('[data-field="onetime_price"] input');
+    expect(price).toBeTruthy();
+    fireEvent.change(price!, { target: { value: "" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith(
+        "test-admin/plan/save", expect.objectContaining({ id: product.id, onetime_price: null }),
+    ));
+    await screen.findByRole("button", { name: "查看全部商品", pressed: true });
+    expect(await screen.findByText("Credit pack draft")).toBeTruthy();
 });
 
 const planTranslationSnapshot = () => ({
@@ -1563,7 +1666,7 @@ it("keeps the subscription page open during a save and routes the price tab when
     const tab = await screen.findByRole("tab", { name: "价格与币种" });
     fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
     expect(window.location.hash).toBe("#/plans");
-    expect(screen.getByRole("tab", { name: "套餐列表", selected: true })).toBeTruthy();
+    expect(screen.getByRole("tab", { name: "周期套餐", selected: true })).toBeTruthy();
     view.container.querySelector('[data-saving]')?.removeAttribute("data-saving");
     fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
     expect(window.location.hash).toBe("#/plans-currencies");

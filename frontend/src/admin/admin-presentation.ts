@@ -1,4 +1,5 @@
 import type { Field } from "../shared/ui";
+import { periodicPlanPrices, type PlanView } from "./admin-plan-products";
 import reference from "./admin-settings-reference.json";
 export function settingsPresentation(group: string, fields: Field[]): Field[] {
     const entries =
@@ -26,14 +27,12 @@ export function settingsPresentation(group: string, fields: Field[]): Field[] {
                 (entries[b.key]?.line ?? Infinity),
         );
 }
-export function formPresentation(fields: Field[], kind: string): Field[] {
+export function formPresentation(fields: Field[], kind: string, planView?: PlanView): Field[] {
+    // The credit editor defines its own field order and sections.
+    if (kind === "plans" && planView === "credits") return fields;
+
     const prices = [
-        "month_price",
-        "quarter_price",
-        "half_year_price",
-        "year_price",
-        "two_year_price",
-        "three_year_price",
+        ...Object.keys(periodicPlanPrices),
         "onetime_price",
         "reset_price",
     ];

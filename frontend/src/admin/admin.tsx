@@ -16,6 +16,7 @@ import { SortButton } from "./admin-tools";
 import { adminUserLabel } from "./admin-user-label";
 import { adminOrderPlan } from "./admin-order-labels";
 import { adminPlanLabel, adminPlanOptions, type AdminPlanDirectory } from "./admin-plan-reference";
+import { isMixedPlan, planInView, validateCreditPlan, type PlanView } from "./admin-plan-products";
 import { readListView, saveListView } from "./list-view-state";
 import { RouteRuleEditor } from "./RouteRuleEditor";
 import { readRouteForm } from "./route-form";
@@ -48,6 +49,7 @@ type ResourceKind =
 
 export interface Resource {
     kind?: ResourceKind;
+    planView?: PlanView;
     logKind?: AdminLogKind;
     title: string;
     fetch: string;
@@ -96,10 +98,10 @@ export function ResourcePage({
 }) {
     const [localPageSize, setLocalPageSize] = useState(initialPageSize);
     const pageSize = onPageSizeChange ? initialPageSize : localPageSize;
-    const { kind, logKind } = resource;
+    const { kind, logKind, planView } = resource;
     const orderResource = kind === "orders" || kind === "commissions";
-    const viewKey = resource.fetch;
-    const columnStorageKey = `admin.columns.${resource.fetch}`;
+    const viewKey = planView === "credits" ? `${resource.fetch}:credits` : resource.fetch;
+    const columnStorageKey = `admin.columns.${viewKey}`;
     const [showDisplay, setShowDisplay] = useState(false);
     const [columnViews, setColumnViews] = useState<Record<string, string[]>>({});
     let storedColumns: string[] | undefined;
@@ -224,6 +226,7 @@ export function ResourcePage({
         [error, setError] = useState("");
     const [routeUsage, setRouteUsage] = useState("");
     const [routeFilter, setRouteFilter] = useState("");
+    const [showAllPlanProducts, setShowAllPlanProducts] = useState(false);
     const [editorState, setEditorState] = useState({ busy: false, dirty: false });
     const [planTextChanged, setPlanTextChanged] = useState(false);
     const [translationPlan, setTranslationPlan] = useState<Row | null>(null);
@@ -295,7 +298,9 @@ export function ResourcePage({
                     ? path.endsWith("resetSecret")
                         ? `重置 ${r.email} 的 UUID 和订阅链接？旧链接和客户端凭据将失效。`
                         : `删除 ${r.email}？该用户的订单、邀请码和工单也会被永久删除。`
-                    : "确认执行此操作？",
+                    : planView && path === resource.drop && isMixedPlan(r)
+                      ? `删除「${r.name}」？该商品会从周期套餐和额度包列表中移除。`
+                      : "确认执行此操作？",
             )
         )
             return;
@@ -328,7 +333,9 @@ export function ResourcePage({
     </>;
     const customSecondaryActions = Boolean(extraActions &&
         (kind === "users" || orderResource));
-    const list = (d.data || []).filter(r => {
+    const fetchedRows = rows(d.data);
+    const list = fetchedRows.filter(r => {
+        if (planView && !showAllPlanProducts && !planInView(r, planView)) return false;
         if (kind !== "routes") return true;
         if (routeUsage === "used" && !r.node_count || routeUsage === "unused" && r.node_count) return false;
         if (!routeFilter) return true;
@@ -360,6 +367,12 @@ export function ResourcePage({
                     <>
                         {headerActions}
                         {ownDisplaySettings && <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
+                        {planView && (
+                            <button type="button" aria-pressed={showAllPlanProducts}
+                                onClick={() => setShowAllPlanProducts(current => !current)}>
+                                查看全部商品
+                            </button>
+                        )}
                         {searchable && !logKind && (
                             <div className="search">
                                 <Search size={16} />
@@ -395,7 +408,7 @@ export function ResourcePage({
                                 }
                             >
                                 <Plus size={16} />
-                                新建
+                                {planView ? `新建${resource.title}` : "新建"}
                             </button>
                         )}
                     </>
@@ -419,10 +432,18 @@ export function ResourcePage({
                         <SortButton
                             path={resource.sort}
                             kind={resource.sortKind}
-                            items={rows(d.data)}
+                            items={fetchedRows}
                             onSaved={d.reload}
                         />
+                        {planView && <small className="muted"> 排序适用于全部商品</small>}
                     </div>
+                )}
+                {planView === "credits" && (
+                    <p className="pad muted">
+                        购买额度按批次发放，默认有效期为 12 个月。
+                        <a href="#/subscription-settings">额度基础权限组</a>在订阅设置中管理，美元售价在
+                        <a href="#/plans-currencies">价格与币种</a>中设置。
+                    </p>
                 )}
                 {toolbar}
                 {kind === "routes" && (
@@ -537,7 +558,8 @@ export function ResourcePage({
                                 ];
                             })}
                         onReorder={
-                            resource.sort && resource.sortKind && !search
+                            resource.sort && resource.sortKind && !search &&
+                            (!planView || list.length === fetchedRows.length)
                                 ? async (items) => {
                                       try {
                                           await request(
@@ -716,6 +738,11 @@ export function ResourcePage({
                             修改仅影响今后领取的券。已领取的券保留原优惠和有效期，历史订单不变。剩余库存是当前可继续发放的数量；停用入口不会撤销已领取的券。
                         </p>
                     )}
+                    {planView && editing.id && (isMixedPlan(editing) || !planInView(editing, planView)) && (
+                        <p className="pad muted" role="note">
+                            两种售卖方式共用商品名称、流量和接入设置。价格按当前页签保存。
+                        </p>
+                    )}
                     <State
                         loading={groups.loading}
                         error={groups.error}
@@ -748,6 +775,7 @@ export function ResourcePage({
                                             Boolean(editing.id),
                                     ),
                                     kind || "",
+                                    planView,
                                 )}
                                 initial={editing}
                                 onlyChanged={kind === "users"}
@@ -772,7 +800,8 @@ export function ResourcePage({
                                         values,
                                     )
                                 }
-                                validate={validateResource}
+                                validate={values => validateResource(values) ??
+                                    (planView === "credits" ? validateCreditPlan(values) : undefined)}
                                 onSave={async (body) => {
                                     const clean: Row = {};
                                     resource.fields.forEach((field) => {
@@ -838,6 +867,9 @@ export function ResourcePage({
                                         const result = await request(resource.save!, clean);
                                         if (kind === "plans" && result.meta?.translation_source_changed && result.meta?.plan_id) {
                                             setTranslationPlan({ id: result.meta.plan_id, name: clean.name });
+                                        }
+                                        if (planView && !planInView({ ...editing, ...clean }, planView)) {
+                                            setShowAllPlanProducts(true);
                                         }
                                     }
                                     setEditing(null);

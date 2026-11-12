@@ -185,13 +185,14 @@ export function AdminShell({
     const activeLink = term ? page : root;
     const navigation = adminMenu.flatMap(([key, label, icon, group]) => {
         const subpages = adminSubpages(key);
+        const alias = subpages.find(([route]) => route === key)?.[1] || "";
         const entry = {
             key: String(key),
             label: String(label),
             icon,
             group,
             parent: "",
-            alias: subpages.find(([route]) => route === key)?.[1] || "",
+            alias: key === "plans" ? `${alias} 套餐列表` : alias,
         };
         if (!term) return [entry];
         return [

@@ -75,6 +75,7 @@ it("finds dashboard, subscription and query-based subpages by name", () => {
     const search = screen.getByRole("searchbox", { name: "搜索后台页面" });
     for (const [label, route] of [
         ["系统监控", "overview-system"],
+        ["额度包", "plans-credits"],
         ["套餐翻译", "plans-translations"],
         ["第三方客户端", "client-releases"],
         ["访问统计", "log-settings?tab=analytics"],

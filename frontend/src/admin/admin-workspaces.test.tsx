@@ -189,7 +189,8 @@ it("defaults to activity times and toggles optional user columns", async () => {
     expect(
         screen.getByRole("columnheader", { name: "上次订阅时间" }),
     ).toBeTruthy();
-    for (const name of ["佣金", "权限组", "设备数"]) {
+    expect(screen.getByRole("columnheader", { name: "佣金" })).toBeTruthy();
+    for (const name of ["权限组", "设备数"]) {
         expect(screen.queryByRole("columnheader", { name })).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
         fireEvent.click(screen.getByRole("button", { name, pressed: false }));
@@ -386,7 +387,7 @@ it("requires a fresh successful mail audience check after a repeated check fails
     });
     render(<UsersPage />);
     await screen.findByRole("button", { name: "编辑" });
-    fireEvent.click(screen.getByText("批量操作", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("button", { name: "批量操作" }));
     const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
     await waitFor(() => expect(sendMail.disabled).toBe(false));
     fireEvent.click(sendMail);
@@ -430,7 +431,7 @@ it("keeps a mail draft when closing is cancelled and prevents dismissing a pendi
     try {
         render(<UsersPage />);
         await screen.findByRole("button", { name: "编辑" });
-        fireEvent.click(screen.getByText("批量操作", { selector: "summary" }));
+        fireEvent.click(screen.getByRole("button", { name: "批量操作" }));
         const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
         await waitFor(() => expect(sendMail.disabled).toBe(false));
         fireEvent.click(sendMail);
@@ -474,7 +475,7 @@ it("requires a new audience confirmation after a send conflict and retains the m
     });
     render(<UsersPage />);
     await screen.findByRole("button", { name: "编辑" });
-    fireEvent.click(screen.getByText("批量操作", { selector: "summary" }));
+    fireEvent.click(screen.getByRole("button", { name: "批量操作" }));
     const sendMail = screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement;
     await waitFor(() => expect(sendMail.disabled).toBe(false));
     fireEvent.click(sendMail);
@@ -678,6 +679,8 @@ it("loads the linked invitation review and keeps the draft after a revision conf
     const dialog = within(await screen.findByRole("dialog"));
     const decision = dialog.getByRole("button", { name: /证据不足/ });
     await waitFor(() => expect((decision.closest("fieldset") as HTMLFieldSetElement).disabled).toBe(false));
+    expect(dialog.getByRole("button", { name: "保存结论" }).classList.contains("primary")).toBe(true);
+    expect(dialog.getByRole("button", { name: "保存并审核下一条" }).classList.contains("primary")).toBe(false);
     fireEvent.click(decision);
     fireEvent.change(dialog.getByLabelText("复核依据"), { target: { value: "目前缺少独立核验资料。" } });
     fireEvent.click(dialog.getByRole("button", { name: "保存结论" }));
@@ -924,7 +927,7 @@ it("consolidates settings and monitoring navigation", () => {
             false,
         );
     expect(adminMenu.find(([key]) => key === "log-settings")?.[3]).toBe(
-        "日志与诊断",
+        "系统设置",
     );
 });
 
@@ -1043,7 +1046,15 @@ it("opens coupon template editing with issued-rights notice and without batch ge
     api.request.mockImplementation(async (path: string) => ({ data: path.includes("coupon/fetch") ? [{ id: 41, name: "Issued coupon", type: 2, value: 10, started_at: 1700000000, ended_at: 2000000000, show: 1, limit_use: 0, code: "issued" }] : [], total: 1 }));
     const { ResourcePage } = await import("./admin");
     render(<ResourcePage resource={resources.coupons} />);
-    fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+    const edit = await screen.findByRole("button", { name: "编辑" });
+    expect(screen.getByRole("switch", { name: "Issued coupon 启用" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "删除" })).toBeNull();
+    const more = screen.getByRole("button", { name: "更多操作" });
+    fireEvent.click(more);
+    expect(screen.getByRole("button", { name: "删除" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "切换启用" })).toBeNull();
+    fireEvent.keyDown(document.activeElement!, { key: "Escape" });
+    fireEvent.click(edit);
     const dialog = await screen.findByRole("dialog");
     expect(within(dialog).getByText(/已领取的券保留原优惠和有效期/)).toBeTruthy();
     expect(within(dialog).queryByLabelText(/生成数量/)).toBeNull();
@@ -1160,6 +1171,10 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
     let replyAttempts = 0;
     api.request.mockImplementation(async (path: string, body?: any) => {
         if (path.includes("risk/user-activity/fetch")) return { data: { user: { email: ticket.email }, events: [] } };
+        if (path.includes("ticket/close")) {
+            ticket.status = 1;
+            return { data: true };
+        }
         if (path.includes("ticket/reply")) {
             if (++replyAttempts === 1) throw new Error("发送暂时失败");
             ticket.reply_status = 1;
@@ -1192,6 +1207,20 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
     expect(screen.getByRole("dialog", { name: "Support fixture" })).toBeTruthy();
     expect(api.request.mock.calls.some(([path]) => path.includes("ticket/close"))).toBe(false);
     await waitFor(() => expect((screen.getByLabelText(/回复内容/) as HTMLTextAreaElement).value).toBe(""));
+
+    const close = within(dialog).getByRole("button", { name: "关闭工单" });
+    expect(close.classList.contains("danger")).toBe(true);
+    fireEvent.click(close);
+    const confirmation = await screen.findByRole("dialog", { name: "关闭工单" });
+    expect(api.request.mock.calls.some(([path]) => path.includes("ticket/close"))).toBe(false);
+    fireEvent.click(within(confirmation).getByRole("button", { name: "取消" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "关闭工单" })).toBeNull());
+    fireEvent.click(close);
+    const confirm = within(await screen.findByRole("dialog", { name: "关闭工单" })).getByRole("button", { name: "关闭工单" });
+    expect(confirm.classList.contains("danger")).toBe(true);
+    fireEvent.click(confirm);
+    await within(dialog).findByText("工单已关闭，可在上方查阅完整对话。");
+    expect(api.request).toHaveBeenCalledWith("test-admin/ticket/close", { id: 42 });
 });
 
 it("shares display preferences across resource lists without leaking selected columns", async () => {
@@ -1328,7 +1357,7 @@ it.each([
     render(<UsersPage />);
     fireEvent.change(screen.getByLabelText("搜索所有用户邮箱"), {target:{value:"guest@example.com"}});
     fireEvent.submit(screen.getByRole("form", {name:"用户搜索与筛选"}));
-    fireEvent.click(screen.getByText("批量操作", {selector:"summary"}));
+    fireEvent.click(screen.getByRole("button", {name:"批量操作"}));
     const action = screen.getByRole("button", {name:open}) as HTMLButtonElement;
     await waitFor(() => expect(action.disabled).toBe(false));
     fireEvent.click(action);
@@ -1376,6 +1405,61 @@ it.each([
     }));
 });
 
+it.each([0, 2, 3])("prioritizes account and subscription columns in the version %i default user view", async (columnsVersion) => {
+    const viewKey = "admin.users.view.v1";
+    const previous = localStorage.getItem(viewKey);
+    localStorage.removeItem(viewKey);
+    if (columnsVersion) {
+        const columns = ["id", "language", "credit_balance", "banned", "plan_name", "total_used",
+            "transfer_enable", "expired_at", "currency", "balance", "last_connected_at",
+            "last_subscribe_at", "last_login_at", "created_at"];
+        if (columnsVersion === 3) columns.push("commission_balance");
+        localStorage.setItem(viewKey, JSON.stringify({
+            columnsVersion, columns,
+        }));
+    }
+    try {
+        render(<UsersPage />);
+        await screen.findByRole("button", { name: /ID: 7.*guest@example.com/ });
+        const headers = screen.getAllByRole("columnheader");
+        const priority = [
+            "邮箱", "订阅", "订阅到期", "余额", "累计充值", "佣金", "流量（GiB）", "已用（GiB）", "剩余额度", "状态",
+        ];
+        expect(headers.slice(0, priority.length)).toEqual(
+            priority.map(name => screen.getByRole("columnheader", { name })),
+        );
+        expect(headers.slice(priority.length)).toEqual(expect.arrayContaining(
+            ["用户语言", "账号币种", "上次连接"].map(name => screen.getByRole("columnheader", { name })),
+        ));
+    } finally {
+        if (previous === null) localStorage.removeItem(viewKey);
+        else localStorage.setItem(viewKey, previous);
+    }
+});
+
+it("preserves custom user columns when upgrading the previous display version", async () => {
+    const viewKey = "admin.users.view.v1";
+    const previous = localStorage.getItem(viewKey);
+    localStorage.setItem(viewKey, JSON.stringify({ columnsVersion: 3, columns: ["id", "balance"] }));
+    try {
+        render(<UsersPage />);
+        await screen.findByRole("button", { name: /ID: 7.*guest@example.com/ });
+        expect(screen.getByRole("columnheader", { name: "余额" })).toBeTruthy();
+        expect(screen.queryByRole("columnheader", { name: "累计充值" })).toBeNull();
+        expect(screen.queryByRole("columnheader", { name: "佣金" })).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
+        const picker = within(screen.getByLabelText("可选显示列"));
+        const recharge = picker.getByRole("button", { name: "累计充值", pressed: false });
+        fireEvent.click(recharge);
+        fireEvent.click(screen.getByRole("button", { name: "完成" }));
+        expect(screen.getByRole("columnheader", { name: "累计充值" })).toBeTruthy();
+        expect(screen.queryByRole("columnheader", { name: "佣金" })).toBeNull();
+    } finally {
+        if (previous === null) localStorage.removeItem(viewKey);
+        else localStorage.setItem(viewKey, previous);
+    }
+});
+
 it("adds the language column to existing user views and respects later visibility changes", async () => {
     const viewKey = "admin.users.view.v1";
     localStorage.setItem(viewKey, JSON.stringify({ columns: ["id"], pageSize: 20 }));
@@ -1387,11 +1471,12 @@ it("adds the language column to existing user views and respects later visibilit
     expect(screen.getByText("未设置")).toBeTruthy();
     expect(screen.getByText("nl-NL")).toBeTruthy();
     expect(screen.queryByRole("columnheader", {name: "账号币种"})).toBeNull();
+    expect(screen.queryByRole("columnheader", {name: "佣金"})).toBeNull();
     fireEvent.click(screen.getByRole("button", {name: "显示设置"}));
     fireEvent.click(within(screen.getByRole("dialog", {name: "用户显示设置"})).getByRole("button", {name: "用户语言"}));
     view.unmount();
     render(<UsersPage />);
-    await screen.findByRole("columnheader", {name: "用户（ID / 邮箱）"});
+    await screen.findByRole("columnheader", {name: "邮箱"});
     expect(screen.queryByRole("columnheader", {name: "用户语言"})).toBeNull();
     localStorage.removeItem(viewKey);
 });
@@ -1399,11 +1484,17 @@ it("adds the language column to existing user views and respects later visibilit
 it("removes account generation and CSV export while preserving user management", async () => {
     render(<UsersPage />);
     await waitFor(() => expect((screen.getByRole("button", {name:"刷新"}) as HTMLButtonElement).disabled).toBe(false));
-    fireEvent.click(screen.getByText("批量操作", {selector:"summary"}));
+    const trigger = screen.getByRole("button", {name:"批量操作"});
+    fireEvent.click(trigger);
     expect(screen.queryByText("导出 CSV")).toBeNull();
     expect(screen.queryByText("生成用户")).toBeNull();
     expect(screen.getByRole("button", {name:"发送邮件"})).toBeTruthy();
     expect(screen.getByRole("button", {name:"批量封禁"})).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", {name:"批量发放储备重置"}));
+    const dialog = screen.getByRole("dialog", {name:"发放储备重置"});
+    expect(trigger.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(within(dialog).getByRole("button", {name:"取消"}));
+    expect(document.activeElement).toBe(trigger);
     expect(api.request.mock.calls.some(([path]) => /user\/(generate|dumpCSV)/.test(path))).toBe(false);
 });
 
@@ -1430,7 +1521,7 @@ it("loads user drawer tabs on demand without replacing list filters", async () =
     fireEvent.click(within(drawer).getByRole("button",{name:"关闭"}));
     expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("drawer@example.com");
     expect(screen.getByRole("button",{name:"显示设置"}).closest(".panel-head")).toBeTruthy();
-    expect(view.container.querySelector('.user-toolbar-actions summary')).toBeTruthy();
+    expect(within(view.container).getByRole("button", { name: "批量操作" }).closest(".user-toolbar-actions")).toBeTruthy();
 });
 it("keeps destructive user actions inside more and retains cancellation and confirmation", async () => {
     localStorage.removeItem("admin.users.view.v1");
@@ -1443,7 +1534,7 @@ it("keeps destructive user actions inside more and retains cancellation and conf
         const more = screen.getByRole("button", { name: "更多操作" });
         expect(screen.queryByRole("button", { name: "分配订单" })).toBeNull();
         fireEvent.click(more);
-        const menu=document.querySelector('.admin-row-popover')!;
+        const menu=screen.getByRole("group", {name:"用户更多操作"});
         const reset=within(menu as HTMLElement).getByText("重置订阅");
         const remove=within(menu as HTMLElement).getByText("删除",{exact:true});
         expect(within(menu as HTMLElement).getByRole("button", { name: "分配订单" })).toBeTruthy();

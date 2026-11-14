@@ -1,6 +1,7 @@
 import { AdminFilterBar } from "./AdminFilterBar";
-import { TableViewport } from "../shared/ui";
+import { Table, TableViewport } from "../shared/ui";
 import { AdminChoiceGroup } from "./AdminChoices";
+import { AdminRowMenu } from "./AdminRowMenu";
 import { MailX, Plus, Search } from "lucide-react";
 import { Pager, Empty } from "../shared/ui";
 import { useRef, useState } from "react";
@@ -286,7 +287,7 @@ export function AdminMailBlocklist() {
                                 <th>备注</th>
                                 <th>状态</th>
                                 <th>最后操作</th>
-                                <th>操作</th>
+                                        <th className="table-actions">操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -311,19 +312,10 @@ export function AdminMailBlocklist() {
                                         {formatInstant(row.updated_at)} · 管理员
                                         #{row.administrator_id}
                                     </td>
-                                    <td>
+                                    <td className="table-actions">
                                         <div className="actions">
                                             <button
-                                                disabled={busy}
-                                                onClick={() => {
-                                                    setEditing(row);
-                                                    setEditNote(row.note || "");
-                                                    setError("");
-                                                }}
-                                            >
-                                                编辑备注
-                                            </button>
-                                            <button
+                                                type="button"
                                                 onClick={() => {
                                                     setHistory(row);
                                                     setHistoryPage(1);
@@ -331,31 +323,44 @@ export function AdminMailBlocklist() {
                                             >
                                                 操作记录
                                             </button>
-                                            {!row.released_at && (
+                                            <AdminRowMenu label={`${row.email} 更多操作`}>
                                                 <button
+                                                    type="button"
                                                     disabled={busy}
                                                     onClick={() => {
-                                                        if (
-                                                            window.confirm(
-                                                                `解除 ${row.email} 的人工禁发？不会重发历史邮件，退信或投诉限制仍然有效。`,
-                                                            )
-                                                        )
-                                                            void mutate(
-                                                                "mail-blocklist/change",
-                                                                {
-                                                                    recipient_hash:
-                                                                        row.recipient_hash,
-                                                                    revision:
-                                                                        row.revision,
-                                                                    action: "release",
-                                                                },
-                                                                () => {},
-                                                            );
+                                                        setEditing(row);
+                                                        setEditNote(row.note || "");
+                                                        setError("");
                                                     }}
                                                 >
-                                                    解除禁发
+                                                    编辑备注
                                                 </button>
-                                            )}
+                                                {!row.released_at && (
+                                                    <button
+                                                        type="button"
+                                                        className="danger"
+                                                        disabled={busy}
+                                                        onClick={() => {
+                                                            if (
+                                                                window.confirm(
+                                                                    `解除 ${row.email} 的人工禁发？不会重发历史邮件，退信或投诉限制仍然有效。`,
+                                                                )
+                                                            )
+                                                                void mutate(
+                                                                    "mail-blocklist/change",
+                                                                    {
+                                                                        recipient_hash: row.recipient_hash,
+                                                                        revision: row.revision,
+                                                                        action: "release",
+                                                                    },
+                                                                    () => {},
+                                                                );
+                                                        }}
+                                                    >
+                                                        解除禁发
+                                                    </button>
+                                                )}
+                                            </AdminRowMenu>
                                         </div>
                                     </td>
                                 </tr>
@@ -415,34 +420,39 @@ export function AdminMailBlocklist() {
                             />
                         </label>
                         {error && <p role="alert">{error}</p>}
-                        <button disabled={busy}>保存备注</button>
+                        <button className="primary" disabled={busy}>保存备注</button>
                     </form>
                 </Modal>
             )}
             {history && (
-                <Modal title="禁发操作记录" close={() => setHistory(null)}>
-                    <div className="pad">
-                        <p>{history.email}</p>
-                        <State {...audit} retry={audit.reload}>
-                            {(audit.data || []).map((row) => (
-                                <p key={row.id}>
-                                    {formatInstant(row.created_at)} ·{" "}
-                                    {actions[row.action] || row.action} · 管理员
-                                    #{row.administrator_id}
-                                </p>
-                            ))}
-                        </State>
-                        <Pager
-                            page={historyPage}
-                            total={audit.total}
-                            size={historySize}
-                            loading={audit.loading}
-                            onChange={setHistoryPage}
-                            onSizeChange={(size) => {
-                                setHistorySize(size);
-                                setHistoryPage(1);
-                            }}
-                        />
+                <Modal title="禁发操作记录" variant="modal" className="admin-detail-dialog" close={() => setHistory(null)}>
+                    <div className="admin-detail-body">
+                        <section className="admin-detail-section">
+                            <h3 className="admin-detail-section-head">操作记录</h3>
+                            <dl className="admin-details admin-detail-grid">
+                                <div><dt>禁发邮箱</dt><dd>{history.email}</dd></div>
+                            </dl>
+                            <State {...audit} retry={audit.reload}>
+                                {audit.data?.length ? (
+                                    <Table data={audit.data} columns={[
+                                        ["created_at", "时间", row => formatInstant(row.created_at)],
+                                        ["action", "操作", row => actions[row.action] || row.action],
+                                        ["administrator_id", "管理员", row => `#${row.administrator_id}`],
+                                    ]} />
+                                ) : <Empty text="暂无禁发操作记录" />}
+                            </State>
+                            <Pager
+                                page={historyPage}
+                                total={audit.total}
+                                size={historySize}
+                                loading={audit.loading}
+                                onChange={setHistoryPage}
+                                onSizeChange={(size) => {
+                                    setHistorySize(size);
+                                    setHistoryPage(1);
+                                }}
+                            />
+                        </section>
                     </div>
                 </Modal>
             )}

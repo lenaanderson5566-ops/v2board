@@ -105,6 +105,29 @@ it("keeps DNS inventory read-only and directs configuration to its owning pages"
         ),
     ).toBe(false);
 });
+it("keeps editing visible and confirms credential deletion from more actions", async () => {
+    setup();
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<AdminDDNS />);
+    await screen.findByRole("button", { name: "编辑" });
+    expect(screen.queryByRole("button", { name: "删除" })).toBeNull();
+
+    const trigger = screen.getByRole("button", { name: "更多操作" });
+    const deleteCredential = () => {
+        fireEvent.click(trigger);
+        const menu = screen.getByRole("group", { name: "Zone 更多操作" });
+        fireEvent.click(within(menu).getByRole("button", { name: "删除" }));
+    };
+    deleteCredential();
+    expect(confirm).toHaveBeenCalledWith("删除此凭据？");
+    expect(api.request.mock.calls.some(([path]) => path.endsWith("credentials/drop"))).toBe(false);
+
+    confirm.mockReturnValue(true);
+    deleteCredential();
+    await waitFor(() =>
+        expect(api.request).toHaveBeenCalledWith("test-admin/server/ddns/credentials/drop", { id: 1 }),
+    );
+});
 
 import { NodeDomainBinding, NodeDomainTools } from "./NodeDomains";
 function managedSetup(

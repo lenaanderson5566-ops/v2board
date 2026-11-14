@@ -415,7 +415,7 @@ export function Tickets({
                             >
                                 {tx("取消")}
                             </button>
-                            <button disabled={closing} onClick={closeTicket}>
+                            <button className={isAdmin ? "danger" : undefined} disabled={closing} onClick={closeTicket}>
                                 {tx(closing ? "提交中…" : "关闭工单")}
                             </button>
                         </div>

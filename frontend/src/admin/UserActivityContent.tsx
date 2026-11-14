@@ -27,6 +27,7 @@ export function UserActivityContent({ row }: { row: Row }) {
                 {user && <section className="user-activity-summary" aria-label="账户概况">
                     <dl>
                         <div><dt>账户状态</dt><dd>{Number(user.banned) === 1 ? "已封禁" : "正常"}</dd></div>
+                        <div><dt>当前有效套餐</dt><dd>{user.current_plan_name || "暂无有效周期套餐"}</dd></div>
                         <div><dt>订阅到期</dt><dd><AdminSubscriptionExpiry user={user} /></dd></div>
                         <div><dt>流量包剩余</dt><dd>{formatBytes(user.credit_balance)}</dd></div>
                         <div><dt>累计上传 / 下载</dt><dd>{formatBytes(user.u)} / {formatBytes(user.d)}</dd></div>

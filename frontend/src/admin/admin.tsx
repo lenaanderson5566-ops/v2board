@@ -322,7 +322,8 @@ export function ResourcePage({
             setActionBusy(false);
         }
     }
-    const contentActionsInMenu = kind === "knowledge" || kind === "notices";
+    const secondaryActionsInMenu = kind === "knowledge" || kind === "notices" ||
+        kind === "plans" || kind === "coupons" || kind === "giftcards";
     const secondaryActions = (r: Row) => <>
         {resource.actions?.map(([label, path, extra]) => (
             <button key={label} className={kind === "users" ? "danger" : undefined}
@@ -680,11 +681,11 @@ export function ResourcePage({
                                                       编辑
                                                   </button>
                                               )}
-                                          {!customSecondaryActions && !contentActionsInMenu ? secondaryActions(r) : null}
+                                          {!customSecondaryActions && !secondaryActionsInMenu ? secondaryActions(r) : null}
                                           {kind === "routes" && r.action === "sing_box" && <button onClick={() => setEditing({ ...r, id: undefined, copiedFrom: r.id, remarks: `${r.remarks} · 副本`, node_count: 0, used_by: [] })}>复制</button>}
                                           {extraActions?.(r, context, customSecondaryActions ? secondaryActions(r) : undefined)}
-                                          {contentActionsInMenu && (
-                                              <AdminRowMenu context={context} label={`${r.title} 更多操作`}>
+                                          {secondaryActionsInMenu && (resource.actions || resource.drop) && (
+                                              <AdminRowMenu context={context} label={`${r.title || r.name || `#${r.id}`} 更多操作`}>
                                                   {secondaryActions(r)}
                                               </AdminRowMenu>
                                           )}

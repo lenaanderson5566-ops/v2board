@@ -19,6 +19,7 @@ use App\Services\RiskStatisticsService;
 use App\Services\ClientStrategyService;
 use App\Services\RiskBlacklistService;
 use App\Services\GeoIpService;
+use App\Services\TrafficCreditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -736,7 +737,15 @@ class LogController extends Controller
     {
         $params = $request->validate(['user_id' => 'required|integer|min:1']);
         $id = $params['user_id'];
-        $user = User::query()->find($id, ['id', 'email', 'expired_at', 'banned', 'u', 'd', 'transfer_enable', 'credit_balance']);
+        $user = User::query()->find($id, [
+            'id', 'email', 'expired_at', 'banned', 'u', 'd', 'transfer_enable', 'credit_balance', 'plan_id',
+        ]);
+        if ($user) {
+            $user['current_plan_name'] = $user->plan_id && $user->expired_at !== null && TrafficCreditService::hasPeriod($user)
+                ? Plan::query()->whereKey($user->plan_id)->value('name')
+                : null;
+            $user->makeHidden('plan_id');
+        }
         $events = collect();
         foreach ([[LoginLog::class, 'created_at', '登录'], [SubscribeLog::class, 'created_at', '订阅'],
             [UserConnectionLog::class, 'connected_at', '连接'], [RiskRuleHit::class, 'hit_at', '风控']] as [$model, $time, $kind]) {

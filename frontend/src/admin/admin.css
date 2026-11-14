@@ -56,7 +56,10 @@ body[data-console="admin"] {
     --admin-radius: 8px;
     --admin-space: 16px;
     --admin-control-height: 36px;
+    --admin-row-control-height: 32px;
     --admin-control-radius: 6px;
+    --admin-danger: #b42318;
+    --admin-danger-hover: #fff1f0;
     --admin-surface-soft: #f8fafc;
     --admin-dialog-radius: 10px;
     --admin-shadow: 0 1px 3px #19213808;
@@ -269,8 +272,8 @@ body[data-console="admin"] .button {
     color: var(--admin-text);
     box-shadow: 0 2px 0 #00000004;
 }
-body[data-console="admin"] button:hover,
-body[data-console="admin"] .button:hover {
+body[data-console="admin"] button:not(:disabled):hover,
+body[data-console="admin"] .button:not([aria-disabled="true"]):hover {
     color: var(--accent);
     border-color: var(--accent);
     background: #fff;
@@ -288,9 +291,20 @@ body[data-console="admin"] button[aria-pressed="true"] {
     background: var(--accent);
     border-color: var(--accent);
 }
-body[data-console="admin"] .danger {
-    color: #f5222d;
-    border-color: #f5222d;
+body[data-console="admin"] .danger:not(:disabled) {
+    color: var(--admin-danger);
+    border-color: var(--admin-danger);
+}
+body[data-console="admin"] button.danger:not(:disabled):hover,
+body[data-console="admin"] .button.danger:not([aria-disabled="true"]):hover {
+    color: var(--admin-danger);
+    border-color: var(--admin-danger);
+    background: var(--admin-danger-hover);
+}
+body[data-console="admin"] button:is(.primary, .danger, [aria-pressed="true"]):disabled {
+    color: #777b88;
+    border-color: var(--border);
+    background: #f5f5f5;
 }
 body[data-console="admin"] input,
 body[data-console="admin"] select,
@@ -368,17 +382,24 @@ body[data-console="admin"] :is(th, td).table-actions {
     background: #fff;
     box-shadow: -3px 0 5px #00000005;
 }
-body[data-console="admin"] .table-scroll td .actions button,
-body[data-console="admin"] .table-scroll td .actions .button {
+body[data-console="admin"] .table-scroll td .actions :is(button, .button) {
+    padding-inline: 8px;
+    min-height: var(--admin-row-control-height);
+    min-width: var(--admin-row-control-height);
+}
+body[data-console="admin"] .table-scroll td .actions :is(button, .button):not(.primary) {
     border: 0;
     background: transparent;
     box-shadow: none;
-    color: var(--accent);
-    padding: 0 6px;
-    min-height: 24px;
 }
-body[data-console="admin"] .table-scroll td .actions .danger {
-    color: #f5222d;
+body[data-console="admin"] .table-scroll td .actions :is(button, .button):not(.primary, .danger, :disabled, [aria-disabled="true"]) {
+    color: var(--accent);
+}
+body[data-console="admin"] .table-scroll td .actions :is(button, .button):not(.primary, .danger, :disabled, [aria-disabled="true"]):hover {
+    background: #f2efff;
+}
+body[data-console="admin"] .table-scroll td .actions :is(button, .button).danger:not(:disabled, [aria-disabled="true"]):hover {
+    background: var(--admin-danger-hover);
 }
 body[data-console="admin"] .pager {
     justify-content: flex-end;
@@ -562,39 +583,6 @@ body[data-console="admin"] .row-drag-handle {
     background: transparent;
     box-shadow: none;
     color: #8c8c8c;
-}
-body[data-console="admin"] .admin-bulk-menu {
-    position: relative;
-}
-body[data-console="admin"] .admin-bulk-menu > summary {
-    border: 1px solid #cbd5e1;
-    border-radius: 6px;
-    padding: 4px 15px;
-    cursor: pointer;
-    background: #fff;
-}
-body[data-console="admin"] .admin-bulk-content {
-    position: absolute;
-    z-index: 20;
-    top: 100%;
-    left: 0;
-    min-width: 160px;
-    padding: 4px 0;
-    border-radius: 3px;
-    background: #fff;
-    box-shadow: 0 2px 8px #00000026;
-}
-body[data-console="admin"] .admin-bulk-content button {
-    display: block;
-    width: 100%;
-    text-align: left;
-    border: 0;
-    border-radius: 0;
-    box-shadow: none;
-    padding: 8px 16px;
-}
-body[data-console="admin"] .admin-bulk-content button:hover {
-    background: #f8f9fc;
 }
 body[data-console="admin"] .user-toolbar {
     display: flex;
@@ -940,80 +928,6 @@ body[data-console="admin"] .alert {
         font-size: 32px;
     }
 }
-body[data-console="admin"] .auth-layout {
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #e8eaf2;
-    padding: 24px 0;
-}
-body[data-console="admin"] .auth-brand {
-    display: none;
-}
-body[data-console="admin"] .auth-form {
-    width: 450px;
-    max-width: calc(100% - 32px);
-    padding: 0;
-    min-height: 0;
-}
-body[data-console="admin"] .auth-box {
-    width: 100%;
-    max-width: none;
-    background: white;
-    padding: 28px 24px;
-    border-radius: 4px;
-    box-shadow: 0 2px 5px #00000012;
-}
-body[data-console="admin"] .auth-box .eyebrow {
-    display: none;
-}
-body[data-console="admin"] .auth-box h2 {
-    text-align: center;
-    font-size: 36px;
-    margin: 0 0 12px;
-    font-weight: 600;
-}
-body[data-console="admin"] .auth-box > p {
-    text-align: center;
-    margin-bottom: 28px;
-}
-body[data-console="admin"] .auth-box .field-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-}
-body[data-console="admin"] .auth-box label > span {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
-    clip-path: inset(50%);
-}
-body[data-console="admin"] .auth-box input {
-    height: 40px;
-    background: var(--admin-canvas);
-    border: 0;
-    padding: 10px 14px;
-}
-body[data-console="admin"] .auth-box .form-bottom {
-    position: static;
-    padding: 0;
-    margin: 16px 0 0;
-    border: 0;
-    background: transparent;
-}
-body[data-console="admin"] .auth-box .form-bottom .primary {
-    width: 100%;
-    height: 40px;
-}
-body[data-console="admin"] .auth-box .auth-links {
-    display: flex;
-    justify-content: center;
-    margin: 24px -24px -28px;
-    padding: 20px;
-    background: #f8f9fc;
-    border-radius: 0 0 4px 4px;
-}
 body[data-console="admin"] .admin-drawer .panel > .panel-head h2 {
     display: none;
 }
@@ -1048,13 +962,6 @@ body[data-console="admin"]
     .panel
     > .panel-head:has(.actions:empty) {
     display: none;
-}
-body[data-console="admin"] .auth-box .editor {
-    padding: 0;
-}
-body[data-console="admin"] .auth-box .form-bottom .primary {
-    border-radius: 4px;
-    min-height: 40px;
 }
 body[data-console="admin"] .modal .field-grid {
     display: grid;
@@ -1285,14 +1192,6 @@ body[data-console="admin"] .legacy-dashboard-shortcuts svg {
     display: grid;
     gap: 6px;
 }
-.payment-diagnostic-text {
-    padding: 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-}
-
 /* Clear operation summaries and responsive infrastructure controls. */
 body[data-console="admin"] .infrastructure-notice {
     padding: var(--admin-space);
@@ -2036,10 +1935,6 @@ body[data-console="admin"] .invitation-comparison { min-width: 620px; }
 body[data-console="admin"] .invitation-comparison td { white-space: normal; overflow-wrap: anywhere; }
 
 body[data-console="admin"] .commission-filter-summary { flex-basis: 100%; margin: 0; overflow-wrap: anywhere; }
-body[data-console="admin"] .commission-review-context dl { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; margin: 0; }
-body[data-console="admin"] .commission-review-context dt { color: var(--muted); font-size: 12px; margin-bottom: 5px; }
-body[data-console="admin"] .commission-review-context dd { margin: 0; overflow-wrap: anywhere; }
-@media(max-width:600px) { body[data-console="admin"] .commission-review-context dl { grid-template-columns: minmax(0,1fr); } }
 
 body[data-console="admin"] .invitation-workflow { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:16px; }
 body[data-console="admin"] .invitation-workflow h2 { margin:0 0 8px; font-size:18px; }

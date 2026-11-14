@@ -7,6 +7,7 @@ import { adminInstant as formatInstant } from "./admin-log-time";
 import { useData } from "../shared/ui";
 import { useAdminOperation } from "./admin-operation";
 import { AdminOperationNotice } from "./admin-section";
+import { AdminRowMenu } from "./AdminRowMenu";
 import {
     type CouponCampaign,
     couponCampaignStatuses,
@@ -43,7 +44,7 @@ export function AdminCouponCampaigns() {
                                 <th>范围</th>
                                 <th>进度</th>
                                 <th>状态</th>
-                                <th>操作</th>
+                                <th className="table-actions">操作</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -77,9 +78,10 @@ export function AdminCouponCampaigns() {
                                         {couponCampaignStatuses[batch.status] ||
                                             batch.status}
                                     </td>
-                                    <td>
+                                    <td className="table-actions">
                                         <div className="actions">
                                             <button
+                                                type="button"
                                                 onClick={() =>
                                                     setSelected(batch)
                                                 }
@@ -87,16 +89,19 @@ export function AdminCouponCampaigns() {
                                                 查看明细
                                             </button>
                                             {batch.status === "queued" && (
-                                                <button
-                                                    className="danger"
-                                                    disabled={operation.busy}
-                                                    onClick={() => {
-                                                        operation.clear();
-                                                        setCancelling(batch);
-                                                    }}
-                                                >
-                                                    取消剩余发放
-                                                </button>
+                                                <AdminRowMenu label={`批次 #${batch.id} 更多操作`}>
+                                                    <button
+                                                        type="button"
+                                                        className="danger"
+                                                        disabled={operation.busy}
+                                                        onClick={() => {
+                                                            operation.clear();
+                                                            setCancelling(batch);
+                                                        }}
+                                                    >
+                                                        取消剩余发放
+                                                    </button>
+                                                </AdminRowMenu>
                                             )}
                                         </div>
                                     </td>
@@ -144,14 +149,16 @@ export function AdminCouponCampaigns() {
                             仅取消尚未发出的部分并退回库存，已发出的券继续有效。
                         </p>
                         <AdminOperationNotice notice={operation.notice} />
-                        <div className="actions">
+                        <div className="admin-dialog-actions">
                             <button
+                                type="button"
                                 disabled={operation.busy}
                                 onClick={() => setCancelling(null)}
                             >
                                 继续发放
                             </button>
                             <button
+                                type="button"
                                 className="danger"
                                 disabled={operation.busy}
                                 onClick={() =>

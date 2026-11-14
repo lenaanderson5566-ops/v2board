@@ -10,10 +10,14 @@ export function MfaLogin({
     challenge,
     onComplete,
     onCancel,
+    description,
+    formatError,
 }: {
     challenge: V10MfaChallenge;
     onComplete: () => Promise<void>;
     onCancel: () => void;
+    description?: string;
+    formatError?: (error: unknown, fallback: string) => string;
 }) {
     const [method, setMethod] = useState<MfaMethod>(challenge.preferredMethod),
         [code, setCode] = useState(""),
@@ -33,7 +37,7 @@ export function MfaLogin({
             setSent(true);
             cooldown.start();
         } catch (error) {
-            setError((error as Error).message);
+            setError(formatError ? formatError(error, "Could not send a verification code. Try again.") : (error as Error).message);
         } finally {
             lock.current = false;
             setBusy(false);
@@ -45,7 +49,7 @@ export function MfaLogin({
                 <ShieldCheck size={28} aria-hidden="true" />
             </div>
             <h2>{tx("登录安全验证")}</h2>
-            <p>{tx("密码已验证，请完成安全验证后继续。")}</p>
+            <p>{description ?? tx("密码已验证，请完成安全验证后继续。")}</p>
             <p className="mfa-help">
                 {tx(
                     method === "recovery"
@@ -61,13 +65,20 @@ export function MfaLogin({
                 </p>
             )}
             <form
+                noValidate={Boolean(formatError)}
                 onSubmit={(event) => {
                     event.preventDefault();
                     if (lock.current) return;
+                    if (formatError && !verified && !event.currentTarget.checkValidity()) {
+                        setError(method === "recovery" ? "Enter your recovery code." : "Enter the 6-digit verification code.");
+                        event.currentTarget.querySelector("input")?.focus();
+                        return;
+                    }
                     lock.current = true;
                     setBusy(true);
                     setError("");
                     void (async () => {
+                        let verificationComplete = verified;
                         try {
                             if (!verified) {
                                 await request(mfaFinish(), {
@@ -76,11 +87,15 @@ export function MfaLogin({
                                     verificationCode: code.trim(),
                                 });
                                 setVerified(true);
+                                verificationComplete = true;
                             }
                             setCode("");
                             await onComplete();
                         } catch (error) {
-                            setError((error as Error).message);
+                            const fallback = verificationComplete
+                                ? "Could not open your workspace. Try again."
+                                : "Unable to verify your sign-in. Check the code and try again.";
+                            setError(formatError ? formatError(error, fallback) : (error as Error).message);
                         } finally {
                             lock.current = false;
                             setBusy(false);

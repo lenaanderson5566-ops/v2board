@@ -1,6 +1,7 @@
 import { field } from "./admin-fields";
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
+import { StatusBadge } from "../shared/StatusBadge";
 import {
     Editor,
     Html,
@@ -102,9 +103,16 @@ export function Payments() {
                             ["name", "显示名称"],
                             ["payment", "支付接口"],
                             ["recent_failure_count", "近一小时发起失败", (r) => (
-                                <button type="button" onClick={() => setDiagnosticChannel(r)} aria-label={`查看 ${r.name} 的支付诊断`}>
-                                    查看诊断{r.recent_failure_count == null ? "" : ` · ${r.recent_failure_count} 笔`}
-                                </button>
+                                <div className="admin-payment-diagnostics-cell">
+                                    {r.recent_failure_count == null
+                                        ? <span className="muted">—</span>
+                                        : <StatusBadge tone={Number(r.recent_failure_count) > 0 ? "warning" : "neutral"}>
+                                            {r.recent_failure_count} 笔
+                                        </StatusBadge>}
+                                    <button type="button" onClick={() => setDiagnosticChannel(r)} aria-label={`查看 ${r.name} 的支付诊断`}>
+                                        查看诊断
+                                    </button>
+                                </div>
                             )],
                             ["notify_url", "通知地址"],
                         ]}
@@ -148,7 +156,7 @@ export function Payments() {
                     />
                 </State>
             </Panel>
-            {diagnosticChannel && <Modal title={`${diagnosticChannel.name} · 支付诊断`} close={() => setDiagnosticChannel(null)}>
+            {diagnosticChannel && <Modal title={`${diagnosticChannel.name} · 支付诊断`} variant="modal" className="admin-detail-dialog" close={() => setDiagnosticChannel(null)}>
                 <RecentPaymentFailures channelId={diagnosticChannel.id} />
             </Modal>}
             {editing && (
@@ -175,9 +183,9 @@ export function Payments() {
 
 function RecentPaymentFailures({ channelId }: { channelId: number }) {
     const history = useData<Row>(admin(`payment/${channelId}/recentFailures`));
-    return <State {...history} retry={history.reload}>
-        {history.data && <PaymentChannelFailures history={history.data} />}
-    </State>;
+    return <div className="admin-detail-body"><State {...history} retry={history.reload}>
+        {history.data && <div className="admin-detail-stack"><PaymentChannelFailures history={history.data} /></div>}
+    </State></div>;
 }
 
 function PaymentEditor({

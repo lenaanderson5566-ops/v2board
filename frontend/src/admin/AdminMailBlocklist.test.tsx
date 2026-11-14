@@ -6,6 +6,7 @@ import {
     render,
     screen,
     waitFor,
+    within,
 } from "@testing-library/react";
 const mocks = vi.hoisted(() => ({ request: vi.fn(), reload: vi.fn() }));
 vi.mock("../shared/api", () => ({
@@ -35,7 +36,7 @@ vi.mock("../shared/ui", async (importOriginal) => ({
               ],
     }),
     State: ({ children }: any) => <>{children}</>,
-    Modal: ({ children }: any) => <div role="dialog">{children}</div>,
+    Modal: ({ children, title }: any) => <div role="dialog" aria-label={title}>{children}</div>,
 }));
 import { AdminMailBlocklist } from "./AdminMailBlocklist";
 afterEach(() => {
@@ -63,7 +64,9 @@ it("adds a restriction with a note and escapes note markup", async () => {
 it("sends the revision when changing a note", async () => {
     mocks.request.mockResolvedValue({ data: true });
     render(<AdminMailBlocklist />);
-    fireEvent.click(screen.getByRole("button", { name: "编辑备注" }));
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
+    const actions = within(screen.getByRole("group", { name: "blocked@example.test 更多操作" }));
+    fireEvent.click(actions.getByRole("button", { name: "编辑备注" }));
     fireEvent.change(screen.getByLabelText("备注（选填）"), {
         target: { value: "reviewed" },
     });
@@ -80,10 +83,12 @@ it("sends the revision when changing a note", async () => {
 it("requires confirmation before releasing and never sends mail", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     render(<AdminMailBlocklist />);
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     fireEvent.click(screen.getByRole("button", { name: "解除禁发" }));
     expect(mocks.request).not.toHaveBeenCalled();
     confirm.mockReturnValue(true);
     mocks.request.mockResolvedValue({ data: true });
+    fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
     fireEvent.click(screen.getByRole("button", { name: "解除禁发" }));
     await waitFor(() =>
         expect(mocks.request).toHaveBeenCalledWith("mail-blocklist/change", {
@@ -93,4 +98,14 @@ it("requires confirmation before releasing and never sends mail", async () => {
         }),
     );
     confirm.mockRestore();
+});
+
+it("shows audit time, action, and administrator in separate columns", () => {
+    render(<AdminMailBlocklist />);
+    expect(screen.queryByRole("dialog", { name: "禁发操作记录" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "操作记录" }));
+    const dialog = within(screen.getByRole("dialog", { name: "禁发操作记录" }));
+    expect(dialog.getByText("blocked@example.test")).toBeTruthy();
+    expect(dialog.getAllByRole("columnheader").map(header => header.textContent)).toEqual(["时间", "操作", "管理员"]);
+    expect(dialog.getAllByRole("cell").map(cell => cell.textContent)).toEqual(["date", "加入禁发", "#1"]);
 });

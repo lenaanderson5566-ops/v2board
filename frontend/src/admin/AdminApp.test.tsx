@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
     logout: vi.fn(),
     navigate: vi.fn(),
     initialize: vi.fn(),
+    setAdminSessionLanguage: vi.fn(async (_authenticated: boolean) => {}),
     hasSession: true,
 }));
 vi.mock("../shared/api", () => ({
@@ -26,8 +27,13 @@ vi.mock("../shared/browser-session", () => ({
     initializeBrowserSession: mocks.initialize,
     hasBrowserSession: () => mocks.hasSession,
 }));
-vi.mock("../shared/i18n", () => ({ tx: (text: string) => text }));
-vi.mock("./AdminAuth", () => ({ AdminAuth: () => <div>Admin login</div> }));
+vi.mock("../shared/i18n", () => ({
+    tx: (text: string) => text,
+    setAdminSessionLanguage: mocks.setAdminSessionLanguage,
+}));
+vi.mock("./AdminAuth", () => ({
+    AdminAuth: ({ notice }: { notice?: string }) => <div>Admin login{notice && <p>{notice}</p>}</div>,
+}));
 vi.mock("./admin-workspace", () => ({
     default: ({ path, logout }: { path: string; logout: () => void }) => (
         <div className="admin-content">
@@ -61,10 +67,12 @@ it("restores a session only after the backend confirms administrative access", a
         "user/info",
         "test-admin/config/fetch",
     ]);
+    expect(mocks.setAdminSessionLanguage).toHaveBeenCalledWith(true, expect.any(Function));
     fireEvent.click(screen.getByText("Logout"));
     fireEvent.click(screen.getByText("Logout"));
     await waitFor(() => expect(mocks.logout).toHaveBeenCalledOnce());
     await screen.findByText("Admin login");
+    expect(mocks.setAdminSessionLanguage).toHaveBeenLastCalledWith(false);
 });
 it("returns to login when the saved session lacks administrative access", async () => {
     localStorage.setItem("admin-test", "test-session");
@@ -86,17 +94,17 @@ it("retains an unverified administrative session after a temporary failure and r
         .mockResolvedValueOnce({ data: { email: "admin@example.test" } })
         .mockResolvedValueOnce({ data: {} });
     render(<AdminApp />);
-    await screen.findByText("accountLoadFailed");
+    await screen.findByText("Check your connection and try again.");
     expect(screen.queryByText("Admin login")).toBeNull();
     expect(screen.queryByText("internal detail")).toBeNull();
     // The recovery DOM can appear before React runs its focus effect.
     await waitFor(() =>
         expect(document.activeElement).toBe(
-            screen.getByRole("heading", { name: "页面暂时无法加载" }),
+            screen.getByRole("heading", { name: "This page could not load" }),
         ),
     );
-    fireEvent.click(screen.getByRole("button", { name: "重试" }));
-    fireEvent.click(screen.getByRole("button", { name: /正在加载|重试/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: /Checking|Retry/ }));
     await screen.findByText("Admin workspace");
     expect(mocks.request.mock.calls.map((call) => call[0])).toEqual([
         "user/info",
@@ -109,9 +117,9 @@ it("keeps bootstrap failures recoverable without showing a misleading login form
     mocks.initialize.mockRejectedValueOnce(new Error("offline bootstrap"));
     mocks.request.mockResolvedValue({ data: { email: "admin@example.test" } });
     render(<AdminApp />);
-    await screen.findByText("accountLoadFailed");
+    await screen.findByText("Check your connection and try again.");
     expect(mocks.request).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "重试" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
     await screen.findByText("Admin workspace");
     expect(mocks.initialize).toHaveBeenCalledTimes(2);
 });
@@ -123,8 +131,8 @@ it("respects Retry-After while administrative session reads are rate limited", a
         }),
     );
     render(<AdminApp />);
-    await screen.findByText("accountLoadFailed");
-    const retry = screen.getByRole("button", { name: "retryIn" });
+    await screen.findByText("Check your connection and try again.");
+    const retry = screen.getByRole("button", { name: /^Retry in \d+s$/ });
     expect((retry as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(retry);
     expect(mocks.request).toHaveBeenCalledTimes(1);
@@ -157,7 +165,7 @@ it("clears administrative data and shows a persistent error if offline revocatio
     fireEvent.click(screen.getByText("Logout"));
     await screen.findByText("Admin login");
     expect(screen.queryByText("Admin workspace")).toBeNull();
-    expect(screen.getByText("退出未完成，请联网后重试。")).toBeTruthy();
+    expect(screen.getByText("Sign-out is incomplete. Reconnect and try again.")).toBeTruthy();
 });
 
 it.each(["logout", "expired"])(

@@ -1,58 +1,41 @@
+import { useId, useRef, useState, type FormEvent } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { PasskeyLogin } from "../shared/PasskeyLogin";
-import { useRef, useState } from "react";
-import {
-    boot,
-    request,
-    admin,
-    logoutSession,
-    navigate,
-    type Row,
-} from "../shared/api";
-import { Editor, type Field } from "../shared/ui";
-import { tx } from "../shared/i18n";
+import { admin, logoutSession, navigate, request, type Row } from "../shared/api";
 import { MfaLogin } from "../shared/MfaLogin";
 import { useCooldown } from "../shared/useCooldown";
 import type { V10MfaChallenge } from "../shared/v10-types";
+import { WorkspaceAccess } from "./WorkspaceAccess";
+
+function messageFor(error: unknown, fallback: string): string {
+    const reason = error as { status?: number; code?: string } | null;
+    if (reason?.status === 429) return "Too many attempts. Try again later.";
+    if (reason?.code === "NETWORK_ERROR" || reason?.code === "REQUEST_TIMEOUT")
+        return "Check your connection and try again.";
+    return fallback;
+}
 
 export function AdminAuth({
     mode,
+    notice,
     onLogin,
 }: {
     mode: string;
-    onLogin: (user: Row) => void;
+    notice?: string;
+    onLogin: (user: Row) => void | boolean | Promise<boolean>;
 }) {
     const forget = mode === "forget";
-    const [mfa, setMfa] = useState<V10MfaChallenge | null>(null),
-        [mailError, setMailError] = useState(""),
-        [sending, setSending] = useState(false);
-    const formRef = useRef<HTMLDivElement>(null),
-        sendingLock = useRef(false);
+    const [mfa, setMfa] = useState<V10MfaChallenge | null>(null);
+    const [error, setError] = useState("");
+    const [saving, setSaving] = useState(false);
+    const [sending, setSending] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
+    const passwordId = useId();
+    const savingLock = useRef(false);
+    const sendingLock = useRef(false);
+    const email = useRef<HTMLInputElement>(null);
     const cooldown = useCooldown();
-    const fields: Field[] = [
-        {
-            key: "email",
-            label: tx("邮箱地址"),
-            type: "email",
-            autoComplete: "email",
-            required: true,
-        },
-        {
-            key: "password",
-            label: forget ? tx("新密码") : tx("密码"),
-            type: "password",
-            autoComplete: forget ? "new-password" : "current-password",
-            required: true,
-        },
-        ...(forget
-            ? [
-                  {
-                      key: "email_code",
-                      label: tx("邮箱验证码"),
-                      required: true,
-                  } as Field,
-              ]
-            : []),
-    ];
+
     async function completeLogin() {
         try {
             await request(admin("config/fetch"));
@@ -61,125 +44,129 @@ export function AdminAuth({
             throw error;
         }
         const info = await request("user/info");
-        onLogin(info.data);
-        navigate("overview");
+        if (await onLogin(info.data) !== false) navigate("overview");
     }
-    if (mfa)
-        return (
-            <div className="auth-layout">
+
+    function validEmail() {
+        const input = email.current;
+        if (input?.validity.valid) return true;
+        setError("Enter a valid email address.");
+        input?.focus();
+        return false;
+    }
+
+    async function sendCode() {
+        if (savingLock.current || sendingLock.current || cooldown.active || !validEmail()) return;
+        sendingLock.current = true;
+        setSending(true);
+        setError("");
+        try {
+            await request("passport/comm/sendEmailVerify", { email: email.current!.value, isforget: 1 });
+            cooldown.start();
+        } catch (reason) {
+            setError(messageFor(reason, "Could not send a code. Check the email address and try again."));
+        } finally {
+            sendingLock.current = false;
+            setSending(false);
+        }
+    }
+
+    async function submit(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        if (savingLock.current || sendingLock.current || !validEmail()) return;
+        const form = event.currentTarget;
+        const password = form.elements.namedItem("password") as HTMLInputElement;
+        if (!password.value || (forget && [...password.value].length < 8)) {
+            setError(forget ? "Enter a new password with at least 8 characters." : "Enter your password.");
+            password.focus();
+            return;
+        }
+        const body = Object.fromEntries(new FormData(form));
+        if (forget && !/^\d{6}$/.test(String(body.email_code ?? ""))) {
+            setError("Enter the 6-digit verification code.");
+            (form.elements.namedItem("email_code") as HTMLInputElement).focus();
+            return;
+        }
+        savingLock.current = true;
+        setSaving(true);
+        setError("");
+        try {
+            if (forget) {
+                await request("passport/auth/forget", body);
+                navigate("login");
+                return;
+            }
+            const login = await request("passport/auth/login", body);
+            if (login.data.mfaRequired) {
+                setMfa(login.data as V10MfaChallenge);
+                return;
+            }
+            await completeLogin();
+        } catch (reason) {
+            setError(messageFor(reason, forget
+                ? "Unable to reset your password. Check your code and try again."
+                : "Unable to sign in. Check your email and password, then try again."));
+        } finally {
+            savingLock.current = false;
+            setSaving(false);
+        }
+    }
+
+    return (
+        <WorkspaceAccess>
+            {mfa ? (
                 <MfaLogin
                     challenge={mfa}
                     onCancel={() => setMfa(null)}
                     onComplete={completeLogin}
+                    description="Complete verification to continue."
+                    formatError={messageFor}
                 />
-            </div>
-        );
-    return (
-        <div className="auth-layout">
-            <section className="auth-form">
-                <div className="auth-box" ref={formRef}>
-                    <span className="eyebrow">ADMIN CONSOLE</span>
-                    <h2>{forget ? tx("重置密码") : boot.title}</h2>
-                    <p className="muted">
-                        {forget
-                            ? tx("使用邮箱验证码设置新密码")
-                            : tx("登录统一管理后台")}
+            ) : (
+                <>
+                    <h1>{forget ? "Reset your password" : "Sign in"}</h1>
+                    <p className="workspace-access-intro">
+                        {forget ? "Use a code sent to your email to set a new password." : "Continue to your workspace."}
                     </p>
-                    {!forget && <PasskeyLogin onMfa={setMfa} onComplete={completeLogin} />}
-                    <Editor
-                        key={mode}
-                        warnUnsaved={false}
-                        fields={fields.map((field) => ({
-                            ...field,
-                            placeholder: field.label,
-                        }))}
-                        initial={{}}
-                        submit={forget ? tx("重置密码") : tx("登录")}
-                        onSave={async (body) => {
-                            if (forget) {
-                                await request("passport/auth/forget", {
-                                    ...body,
-                                });
-                                navigate("login");
-                                return;
-                            }
-                            const login = await request("passport/auth/login", {
-                                email: body.email,
-                                password: body.password,
-                            });
-                            if (login.data.mfaRequired) {
-                                setMfa(login.data as V10MfaChallenge);
-                                return;
-                            }
-                            await completeLogin();
-                        }}
-                    >
+                    {notice && <p className="alert" role="status">{notice}</p>}
+                    <form className="workspace-access-form" noValidate aria-busy={saving || sending} onSubmit={(event) => void submit(event)}>
+                        {error && <p className="alert" role="alert">{error}</p>}
+                        <label>
+                            Email address
+                            <input ref={email} type="email" name="email" autoComplete="email" required disabled={saving} />
+                        </label>
                         {forget && (
-                            <>
-                                <button
-                                    type="button"
-                                    disabled={sending || cooldown.active}
-                                    onClick={() => {
-                                        if (
-                                            sendingLock.current ||
-                                            cooldown.active
-                                        )
-                                            return;
-                                        sendingLock.current = true;
-                                        setMailError("");
-                                        setSending(true);
-                                        void (async () => {
-                                            try {
-                                                const email =
-                                                    formRef.current?.querySelector<HTMLInputElement>(
-                                                        'input[type="email"]',
-                                                    )?.value;
-                                                if (!email)
-                                                    throw new Error(
-                                                        tx("请填写邮箱"),
-                                                    );
-                                                await request(
-                                                    "passport/comm/sendEmailVerify",
-                                                    {
-                                                        email,
-                                                        isforget: 1,
-                                                    },
-                                                );
-                                                cooldown.start();
-                                            } catch (error) {
-                                                setMailError(
-                                                    (error as Error).message,
-                                                );
-                                            } finally {
-                                                sendingLock.current = false;
-                                                setSending(false);
-                                            }
-                                        })();
-                                    }}
-                                >
-                                    {tx(
-                                        sending
-                                            ? "发送中…"
-                                            : cooldown.active
-                                              ? "验证码已发送，60秒后可以重新发送。"
-                                              : "发送邮箱验证码",
-                                    )}
+                            <div className="workspace-access-code">
+                                <label>
+                                    Verification code
+                                    <input name="email_code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} required disabled={saving} />
+                                </label>
+                                <button type="button" disabled={saving || sending || cooldown.active} onClick={() => void sendCode()}>
+                                    {sending ? "Sending…" : cooldown.active ? `Resend in ${cooldown.remaining}s` : "Send code"}
                                 </button>
-                                {mailError && (
-                                    <p role="alert" className="alert">
-                                        {mailError}
-                                    </p>
-                                )}
-                            </>
+                            </div>
                         )}
-                    </Editor>
-                    <div className="auth-links">
-                        <a href={forget ? "#/login" : "#/forget"}>
-                            {forget ? tx("登录") : tx("忘记密码？")}
-                        </a>
-                    </div>
-                </div>
-            </section>
-        </div>
+                        <div className="workspace-access-password">
+                            <label htmlFor={passwordId}>{forget ? "New password" : "Password"}</label>
+                            <div>
+                                <input id={passwordId} type={showPassword ? "text" : "password"} name="password"
+                                    autoComplete={forget ? "new-password" : "current-password"} required disabled={saving} />
+                                <button type="button" aria-label={showPassword ? "Hide password" : "Show password"}
+                                    aria-controls={passwordId} disabled={saving} onClick={() => setShowPassword(visible => !visible)}>
+                                    {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+                                </button>
+                            </div>
+                        </div>
+                        <button type="submit" className="workspace-access-submit" disabled={saving || sending}>
+                            {saving ? (forget ? "Resetting…" : "Signing in…") : (forget ? "Reset password" : "Sign in")}
+                        </button>
+                    </form>
+                    {!forget && <PasskeyLogin onMfa={setMfa} onComplete={completeLogin} disabled={saving} formatError={messageFor} />}
+                    <a className="workspace-access-link" href={forget ? "#/login" : "#/forget"}>
+                        {forget ? "Back to sign in" : "Forgot your password?"}
+                    </a>
+                </>
+            )}
+        </WorkspaceAccess>
     );
 }

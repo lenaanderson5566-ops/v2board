@@ -16,8 +16,10 @@ import {
     logoutSession,
     type Row,
 } from "../shared/api";
-import { tx } from "../shared/i18n";
+import { setAdminSessionLanguage } from "../shared/i18n";
 import { useRetryCountdown } from "../shared/use-retry-countdown";
+import { setWorkspaceAccessDocument } from "../shared/runtime-config";
+import { WorkspaceAccess } from "./WorkspaceAccess";
 import "./admin-shell-experience.css";
 
 export default function AdminApp() {
@@ -40,19 +42,27 @@ export default function AdminApp() {
         setLoading(false);
         retrying.current = false;
         authenticated.current = next !== null;
+        if (!next) {
+            setWorkspaceAccessDocument();
+            void setAdminSessionLanguage(false);
+        }
         setUser(next);
+    }
+    async function enterWorkspace(next: Row, isCurrent = () => true) {
+        const epoch = sessionEpoch.current;
+        const current = () => sessionEpoch.current === epoch && isCurrent();
+        await setAdminSessionLanguage(true, current);
+        if (!current()) return false;
+        updateUser(next);
+        return true;
     }
     async function logout() {
         if (loggingOut.current) return;
         loggingOut.current = true;
         try {
             await logoutSession();
-        } catch (reason) {
-            setError(
-                reason instanceof Error
-                    ? reason.message
-                    : "退出未完成，请联网后重试。",
-            );
+        } catch {
+            setError("Sign-out is incomplete. Reconnect and try again.");
         } finally {
             updateUser(null);
             navigate("login");
@@ -127,7 +137,7 @@ export default function AdminApp() {
                 if (current()) {
                     setError("");
                     setRetryAt(0);
-                    updateUser(result.data);
+                    await enterWorkspace(result.data, current);
                 }
             } catch (cause) {
                 if (!current()) return;
@@ -168,27 +178,29 @@ export default function AdminApp() {
     }, [sessionError]);
     if (loading && !sessionError)
         return (
-            <div className="state full">
-                <span className="spinner" />
-                {tx("正在加载工作空间…")}
-            </div>
+            <WorkspaceAccess>
+                <p className="workspace-access-loading" role="status">
+                    <span className="spinner" aria-hidden="true" />
+                    Checking your session…
+                </p>
+            </WorkspaceAccess>
         );
     if (sessionError)
         return (
-            <main className="admin-session-recovery">
+            <WorkspaceAccess>
                 <section
                     aria-labelledby="admin-recovery-title"
                     aria-busy={loading}
                 >
                     <h1 id="admin-recovery-title" tabIndex={-1}>
-                        {tx("页面暂时无法加载")}
+                        This page could not load
                     </h1>
                     <p role="alert">
-                        {tx("accountLoadFailed", { ns: "experience" })}
+                        Check your connection and try again.
                     </p>
                     <button
                         type="button"
-                        className="primary"
+                        className="workspace-access-submit"
                         disabled={loading || retryIn > 0}
                         onClick={() => {
                             if (retrying.current || retryIn > 0) return;
@@ -197,23 +209,17 @@ export default function AdminApp() {
                         }}
                     >
                         {loading
-                            ? tx("正在加载…")
+                            ? "Checking…"
                             : retryIn > 0
-                              ? tx("retryIn", {
-                                    ns: "pricing",
-                                    seconds: retryIn,
-                                })
-                              : tx("重试")}
+                              ? `Retry in ${retryIn}s`
+                              : "Retry"}
                     </button>
                 </section>
-            </main>
+            </WorkspaceAccess>
         );
     if (!user)
         return (
-            <>
-                {error && <div className="alert">{error}</div>}
-                <AdminAuth key={path} mode={path} onLogin={updateUser} />
-            </>
+            <AdminAuth key={path} mode={path} notice={error} onLogin={enterWorkspace} />
         );
     return <AdminWorkspace path={route} user={user} logout={logout} />;
 }

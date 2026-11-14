@@ -1,0 +1,22 @@
+.client-diagnostic-events {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+
+body[data-console="admin"] .client-diagnostic-events :is(th, td) {
+    padding-inline: 12px;
+}
+
+body[data-console="admin"] .client-diagnostic-events td {
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+.client-diagnostic-events tr:last-child td {
+    border-bottom: 0;
+}
+
+.client-diagnostic-events :is(th, td):last-child {
+    text-align: end;
+    font-variant-numeric: tabular-nums;
+}

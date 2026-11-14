@@ -75,27 +75,3 @@ body[data-console="admin"] .admin-navigation-empty {
         margin-top: 12px;
     }
 }
-body[data-console="admin"] .admin-session-recovery {
-    min-height: 100dvh;
-    display: grid;
-    place-items: center;
-    padding: 24px;
-}
-body[data-console="admin"] .admin-session-recovery > section {
-    width: 100%;
-    max-width: 460px;
-    padding: 28px;
-    background: #fff;
-    border: 1px solid var(--border);
-    border-radius: 12px;
-}
-body[data-console="admin"] .admin-session-recovery h1 {
-    font-size: 22px;
-    margin: 0 0 12px;
-    color: var(--admin-heading);
-}
-body[data-console="admin"] .admin-session-recovery p {
-    line-height: 1.7;
-    color: var(--muted);
-    margin-bottom: 20px;
-}

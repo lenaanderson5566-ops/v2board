@@ -1,0 +1,196 @@
+body[data-console="admin"] .workspace-access {
+    display: grid;
+    min-height: 100dvh;
+    max-width: none;
+    place-items: center;
+    padding: clamp(18px, 5vw, 64px);
+    background: #f2f1eb;
+    color: #172f2a;
+    font-family: "Instrument Sans", system-ui, sans-serif;
+}
+
+.workspace-access-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 0.96fr) minmax(0, 1fr);
+    width: min(960px, 100%);
+    min-height: 590px;
+    overflow: hidden;
+    border: 1px solid #dadfd6;
+    border-radius: 24px;
+    background: #fffef9;
+    box-shadow: 0 24px 70px #283c2814;
+}
+
+.workspace-access-art {
+    position: relative;
+    isolation: isolate;
+    background:
+        linear-gradient(90deg, #f5f8e919 1px, transparent 1px) center / 38px 38px,
+        linear-gradient(#f5f8e919 1px, transparent 1px) center / 38px 38px,
+        radial-gradient(ellipse at 80% 16%, #8bb69b, transparent 59%),
+        linear-gradient(148deg, #203e36 15%, #386554 70%, #193731);
+}
+
+.workspace-access-art::before,
+.workspace-access-art::after {
+    content: "";
+    position: absolute;
+    inset: 17% 10% 18% 14%;
+    border: 1px solid #eef5ca89;
+    border-radius: 48% 48% 8% 8%;
+    transform: rotate(-36deg);
+}
+
+.workspace-access-art::before {
+    background: linear-gradient(153deg, #c3d9a944, #e5f2ca0a);
+    box-shadow: inset 0 0 50px #f0ffd518;
+}
+
+.workspace-access-art::after {
+    inset: 26% 17% 25% 22%;
+    border-color: #eef5ca60;
+    transform: rotate(36deg);
+}
+
+.workspace-access-content {
+    min-width: 0;
+    align-self: center;
+    padding: clamp(28px, 5.2vw, 72px);
+}
+
+.workspace-access-mark {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    margin-bottom: 23px;
+    border: 1px solid #d1ded4;
+    border-radius: 12px;
+    background: #edf3eb;
+    color: #285c4c;
+}
+
+.workspace-access :is(h1, .mfa-login h2) {
+    margin: 0 0 8px;
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 650;
+    line-height: 1.12;
+    letter-spacing: -0.045em;
+}
+
+.workspace-access-intro {
+    margin: 0 0 28px;
+    color: #53675e;
+    line-height: 1.55;
+}
+
+.workspace-access-form {
+    display: grid;
+    gap: 16px;
+}
+
+body[data-console="admin"] .workspace-access label {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+    color: #223f35;
+    font-size: 14px;
+    font-weight: 550;
+}
+
+body[data-console="admin"] .workspace-access :is(input, select) {
+    width: 100%;
+    min-height: 46px;
+    margin: 0;
+    border: 1px solid #bfcfc5;
+    border-radius: 8px;
+    background: #fff;
+    color: #172f2a;
+    font-size: 16px;
+}
+
+body[data-console="admin"] .workspace-access :is(input, select):focus {
+    border-color: #326b58;
+    box-shadow: 0 0 0 3px #326b5826;
+}
+
+body[data-console="admin"] .workspace-access button {
+    min-height: 44px;
+    border-radius: 8px;
+    box-shadow: none;
+    font-weight: 550;
+    white-space: normal;
+}
+
+body[data-console="admin"] .workspace-access :is(.workspace-access-submit, .primary):not(:disabled) {
+    border-color: #245343;
+    background: #245343;
+    color: #fff;
+}
+
+body[data-console="admin"] .workspace-access :is(.workspace-access-submit, .primary):not(:disabled):hover {
+    background: #193e32;
+}
+
+body[data-console="admin"] .workspace-access :is(button, a):focus-visible {
+    outline-color: #326b58;
+}
+
+.workspace-access-code {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+}
+
+.workspace-access-password {
+    display: grid;
+    gap: 6px;
+}
+
+.workspace-access-password > div { position: relative; }
+body[data-console="admin"] .workspace-access-password input { padding-inline-end: 49px; }
+body[data-console="admin"] .workspace-access-password button {
+    position: absolute;
+    inset: 1px 1px 1px auto;
+    display: grid;
+    width: 44px;
+    min-height: 0;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+}
+
+.workspace-access-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    margin-top: 10px;
+    color: #245343;
+    font-weight: 550;
+}
+
+.workspace-access .alert {
+    margin: 10px 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+body[data-console="admin"] .workspace-access .mfa-login {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.workspace-access .mfa-emblem { display: none; }
+.workspace-access .mfa-login > p { color: #53675e; }
+.workspace-access .passkey-login { margin: 12px 0 0; }
+.workspace-access-loading { display: flex; align-items: center; gap: 12px; }
+
+@media (max-width: 700px) {
+    .workspace-access-shell { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+    .workspace-access-art { display: none; }
+}

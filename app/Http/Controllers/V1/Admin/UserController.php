@@ -91,20 +91,33 @@ class UserController extends Controller
         $res = $userModel->forPage($current, $pageSize)
             ->get();
         \App\Services\AdminUserIdentity::append($res);
+        $userIds = $res->pluck('id');
         $lastConnections = \App\Models\UserOnlineSnapshot::query()
-            ->whereIn('user_id', $res->pluck('id'))->where('source', 'alive')
+            ->whereIn('user_id', $userIds)->where('source', 'alive')
             ->select('user_id')->selectRaw('MAX(online_at) AS last_connected_at')
             ->groupBy('user_id')->pluck('last_connected_at', 'user_id');
         $lastSubscriptions = \App\Models\SubscribeLog::query()
-            ->whereIn('user_id', $res->pluck('id'))
+            ->whereIn('user_id', $userIds)
             ->select('user_id')->selectRaw('MAX(created_at) AS last_subscribe_at')
             ->groupBy('user_id')->pluck('last_subscribe_at', 'user_id');
+        // A verified external payment contributes its principal in the order currency.
+        $recharges = Order::query()
+            ->join('v2_user', 'v2_order.user_id', '=', 'v2_user.id')
+            ->whereIn('v2_order.user_id', $userIds)
+            ->whereColumn('v2_order.currency', 'v2_user.currency')
+            ->where('period', 'deposit')->where('v2_order.plan_id', 0)->where('status', 3)
+            ->where('total_amount', '>', 0)->where('paid_at', '>', 0)
+            ->where('payment_id', '>', 0)->whereRaw("COALESCE(TRIM(callback_no), '') <> ''")
+            ->whereNotIn(DB::raw('TRIM(callback_no)'), ['manual_operation', '佣金划转 Commission transfer'])
+            ->select('v2_order.user_id')->selectRaw('SUM(total_amount) AS amount')
+            ->groupBy('v2_order.user_id')->pluck('amount', 'user_id');
         foreach ($res as $row) {
             $row['last_subscribe_at'] = (int) $lastSubscriptions->get($row->id) ?: null;
             $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
+            $row['total_recharge_amount'] = (int) $recharges->get($row->id, 0);
         }
         $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
-        $alive = \App\Services\OnlineDeviceService::forUsers($res->pluck('id')->all());
+        $alive = \App\Services\OnlineDeviceService::forUsers($userIds->all());
         for ($i = 0; $i < count($res); $i++) {
             if ($plans->has($res[$i]['plan_id'])) $res[$i]['plan_name'] = $plans->get($res[$i]['plan_id']);
             //统计在线设备

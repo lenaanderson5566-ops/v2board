@@ -3,34 +3,34 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 145089,
-      "startupBytes": 477968,
+      "startupGzipBytes": 145120,
+      "startupBytes": 478114,
       "startupFileCount": 17,
       "largestStartupAssets": [
         {
-          "file": "assets/render-app-Di9wnNui.js",
-          "bytes": 210023,
-          "gzipBytes": 65539
+          "file": "assets/render-app-rAtkEjqe.js",
+          "bytes": 210010,
+          "gzipBytes": 65530
         },
         {
-          "file": "assets/createLucideIcon-CRNwcWun.js",
-          "bytes": 208406,
-          "gzipBytes": 55042
+          "file": "assets/api-CuFforp1.js",
+          "bytes": 208541,
+          "gzipBytes": 55121
         },
         {
-          "file": "assets/app-CUqb3Df1.js",
-          "bytes": 12755,
-          "gzipBytes": 5346
+          "file": "assets/app-D4Wd88nf.js",
+          "bytes": 12717,
+          "gzipBytes": 5326
         },
         {
-          "file": "assets/runtime-config-DXkPanaE.js",
-          "bytes": 9532,
-          "gzipBytes": 4234
+          "file": "assets/runtime-config-BJ8nrd11.js",
+          "bytes": 9732,
+          "gzipBytes": 4318
         },
         {
-          "file": "assets/BrowserNoticeView-D2xd4AxF.js",
-          "bytes": 8072,
-          "gzipBytes": 3348
+          "file": "assets/BrowserNoticeView-DfVpFtEy.js",
+          "bytes": 8059,
+          "gzipBytes": 3339
         }
       ],
       "budget": 163840,
@@ -38,77 +38,77 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 145089,
-          "bytes": 477968,
+          "gzipBytes": 145120,
+          "bytes": 478114,
           "fileCount": 17
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 213758,
-          "bytes": 794449,
+          "gzipBytes": 213971,
+          "bytes": 795034,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 227138,
-          "bytes": 839390,
+          "gzipBytes": 227285,
+          "bytes": 839883,
           "fileCount": 34
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 217085,
-          "bytes": 761046,
+          "gzipBytes": 217298,
+          "bytes": 761631,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 230465,
-          "bytes": 805987,
+          "gzipBytes": 230612,
+          "bytes": 806480,
           "fileCount": 34
         }
       ],
-      "totalBytes": 3564475,
+      "totalBytes": 3564235,
       "fileCount": 352
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 315905,
-      "startupBytes": 1048817,
+      "startupGzipBytes": 318034,
+      "startupBytes": 1057734,
       "startupFileCount": 27,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-BJ4IPPze.js",
-          "bytes": 320326,
-          "gzipBytes": 91943
+          "file": "assets/AdminApp-CwhguBKC.js",
+          "bytes": 322570,
+          "gzipBytes": 92633
         },
         {
-          "file": "assets/render-app-Di9wnNui.js",
-          "bytes": 210023,
-          "gzipBytes": 65539
+          "file": "assets/render-app-rAtkEjqe.js",
+          "bytes": 210010,
+          "gzipBytes": 65530
         },
         {
-          "file": "assets/createLucideIcon-CRNwcWun.js",
-          "bytes": 208406,
-          "gzipBytes": 55042
+          "file": "assets/api-CuFforp1.js",
+          "bytes": 208541,
+          "gzipBytes": 55121
         },
         {
-          "file": "assets/admin-status-CYhX3y70.js",
-          "bytes": 116097,
-          "gzipBytes": 47476
+          "file": "assets/admin-status-CxJ22Hks.js",
+          "bytes": 116078,
+          "gzipBytes": 47464
         },
         {
-          "file": "assets/AdminApp-CSQeTGmC.css",
-          "bytes": 71842,
-          "gzipBytes": 11867
+          "file": "assets/AdminApp-CPNiNsQ1.css",
+          "bytes": 77890,
+          "gzipBytes": 13091
         }
       ],
       "budget": 460800,
-      "totalBytes": 5098896,
-      "fileCount": 131
+      "totalBytes": 5118588,
+      "fileCount": 134
     }
   ],
   "warnings": []

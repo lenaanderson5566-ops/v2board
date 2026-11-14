@@ -102,6 +102,8 @@ export function NodeCredentials({
                             actions={(r) =>
                                 ["active", "retiring"].includes(r.status) && (
                                     <button
+                                        type="button"
+                                        className="danger"
                                         disabled={busy}
                                         onClick={() => act("revoke", r.id)}
                                     >
@@ -112,12 +114,15 @@ export function NodeCredentials({
                         />
                         <div className="actions">
                             <button
+                                type="button"
                                 disabled={busy || report.loading}
                                 onClick={report.reload}
                             >
                                 检查连接状态
                             </button>
                             <button
+                                type="button"
+                                className="primary"
                                 disabled={
                                     busy ||
                                     (report.data.keys || []).some(
@@ -131,6 +136,7 @@ export function NodeCredentials({
                             {report.data.cancellableCredentialId && (
                                 <button
                                     type="button"
+                                    className="danger"
                                     disabled={busy || report.loading}
                                     onClick={() => act("cancel-rotation", report.data?.cancellableCredentialId)}
                                 >
@@ -153,6 +159,8 @@ export function NodeCredentials({
                                     ),
                                 )}
                                 <button
+                                    type="button"
+                                    className="danger"
                                     disabled={
                                         busy ||
                                         !!report.data.legacyNodes?.length

@@ -78,7 +78,7 @@ export function AdminTicketConversation({ id, detail, dismiss, confirmClose, rep
                             showLatest();
                         }}
                     />
-                    <button className="admin-ticket-close" type="button" onClick={confirmClose} disabled={sending || detail.loading}>关闭工单</button>
+                    <button className="danger admin-ticket-close" type="button" onClick={confirmClose} disabled={sending || detail.loading}>关闭工单</button>
                 </div> : <p className="admin-ticket-closed">工单已关闭，可在上方查阅完整对话。</p>}
             </div>}
         </State>

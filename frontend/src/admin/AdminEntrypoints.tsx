@@ -138,49 +138,54 @@ export function AdminEntrypoints({
                             />
                             启用
                         </label>
-                        <button
-                            type="button"
-                            disabled={
-                                !publicKey || checking !== null || !entry.origin
-                            }
-                            onClick={() => check(entry.origin)}
-                        >
-                            {checking === entry.origin ? "检查中…" : "检查服务"}
-                        </button>
+                        <div className="actions">
+                            <button
+                                type="button"
+                                disabled={
+                                    !publicKey || checking !== null || !entry.origin
+                                }
+                                onClick={() => check(entry.origin)}
+                            >
+                                {checking === entry.origin ? "检查中…" : "检查服务"}
+                            </button>
+                            <button
+                                className="danger"
+                                type="button"
+                                onClick={() =>
+                                    setEntries((items) =>
+                                        items.filter((_, i) => i !== index),
+                                    )
+                                }
+                            >
+                                移除
+                            </button>
+                        </div>
                         {checks[entry.origin] && (
                             <p role="status">{checkDescription(checks[entry.origin])}</p>
                         )}
-                        <button
-                            type="button"
-                            onClick={() =>
-                                setEntries((items) =>
-                                    items.filter((_, i) => i !== index),
-                                )
-                            }
-                        >
-                            移除
-                        </button>
                     </div>
                 ))}
-                <button
-                    type="button"
-                    disabled={entries.length >= 16}
-                    onClick={() =>
-                        setEntries((items) => [
-                            ...items,
-                            {
-                                origin: "",
-                                priority: items.length + 1,
-                                enabled: true,
-                            },
-                        ])
-                    }
-                >
-                    添加服务域名
-                </button>
-                <button type="submit" disabled={!publicKey || !entries.length}>
-                    发布服务入口
-                </button>
+                <div className="admin-dialog-actions">
+                    <button
+                        type="button"
+                        disabled={entries.length >= 16}
+                        onClick={() =>
+                            setEntries((items) => [
+                                ...items,
+                                {
+                                    origin: "",
+                                    priority: items.length + 1,
+                                    enabled: true,
+                                },
+                            ])
+                        }
+                    >
+                        添加服务域名
+                    </button>
+                    <button className="primary" type="submit" disabled={!publicKey || !entries.length}>
+                        发布服务入口
+                    </button>
+                </div>
             </fieldset>
             {message && <p role="status">{message}</p>}
         </form>

@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { admin, date, type Row } from "../shared/api";
+import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import { Modal, State, Table, useData } from "../shared/ui";
+import "./payment-diagnostics.css";
 
 const stages: Record<string, string> = {
     preflight: "站内检查",
@@ -20,6 +22,17 @@ const results: Record<string, string> = {
     handled: "处理完成",
     acknowledged: "已确认通知（无需结算）",
     failed: "失败",
+};
+const resultTones: Record<string, StatusTone> = {
+    blocked: "warning",
+    settled: "success",
+    qr_ready: "info",
+    redirect_ready: "info",
+    action_ready: "info",
+    pending: "warning",
+    handled: "success",
+    acknowledged: "success",
+    failed: "danger",
 };
 const reasons: Record<string, string> = {
     order_closed: "订单已关闭或已支付",
@@ -55,7 +68,7 @@ const reasons: Record<string, string> = {
 };
 
 function requestLink(id: string) {
-    return <a href={`#/system-log?request_id=${encodeURIComponent(id)}`}>{id}</a>;
+    return <a className="payment-diagnostic-id" href={`#/system-log?request_id=${encodeURIComponent(id)}`}>{id}</a>;
 }
 
 function diagnosis(row: Row): string {
@@ -71,16 +84,16 @@ function diagnosis(row: Row): string {
 }
 
 const columns: [string, string, ((row: Row) => React.ReactNode)?][] = [
-    ["created_at", "时间", (r) => date(r.created_at)],
+    ["created_at", "时间", (r) => <span className="payment-diagnostic-time">{date(r.created_at)}</span>],
     ["provider", "支付接口", (r) => r.provider ? `${r.provider}${r.payment_id ? ` · #${r.payment_id}` : ""}` : "—"],
     ["stage", "阶段", (r) => stages[r.stage] || r.stage],
-    ["result", "结果", (r) => results[r.result] || r.result],
+    ["result", "结果", (r) => <StatusBadge tone={resultTones[r.result]}>{results[r.result] || r.result}</StatusBadge>],
     ["reason", "说明", (r) => r.reason ? diagnosis(r) : "—"],
     [
-        "request_id", "请求 ID", (r) => <>
+        "request_id", "请求 ID", (r) => <div className="payment-diagnostic-requests">
             {r.request_id ? requestLink(r.request_id) : "—"}
-            {r.previous_request_id && <div>前一笔 {requestLink(r.previous_request_id)}</div>}
-        </>,
+            {r.previous_request_id && <div><span className="muted">前一笔</span> {requestLink(r.previous_request_id)}</div>}
+        </div>,
     ],
 ];
 
@@ -92,7 +105,7 @@ const responseTypes: Record<string, string> = {
 
 function GatewayResponse({ response }: { response: Row }) {
     const format = responseTypes[response.format] || "未知";
-    return <details>
+    return <details className="payment-diagnostic-disclosure">
         <summary>查看历史脱敏摘要</summary>
         <p>响应类型：{format}</p>
         {response.messages?.length > 0 && <p>网关提示：{response.messages.join("、")}</p>}
@@ -122,8 +135,8 @@ function RawPaymentDiagnostic({ kind, id, close }: {
     const diagnostic = useData<DiagnosticSections>(
         admin(`payment/diagnostics/${kind}/${encodeURIComponent(id)}`),
     );
-    return <Modal title="原始支付诊断" variant="modal" close={close}>
-        <div className="pad">
+    return <Modal title="原始支付诊断" variant="modal" className="admin-detail-dialog" close={close}>
+        <div className="admin-detail-body">
             <State
                 loading={diagnostic.loading}
                 error={diagnostic.error ? "无法读取原始支付诊断。" : ""}
@@ -131,8 +144,8 @@ function RawPaymentDiagnostic({ kind, id, close }: {
                 retryAt={diagnostic.retryAt}
             >
                 {diagnostic.data?.sections?.length ? diagnostic.data.sections.map((section, index) => (
-                    <section key={index}>
-                        <h3>{section.title}</h3>
+                    <section key={index} className="admin-detail-section payment-diagnostic-raw-section">
+                        <h3 className="admin-detail-section-head">{section.title}</h3>
                         <pre className="payment-diagnostic-text">{section.text}</pre>
                     </section>
                 )) : <p>这条记录没有原始诊断。</p>}
@@ -143,22 +156,28 @@ function RawPaymentDiagnostic({ kind, id, close }: {
 
 function DiagnosticDetails({ event, kind }: { event: Row; kind: DiagnosticKind }) {
     const [open, setOpen] = useState(false);
-    const summary = [
-        event.gateway_host,
+    const gatewayFacts = [
         event.gateway_http_status ? `HTTP ${event.gateway_http_status}` : null,
         event.gateway_code != null ? `网关码 ${event.gateway_code}` : null,
+        event.duration_ms != null ? `${event.duration_ms} ms` : null,
+    ].filter(Boolean);
+    const gatewayDetails = [
         event.gateway_order ? `网关单号 ${event.gateway_order}` : null,
         event.gateway_actions ? `返回字段 ${event.gateway_actions}` : null,
-        event.duration_ms != null ? `${event.duration_ms} ms` : null,
-    ].filter(Boolean).join(" · ");
+    ].filter(Boolean);
+    const summary = event.gateway_host || gatewayFacts.length > 0 || gatewayDetails.length > 0;
     const hasRaw = event.has_raw_diagnostic === true && event.id != null;
-    return <>
-        {summary && <div>{summary}</div>}
+    return <div className="payment-diagnostic-gateway">
+        {event.gateway_host && <strong>{event.gateway_host}</strong>}
+        {gatewayFacts.length > 0 && <ul className="payment-diagnostic-facts">
+            {gatewayFacts.map((fact) => <li key={fact}>{fact}</li>)}
+        </ul>}
+        {gatewayDetails.map((detail) => <div key={detail}>{detail}</div>)}
         {hasRaw ? <>
             <button type="button" onClick={() => setOpen(true)}>查看原始诊断</button>
             {open && <RawPaymentDiagnostic kind={kind} id={event.id} close={() => setOpen(false)} />}
         </> : event.gateway_response ? <GatewayResponse response={event.gateway_response} /> : !summary && "—"}
-    </>;
+    </div>;
 }
 
 const gatewayColumn: (typeof columns)[number] = ["gateway_host", "网关信息", (row) => (
@@ -170,6 +189,7 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: {
     attempts?: Row;
     paidAt?: number;
 }) {
+    const heading = useId();
     const attemptEvents: Row[] = attempts?.events || [];
     const callbackEvents: Row[] = history?.events || [];
     const timeline = [
@@ -181,20 +201,33 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: {
         ? attemptEvents.find((event) => event.request_id === latest.previous_request_id)
         : undefined;
     return (
-        <section>
-            <h3>支付诊断</h3>
-            {paidAt ? <p><strong>站点已记录付款</strong> · {date(paidAt)}</p> : null}
-            {latest && <p><strong>最近进展</strong> · {diagnosis(latest)}{origin && <> · 前一笔：{diagnosis(origin)}</>}</p>}
+        <section className="payment-diagnostics" aria-labelledby={heading}>
+            <h3 id={heading}>支付诊断</h3>
+            {(Boolean(paidAt) || latest) && <div className="payment-diagnostic-summary">
+                {paidAt ? <div className="payment-diagnostic-summary-item">
+                    <StatusBadge tone="success">站点已记录付款</StatusBadge>
+                    <p>{date(paidAt)}</p>
+                </div> : null}
+                {latest && <div className="payment-diagnostic-summary-item">
+                    <strong>最近进展</strong>
+                    <p>{diagnosis(latest)}</p>
+                    {origin && <p className="muted">前一笔：{diagnosis(origin)}</p>}
+                </div>}
+            </div>}
             <p className="muted">
                 发起记录和回调记录各显示最近 20 条。本订单重复的站内付款恢复失败合并显示最近一次。原始诊断仅管理员可查看，从启用统一记录后开始保存。到账以订单状态及支付时间为准。
             </p>
             {timeline.length > 0 && <Table data={timeline} columns={[...columns, gatewayColumn]} />}
-            {!attempts?.available ? <p className="muted">支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>
-                : !attemptEvents.length && <p>暂无支付发起记录，仅记录功能上线后的请求。</p>}
-            {!history?.available ? <p className="muted">回调诊断尚未就绪，请确认已执行数据库迁移。</p>
-                : !callbackEvents.length && <p>暂无订单关联回调记录。</p>}
+            {(!attempts?.available || !history?.available || !attemptEvents.length || !callbackEvents.length) && (
+                <div className="payment-diagnostic-empty">
+                    {!attempts?.available ? <p className="muted">支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>
+                        : !attemptEvents.length && <p>暂无支付发起记录，仅记录功能上线后的请求。</p>}
+                    {!history?.available ? <p className="muted">回调诊断尚未就绪，请确认已执行数据库迁移。</p>
+                        : !callbackEvents.length && <p>暂无订单关联回调记录。</p>}
+                </div>
+            )}
             {!!history?.channelEvents?.length && (
-                <details>
+                <details className="payment-diagnostic-disclosure payment-diagnostic-channel-events">
                     <summary>
                         同渠道未关联事件（{history.channelEvents.length} 条）
                     </summary>
@@ -210,15 +243,17 @@ export function PaymentCallbackHistory({ history, attempts, paidAt }: {
 }
 
 export function PaymentChannelFailures({ history }: { history: Row }) {
+    const attemptsHeading = useId();
+    const callbacksHeading = useId();
     const attemptEvents: Row[] = history.events ?? [];
     const callbackEvents: Row[] | undefined = history.callbackEvents;
     const orderColumn: (typeof columns)[number] = [
         "trade_no", "订单号",
-        (row) => row.trade_no ? <a href={`#/orders?trade_no=${encodeURIComponent(row.trade_no)}`}>{row.trade_no}</a> : "—",
+        (row) => row.trade_no ? <a className="payment-diagnostic-id" href={`#/orders?trade_no=${encodeURIComponent(row.trade_no)}`}>{row.trade_no}</a> : "—",
     ];
     return <>
-        <section>
-            <h3>发起支付失败</h3>
+        <section className="payment-diagnostics" aria-labelledby={attemptsHeading}>
+            <h3 id={attemptsHeading}>发起支付失败</h3>
             {!history.available ? <p>支付发起诊断尚未就绪，请确认已执行数据库迁移。</p>
                 : attemptEvents.length > 0 ? <>
                     <p className="muted">最近一小时内最多 20 条发起失败记录。</p>
@@ -229,8 +264,8 @@ export function PaymentChannelFailures({ history }: { history: Row }) {
                     ]} />
                 </> : <p>最近一小时没有记录到发起支付失败。</p>}
         </section>
-        {callbackEvents && <section>
-            <h3>支付回调</h3>
+        {callbackEvents && <section className="payment-diagnostics" aria-labelledby={callbacksHeading}>
+            <h3 id={callbacksHeading}>支付回调</h3>
             {callbackEvents.length > 0 ? <>
                 <p className="muted">最近一小时内最多 20 条回调诊断记录。未通过验证的失败按渠道采样。</p>
                 <Table

@@ -1,10 +1,9 @@
 import { AdminFilterBar } from "./AdminFilterBar";
 import { readListView, saveListView } from "./list-view-state";
-import { PaymentCallbackHistory } from "./PaymentCallbackHistory";
-import { adminStatusCell } from "../shared/admin-status";
+import { AdminOrderDetails } from "./AdminOrderDetails";
 import { adminUserLabel } from "./admin-user-label";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
-import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-labels";
+import { adminOrderPlan } from "./admin-order-labels";
 import { useEffect, useState } from "react";
 import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
@@ -277,7 +276,7 @@ export function OrdersPage({
                                         setSearchText(event.target.value)
                                     }
                                 />
-                                <button type="submit">查询</button>
+                                <button className="primary" type="submit">查询</button>
                             </AdminFilterBar>
                         )}
                         {!commissionMode && (
@@ -522,13 +521,13 @@ export function OrdersPage({
                 </Modal>
             )}
             {selected && (
-                <Modal title="订单详情" close={() => setSelected(null)}>
-                    <OrderDetail
-                        row={selected}
-                        commissionMode={commissionMode}
-                        plans={plans}
-                    />
-                </Modal>
+                <AdminOrderDetails
+                    id={selected.id}
+                    commissionMode={commissionMode}
+                    plans={plans}
+                    close={() => setSelected(null)}
+                    renderUser={order => <AdminUserActivityLink row={order} />}
+                />
             )}
             {selectedUser && <AdminUserDetails row={selectedUser} close={() => setSelectedUser(null)} />}
             {assign && (
@@ -549,7 +548,7 @@ export function OrdersPage({
                 </Modal>
             )}
             {commission && (
-                <Modal title="佣金审核" guardChanges close={() => setCommission(null)}>
+                <Modal title="佣金审核" variant="modal" className="admin-detail-dialog" guardChanges close={() => setCommission(null)}>
                     <CommissionReview
                         row={commission}
                         plans={plans}
@@ -563,165 +562,6 @@ export function OrdersPage({
         </>
     );
 }
-function OrderDetail({
-    row,
-    commissionMode,
-    plans,
-}: {
-    row: Row;
-    commissionMode: boolean;
-    plans: AdminPlanDirectory;
-}) {
-    const d = useData<Row>(admin("order/detail"), { id: row.id });
-    const r = d.data;
-    const [copyFeedback, setCopyFeedback] = useState("");
-    async function copyOrderNumber(tradeNumber: string) {
-        try {
-            await navigator.clipboard.writeText(tradeNumber);
-            setCopyFeedback(tx("订单号已复制。"));
-        } catch {
-            setCopyFeedback(tx("复制失败，请手动选择订单号复制。"));
-        }
-    }
-    return (
-        <div className="pad">
-            <State {...d} retry={d.reload}>
-                {r && (
-                    <>
-                        <dl className="detail-grid">
-                            {[
-                                ["trade_no", "订单号"],
-                                ["created_at", "创建时间"],
-                                ["paid_at", "支付时间"],
-                                ["status", "订单状态"],
-                                ["user_id", "用户（ID / 邮箱）"],
-                                ["type", "类型"],
-                                ["plan_id", "套餐"],
-                                ["period", "周期"],
-                                ["callback_no", "回调单号"],
-                                ["payment_display", "支付方式"],
-                                ["payment_provider", "支付接口"],
-                                ["commission_status", "佣金状态"],
-                                ...[
-                                    "total_amount",
-                                    "balance_amount",
-                                    "discount_amount",
-                                    "refund_amount",
-                                    "surplus_amount",
-                                    "commission_balance",
-                                    "actual_commission_balance",
-                                ].map((key, i) => [
-                                    key,
-                                    [
-                                        "支付金额",
-                                        "余额支付",
-                                        "优惠金额",
-                                        "退回金额",
-                                        "折抵金额",
-                                        "佣金金额",
-                                        "实际佣金",
-                                    ][i],
-                                ]),
-                                ["updated_at", "更新时间"],
-                            ]
-                                .filter(
-                                    ([key]) =>
-                                        commissionMode ||
-                                        !key.includes("commission"),
-                                )
-                                .map(([key, label]) => (
-                                    <div key={key}>
-                                        <dt>{label}</dt>
-                                        <dd>
-                                            {key === "trade_no" && r.trade_no ? (
-                                                <>
-                                                    <code>{r.trade_no}</code>{" "}
-                                                    <button type="button" onClick={() => void copyOrderNumber(r.trade_no)}>
-                                                        {tx("复制订单号")}
-                                                    </button>
-                                                    <span role="status">{copyFeedback}</span>
-                                                </>
-                                            ) : key.endsWith("_at")
-                                                ? date(r[key])
-                                                : key.includes("amount") ||
-                                                    key.includes("balance")
-                                                  ? money(r[key], r.currency)
-                                                  : key === "user_id"
-                                                    ? <AdminUserActivityLink row={r} />
-                                                    : key === "plan_id"
-                                                      ? adminOrderPlan(r, plans)
-                                                    : adminStatusCell(
-                                                          key,
-                                                          label,
-                                                          r[key],
-                                                          key === "type" ? adminOrderType(r) : key === "period" ? adminOrderPeriod(r) : undefined,
-                                                      )}
-                                        </dd>
-                                    </div>
-                                ))}
-                        </dl>
-                        <PaymentCallbackHistory
-                            key={r.trade_no}
-                            history={r.callback_history}
-                            attempts={r.payment_attempt_history}
-                            paidAt={r.paid_at}
-                        />
-                        {commissionMode && (
-                            <>
-                                <h3>佣金记录</h3>
-                                <Table
-                                    data={r.commission_log || []}
-                                    columns={[
-                                        [
-                                            "invite_user_id",
-                                            "邀请人（ID / 邮箱）",
-                                            (r) =>
-                                                adminUserLabel({
-                                                    user_id: r.invite_user_id,
-                                                    email: r.invite_email,
-                                                }),
-                                        ],
-                                        [
-                                            "get_amount",
-                                            "金额",
-                                            (x) =>
-                                                money(x.get_amount, x.currency),
-                                        ],
-                                        [
-                                            "created_at",
-                                            "时间",
-                                            (x) => date(x.created_at),
-                                        ],
-                                    ]}
-                                />
-                            </>
-                        )}
-                        <h3>折抵订单</h3>
-                        <Table
-                            data={r.surplus_orders || []}
-                            columns={[
-                                ["trade_no", "订单号"],
-                                [
-                                    "total_amount",
-                                    "金额",
-                                    (x) => money(x.total_amount, x.currency),
-                                ],
-                            ]}
-                        />
-                        {r.invite_user_id && (
-                            <a
-                                href={`#/users?invite_user_id=${r.invite_user_id}`}
-                            >
-                                查看邀请人邀请的用户
-                            </a>
-                        )}
-                    </>
-                )}
-            </State>
-        </div>
-    );
-}
-
 function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; plans: AdminPlanDirectory }) {
     const detail = useData<Row>(admin("order/detail"), { id: row.id });
     const order = detail.data;
@@ -757,140 +597,145 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
         <State {...detail} retry={detail.reload}>
             {order && (
                 <>
-                    <div className="pad commission-review-context">
-                        <dl>
-                            <div>
-                                <dt>邀请人</dt>
-                                <dd>
-                                    <a
-                                        href={`#/users?user_id=${order.invite_user_id}`}
-                                    >
-                                        {adminUserLabel({
-                                            user_id: order.invite_user_id,
-                                            email: order.invite_email,
-                                        })}
-                                    </a>
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>受邀用户</dt>
-                                <dd>
-                                    <a
-                                        href={`#/users?user_id=${order.user_id}`}
-                                    >
-                                        {adminUserLabel(order)}
-                                    </a>
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>订单号</dt>
-                                <dd>{order.trade_no}</dd>
-                            </div>
-                            <div>
-                                <dt>套餐（当前名称）</dt>
-                                <dd>{adminOrderPlan(order, plans)}</dd>
-                            </div>
-                            <div>
-                                <dt>订单状态</dt>
-                                <dd>
-                                    {[
-                                        "待支付",
-                                        "开通中",
-                                        "已取消",
-                                        "已完成",
-                                        "已折抵",
-                                    ][orderStatus] || "无记录"}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>支付时间</dt>
-                                <dd>
-                                    {order.paid_at
-                                        ? date(order.paid_at)
-                                        : "无记录"}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>订单应付</dt>
-                                <dd>
-                                    {money(order.total_amount, order.currency)}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>余额抵扣</dt>
-                                <dd>
-                                    {money(
-                                        order.balance_amount || 0,
-                                        order.currency,
-                                    )}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>订单计提佣金</dt>
-                                <dd>
-                                    <strong>
+                    <div className="admin-detail-body">
+                        <section className="admin-detail-section">
+                            <h3 className="admin-detail-section-head">订单与复核</h3>
+                            <dl className="admin-details admin-detail-grid">
+                                <div>
+                                    <dt>邀请人</dt>
+                                    <dd>
+                                        <a
+                                            href={`#/users?user_id=${order.invite_user_id}`}
+                                        >
+                                            {adminUserLabel({
+                                                user_id: order.invite_user_id,
+                                                email: order.invite_email,
+                                            })}
+                                        </a>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>受邀用户</dt>
+                                    <dd>
+                                        <a
+                                            href={`#/users?user_id=${order.user_id}`}
+                                        >
+                                            {adminUserLabel(order)}
+                                        </a>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>订单号</dt>
+                                    <dd>{order.trade_no}</dd>
+                                </div>
+                                <div>
+                                    <dt>套餐（当前名称）</dt>
+                                    <dd>{adminOrderPlan(order, plans)}</dd>
+                                </div>
+                                <div>
+                                    <dt>订单状态</dt>
+                                    <dd>
+                                        {[
+                                            "待支付",
+                                            "开通中",
+                                            "已取消",
+                                            "已完成",
+                                            "已折抵",
+                                        ][orderStatus] || "无记录"}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>支付时间</dt>
+                                    <dd>
+                                        {order.paid_at
+                                            ? date(order.paid_at)
+                                            : "无记录"}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>订单应付</dt>
+                                    <dd>
+                                        {money(order.total_amount, order.currency)}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>余额抵扣</dt>
+                                    <dd>
                                         {money(
-                                            order.commission_balance,
+                                            order.balance_amount || 0,
                                             order.currency,
                                         )}
-                                    </strong>
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>当前佣金状态</dt>
-                                <dd>
-                                    {["待确认", "有效", "已发放", "无效"][
-                                        commissionStatus
-                                    ] || "无记录"}
-                                </dd>
-                            </div>
-                            <div>
-                                <dt>邀请人工复核</dt>
-                                <dd>
-                                    {review
-                                        ? states[review.state] || "未知"
-                                        : "无复核记录"}
-                                </dd>
-                            </div>
-                            {review && (
-                                <div>
-                                    <dt>复核记录更新时间</dt>
-                                    <dd>{review.updated_at == null ? "无记录" : date(review.updated_at)}</dd>
+                                    </dd>
                                 </div>
+                                <div>
+                                    <dt>订单计提佣金</dt>
+                                    <dd>
+                                        <strong>
+                                            {money(
+                                                order.commission_balance,
+                                                order.currency,
+                                            )}
+                                        </strong>
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>当前佣金状态</dt>
+                                    <dd>
+                                        {["待确认", "有效", "已发放", "无效"][
+                                            commissionStatus
+                                        ] || "无记录"}
+                                    </dd>
+                                </div>
+                                <div>
+                                    <dt>邀请人工复核</dt>
+                                    <dd>
+                                        {review
+                                            ? states[review.state] || "未知"
+                                            : "无复核记录"}
+                                    </dd>
+                                </div>
+                                {review && (
+                                    <div>
+                                        <dt>复核记录更新时间</dt>
+                                        <dd>{review.updated_at == null ? "无记录" : date(review.updated_at)}</dd>
+                                    </div>
+                                )}
+                                <div>
+                                    <dt>注册来源</dt>
+                                    <dd>
+                                        IP：
+                                        {signal(
+                                            review?.signals?.sameRegistrationIp,
+                                        )}{" "}
+                                        · UA：
+                                        {signal(
+                                            review?.signals?.sameRegistrationUa,
+                                        )}
+                                    </dd>
+                                </div>
+                            </dl>
+                            <p className="muted">
+                                同 IP、UA
+                                仅为线索，不代表同一人。邀请复核与佣金状态分别处理；标记有效后系统将按规则处理发放。
+                            </p>
+                            {review?.id && (
+                                <a href={`#/invitations?tab=reviews&review_id=${encodeURIComponent(String(review.id))}`}>
+                                    查看关联复核 #{review.id}
+                                </a>
                             )}
-                            <div>
-                                <dt>注册来源</dt>
-                                <dd>
-                                    IP：
-                                    {signal(
-                                        review?.signals?.sameRegistrationIp,
-                                    )}{" "}
-                                    · UA：
-                                    {signal(
-                                        review?.signals?.sameRegistrationUa,
-                                    )}
-                                </dd>
-                            </div>
-                        </dl>
-                        <p className="muted">
-                            同 IP、UA
-                            仅为线索，不代表同一人。邀请复核与佣金状态分别处理；标记有效后系统将按规则处理发放。
-                        </p>
-                        {review?.id && (
-                            <a href={`#/invitations?tab=reviews&review_id=${encodeURIComponent(String(review.id))}`}>
-                                查看关联复核 #{review.id}
-                            </a>
-                        )}
-                        <h3>实际发放记录</h3>
-                        {payoutRecords.length ? (
-                            <Table data={payoutRecords} columns={[
-                                ["invite_user_id", "收款用户", (entry) => adminUserLabel({ user_id: entry.invite_user_id, email: entry.invite_email })],
-                                ["get_amount", "入账金额", (entry) => entry.currency ? money(entry.get_amount, entry.currency) : "币种无记录"],
-                                ["created_at", "入账时间", (entry) => entry.created_at == null ? "无记录" : date(entry.created_at)],
-                            ]} />
-                        ) : (
-                            <p className="muted">{Array.isArray(order.commission_log) ? "暂无发放记录。" : "发放记录未返回。"}</p>
-                        )}
+                        </section>
+                        <section className="admin-detail-section">
+                            <h3 className="admin-detail-section-head">实际发放记录</h3>
+                            {payoutRecords.length ? (
+                                <Table data={payoutRecords} columns={[
+                                    ["invite_user_id", "收款用户", (entry) => adminUserLabel({ user_id: entry.invite_user_id, email: entry.invite_email })],
+                                    ["get_amount", "入账金额", (entry) => entry.currency ? money(entry.get_amount, entry.currency) : "币种无记录"],
+                                    ["created_at", "入账时间", (entry) => entry.created_at == null ? "无记录" : date(entry.created_at)],
+                                ]} />
+                            ) : (
+                                <p className="muted">{Array.isArray(order.commission_log) ? "暂无发放记录。" : "发放记录未返回。"}</p>
+                            )}
+                        </section>
                     </div>
                     {restriction ? (
                         <div className="pad">

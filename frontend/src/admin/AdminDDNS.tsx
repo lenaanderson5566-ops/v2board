@@ -9,6 +9,7 @@ import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { useMemo, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, Panel, State, useData } from "../shared/ui";
+import { AdminRowMenu } from "./AdminRowMenu";
 const labels: Record<string, string> = {
     ...domainStatus,
     domain_activated: "连接域名已切换",
@@ -136,10 +137,12 @@ export function AdminDDNS() {
                 )}
                 <State {...data} retry={data.reload}>
                     <div className="pad">
-                        <h3>Cloudflare 凭据</h3>
-                        <button onClick={() => edit({ name: "", zone_id: "" })}>
-                            新增凭据
-                        </button>
+                        <div className="actions">
+                            <h3>Cloudflare 凭据</h3>
+                            <button type="button" className="primary" onClick={() => edit({ name: "", zone_id: "" })}>
+                                新增凭据
+                            </button>
+                        </div>
                         <TableViewport>
                             <table>
                                 <thead>
@@ -147,7 +150,7 @@ export function AdminDDNS() {
                                         <th>名称</th>
                                         <th>根域名 / Zone ID</th>
                                         <th>状态</th>
-                                        <th>操作</th>
+                                        <th className="table-actions">操作</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -165,26 +168,25 @@ export function AdminDDNS() {
                                                 {c.next_run > 0 &&
                                                     ` · ${date(c.next_run)}`}
                                             </td>
-                                            <td>
-                                                <button onClick={() => edit(c)}>
-                                                    编辑
-                                                </button>
-                                                <button
-                                                    disabled={busy}
-                                                    onClick={() => {
-                                                        if (
-                                                            window.confirm(
-                                                                "删除此凭据？",
-                                                            )
-                                                        )
-                                                            void action(
-                                                                "credentials/drop",
-                                                                { id: c.id },
-                                                            );
-                                                    }}
-                                                >
-                                                    删除
-                                                </button>
+                                            <td className="table-actions">
+                                                <div className="actions">
+                                                    <button type="button" onClick={() => edit(c)}>
+                                                        编辑
+                                                    </button>
+                                                    <AdminRowMenu label={`${c.name} 更多操作`}>
+                                                        <button
+                                                            type="button"
+                                                            className="danger"
+                                                            disabled={busy}
+                                                            onClick={() => {
+                                                                if (window.confirm("删除此凭据？"))
+                                                                    void action("credentials/drop", { id: c.id });
+                                                            }}
+                                                        >
+                                                            删除
+                                                        </button>
+                                                    </AdminRowMenu>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

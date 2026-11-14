@@ -1,7 +1,17 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-export function AdminRowMenu({ children, context, label = "用户更多操作" }: { children: ReactNode; context?: boolean; label?:string }) {
+export function AdminRowMenu({
+    children,
+    context,
+    label = "用户更多操作",
+    triggerLabel = "更多操作",
+}: {
+    children: ReactNode;
+    context?: boolean;
+    label?: string;
+    triggerLabel?: string;
+}) {
     const id = useId();
     const menu = useRef<HTMLDivElement>(null);
     const trigger = useRef<HTMLButtonElement>(null);
@@ -25,7 +35,7 @@ export function AdminRowMenu({ children, context, label = "用户更多操作" }
     useEffect(() => {
         if (!open || context) return;
         const buttons = items();
-        (focusLast.current ? buttons.at(-1) : buttons[0])?.focus();
+        (focusLast.current ? buttons.at(-1) : buttons[0])?.focus({ preventScroll: true });
         const close = (event: Event) => {
             if (event.target instanceof Node && (menu.current?.contains(event.target) || trigger.current?.contains(event.target))) return;
             setOpen(false);
@@ -34,19 +44,23 @@ export function AdminRowMenu({ children, context, label = "用户更多操作" }
             if (event.key !== "Escape" || event.defaultPrevented) return;
             event.preventDefault();
             setOpen(false);
-            trigger.current?.focus();
+            trigger.current?.focus({ preventScroll: true });
+        };
+        const scroll = (event: Event) => {
+            if (event.target instanceof Node && menu.current?.contains(event.target)) return;
+            setOpen(false);
         };
         document.addEventListener("pointerdown", close);
         document.addEventListener("focusin", close);
         document.addEventListener("keydown", escape);
         window.addEventListener("resize", close);
-        window.addEventListener("scroll", close, true);
+        window.addEventListener("scroll", scroll, true);
         return () => {
             document.removeEventListener("pointerdown", close);
             document.removeEventListener("focusin", close);
             document.removeEventListener("keydown", escape);
             window.removeEventListener("resize", close);
-            window.removeEventListener("scroll", close, true);
+            window.removeEventListener("scroll", scroll, true);
         };
     }, [open, context]);
     if (context) return <div className="row-menu-content">{children}</div>;
@@ -61,7 +75,7 @@ export function AdminRowMenu({ children, context, label = "用户更多操作" }
             onClick={() => {
                 focusLast.current = false;
                 setOpen(value => !value);
-            }}>更多操作</button>
+            }}>{triggerLabel}</button>
         {createPortal(<div id={id} ref={menu} hidden={!open} role="group" aria-label={label}
             className="admin-row-popover" style={position}
             onKeyDown={event => {
@@ -75,7 +89,7 @@ export function AdminRowMenu({ children, context, label = "用户更多操作" }
             }}
             onClick={event => {
                 if (open && menu.current?.contains(event.target as Node) && (event.target as HTMLElement).closest('button:not(:disabled),a[href]:not([aria-disabled="true"])')) {
-                    trigger.current?.focus();
+                    trigger.current?.focus({ preventScroll: true });
                     setOpen(false);
                 }
             }}>{children}</div>, document.body)}

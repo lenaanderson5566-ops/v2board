@@ -32,7 +32,17 @@ export function apiUrl(
     return normalizeApiOrigin(origin) + path;
 }
 
+export let startsAtWorkspaceAccess = false;
+
+export function setWorkspaceAccessDocument() {
+    document.title = "Workspace access";
+    document.documentElement.lang = "en-US";
+    document.documentElement.dir = "ltr";
+}
+
 export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
+    startsAtWorkspaceAccess = mode === "admin";
+    if (mode === "admin") setWorkspaceAccessDocument();
     let supplied: Partial<Boot> | undefined = runtimeBoot();
     if (!supplied) {
         const configUrl =
@@ -91,15 +101,21 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
     }
     window.V2BOARD = window.FASTAI;
     document.body.dataset.console = mode;
-    document.title = window.FASTAI.title;
+    if (mode === "user") document.title = window.FASTAI.title;
 }
 
 // Startup recovery must work even when React, i18n or a language chunk failed to load.
-export function startupError(_error: unknown, retry = () => window.location.reload()): void {
+export function startupError(
+    _error: unknown,
+    retry = () => window.location.reload(),
+    mode = runtimeBoot()?.mode,
+): void {
+    if (mode === "admin") setWorkspaceAccessDocument();
     const root = document.getElementById("root");
     if (root) {
-        let language = runtimeBoot()?.mode === "admin" ? "zh-CN" : navigator.language;
-        language = localPreferences.getItem("fastai.language") || language;
+        const language = mode === "admin"
+            ? "en-US"
+            : localPreferences.getItem("fastai.language") || navigator.language;
         const key = /^zh/i.test(language)
             ? /TW|HK|MO|Hant/i.test(language) ? "zh-TW" : "zh-CN"
             : language.toLowerCase().split("-")[0];

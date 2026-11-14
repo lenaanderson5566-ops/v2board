@@ -29,7 +29,8 @@ it("opens the selected channel's failure records and links to the affected order
 
     render(<Payments />);
     const diagnostics = await screen.findByRole("button", { name: "查看 WeChat 的支付诊断" });
-    expect(diagnostics.textContent).toBe("查看诊断 · 1 笔");
+    expect(diagnostics.textContent).toBe("查看诊断");
+    expect(screen.getByText("1 笔").closest("td")).toBe(diagnostics.closest("td"));
     fireEvent.click(diagnostics);
     expect((await screen.findByRole("link", { name: "fixture-order" })).getAttribute("href")).toBe("#/orders?trade_no=fixture-order");
     expect(api.request.mock.calls.some(([path]) => path.includes("payment/diagnostics/"))).toBe(false);

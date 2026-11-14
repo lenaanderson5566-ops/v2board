@@ -40,9 +40,12 @@ it("links a blocked retry to its original gateway failure", () => {
         { id: 2, stage: "preflight", result: "blocked", reason: "in_flight", previous_request_id: requestId, created_at: 1791849610 },
         { id: 1, stage: "gateway", result: "failed", reason: "gateway_timeout", request_id: requestId, created_at: 1791849600, gateway_host: "gateway.example" },
     ] }} />);
+    expect(screen.getByRole("region", { name: "支付诊断" })).toBeTruthy();
     expect(screen.getByText(/最近进展/).parentElement?.textContent).toContain("前一笔：等待网关响应超时");
     expect(screen.getAllByRole("link", { name: requestId })).toHaveLength(2);
     expect(screen.getByText("gateway.example")).toBeTruthy();
+    expect(screen.getByText("拦截重试").getAttribute("data-tone")).toBe("warning");
+    expect(screen.getByText("失败").getAttribute("data-tone")).toBe("danger");
 });
 
 it("links a channel failure to the matching order search", () => {

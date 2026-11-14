@@ -15,7 +15,10 @@ import { AdminCouponCampaigns } from './AdminCouponCampaigns';
 beforeEach(()=>{vi.clearAllMocks();api.request.mockResolvedValue({data:{}});});
 afterEach(cleanup);
 it('requires an application confirmation before cancelling and prevents duplicate requests',async()=>{
-    render(<AdminCouponCampaigns/>);fireEvent.click(screen.getByText('取消剩余发放'));
+    render(<AdminCouponCampaigns/>);
+    expect(screen.queryByRole('button',{name:'取消剩余发放'})).toBeNull();
+    fireEvent.click(screen.getByRole('button',{name:'更多操作'}));
+    fireEvent.click(screen.getByRole('button',{name:'取消剩余发放'}));
     expect(screen.getByRole('dialog',{name:'取消剩余发放'})).toBeTruthy();expect(api.request).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText('确认取消'));fireEvent.click(screen.getByText('确认取消'));
     await screen.findByText('已取消剩余发放。');expect(api.request).toHaveBeenCalledOnce();
@@ -24,7 +27,8 @@ it('requires an application confirmation before cancelling and prevents duplicat
 });
 it('keeps the confirmation open on failure so the administrator can retry safely',async()=>{
     api.request.mockRejectedValue(new Error('Permission denied'));render(<AdminCouponCampaigns/>);
-    fireEvent.click(screen.getByText('取消剩余发放'));fireEvent.click(screen.getByText('确认取消'));
+    fireEvent.click(screen.getByRole('button',{name:'更多操作'}));
+    fireEvent.click(screen.getByRole('button',{name:'取消剩余发放'}));fireEvent.click(screen.getByText('确认取消'));
     await waitFor(()=>expect(screen.getAllByRole('alert').some(item=>item.textContent?.includes('Permission denied'))).toBe(true));
     expect(screen.getByRole('dialog')).toBeTruthy();expect(api.reload).not.toHaveBeenCalled();
 });

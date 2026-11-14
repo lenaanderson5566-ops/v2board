@@ -1,1 +1,0 @@
-import{j as a,t as o}from"./createLucideIcon-CRNwcWun.js";function l({className:t="",children:e,...r}){return a.jsx("div",{role:"region","aria-label":o("\u6570\u636E\u8868\u683C"),tabIndex:0,...r,className:`table-scroll table-viewport ${t}`.trim(),children:e})}export{l as T};

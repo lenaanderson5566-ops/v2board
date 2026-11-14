@@ -53,8 +53,11 @@ it("loads the selected user's credit batches on demand and opens their linked or
     expect(within(historic).getByText("0 B")).toBeTruthy();
     expect(within(historic).queryByRole("button", { name: /查看订单/ })).toBeNull();
 
-    fireEvent.click(within(purchase).getByRole("button", { name: "查看订单 credit-order-71" }));
-    const order = await screen.findByRole("region", { name: "订单详情" });
+    const orderTrigger = within(purchase).getByRole("button", { name: "查看订单 credit-order-71" });
+    expect(orderTrigger.textContent).toBe("查看订单");
+    expect(within(purchase).getByText("credit-order-71").tagName).toBe("CODE");
+    fireEvent.click(orderTrigger);
+    const order = await screen.findByRole("dialog", { name: "订单详情" });
     expect(await within(order).findByText("credit-order-71")).toBeTruthy();
     expect(readRequest).toHaveBeenCalledWith("test-admin/order/detail", { id: 71 }, false);
 });

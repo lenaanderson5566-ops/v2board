@@ -2,6 +2,7 @@
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
+use App\Models\Plan;
 use App\Models\RiskRuleHit;
 use App\Models\UserOnlineSnapshot;
 use Illuminate\Support\Facades\DB;
@@ -57,7 +58,26 @@ try {
  $activity=$decode($c->getUserActivity(Request::create('/','GET',['user_id'=>$u->id])))['data'];
  $assert($activity['user']['id']===$u->id && !isset($activity['user']['token']));
  $assert($activity['user']['expired_at']===null && (int)$activity['user']['transfer_enable']===1073741824);
+ $assert(array_key_exists('current_plan_name', $activity['user']) && $activity['user']['current_plan_name'] === null);
  $assert(count(array_filter($activity['events'],fn($r)=>($r['rule_key']??'')==='test_activity'))===2);
+ $plan = Plan::create(['name'=>'Activity plan', 'group_id'=>1, 'transfer_enable'=>1]);
+ $u->fill(['plan_id'=>$plan->id, 'expired_at'=>time()+3600, 'u'=>1073741824])->save();
+ $activityUser = fn () => $decode($c->getUserActivity(Request::create('/', 'GET', ['user_id'=>$u->id])))['data']['user'];
+ $active = $activityUser();
+ $assert($active['current_plan_name'] === 'Activity plan' && !array_key_exists('plan_id', $active));
+ $plan->update(['name'=>'Renamed activity plan']);
+ $assert($activityUser()['current_plan_name'] === 'Renamed activity plan');
+ foreach ([
+    ['expired_at'=>time()-1, 'transfer_enable'=>1073741824],
+    ['expired_at'=>null, 'transfer_enable'=>1073741824],
+    ['expired_at'=>time()+3600, 'transfer_enable'=>0],
+ ] as $attributes) {
+    $u->fill($attributes)->save();
+    $assert($activityUser()['current_plan_name'] === null);
+ }
+ $u->fill(['expired_at'=>time()+3600, 'transfer_enable'=>1073741824])->save();
+ $plan->delete();
+ $assert($activityUser()['current_plan_name'] === null);
  $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/risk/user-activity/fetch?user_id='.$u->id);
  $r->headers->set('Accept','application/json');
  $assert(app(Illuminate\Contracts\Http\Kernel::class)->handle($r)->getStatusCode()===403);

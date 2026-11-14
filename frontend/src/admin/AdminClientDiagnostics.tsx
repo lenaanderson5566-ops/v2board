@@ -1,10 +1,11 @@
+import "./admin-client-diagnostics.css";
 import { formatDuration } from "../shared/number-format";
 import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
-import { TableViewport } from "../shared/ui";
+import { Modal, TableViewport } from "../shared/ui";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { ResourcePage } from "./admin";
-import { Modal } from "../shared/ui";
+import { AdminDetails } from "./admin-section";
 
 const checks: Record<string, string> = {
     connection: "连接",
@@ -104,46 +105,47 @@ export function AdminClientDiagnostics() {
                 )}
             />
             {detail && (
-                <Modal title="客户端运行记录" close={() => setDetail(null)}>
-                    <p>
-                        {detail.email} · FastAI {detail.client_version} ·{" "}
-                        {detail.platform}
-                    </p>
-                    <p className="muted">
-                        {detail.report_id} · {date(detail.created_at)}
-                    </p>
-                    <TableViewport><table>
-                        <thead>
-                            <tr>
-                                <th>事件</th>
-                                <th>错误类别</th>
-                                <th>结果</th>
-                                <th>耗时</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {detail.checks.map((c: Row, index: number) => (
-                                <tr key={index}>
-                                    <td>
-                                        {checks[c.name || c.id] ||
-                                            c.name ||
-                                            c.id}
-                                    </td>
-                                    <td>{errorClasses[c.errorClass] || "—"}</td>
-                                    <td>
-                                        {statuses[c.outcome || c.status] ||
-                                            c.outcome ||
-                                            c.status}
-                                    </td>
-                                    <td>
-                                        {c.elapsedMs == null
-                                            ? "—"
-                                            : formatDuration(c.elapsedMs)}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table></TableViewport>
+                <Modal title="客户端运行记录" variant="drawer" wide
+                    className="admin-detail-dialog" close={() => setDetail(null)}>
+                    <div className="admin-detail-body">
+                        <section className="admin-detail-section">
+                            <h3>报告信息</h3>
+                            <AdminDetails className="admin-detail-grid" items={[
+                                { label: "用户", value: detail.email },
+                                { label: "FastAI 版本", value: detail.client_version },
+                                { label: "系统", value: detail.platform },
+                                { label: "报告编号", value: detail.report_id },
+                                { label: "提交时间", value: date(detail.created_at) },
+                            ]} />
+                        </section>
+                        <section className="admin-detail-section">
+                            <h3>运行事件</h3>
+                            {detail.checks?.length ? (
+                                <TableViewport className="client-diagnostic-events" aria-label="运行事件">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">事件</th>
+                                                <th scope="col">错误类别</th>
+                                                <th scope="col">结果</th>
+                                                <th scope="col">耗时</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {detail.checks.map((check: Row, index: number) => (
+                                                <tr key={index}>
+                                                    <td>{checks[check.name || check.id] || check.name || check.id}</td>
+                                                    <td>{errorClasses[check.errorClass] || "—"}</td>
+                                                    <td>{statuses[check.outcome || check.status] || check.outcome || check.status}</td>
+                                                    <td>{check.elapsedMs == null ? "—" : formatDuration(check.elapsedMs)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </TableViewport>
+                            ) : <p className="muted">暂无事件记录</p>}
+                        </section>
+                    </div>
                 </Modal>
             )}
         </>

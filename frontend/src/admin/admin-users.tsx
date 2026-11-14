@@ -23,7 +23,7 @@ import {
 } from "./user-filters";
 
 const userViewKey = "admin.users.view.v1";
-const userColumnsVersion = 2;
+const userColumnsVersion = 4;
 function savedUserView(): Record<string, any> {
     try {
         const value = JSON.parse(localStorage.getItem(userViewKey) || "{}");
@@ -35,18 +35,23 @@ function savedUserView(): Record<string, any> {
 const defaultUserColumns = () =>
     resources.users.columns
         .map(([key]) => key)
-        .filter(
-            (key) =>
-                !["commission_balance", "group_id", "device_limit"].includes(
-                    key,
-                ),
-        );
+        .filter((key) => key !== "group_id" && key !== "device_limit");
 export function UsersPage() {
     const [saved] = useState(savedUserView);
     const [optionalColumns, setOptionalColumns] = useState<string[]>(() => {
-        if (!Array.isArray(saved.columns)) return defaultUserColumns();
+        const defaults = defaultUserColumns();
+        if (!Array.isArray(saved.columns)) return defaults;
         const columns = saved.columns.filter((key: string) => resources.users.columns.some(([id]) => id === key));
-        if (saved.columnsVersion !== userColumnsVersion && !columns.includes("language")) columns.push("language");
+        const version = Number(saved.columnsVersion) || 0;
+        if (version < 2 && !columns.includes("language")) columns.push("language");
+        if (version < userColumnsVersion) {
+            const previousDefaults = defaults.filter(key =>
+                key !== "total_recharge_amount" && (version >= 3 || key !== "commission_balance"),
+            );
+            if (columns.length === previousDefaults.length && previousDefaults.every(key => columns.includes(key))) {
+                return defaults;
+            }
+        }
         return columns;
     });
     const plans = useData<Row[]>(admin("plan/fetch"));
@@ -211,7 +216,7 @@ export function UsersPage() {
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                             />
-                            <button>搜索</button>
+                            <button type="submit" className="primary">搜索</button>
                             <button
                                 type="button"
                                 onClick={() => setShowFilters(true)}
@@ -232,59 +237,57 @@ export function UsersPage() {
                             </button>
                         </form>
                         <div className="actions user-toolbar-actions">
-                            <details className="admin-bulk-menu">
-                                <summary>批量操作</summary>
-                                <div className="admin-bulk-content">
-                                    <AdminUsageReset
-                                        filters={filters}
-                                        count={total}
-                                        onComplete={() => {
-                                            refresh();
-                                            setNotice("用量重置操作已完成");
-                                        }}
-                                    />
-                                    <button
-                                        disabled={!total}
-                                        onClick={() =>
-                                            setBulk({
-                                                kind: "mail",
-                                                filters:
-                                                    structuredClone(filters),
-                                                count: total,
-                                            })
-                                        }
-                                    >
-                                        发送邮件
-                                    </button>
-                                    <button
-                                        disabled={!filters.length || !total}
-                                        onClick={() =>
-                                            setBulk({
-                                                kind: "ban",
-                                                filters:
-                                                    structuredClone(filters),
-                                                count: total,
-                                            })
-                                        }
-                                    >
-                                        批量封禁
-                                    </button>
-                                    <button
-                                        className="danger"
-                                        disabled={!filters.length || !total}
-                                        onClick={() =>
-                                            setBulk({
-                                                kind: "delete",
-                                                filters:
-                                                    structuredClone(filters),
-                                                count: total,
-                                            })
-                                        }
-                                    >
-                                        批量删除
-                                    </button>
-                                </div>
-                            </details>
+                            <AdminRowMenu label="用户批量操作" triggerLabel="批量操作">
+                                <AdminUsageReset
+                                    filters={filters}
+                                    count={total}
+                                    onComplete={() => {
+                                        refresh();
+                                        setNotice("用量重置操作已完成");
+                                    }}
+                                />
+                                <button
+                                    disabled={!total}
+                                    onClick={() =>
+                                        setBulk({
+                                            kind: "mail",
+                                            filters:
+                                                structuredClone(filters),
+                                            count: total,
+                                        })
+                                    }
+                                >
+                                    发送邮件
+                                </button>
+                                <button
+                                    className="danger"
+                                    disabled={!filters.length || !total}
+                                    onClick={() =>
+                                        setBulk({
+                                            kind: "ban",
+                                            filters:
+                                                structuredClone(filters),
+                                            count: total,
+                                        })
+                                    }
+                                >
+                                    批量封禁
+                                </button>
+                                <button
+                                    className="danger"
+                                    disabled={!filters.length || !total}
+                                    onClick={() =>
+                                        setBulk({
+                                            kind: "delete",
+                                            filters:
+                                                structuredClone(filters),
+                                            count: total,
+                                        })
+                                    }
+                                >
+                                    批量删除
+                                </button>
+                            </AdminRowMenu>
                         </div>
                         <p className="muted">
                             {filters.length

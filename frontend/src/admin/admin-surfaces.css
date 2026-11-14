@@ -18,6 +18,95 @@ body[data-console="admin"] .admin-details > div {
 body[data-console="admin"] .admin-details > div:last-child { border-bottom: 0; }
 body[data-console="admin"] .admin-details dt { color: var(--muted); font-size: 13px; font-weight: 400; }
 body[data-console="admin"] .admin-details dd { margin: 0; min-width: 0; line-height: 1.65; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
+body[data-console="admin"] .overlay.admin-detail-dialog:not(.admin-drawer) > .modal {
+    width: min(920px, calc(100vw - 40px));
+    max-height: calc(100dvh - 40px);
+}
+body[data-console="admin"] .overlay.admin-detail-dialog > .modal {
+    overscroll-behavior: contain;
+}
+body[data-console="admin"] :is(.admin-detail-body, .admin-detail-stack) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: var(--admin-space);
+}
+body[data-console="admin"] .admin-detail-body { padding: var(--admin-space); }
+body[data-console="admin"] .admin-detail-section {
+    min-width: 0;
+    padding: var(--admin-space);
+    border: 1px solid var(--border);
+    border-radius: var(--admin-radius);
+    background: var(--admin-surface-soft);
+}
+body[data-console="admin"] :is(.admin-detail-section-head, .admin-detail-section > h3) {
+    margin: 0 0 12px;
+    color: var(--admin-heading);
+    font-size: 14px;
+    font-weight: 650;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] div.admin-detail-section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+body[data-console="admin"] .admin-detail-section-head > h3 { margin: 0; font: inherit; }
+body[data-console="admin"] .admin-detail-section > p:last-child { margin: 0; }
+body[data-console="admin"] .admin-detail-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px var(--admin-space);
+    margin: 0;
+}
+body[data-console="admin"] .admin-detail-grid > div {
+    display: block;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+}
+body[data-console="admin"] .admin-detail-grid dt { margin-bottom: 3px; font-size: 12px; line-height: 1.5; }
+body[data-console="admin"] .admin-detail-grid dd { line-height: 1.5; }
+body[data-console="admin"] .admin-detail-grid dd > :is(button, a) {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    text-align: start;
+}
+body[data-console="admin"] .admin-detail-grid dd > button {
+    height: auto;
+}
+body[data-console="admin"] .admin-detail-section > .admin-detail-grid + .table-viewport { margin-top: 12px; }
+body[data-console="admin"] .admin-detail-section > .admin-detail-grid + p.muted { margin-top: 12px; }
+body[data-console="admin"] .admin-order-detail-overview {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: var(--admin-space);
+}
+body[data-console="admin"] :is(.admin-order-facts > div:first-child, .admin-order-payment > div:last-child) {
+    grid-column: 1 / -1;
+}
+body[data-console="admin"] .admin-order-number {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+}
+body[data-console="admin"] .admin-order-number > code { min-width: 0; overflow-wrap: anywhere; }
+body[data-console="admin"] .admin-order-number > button { min-height: 32px; padding: 4px 8px; font-size: 12px; }
+body[data-console="admin"] .admin-order-number > [role="status"] { flex-basis: 100%; font-size: 12px; }
+body[data-console="admin"] .admin-order-number > [role="status"]:empty { position: absolute; }
+body[data-console="admin"] .admin-order-amount { color: var(--admin-heading); font-size: 18px; }
+@media (max-width: 720px) {
+    body[data-console="admin"] .admin-order-detail-overview { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+    body[data-console="admin"] .overlay.admin-detail-dialog:not(.admin-drawer) { align-items: flex-end; }
+    body[data-console="admin"] .overlay.admin-detail-dialog:not(.admin-drawer) > .modal {
+        width: 100%;
+        max-height: calc(100dvh - 12px);
+        border-radius: var(--admin-dialog-radius) var(--admin-dialog-radius) 0 0;
+    }
+    body[data-console="admin"] .admin-detail-body { padding-bottom: max(var(--admin-space), env(safe-area-inset-bottom)); }
+    body[data-console="admin"] .admin-order-number > button { min-height: var(--admin-control-height); }
+}
 body[data-console="admin"] .admin-operation-notice { align-items: flex-start; line-height: 1.65; }
 body[data-console="admin"] .admin-operation-notice svg { flex: 0 0 auto; margin-top: 2px; }
 body[data-console="admin"] .admin-operation-notice span { min-width: 0; overflow-wrap: anywhere; }
@@ -126,6 +215,17 @@ body[data-console="admin"] .user-toolbar > p { margin: 4px 0 0; }
 body[data-console="admin"] .user-details-drawer .modal > .panel-head { flex-wrap: nowrap; align-items: flex-start; }
 body[data-console="admin"] .user-details-drawer .modal > .panel-head h2 { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 body[data-console="admin"] .user-details-drawer .modal > .panel-head .icon-button { flex: 0 0 auto; }
+body[data-console="admin"] .admin-credit-order-ref {
+    display: grid;
+    justify-items: start;
+    gap: 4px;
+    max-width: 24ch;
+}
+body[data-console="admin"] .admin-credit-order-ref code {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
 
 .admin-dictionary-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-block: 20px; }
 .admin-dictionary-actions { position: sticky; bottom: -16px; padding-block: 16px; background: var(--panel, #fff); border-top: 1px solid var(--line, #e5e7eb); }
@@ -151,9 +251,30 @@ body[data-console="admin"] .admin-dictionary-fields small { overflow-wrap: anywh
 
 /* Row actions use the same controls as other admin surfaces, including keyboard focus. */
 body[data-console="admin"] .admin-row-popover { border-radius: var(--admin-radius, 8px); }
-body[data-console="admin"] .admin-row-popover > button { min-height: var(--admin-control-height); padding: 8px 12px; white-space: normal; }
-body[data-console="admin"] .admin-row-popover > button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+body[data-console="admin"] :is(.admin-row-popover, .admin-context-menu) button {
+    min-height: var(--admin-control-height);
+    padding: 8px 12px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] :is(.admin-row-popover, .admin-context-menu) button.danger:not(:disabled) {
+    color: var(--admin-danger);
+}
+body[data-console="admin"] :is(.admin-row-popover, .admin-context-menu) button.danger:not(:disabled):hover {
+    background: var(--admin-danger-hover);
+}
+body[data-console="admin"] :is(.admin-row-popover, .admin-context-menu) button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 body[data-console="admin"] .admin-row-popover[hidden] { display: none; }
+body[data-console="admin"] .admin-payment-diagnostics-cell {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+}
+body[data-console="admin"] :is(.admin-credit-order-ref, .admin-payment-diagnostics-cell) > button {
+    min-height: var(--admin-row-control-height);
+    padding-inline: 10px;
+}
 
 .node-detail-grid {
     display: grid;
@@ -319,8 +440,9 @@ body[data-console="admin"] .admin-order-quick-search.admin-filter-bar > select {
 body[data-console="admin"] .admin-order-quick-search.admin-filter-bar > input { flex: 1 1 180px; width: auto; }
 body[data-console="admin"] .admin-order-quick-search.admin-filter-bar > button { flex: 0 0 auto; }
 body[data-console="admin"] .admin-order-filter-summary { order: 2; flex: 1 1 100%; }
-body[data-console="admin"] .admin-order-filter-summary .filter-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--admin-surface-soft); overflow-wrap: anywhere; }
-body[data-console="admin"] .admin-order-filter-summary .filter-chip > button { flex: 0 0 auto; min-width: 26px; min-height: 26px; padding: 2px; border: 0; background: transparent; }
+body[data-console="admin"] :is(.admin-order-filter-summary, .user-toolbar) .filter-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--admin-surface-soft); overflow-wrap: anywhere; }
+body[data-console="admin"] :is(.admin-order-filter-summary, .user-toolbar) .filter-chip > button { flex: 0 0 auto; min-width: var(--admin-row-control-height); min-height: var(--admin-row-control-height); padding: 2px; border: 0; box-shadow: none; background: transparent; }
+body[data-console="admin"] :is(.admin-order-filter-summary, .user-toolbar) .filter-chip > button:hover { background: #f2efff; }
 body[data-console="admin"] .admin-order-toolbar ~ .admin-data-state .table-actions .actions { flex-wrap: nowrap; }
 @media (max-width: 600px) {
     body[data-console="admin"] .admin-order-quick-search.admin-filter-bar { flex-basis: 100%; }

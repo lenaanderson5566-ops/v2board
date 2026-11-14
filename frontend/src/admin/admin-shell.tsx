@@ -45,10 +45,10 @@ export const adminMenu = [
     ["mail-logs", "邮件发送日志", "notebook", "日志与诊断"],
     ["client-diagnostics", "客户端运行记录", "screen-smartphone", "日志与诊断"],
     ["system-log", "系统日志", "notebook", "日志与诊断"],
-    ["log-settings", "采集与保留策略", "settings", "日志与诊断"],
     ["site-settings", "站点设置", "equalizer", "系统设置"],
     ["registration-settings", "账户与注册", "shield", "系统设置"],
     ["notification-settings", "通知设置", "speech", "系统设置"],
+    ["log-settings", "采集与保留策略", "settings", "系统设置"],
     ["dictionary", "字典维护", "notebook", "系统设置"],
 ] as const;
 export function adminPage(path: string): string {

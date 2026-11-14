@@ -2,6 +2,7 @@ import { localPreferences, sessionPreferences } from "./browser-storage";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import startupCatalogs from "virtual:startup-catalogs";
+import { startsAtWorkspaceAccess } from "./runtime-config";
 
 import { languages } from "./language-options";
 export { languages } from "./language-options";
@@ -86,7 +87,7 @@ i18next.use({
 });
 const saved = localPreferences.getItem(languageKey);
 const initialLanguage =
-    window.FASTAI?.mode === "admin" ? "zh-CN"
+    window.FASTAI?.mode === "admin" ? (startsAtWorkspaceAccess ? "en-US" : "zh-CN")
         : saved && languages.some((l) => l.code === saved) ? saved
             : resolvePreferredLanguage([...(navigator.languages || []), navigator.language || "en-US"]);
 const initialLanguageReady = i18next.use(initReactI18next).init({
@@ -103,7 +104,7 @@ const initialLanguageReady = i18next.use(initReactI18next).init({
     initAsync: false,
 });
 export const languageReady = initialLanguageReady.then(async value => {
-    if (window.FASTAI?.mode === "admin") await loadCatalog("zh-CN");
+    if (window.FASTAI?.mode === "admin") await loadCatalog(initialLanguage);
     return value;
 });
 const changeInstanceLanguage = i18next.changeLanguage.bind(i18next);
@@ -126,6 +127,11 @@ export async function prepareWorkspaceLanguage() {
     await languageReady;
     await loadCatalog(locale());
     workspaceLanguage = true;
+}
+export async function setAdminSessionLanguage(authenticated: boolean, isCurrent = () => true) {
+    const target = authenticated ? "zh-CN" : "en-US";
+    if (!completeCatalogs.has(target)) await loadCatalog(target);
+    if (isCurrent() && i18next.language !== target) await changeInstanceLanguage(target);
 }
 function syncLanguage() {
     document.documentElement.lang = i18next.language;

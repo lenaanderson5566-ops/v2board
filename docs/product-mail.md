@@ -84,7 +84,7 @@ Horizon 是常驻进程。仅 git pull 后，新 Blade 模板可能与旧进程�
 
 未接入 Mailgun 投递/退信 Webhook，因此不展示“已送达”“已打开”或“已点击”。日志写入失败若发生在发送前则不发送；发送后的日志更新失败不能触发重复发送。记录不是全链路 exactly-once 保证，队列确认丢失等情况仍需服务商核查。
 
-日志保留默认 0（保持历史记录），可在日志设置改为 30–365 天，建议 90 天，沿用定时分批清理。
+日志保留默认 0（保持历史记录），可在「系统设置 → 采集与保留策略 → 日志保留」改为 30–365 天，建议 90 天，沿用定时分批清理。
 
 官方接口参考：https://documentation.mailgun.com/docs/mailgun/user-manual/sending-messages/send-http
 

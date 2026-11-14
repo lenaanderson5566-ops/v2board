@@ -24,6 +24,7 @@ export function AdminUsageReset({
     return (
         <>
             <button
+                type="button"
                 disabled={!count}
                 onClick={() =>
                     setOperation({
@@ -37,6 +38,8 @@ export function AdminUsageReset({
             </button>
             {!single && (
                 <button
+                    type="button"
+                    className="danger"
                     onClick={() =>
                         setOperation({ kind: "global", filters: [], count: 0 })
                     }

@@ -86,6 +86,10 @@ it("finds dashboard, subscription and query-based subpages by name", () => {
         expect(link.getAttribute("href")).toBe(`#/${route}`);
         expect(link.getAttribute("aria-current")).toBe(route.endsWith("reviews") ? "page" : null);
     }
+    fireEvent.change(search, { target: { value: "系统设置" } });
+    expect(screen.getByRole("link", { name: "采集与保留策略" }).getAttribute("href")).toBe("#/log-settings");
+    expect(screen.getByRole("link", { name: /^节点访问目标设置/ }).getAttribute("href")).toBe("#/log-settings?tab=targets");
+    expect(screen.queryByRole("link", { name: "系统日志" })).toBeNull();
     fireEvent.change(search, { target: { value: "套餐列表" } });
     expect(screen.getByRole("link", { name: "套餐与订阅" }).getAttribute("href")).toBe("#/plans");
     expect(screen.getByRole("heading", { level: 1, name: "异常复核" })).toBeTruthy();

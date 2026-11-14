@@ -11,15 +11,15 @@ const narrowViewports = [{ width: 320, height: 740 }, { width: 390, height: 844 
 
 // Serve only the exact build under test. All APIs and the checkout destination
 // are synthetic, so the browser cannot call a real site or payment provider.
-async function consoleFixture(context, mode, api, { authenticated = true, emailDomains = [] } = {}) {
-    await context.addInitScript(({ origin, mode, emailDomains }) => {
+async function consoleFixture(context, mode, api, { authenticated = true, emailDomains = [], title = "FastAI Test" } = {}) {
+    await context.addInitScript(({ origin, mode, emailDomains, title }) => {
         if (location.origin !== origin) return;
         window.FASTAI = {
-            mode, title: "FastAI Test", adminPath: "test-admin", landing: false,
+            mode, title, adminPath: "test-admin", opsPath: "test-ops", landing: false,
             emailWhitelistEnabled: emailDomains.length > 0, emailWhitelistSuffixes: emailDomains,
         };
         localStorage.setItem("fastai.language", "zh-CN");
-    }, { origin: consoleOrigin, mode, emailDomains });
+    }, { origin: consoleOrigin, mode, emailDomains, title });
     await context.route("**/*", async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -277,6 +277,246 @@ test("mobile checkout opens a gateway, returns to the paid order and submits onl
     await expect(page.getByRole("heading", { name: "订单已完成" })).toBeVisible();
     await expect(page.getByRole("button", { name: "确认支付" })).toHaveCount(0);
     expect(payments).toHaveLength(1);
+});
+
+test("mobile admin users prioritize account columns and distinguish subscription expiry", async ({ page, context }) => {
+    const now = Math.floor(Date.now() / 1000);
+    const account = { plan_id: 1, transfer_enable: 1073741824, banned: 0 };
+    await consoleFixture(context, "admin", path => {
+        if (path === "/api/v1/test-admin/config/fetch") return {};
+        if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
+        if (path === "/api/v1/test-admin/user/fetch") return [
+            { ...account, id: 1, email: "expired@example.test", expired_at: now - 86400, currency: "USD", total_recharge_amount: 1234 },
+            { ...account, id: 2, email: "active@example.test", expired_at: now + 86400, currency: "CNY", total_recharge_amount: 0 },
+            { ...account, id: 3, email: "unknown@example.test", expired_at: null, currency: "CNY" },
+        ];
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/users`);
+    const expired = page.getByText("已到期", { exact: true });
+    const active = page.getByText("未到期", { exact: true });
+    await expect(expired).toHaveAttribute("data-tone", "danger");
+    await expect(active).toHaveAttribute("data-tone", "success");
+    const [expiredColor, activeColor] = await Promise.all(
+        [expired, active].map(badge => badge.evaluate(element => getComputedStyle(element).color)),
+    );
+    expect(expiredColor).not.toBe(activeColor);
+    const priority = [
+        "邮箱", "订阅", "订阅到期", "余额", "累计充值", "佣金", "流量（GiB）", "已用（GiB）", "剩余额度", "状态",
+    ];
+    const headers = page.getByRole("columnheader");
+    for (const [index, name] of priority.entries()) {
+        await expect(headers.nth(index)).toHaveAccessibleName(name);
+    }
+    for (const [email, amount] of [["expired@example.test", "USD 12.34"], ["active@example.test", "CNY 0.00"], ["unknown@example.test", "—"]]) {
+        const row = page.getByRole("row").filter({ hasText: email });
+        await expect(row.locator('td[data-label="累计充值"]')).toHaveText(amount);
+    }
+    expect(await page.locator(".users-page .table-viewport").evaluate(viewport => {
+        viewport.scrollLeft = 40;
+        return viewport.scrollLeft > 0;
+    })).toBe(true);
+    await expectPageWidth(page, 390);
+});
+
+test.describe("desktop admin frontend", () => {
+    test.use({ isMobile: false, hasTouch: false, viewport: { width: 1280, height: 900 } });
+
+    test("the workspace entrance stays in English until sign-in verification succeeds", async ({ page, context }) => {
+        const loginPath = "/api/v1/passport/auth/login";
+        const verificationPath = "/api/v1/passport/mfa/verifications";
+        const configPath = "/api/v1/test-admin/config/fetch";
+        const configuredTitle = "后台控制台";
+        const authRequests = [];
+        await consoleFixture(context, "admin", (path, request) => {
+            if ([loginPath, verificationPath, configPath].includes(path)) {
+                authRequests.push({
+                    path,
+                    method: request.method(),
+                    language: request.headers()["content-language"],
+                    body: request.postDataJSON(),
+                });
+            }
+            if (path === loginPath) return {
+                mfaRequired: true, challengeId: "a".repeat(64), preferredMethod: "totp",
+                methods: ["totp", "recovery"], expiresAt: "2099-01-01T00:00:00Z",
+            };
+            if (path === verificationPath) return { authenticated: true, accountId: 7 };
+            if (path === configPath) return {};
+        }, { authenticated: false, title: configuredTitle });
+        await page.goto(`${consoleOrigin}/admin.html#/login`);
+        const preferredLanguage = () => page.evaluate(() => localStorage.getItem("fastai.language"));
+        const html = page.locator("html");
+        const body = page.locator("body");
+        const heading = page.getByRole("heading", { name: "Sign in" });
+        await expect(heading).toBeVisible();
+        await expect(page).toHaveTitle("Workspace access");
+        await expect(html).toHaveAttribute("lang", "en-US");
+        await expect(body).not.toContainText(/admin console|[\u3400-\u9fff]/i);
+        await expectPageWidth(page, 1280);
+        const artwork = await page.locator(".workspace-access-art").boundingBox();
+        const form = await page.locator(".workspace-access-form").boundingBox();
+        expect(artwork.x + artwork.width).toBeLessThan(form.x);
+        expect(await preferredLanguage()).toBe("zh-CN");
+
+        await page.getByRole("link", { name: "Forgot your password?" }).click();
+        await expect(page.getByRole("heading", { name: "Reset your password" })).toBeVisible();
+        await expect(page.getByLabel("Verification code")).toBeVisible();
+        await expect(page.getByRole("button", { name: "Send code" })).toBeVisible();
+        await expect(page).toHaveTitle("Workspace access");
+        await expect(body).not.toContainText(/[\u3400-\u9fff]/);
+        await page.goBack();
+        await expect(heading).toBeVisible();
+
+        await page.getByLabel("Email address").fill("account@example.test");
+        await page.getByLabel("Password", { exact: true }).fill("Testing!2026");
+        await page.getByRole("button", { name: "Sign in", exact: true }).click();
+        await expect(page.getByRole("heading", { name: "Login verification" })).toBeVisible();
+        expect(authRequests.map(request => request.path)).toEqual([loginPath]);
+        await expect(page).toHaveTitle("Workspace access");
+        await expect(body).not.toContainText(/[\u3400-\u9fff]/);
+        await page.getByLabel("Verification code").fill("123456");
+        await page.getByRole("button", { name: "Verify and sign in" }).click();
+        await expect(page.getByRole("heading", { name: "仪表盘", exact: true })).toBeVisible();
+        await expect(html).toHaveAttribute("lang", "zh-CN");
+        expect(await preferredLanguage()).toBe("zh-CN");
+        expect(authRequests).toEqual([
+            { path: loginPath, method: "POST", language: "en-US", body: { email: "account@example.test", password: "Testing!2026" } },
+            { path: verificationPath, method: "POST", language: "en-US", body: { challengeId: "a".repeat(64), verificationMethod: "totp", verificationCode: "123456" } },
+            { path: configPath, method: "GET", language: "en-US", body: null },
+        ]);
+    });
+
+    test("desktop admin actions distinguish confirm, danger and secondary controls", async ({ page, context }) => {
+        const writes = [];
+        await consoleFixture(context, "admin", (path, request) => {
+            if (path === "/api/v1/test-admin/config/fetch") return {};
+            if (path === "/api/v1/test-admin/plan/fetch") return [];
+            if (path === "/api/v1/test-admin/user/fetch") return [{ id: 7, email: "account@example.test" }];
+            if (path === "/api/v1/test-admin/user/usageResetPreview") return { count: 1 };
+            if (path === "/api/v1/test-admin/coupon/fetch") return [{ id: 12, name: "测试券模板", type: 2, value: 10, show: 1 }];
+            if (request.method() !== "GET") writes.push(path);
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/users`);
+        const search = page.getByRole("button", { name: "搜索", exact: true });
+        const batch = page.getByRole("button", { name: "批量操作" });
+        await expect(search).toHaveClass("primary");
+        await batch.focus();
+        await page.keyboard.press("ArrowDown");
+        const group = page.getByRole("group", { name: "用户批量操作" });
+        const reset = group.getByRole("button", { name: "全局重置用量" });
+        const mail = group.getByRole("button", { name: "发送邮件" });
+        await expect(group.getByRole("button", { name: "批量封禁" })).toBeDisabled();
+        await expect(group.getByRole("button", { name: "批量删除" })).toBeDisabled();
+        await expect(reset).toHaveClass("danger");
+        expect((await reset.boundingBox()).height).toBeGreaterThanOrEqual(36);
+        expect(await reset.evaluate(element => getComputedStyle(element).color))
+            .not.toBe(await mail.evaluate(element => getComputedStyle(element).color));
+        await reset.click();
+        const dialog = page.getByRole("dialog", { name: "全局重置用量" });
+        await expect(dialog.getByRole("button", { name: "确认全局重置" })).toBeDisabled();
+        await dialog.getByRole("button", { name: "取消" }).click();
+        await expect(batch).toBeFocused();
+        await expect(batch).toHaveAttribute("aria-expanded", "false");
+
+        await page.goto(`${consoleOrigin}/admin.html#/coupons`);
+        const row = page.getByRole("row").filter({ hasText: "测试券模板" });
+        await expect(row.getByRole("switch")).toBeChecked();
+        await expect(row.getByRole("button", { name: "切换启用" })).toHaveCount(0);
+        await expect(row.getByRole("button", { name: "删除" })).toHaveCount(0);
+        const more = row.getByRole("button", { name: "更多操作" });
+        expect((await more.boundingBox()).height).toBeGreaterThanOrEqual(32);
+        await more.click();
+        const remove = page.getByRole("group", { name: "测试券模板 更多操作" }).getByRole("button", { name: "删除" });
+        await expect(remove).toHaveClass("danger");
+        const refusal = page.waitForEvent("dialog").then(confirmation => confirmation.dismiss());
+        await Promise.all([refusal, remove.click()]);
+        await expect(more).toBeFocused();
+        expect(writes).toEqual([]);
+    });
+});
+
+test("admin order details adapt to mobile and desktop and keep diagnostics reachable", async ({ page, context }) => {
+    const tradeNo = "order-" + "1234567890".repeat(12);
+    const email = "account-" + "abcdef".repeat(9) + "@example.test";
+    const requestId = "12345678-1234-4234-8234-123456789abc";
+    const rawResponse = '{"reference":"' + "abcdefghij".repeat(30) + '"}';
+    const rawRequests = [];
+    const order = {
+        id: 1, trade_no: tradeNo, user_id: 7, email,
+        currency: "CNY", period: "month_price", type: 1, status: 0, plan_id: 1,
+        total_amount: 5880, created_at: 1791849600,
+    };
+    await consoleFixture(context, "admin", path => {
+        if (path === "/api/v1/test-admin/config/fetch") return {};
+        if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
+        if (path === "/api/v1/test-admin/order/fetch") return [order];
+        if (path === "/api/v1/test-ops/risk/user-activity/fetch") return {
+            user: { id: 7, email, current_plan_name: "当前生效的测试套餐", transfer_enable: 1073741824, expired_at: 1950000000 },
+            events: [],
+        };
+        if (path === "/api/v1/test-admin/order/detail") return {
+            ...order,
+            payment_attempt_history: { available: true, events: [{
+                id: 3, provider: "EPayQrcode", stage: "gateway", result: "failed", reason: "gateway_rejected",
+                created_at: 1791849620, request_id: requestId, gateway_host: "gateway.example.test",
+                gateway_http_status: 200, gateway_code: 0, has_raw_diagnostic: true,
+            }] },
+            callback_history: { available: true, events: [] },
+        };
+        if (path.startsWith("/api/v1/test-admin/payment/diagnostics/")) rawRequests.push(path);
+        if (path === "/api/v1/test-admin/payment/diagnostics/attempt/3") {
+            return { sections: [{ title: "网关响应", text: rawResponse }] };
+        }
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/orders`);
+    await page.getByRole("button", { name: "订单详情" }).click();
+    const details = page.getByRole("dialog", { name: "订单详情" });
+    for (const name of ["订单概况", "金额与渠道", "支付诊断"]) {
+        await expect(details.getByRole("heading", { name })).toBeVisible();
+    }
+    await expect(details.getByText(tradeNo, { exact: true })).toBeVisible();
+    const user = details.getByRole("button", { name: `ID: 7 · ${email}` });
+    await expect(user).toBeVisible();
+    expect(await user.evaluate(button => button.scrollWidth <= button.clientWidth)).toBe(true);
+    const diagnostics = details.getByRole("region", { name: "支付诊断" });
+    await expect(diagnostics.getByRole("link", { name: requestId })).toHaveAttribute("href", `#/system-log?request_id=${requestId}`);
+    expect(await diagnostics.locator(".table-viewport").evaluate(viewport =>
+        viewport.scrollWidth > viewport.clientWidth
+    )).toBe(true);
+    expect(await details.evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth)).toBe(true);
+    await expectPageWidth(page, 390);
+    expect(rawRequests).toHaveLength(0);
+
+    const trigger = diagnostics.getByRole("button", { name: "查看原始诊断" });
+    await trigger.click();
+    const raw = page.getByRole("dialog", { name: "原始支付诊断" });
+    await expect(raw.getByRole("heading", { name: "网关响应" })).toBeVisible();
+    const code = raw.locator("pre");
+    await expect(code).toHaveText(rawResponse);
+    expect(await code.evaluate(pre => pre.scrollWidth <= pre.clientWidth)).toBe(true);
+    expect(await raw.evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth)).toBe(true);
+    expect(rawRequests).toEqual(["/api/v1/test-admin/payment/diagnostics/attempt/3"]);
+    await page.keyboard.press("Escape");
+    await expect(raw).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await user.click();
+    const userDetails = page.getByRole("dialog", { name: /^用户详情/ });
+    const account = userDetails.getByRole("region", { name: "账户概况" });
+    await expect(account.getByText("当前有效套餐")).toBeVisible();
+    await expect(account.getByText("当前生效的测试套餐")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(user).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(details).toHaveCount(0);
+
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await page.getByRole("button", { name: "订单详情" }).click();
+    const overview = await details.getByRole("heading", { name: "订单概况" }).boundingBox();
+    const payment = await details.getByRole("heading", { name: "金额与渠道" }).boundingBox();
+    expect(overview.y).toBe(payment.y);
+    expect(overview.x).toBeLessThan(payment.x);
+    expect(await details.evaluate(dialog => dialog.scrollWidth <= dialog.clientWidth)).toBe(true);
 });
 
 test("mobile admin navigation protects a settings draft and restores the tab on browser back", async ({ page, context }) => {

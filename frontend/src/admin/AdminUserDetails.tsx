@@ -3,8 +3,8 @@ import { useState } from "react";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { UserActivityContent } from "./UserActivityContent";
 import { adminUserLabel } from "./admin-user-label";
-import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-labels";
-import type { AdminPlanDirectory } from "./admin-plan-reference";
+import { adminOrderPlan, adminOrderType } from "./admin-order-labels";
+import { AdminOrderDetails } from "./AdminOrderDetails";
 import { admin, query, bytes, money, type Row } from "../shared/api";
 import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
 import { StatusBadge } from "../shared/StatusBadge";
@@ -94,70 +94,9 @@ function UserOrders({ row }: { row: Row }) {
                     onChange={setPage}
                 />
             </State>
-            {selected && <UserOrderDetails id={selected.id} close={() => setSelected(null)} plans={plans}/>}
+            {selected && <AdminOrderDetails commissionMode id={selected.id} close={() => setSelected(null)} plans={plans}/>}
         </div>
     );
-}
-
-function UserOrderDetails({ id, close, plans = {} }: { id: number; close: () => void; plans?: AdminPlanDirectory }) {
-    const detail = useData(admin("order/detail"), { id });
-    return <section aria-label="订单详情">
-        <h3>订单详情</h3>
-        <button onClick={close}>收起详情</button>
-        <State {...detail} retry={detail.reload}>
-            <Table
-                data={detail.data ? [detail.data] : []}
-                columns={[
-                    ["trade_no", "订单号"],
-                    ["type", "类型", adminOrderType],
-                    ["plan_id", "套餐", r => adminOrderPlan(r, plans)],
-                    ["period", "周期", adminOrderPeriod],
-                    [
-                        "total_amount",
-                        "订单金额",
-                        (r) => money(r.total_amount, r.currency),
-                    ],
-                    [
-                        "balance_amount",
-                        "余额抵扣",
-                        (r) => money(r.balance_amount, r.currency),
-                    ],
-                    [
-                        "commission_balance",
-                        "佣金",
-                        (r) =>
-                            money(r.commission_balance, r.currency),
-                    ],
-                    ["paid_at", "付款时间", (r) => date(r.paid_at)],
-                ]}
-            />
-            <h4>佣金记录</h4>
-            <Table
-                data={detail.data?.commission_log || []}
-                columns={[
-                    [
-                        "invite_user_id",
-                        "邀请人（ID / 邮箱）",
-                        (r) =>
-                            adminUserLabel({
-                                user_id: r.invite_user_id,
-                                email: r.invite_email,
-                            }),
-                    ],
-                    [
-                        "get_amount",
-                        "金额",
-                        (r) => money(r.get_amount, r.currency),
-                    ],
-                    [
-                        "created_at",
-                        "时间",
-                        (r) => date(r.created_at),
-                    ],
-                ]}
-            />
-        </State>
-    </section>;
 }
 
 const creditStates = [
@@ -206,7 +145,10 @@ function UserCredits({ row }: { row: Row }) {
                 ["source", "来源", r => creditSources[r.source] ?? "来源未记录"],
                 ["plan_name", "额度包"],
                 ["trade_no", "关联订单", r => r.order_id != null && r.trade_no
-                    ? <button type="button" onClick={() => setOrderId(r.order_id)} aria-label={`查看订单 ${r.trade_no}`}>{r.trade_no}</button>
+                    ? <span className="admin-credit-order-ref">
+                        <code>{r.trade_no}</code>
+                        <button type="button" onClick={() => setOrderId(r.order_id)} aria-label={`查看订单 ${r.trade_no}`}>查看订单</button>
+                    </span>
                     : "—"],
                 ["granted_bytes", "发放量", r => r.granted_bytes == null ? "未记录" : bytes(r.granted_bytes)],
                 ["available_bytes", "可用余量", r => bytes(r.available_bytes)],
@@ -225,7 +167,7 @@ function UserCredits({ row }: { row: Row }) {
                 setOrderId(null);
             }}/>
         </State>
-        {orderId !== null && <UserOrderDetails id={orderId} close={() => setOrderId(null)}/>}
+        {orderId !== null && <AdminOrderDetails commissionMode id={orderId} close={() => setOrderId(null)}/>}
     </div>;
 }
 function UserTraffic({ row }: { row: Row }) {

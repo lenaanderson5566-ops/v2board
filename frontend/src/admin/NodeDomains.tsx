@@ -295,8 +295,10 @@ export function NodeDomainBinding({
                                             ["reason","处理说明"],
                                         ]}/>
                                         {!originCleanup.rows?.length && <p>没有需要清理的旧回源解析。</p>}
-                                        <button disabled={busy || manualBusy || formDirty || manualDirty || !originCleanup.rows?.some((r:Row)=>r.action==="schedule")} onClick={()=>void reviewOriginCleanup(true)}>确认延迟清理</button>
-                                        <button disabled={busy} onClick={()=>setOriginCleanup(null)}>取消预览</button>
+                                        <div className="actions">
+                                            <button type="button" className="danger" disabled={busy || manualBusy || formDirty || manualDirty || !originCleanup.rows?.some((r:Row)=>r.action==="schedule")} onClick={()=>void reviewOriginCleanup(true)}>确认延迟清理</button>
+                                            <button type="button" disabled={busy} onClick={()=>setOriginCleanup(null)}>取消预览</button>
+                                        </div>
                                     </>}
                                 </details>
                             </>
@@ -607,7 +609,7 @@ export function NodeDomainBinding({
                                 if(!binding){setServerId("");setMode("direct");setEntryId("");setEntryPort(String(node.port || 443));setRoot("");setPrefix("");setFamily("ipv4");setDraftRevision(undefined);}
                                 data.reload();
                             }}>重新载入域名设置</button>
-                            {binding?.managed && <button type="button" title={binding.tls_transition_state==="pending"?"请先完成证书验证":binding.entry_id || binding.published_origin?"中转节点请先切换直连并验证":undefined} disabled={busy || manualBusy || data.loading || !draftRevision || binding.tls_transition_state==="pending" || !!binding.entry_id || !!binding.published_origin} onClick={()=>{
+                            {binding?.managed && <button type="button" className="danger" title={binding.tls_transition_state==="pending"?"请先完成证书验证":binding.entry_id || binding.published_origin?"中转节点请先切换直连并验证":undefined} disabled={busy || manualBusy || data.loading || !draftRevision || binding.tls_transition_state==="pending" || !!binding.entry_id || !!binding.published_origin} onClick={()=>{
                                 if(!confirm("确认改为手动维护并放弃未保存的域名设置？现有解析和服务器关联保留，DNS 不再自动更新；复用线路或证书验证未完成时禁止切换。"))return;
                                 void act("manual",{id:binding.id,revision:draftRevision,confirm:true});
                             }}>改为手动维护</button>}
@@ -634,6 +636,8 @@ export function NodeDomainBinding({
                         setAdoption(r || null);
                     }}/>同时删除当前地址类型不再使用的 A/AAAA 记录（请确认未用于其他服务）</label>}
                     <button
+                        type="button"
+                        className={adoption.removeUnused ? "danger" : "primary"}
                         disabled={busy || !adoption.rows?.length}
                         onClick={async () => {
                             if (
@@ -753,6 +757,8 @@ export function NodeDomainTools({
                         </select>
                     </label>
                     <button
+                        type="button"
+                        className={plan ? undefined : "primary"}
                         disabled={busy || !from || !to || from === to}
                         onClick={async () => {
                             const p = await act("migrate", {
@@ -765,6 +771,7 @@ export function NodeDomainTools({
                         预览域名迁移
                     </button>
                     <button
+                        type="button"
                         disabled={busy}
                         onClick={async () => {
                             const r = await act("cleanup", {});
@@ -773,7 +780,7 @@ export function NodeDomainTools({
                     >
                         检查待清理解析
                     </button>
-                    <button disabled={busy || !from} onClick={() => inspect(1)}>
+                    <button type="button" disabled={busy || !from} onClick={() => inspect(1)}>
                         检查历史解析
                     </button>
                 </div>
@@ -794,6 +801,8 @@ export function NodeDomainTools({
                             ]}
                         />
                         <button
+                            type="button"
+                            className={plan.queued ? undefined : "primary"}
                             disabled={busy || !plan.rows?.length || plan.queued}
                             onClick={async () => {
                                 const r = await act("migrate", {
@@ -814,6 +823,8 @@ export function NodeDomainTools({
                         </button>
                         {plan.queued && (
                             <button
+                                type="button"
+                                className="primary"
                                 disabled={busy}
                                 onClick={async () => {
                                     if (
@@ -876,6 +887,8 @@ export function NodeDomainTools({
                                     "操作",
                                     (r) => (
                                         <button
+                                            type="button"
+                                            className="danger"
                                             disabled={busy}
                                             onClick={async () => {
                                                 const rows = await act(
@@ -921,6 +934,8 @@ export function NodeDomainTools({
                                     (r) =>
                                         r.cleanupToken ? (
                                             <button
+                                                type="button"
+                                                className="danger"
                                                 disabled={busy}
                                                 onClick={async () => {
                                                     if (

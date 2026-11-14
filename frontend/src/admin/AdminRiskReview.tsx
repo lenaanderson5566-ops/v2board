@@ -4,8 +4,10 @@ import { adminUserLabel } from "./admin-user-label";
 import { useRef, useState } from "react";
 import { ops, request, type Row } from "../shared/api";
 import { Modal } from "../shared/ui";
+import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import { AdminDetails } from "./admin-section";
 const states: Record<string, string> = { pending: "待处理", confirmed: "已确认", false_positive: "误报", ignored: "已忽略" };
+const tones: Record<string, StatusTone> = { pending: "warning", confirmed: "danger", false_positive: "neutral", ignored: "neutral" };
 const requestResults: Record<string, string> = { success: "成功", failed: "失败" };
 const evidence: Record<string, string> = { threshold: "命中阈值", window_seconds: "统计窗口（秒）", failed_count: "失败次数", distinct_ip_count: "不同 IP 数", request_count: "请求次数", subscribe_count: "成功订阅次数", subscribe_threshold: "订阅次数阈值", traffic_growth_bytes: "流量增长（字节）", traffic_growth_threshold_bytes: "流量增长上限（字节）", distinct_client_type_count: "客户端类型数", ip: "命中 IP", ua_hash: "命中 UA 哈希" };
 export function AdminRiskReview({ row, grouped = true, onSaved }: { row: Row; grouped?: boolean; onSaved?: () => void }) {
@@ -44,7 +46,10 @@ export function AdminRiskReview({ row, grouped = true, onSaved }: { row: Row; gr
         }
     }
     return <>
-        <button onClick={() => setOpen(true)}>{states[review.state] || "待处理"} · 证据</button>
+        <div className="actions">
+            <StatusBadge tone={tones[review.state] || "warning"}>{states[review.state] || "待处理"}</StatusBadge>
+            <button type="button" onClick={() => setOpen(true)}>查看证据</button>
+        </div>
         {open && <Modal title="命中证据与人工复核" close={dismiss} dismissible={!busy}>
             <div className="pad">
                 <p>{adminUserLabel(row)}</p><p>{row.rule_name || "历史规则"} · {date(row.hit_at)}</p>

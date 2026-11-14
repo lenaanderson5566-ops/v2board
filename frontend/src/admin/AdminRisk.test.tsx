@@ -34,19 +34,20 @@ it("keeps the pending queue across reporting windows and refreshes both views af
     expect(await screen.findByText("1 条待复核")).toBeTruthy();
     expect(readRequest.mock.calls.some(([path]) => path.includes("review_queue"))).toBe(false);
     fireEvent.click(screen.getByRole("button", { name: "打开待复核队列" }));
-    const review = await screen.findByRole("button", { name: /待处理.*证据/ });
+    const review = await screen.findByRole("button", { name: "查看证据" });
+    expect(within(review.closest("td")!).getByText("待处理")).toBeTruthy();
     expect(readRequest).toHaveBeenCalledWith("test-ops/log/rule-hit/fetch?review_queue=1&current=1&page_size=10", undefined, false);
 
     fireEvent.click(screen.getByRole("button", { name: "近 7 天" }));
     await waitFor(() => expect(readRequest).toHaveBeenCalledWith("test-ops/risk/summary/fetch?window=7d&view=dashboard", undefined, false));
-    expect(screen.getByRole("button", { name: /待处理.*证据/ })).toBe(review);
+    expect(screen.getByRole("button", { name: "查看证据" })).toBe(review);
     fireEvent.click(review);
     const dialog = await screen.findByRole("dialog", { name: "命中证据与人工复核" });
     expect(within(dialog).getByText(/仅针对当前原始记录/)).toBeTruthy();
     fireEvent.change(within(dialog).getByLabelText("复核状态"), { target: { value: "confirmed" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "保存复核" }));
     expect(await screen.findByText("0 条待复核")).toBeTruthy();
-    await waitFor(() => expect(screen.queryByRole("button", { name: /待处理.*证据/ })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("button", { name: "查看证据" })).toBeNull());
     expect(request).toHaveBeenCalledWith("test-ops/log/rule-hit/review", { id: 7, state: "confirmed", note: "" });
 });
 

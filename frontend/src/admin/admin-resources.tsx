@@ -217,17 +217,32 @@ export const resources: Record<string, Resource> = {
         columns: [
             [
                 "id",
-                "用户（ID / 邮箱）",
+                "邮箱",
                 (r) => (
                     <AdminUserActivityLink
                         row={{ user_id: r.id, email: r.email }}
                     />
                 ),
             ],
-            ["language", "用户语言", (r) => {
-                const code = typeof r.language === "string" ? r.language.trim() : "";
-                return languages.find((language) => language.code === code)?.name ?? (code || "未设置");
-            }],
+            ["plan_name", "订阅"],
+            ["expired_at", "订阅到期", (r) => <AdminSubscriptionExpiry user={r} />],
+            ["balance", "余额", (r) => money(r.balance, r.currency)],
+            ["total_recharge_amount", "累计充值", (r) => money(r.total_recharge_amount, r.currency || "CNY")],
+            [
+                "commission_balance",
+                "佣金",
+                (r) => money(r.commission_balance, r.currency),
+            ],
+            [
+                "transfer_enable",
+                "流量（GiB）",
+                (r) => r.transfer_enable == null ? "—" : formatNumber(Number(r.transfer_enable) / 1073741824),
+            ],
+            [
+                "total_used",
+                "已用（GiB）",
+                (r) => r.total_used == null ? "—" : formatNumber(Number(r.total_used) / 1073741824),
+            ],
             ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
             [
                 "banned",
@@ -240,18 +255,11 @@ export const resources: Record<string, Resource> = {
                     </span>
                 ),
             ],
-            ["plan_name", "订阅"],
+            ["language", "用户语言", (r) => {
+                const code = typeof r.language === "string" ? r.language.trim() : "";
+                return languages.find((language) => language.code === code)?.name ?? (code || "未设置");
+            }],
             ["group_id", "权限组"],
-            [
-                "total_used",
-                "已用（GiB）",
-                (r) => r.total_used == null ? "—" : formatNumber(Number(r.total_used) / 1073741824),
-            ],
-            [
-                "transfer_enable",
-                "流量（GiB）",
-                (r) => r.transfer_enable == null ? "—" : formatNumber(Number(r.transfer_enable) / 1073741824),
-            ],
             [
                 "device_limit",
                 "设备数",
@@ -259,14 +267,7 @@ export const resources: Record<string, Resource> = {
                     {r.alive_ip || 0} / {r.device_limit || "不限"}
                 </span>,
             ],
-            ["expired_at", "订阅到期", (r) => <AdminSubscriptionExpiry user={r} />],
             ["currency", "账号币种", (r) => r.currency || "CNY"],
-            ["balance", "余额", (r) => money(r.balance, r.currency)],
-            [
-                "commission_balance",
-                "佣金",
-                (r) => money(r.commission_balance, r.currency),
-            ],
             ["last_connected_at", "上次连接", (r) => date(r.last_connected_at)],
             [
                 "last_subscribe_at",
@@ -465,7 +466,6 @@ export const resources: Record<string, Resource> = {
             field("limit_period", "限制周期数组", "json"),
         ],
         defaults: { type: 2, public_claim: 0 },
-        actions: [["切换启用", admin("coupon/show")]],
     },
     giftcards: {
         kind: "giftcards",

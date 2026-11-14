@@ -1,1 +1,0 @@
-import{j as i}from"./createLucideIcon-CRNwcWun.js";import"./AdminApp-BJ4IPPze.js";function e({className:r="",...a}){return i.jsx("form",{"aria-label":"\u7B5B\u9009\u6761\u4EF6",...a,className:`admin-filter-bar ${r}`})}export{e as A};

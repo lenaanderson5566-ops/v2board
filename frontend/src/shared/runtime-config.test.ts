@@ -49,9 +49,14 @@ it.each(["FASTAI", "V2BOARD"] as const)("keeps custom runtime settings and the f
 
 it("shares normalized custom administrative paths through both bootstrap names", async () => {
     window.FASTAI = { mode: "admin", title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-ops" } as any;
+    document.documentElement.lang = "zh-CN";
+    document.documentElement.dir = "rtl";
     await initializeRuntime("admin");
     expect(window.V2BOARD).toBe(window.FASTAI);
     expect(window.V2BOARD).toMatchObject({ title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-ops" });
+    expect(document.title).toBe("Workspace access");
+    expect(document.documentElement.lang).toBe("en-US");
+    expect(document.documentElement.dir).toBe("ltr");
 });
 
 it.each(["", "v2boad", " V2BOARD "])("uses the FastAI default for %j", async (title) => {
@@ -131,6 +136,19 @@ it("offers safe startup recovery without relying on React or showing internal er
     expect(document.activeElement).toBe(root.querySelector("h1"));
     root.querySelector("button")!.click();
     expect(retry).toHaveBeenCalledTimes(1);
+});
+it("keeps startup recovery in English for the workspace access entry even without boot configuration", () => {
+    localStorage.setItem("fastai.language", "zh-CN");
+    const retry = vi.fn();
+    startupError(new Error("管理员配置不存在"), retry, "admin");
+    const root = document.getElementById("root")!;
+    expect(document.title).toBe("Workspace access");
+    expect(root.querySelector("section")?.getAttribute("lang")).toBe("en-US");
+    expect(root.querySelector("h1")?.textContent).toBe("This page could not load");
+    expect(root.textContent).not.toContain("管理员配置不存在");
+    root.querySelector("button")!.click();
+    expect(retry).toHaveBeenCalledOnce();
+    expect(localStorage.getItem("fastai.language")).toBe("zh-CN");
 });
 it("provides independent startup copy for all interface languages and safely falls back for unknown preferences", () => {
     expect(Object.keys(startupCopy)).toHaveLength(14);

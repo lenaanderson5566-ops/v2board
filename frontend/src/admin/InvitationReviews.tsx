@@ -613,7 +613,7 @@ export function InvitationReviews({ reviewId }: { reviewId?: string } = {}) {
                             </div>
                         )}
                         <div className="invitation-review-footer">
-                            <button disabled={disabled}>
+                            <button className="primary" type="submit" disabled={disabled}>
                                 {busy ? "正在保存…" : "保存结论"}
                             </button>
                             <button

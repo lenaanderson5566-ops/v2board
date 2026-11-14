@@ -379,6 +379,7 @@ export function AdminFastaiDownloads({
                                 />
                             </label>
                             <button
+                                className="danger"
                                 type="button"
                                 onClick={() => {
                                     setReleases((items) =>
@@ -394,43 +395,45 @@ export function AdminFastaiDownloads({
                     {!releases.length && (
                         <p className="muted">尚未发布 FastAI 安装包。</p>
                     )}
-                    <button
-                        type="button"
-                        disabled={releases.length >= 32 || availablePlatforms.length === 0}
-                        onClick={() => {
-                            setMessage("");
-                            const platform = availablePlatforms[0]?.[0];
-                            if (!platform) return;
-                            const architecture = architecturesFor(platform)[0];
-                            if (!architecture) return;
-                            const publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
-                            setReleases((items) => [
-                                ...items,
-                                {
-                                    platform,
-                                    architecture,
-                                    channel: "stable",
-                                    latestVersion: "",
-                                    latestBuild: 1,
-                                    minimumVersion: "",
-                                    downloadUrl: "",
-                                    sha256: "",
-                                    publishedAt,
-                                    publishedAtInput: dateTimeFieldValue(publishedAt),
-                                    releaseNotes: "",
-                                },
-                            ]);
-                        }}
-                    >
-                        添加平台安装包
-                    </button>
-                    <button type="submit" disabled={busy || blockers.some(Boolean)}>
-                        {busy ? "发布中…" : "确认发布 FastAI 下载设置"}
-                    </button>
+                    <div className="admin-dialog-actions">
+                        <button
+                            type="button"
+                            disabled={releases.length >= 32 || availablePlatforms.length === 0}
+                            onClick={() => {
+                                setMessage("");
+                                const platform = availablePlatforms[0]?.[0];
+                                if (!platform) return;
+                                const architecture = architecturesFor(platform)[0];
+                                if (!architecture) return;
+                                const publishedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
+                                setReleases((items) => [
+                                    ...items,
+                                    {
+                                        platform,
+                                        architecture,
+                                        channel: "stable",
+                                        latestVersion: "",
+                                        latestBuild: 1,
+                                        minimumVersion: "",
+                                        downloadUrl: "",
+                                        sha256: "",
+                                        publishedAt,
+                                        publishedAtInput: dateTimeFieldValue(publishedAt),
+                                        releaseNotes: "",
+                                    },
+                                ]);
+                            }}
+                        >
+                            添加平台安装包
+                        </button>
+                        <button className="primary" type="submit" disabled={busy || blockers.some(Boolean)}>
+                            {busy ? "发布中…" : "确认发布 FastAI 下载设置"}
+                        </button>
+                    </div>
                 </fieldset>
                 {message && <p role="status">{message}</p>}
                 {needsReload && reload && (
-                    <button type="button" disabled={busy} onClick={() => void reloadCatalog()}>
+                    <button className="danger" type="button" disabled={busy} onClick={() => void reloadCatalog()}>
                         放弃当前草稿并加载最新发布目录
                     </button>
                 )}

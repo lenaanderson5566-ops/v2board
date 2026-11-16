@@ -27,30 +27,34 @@ export function AdminSubscriptionExpiry({ user, precision = "second" }: {
     const hasSubscriptionQuota = quota !== null && quota > 0;
     const noFixedExpiry = user.expired_at === null && hasSubscriptionQuota;
     let label = "有效期内";
-    let tone: StatusTone | undefined;
-    if (noFixedExpiry) label = "旧版流量无固定到期";
-    else if (user.expired_at === null || expiryAt === 0) {
-        label = !hasSubscriptionQuota && user.has_recurring_order_history === false
-            ? "尚未购买周期套餐"
-            : "到期时间未记录";
-    } else if (!expiry) label = "到期信息缺失";
-    else if (remainingMs <= 0) {
+    let tone: StatusTone = "success";
+    if (noFixedExpiry) {
+        label = "旧版流量无固定到期";
+        tone = "info";
+    } else if (user.expired_at === null || expiryAt === 0) {
+        const neverPurchased = !hasSubscriptionQuota && user.has_recurring_order_history === false;
+        label = neverPurchased ? "尚未购买周期套餐" : "到期时间未记录";
+        tone = neverPurchased ? "neutral" : "info";
+    } else if (!expiry) {
+        label = "到期信息缺失";
+        tone = "info";
+    } else if (remainingMs <= 0) {
         label = "已到期";
         tone = "danger";
     } else if (quota !== null && quota <= 0) {
         label = "周期权益未开通";
+        tone = "neutral";
     } else if (remainingMs <= expiryWarningMs) {
         label = "即将到期";
         tone = "warning";
     }
 
-    const normalTerm = label === "有效期内";
-    return <span className={normalTerm ? "admin-subscription-expiry is-current" : "admin-subscription-expiry"}>
+    return <span className={tone === "success" ? "admin-subscription-expiry is-current" : "admin-subscription-expiry"}>
         {expiry && expiryAt !== 0 && (
             <time dateTime={expiry.toISOString()}>
                 {adminInstant(expiry, { second: precision === "second" ? "2-digit" : undefined })}
             </time>
         )}
-        {tone ? <StatusBadge tone={tone}>{label}</StatusBadge> : <span>{label}</span>}
+        <StatusBadge tone={tone}>{label}</StatusBadge>
     </span>;
 }

@@ -1979,12 +1979,6 @@ body[data-console="admin"] .admin-subscription-expiry.is-current {
     align-items: baseline;
     gap: 2px 8px;
 }
-body[data-console="admin"] .admin-subscription-expiry.is-current > span {
-    color: var(--muted);
-    font-size: 12px;
-    font-weight: 400;
-    white-space: nowrap;
-}
 body[data-console="admin"] .admin-subscription-expiry > .status-badge { padding: 1px 6px; }
 body[data-console="admin"] .user-activity-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 24px 0 12px; }
 body[data-console="admin"] .user-activity-filters button span { font-size: 11px; padding: 1px 6px; border-radius: 5px; background: #f0f2f6; color: #617087; }

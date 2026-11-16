@@ -14,18 +14,18 @@ afterEach(() => {
     configureTimeZone("Asia/Shanghai");
 });
 it.each([
-    [{expired_at:0, transfer_enable:0, has_recurring_order_history:false}, "尚未购买周期套餐"],
-    [{expired_at:null, transfer_enable:0, has_recurring_order_history:false}, "尚未购买周期套餐"],
-    [{expired_at:"0", has_recurring_order_history:true}, "到期时间未记录"],
-    [{expired_at:null, transfer_enable:0}, "到期时间未记录"],
-    [{expired_at:0, transfer_enable:1024, has_recurring_order_history:false}, "到期时间未记录"],
-    [{expired_at:0, has_recurring_order_history:"false" as unknown as boolean}, "到期时间未记录"],
-    [{expired_at:null, transfer_enable:"1073741824", has_recurring_order_history:false}, "旧版流量无固定到期"],
-    [{expired_at:"unknown", has_recurring_order_history:false}, "到期信息缺失"],
-    [{}, "到期信息缺失"],
-] as const)("explains an absent subscription date without displaying the epoch: %j", (user, label) => {
+    [{expired_at:0, transfer_enable:0, has_recurring_order_history:false}, "尚未购买周期套餐", "neutral"],
+    [{expired_at:null, transfer_enable:0, has_recurring_order_history:false}, "尚未购买周期套餐", "neutral"],
+    [{expired_at:"0", has_recurring_order_history:true}, "到期时间未记录", "info"],
+    [{expired_at:null, transfer_enable:0}, "到期时间未记录", "info"],
+    [{expired_at:0, transfer_enable:1024, has_recurring_order_history:false}, "到期时间未记录", "info"],
+    [{expired_at:0, has_recurring_order_history:"false" as unknown as boolean}, "到期时间未记录", "info"],
+    [{expired_at:null, transfer_enable:"1073741824", has_recurring_order_history:false}, "旧版流量无固定到期", "info"],
+    [{expired_at:"unknown", has_recurring_order_history:false}, "到期信息缺失", "info"],
+    [{}, "到期信息缺失", "info"],
+] as const)("explains an absent subscription date without displaying the epoch: %j", (user, label, tone) => {
     const {container} = render(<AdminSubscriptionExpiry user={user} />);
-    expect(screen.getByText(label).hasAttribute("data-tone")).toBe(false);
+    expect(screen.getByText(label).getAttribute("data-tone")).toBe(tone);
     expect(container.querySelector("time")).toBeNull();
 });
 it("keeps a real subscription date and labels the elapsed status", () => {
@@ -42,11 +42,11 @@ it("keeps a real subscription date and labels the elapsed status", () => {
     expect(container.querySelector("time")?.dateTime).toBe("1969-12-31T16:00:00.000Z");
 });
 it.each([
-    ["2026-11-23T10:19:53Z", "有效期内", null],
+    ["2026-11-23T10:19:53Z", "有效期内", "success"],
     ["2026-11-23T10:19:52Z", "即将到期", "warning"],
     ["2026-11-16T10:19:53Z", "即将到期", "warning"],
     ["2026-11-16T10:19:52Z", "已到期", "danger"],
-] as const)("shows only actionable expiry statuses for %s and retains time precision", (date, label, tone) => {
+] as const)("shows the expiry status color for %s and retains time precision", (date, label, tone) => {
     configureTimeZone("Asia/Shanghai", true);
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-16T10:19:52Z"));
     const user = {expired_at:date, has_recurring_order_history:false};
@@ -64,7 +64,7 @@ it("preserves a future date when there is no activated periodic allowance", () =
     vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-16T10:19:52Z"));
     const {container} = render(<AdminSubscriptionExpiry user={{expired_at:"2026-11-17T10:19:53Z", transfer_enable:0}} />);
     expect(container.querySelector("time")?.dateTime).toBe("2026-11-17T10:19:53.000Z");
-    expect(screen.getByText("周期权益未开通").hasAttribute("data-tone")).toBe(false);
+    expect(screen.getByText("周期权益未开通").getAttribute("data-tone")).toBe("neutral");
     expect(screen.queryByText("即将到期")).toBeNull();
 });
 it("loads only the selected user when opened and closes the drawer",()=>{

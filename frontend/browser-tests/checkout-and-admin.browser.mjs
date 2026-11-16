@@ -316,18 +316,24 @@ test("mobile admin users prioritize account columns and distinguish subscription
     const timestamp = activeCell.locator("time");
     await expect(timestamp).toHaveText(/\s\d{2}:\d{2}$/);
     await expect(timestamp).toHaveAttribute("datetime", "2026-12-13T10:19:52.000Z");
-    await expect(activeCell.getByText("有效期内", { exact: true })).toBeVisible();
-    await expect(activeCell.locator(".status-badge")).toHaveCount(0);
-    for (const [email, label] of [
-        ["unknown@example.test", "到期时间未记录"],
-        ["purchased@example.test", "到期时间未记录"],
-        ["never@example.test", "尚未购买周期套餐"],
-        ["missing@example.test", "到期信息缺失"],
-        ["credit-only@example.test", "尚未购买周期套餐"],
-        ["legacy@example.test", "旧版流量无固定到期"],
+    const active = activeCell.getByText("有效期内", { exact: true });
+    await expect(active).toBeVisible();
+    await expect(active).toHaveAttribute("data-tone", "success");
+    await expect(active).toHaveCSS("color", "rgb(22, 101, 52)");
+    const supplementaryColors = { info: "rgb(29, 78, 216)", neutral: "rgb(75, 85, 99)" };
+    for (const [email, label, tone] of [
+        ["unknown@example.test", "到期时间未记录", "info"],
+        ["purchased@example.test", "到期时间未记录", "info"],
+        ["never@example.test", "尚未购买周期套餐", "neutral"],
+        ["missing@example.test", "到期信息缺失", "info"],
+        ["credit-only@example.test", "尚未购买周期套餐", "neutral"],
+        ["legacy@example.test", "旧版流量无固定到期", "info"],
     ]) {
         const cell = expiryCell(email);
         await expect(cell).toHaveText(label);
+        const badge = cell.getByText(label, { exact: true });
+        await expect(badge).toHaveAttribute("data-tone", tone);
+        await expect(badge).toHaveCSS("color", supplementaryColors[tone]);
         await expect(cell.locator("time")).toHaveCount(0);
     }
     const priority = [
@@ -555,6 +561,7 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await expect(account.getByText("当前周期套餐")).toBeVisible();
     await expect(account.getByText("当前生效的测试套餐")).toBeVisible();
     await expect(account.locator(".admin-subscription-expiry time")).toHaveText(/\d{2}:\d{2}:\d{2}$/);
+    await expect(account.getByText("有效期内", { exact: true })).toHaveAttribute("data-tone", "success");
     await expect(account.getByText("可用独立额度")).toBeVisible();
     await expect(account.getByText("1 GiB")).toBeVisible();
     expect(creditRequests).toEqual([]);

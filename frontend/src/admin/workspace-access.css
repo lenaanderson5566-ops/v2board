@@ -188,7 +188,6 @@ body[data-console="admin"] .workspace-access .mfa-login {
 .workspace-access .mfa-emblem { display: none; }
 .workspace-access .mfa-login > p { color: #53675e; }
 .workspace-access .passkey-login { margin: 12px 0 0; }
-.workspace-access-loading { display: flex; align-items: center; gap: 12px; }
 
 @media (max-width: 700px) {
     .workspace-access-shell { grid-template-columns: minmax(0, 1fr); min-height: 0; }

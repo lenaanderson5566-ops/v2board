@@ -371,6 +371,35 @@ test("mobile admin users prioritize account columns and distinguish subscription
 test.describe("desktop admin frontend", () => {
     test.use({ isMobile: false, hasTouch: false, viewport: { width: 1280, height: 900 } });
 
+    test("a signed-in refresh waits without displaying the sign-in layout", async ({ page, context }) => {
+        const url = `${consoleOrigin}/admin.html#/users`;
+        const email = "refresh@example.test";
+        let refreshing = false;
+        let finishVerification;
+        const permissionCheck = new Promise(resolve => { finishVerification = resolve; });
+        await consoleFixture(context, "admin", async path => {
+            if (path === "/api/v1/test-admin/config/fetch") {
+                if (refreshing) await permissionCheck;
+                return {};
+            }
+            if (path === "/api/v1/test-admin/user/fetch") return [{ id: 11, email }];
+        });
+        await page.goto(url);
+        await expect(page.getByRole("button", { name: `ID: 11 · ${email}` })).toBeVisible();
+
+        refreshing = true;
+        try {
+            await page.reload({ waitUntil: "domcontentloaded" });
+            await expect(page.getByRole("status")).toHaveText("Checking your session…");
+            await expect(page.locator(".workspace-access")).toHaveCount(0);
+            await expect(page.getByRole("button", { name: `ID: 11 · ${email}` })).toHaveCount(0);
+        } finally {
+            finishVerification();
+        }
+        await expect(page.getByRole("button", { name: `ID: 11 · ${email}` })).toBeVisible();
+        await expect(page).toHaveURL(url);
+    });
+
     test("the workspace entrance stays in English until sign-in verification succeeds", async ({ page, context }) => {
         const loginPath = "/api/v1/passport/auth/login";
         const verificationPath = "/api/v1/passport/mfa/verifications";
@@ -626,8 +655,8 @@ test("mobile admin plan workspace opens a focused credit package editor", async 
         if (path === "/api/v1/test-admin/server/group/fetch") return [{ id: 1, name: "测试权限组" }];
         if (path === "/api/v1/test-admin/plan/fetch") return [
             { ...access, id: 1, name: "测试周期商品", month_price: 2000 },
-            { ...access, id: 2, name: "测试额度商品", onetime_price: 3500 },
-            { ...access, id: 3, name: "测试混合商品", month_price: 2000, onetime_price: 3500 },
+            { ...access, id: 2, name: "测试额度商品", onetime_price: 3500, credit_order_count: 0, credit_remaining_user_count: 0 },
+            { ...access, id: 3, name: "测试混合商品", month_price: 2000, onetime_price: 3500, credit_order_count: 8, credit_remaining_user_count: 3 },
         ];
     });
 
@@ -637,8 +666,11 @@ test("mobile admin plan workspace opens a focused credit package editor", async 
     await expect(page.getByRole("row").filter({ hasText: "测试额度商品" })).toHaveCount(0);
     await page.getByRole("tab", { name: "额度包", exact: true }).click();
     await expect(page).toHaveURL(`${consoleOrigin}/admin.html#/plans-credits`);
-    await expect(page.getByRole("row").filter({ hasText: "测试混合商品" }).getByText("混合商品", { exact: true })).toBeVisible();
+    const mixedRow = page.getByRole("row").filter({ hasText: "测试混合商品" });
+    await expect(mixedRow.getByText("混合商品", { exact: true })).toBeVisible();
+    await expect(mixedRow.getByRole("cell", { name: /有余量 3 人.*累计开通 8 单/ })).toBeVisible();
     const creditRow = page.getByRole("row").filter({ hasText: "测试额度商品" });
+    await expect(creditRow.getByRole("cell", { name: /有余量 0 人.*累计开通 0 单/ })).toBeVisible();
     await creditRow.getByRole("button", { name: "编辑" }).click();
     const editor = page.getByRole("dialog", { name: "编辑 · 额度包" });
     await expect(editor.getByLabel("额度包名称")).toHaveValue("测试额度商品");

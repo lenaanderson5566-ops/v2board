@@ -15,6 +15,7 @@ use App\Services\PlanService;
 use App\Services\PlanTranslationState;
 use App\Support\SiteConfiguration;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class PlanController extends Controller
@@ -23,12 +24,43 @@ class PlanController extends Controller
     {
         $counts = collect(PlanService::countActiveUsers())->keyBy('plan_id');
         $plans = Plan::orderBy('sort', 'ASC')->get();
-        foreach ($plans as $k => $v) {
-            $plans[$k]->count = (int)($counts->get($v->id)->count ?? 0);
+        $includeCreditStats = $request->boolean('include_credit_stats');
+        $creditStats = $includeCreditStats ? $this->creditStats($plans->modelKeys()) : collect();
+        foreach ($plans as $plan) {
+            $plan->count = (int)($counts->get($plan->id)->count ?? 0);
+            if ($includeCreditStats) {
+                $stats = $creditStats->get($plan->id);
+                $plan->credit_order_count = (int)($stats->credit_order_count ?? 0);
+                $plan->credit_remaining_user_count = (int)($stats->credit_remaining_user_count ?? 0);
+            }
         }
         return response([
             'data' => $plans
         ]);
+    }
+
+    private function creditStats(array $planIds): Collection
+    {
+        if (!$planIds) {
+            return collect();
+        }
+
+        $now = time();
+        return DB::table('v2_order as credit_order')
+            ->leftJoin('v2_credit_batch as credit_batch', function ($join) use ($now) {
+                // The unique order reference attributes a batch to the original product.
+                $join->on('credit_batch.user_id', '=', 'credit_order.user_id')
+                    ->whereRaw("credit_batch.reference = CONCAT('order:', credit_order.id)")
+                    ->where('credit_order.status', 3)
+                    ->where('credit_batch.expires_at', '>', $now)
+                    ->where('credit_batch.remaining_bytes', '>', 0);
+            })
+            ->whereIn('credit_order.plan_id', $planIds)
+            ->where('credit_order.period', 'onetime_price')
+            ->whereIn('credit_order.status', [3, 4])
+            ->groupBy('credit_order.plan_id')
+            ->selectRaw('credit_order.plan_id, COUNT(*) AS credit_order_count, COUNT(DISTINCT credit_batch.user_id) AS credit_remaining_user_count')
+            ->get()->keyBy('plan_id');
     }
 
     public function save(PlanSave $request)

@@ -109,6 +109,12 @@ export const resources: Record<string, Resource> = {
         columns: [
             planNameColumn,
             ["show", "展示"],
+            ["credit_order_count", "统计", (plan) =>
+                plan.credit_remaining_user_count == null || plan.credit_order_count == null ? "—" : <>
+                    <div>有余量 {formatNumber(plan.credit_remaining_user_count)} 人</div>
+                    <small className="muted">累计开通 {formatNumber(plan.credit_order_count)} 单</small>
+                </>,
+            ],
             ["transfer_enable", "流量额度 (GiB)", (plan) => formatNumber(plan.transfer_enable)],
             planPriceColumn("onetime_price", "人民币价格"),
             ["onetime_price_usd", "美元价格", (plan) => {

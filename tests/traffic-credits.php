@@ -174,5 +174,70 @@ try {
    $due->update(['u'=>23]);
    $assert($command->handle() === 0 && (int)$due->refresh()->u === 23, 'Scheduler repeated the anchored reset within the same day');
  } finally { config(['fastai.system_timezone'=>$previousZone]); }
+
+ $statsPlan = Plan::create(['name'=>'Mixed statistics fixture', 'group_id'=>1, 'transfer_enable'=>10,
+    'onetime_price'=>1000, 'month_price'=>1000]);
+ $repeatBuyer = $make(['plan_id'=>$recurring->id]);
+ $now = time();
+ $future = $now + 86400;
+ $orderWithBatch = function (User $buyer, int $status, int $expiresAt, int $remaining, array $orderFields = [], ?User $batchOwner = null) use ($statsPlan, $now) {
+   $order = Order::create($orderFields + [
+     'user_id'=>$buyer->id, 'plan_id'=>$statsPlan->id, 'trade_no'=>Str::random(24),
+     'period'=>'onetime_price', 'type'=>5, 'status'=>$status, 'total_amount'=>1000, 'credit_bytes'=>100,
+   ]);
+   DB::table('v2_credit_batch')->insert([
+     'user_id'=>($batchOwner ?? $buyer)->id, 'reference'=>'order:'.$order->id,
+     'remaining_bytes'=>$remaining, 'expires_at'=>$expiresAt, 'created_at'=>$now,
+   ]);
+ };
+ $orderWithBatch($repeatBuyer, 3, $future, 80);
+ $orderWithBatch($repeatBuyer, 3, $future, 20);
+ $orderWithBatch($make(), 3, $future, 10, ['total_amount'=>0, 'callback_no'=>'manual_operation']);
+ $orderWithBatch($make(), 4, $future, 10, ['type'=>1, 'credit_bytes'=>null]);
+ $orderWithBatch($make(), 3, $now, 10);
+ $orderWithBatch($make(), 3, $future, 0);
+ $orderWithBatch($make(), 3, $future, 10, [], $make());
+ foreach ([0, 1, 2] as $status) {
+   $orderWithBatch($make(), $status, $future, 10);
+ }
+ $orderWithBatch($make(), 3, $future, 10, ['period'=>'month_price', 'type'=>1, 'credit_bytes'=>null]);
+ $orderWithBatch($make(), 3, $future, 10, ['period'=>'reset_price', 'type'=>4, 'credit_bytes'=>null]);
+ $unattributedOwner = $make(['plan_id'=>$statsPlan->id, 'transfer_enable'=>0, 'credit_balance'=>10]);
+ DB::table('v2_credit_batch')->insert([
+   'user_id'=>$unattributedOwner->id, 'reference'=>'upgrade:'.$unattributedOwner->id,
+   'remaining_bytes'=>10, 'expires_at'=>$future, 'created_at'=>$now,
+ ]);
+
+ $fetchPlans = function (array $query = []) use ($kernel, $adminPath, $adminToken, &$index, $assert) {
+   $request = Illuminate\Http\Request::create('/api/v1/'.$adminPath.'/plan/fetch', 'GET', $query,
+     [], [], ['REMOTE_ADDR'=>'192.0.2.'.(++$index)]);
+   $request->headers->set('Accept', 'application/json');
+   $request->headers->set('Authorization', $adminToken);
+   $response = $kernel->handle($request);
+   $assert($response->getStatusCode() === 200, 'Admin plan fetch failed');
+   return collect(json_decode($response->getContent(), true)['data'])->keyBy('id');
+ };
+ $orderQueryCount = fn () => collect(DB::getQueryLog())->filter(fn ($entry) => str_contains($entry['query'], 'v2_order'))->count();
+ DB::enableQueryLog();
+ DB::flushQueryLog();
+ try {
+   $ordinaryPlans = $fetchPlans();
+   $assert($orderQueryCount() === 0
+     && !array_key_exists('credit_order_count', $ordinaryPlans[$statsPlan->id])
+     && !array_key_exists('credit_remaining_user_count', $ordinaryPlans[$statsPlan->id]),
+     'Ordinary plan lists must not fetch or expose credit statistics');
+   DB::flushQueryLog();
+   $statistics = $fetchPlans(['include_credit_stats'=>'1']);
+   $assert($orderQueryCount() === 1, 'Credit statistics must use one grouped order query');
+   $assert($statistics[$statsPlan->id]['credit_order_count'] === 7
+     && $statistics[$statsPlan->id]['credit_remaining_user_count'] === 2,
+     'Count fulfilled credit orders and deduplicate only attributable non-expired positive batches');
+   $assert($statistics[$plan->id]['credit_order_count'] === 4,
+     'Count actual modern, manual and historical one-time fulfillment');
+   $assert($statistics[$recurring->id]['credit_order_count'] === 0
+     && $statistics[$recurring->id]['credit_remaining_user_count'] === 0
+     && $statistics[$recurring->id]['count'] === $ordinaryPlans[$recurring->id]['count'],
+     'Zero-fill all products without changing the existing subscription counts');
+ } finally { DB::disableQueryLog(); DB::flushQueryLog(); }
  echo "Traffic credits: $checks checks passed\n";
 } finally {foreach($auths as $auth)$auth->removeAllSession(); DB::rollBack();}

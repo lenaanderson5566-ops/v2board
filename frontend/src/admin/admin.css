@@ -65,6 +65,14 @@ body[data-console="admin"] {
     --admin-shadow: 0 1px 3px #19213808;
     --admin-popover-shadow: 0 8px 28px #1921381f, 0 2px 6px #1921380a;
 }
+body[data-console="admin"] .admin-session-loading {
+    display: flex;
+    min-height: 100dvh;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+}
 body[data-console="admin"] #page-container {
     min-height: 100vh;
     padding-inline-start: 250px;

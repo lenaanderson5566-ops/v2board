@@ -263,6 +263,7 @@ export function ResourcePage({
                     : undefined,
             ...logFilters,
             ...queryParams,
+            include_credit_stats: planView === "credits" ? 1 : undefined,
             ...(kind === "routes" ? { backend: "v2box" } : {}),
         }),
     );
@@ -442,6 +443,7 @@ export function ResourcePage({
                 {planView === "credits" && (
                     <p className="pad muted">
                         购买额度按批次发放，默认有效期为 12 个月。
+                        「有余量」按未到期且未用完的订单批次统计，同一商品的用户仅计一次。
                         <a href="#/subscription-settings">额度基础权限组</a>在订阅设置中管理，美元售价在
                         <a href="#/plans-currencies">价格与币种</a>中设置。
                     </p>

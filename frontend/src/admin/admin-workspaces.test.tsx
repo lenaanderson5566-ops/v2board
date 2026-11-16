@@ -757,11 +757,11 @@ it("loads translations from subscription management and supports old links", asy
 
 it("lists periodic products and credit packs in their own tabs with all products still reachable", async () => {
     const products = [
-        { id: 1, name: "Monthly product", month_price: 1000 },
-        { id: 2, name: "Mixed product", month_price: 1000, onetime_price: 2000 },
+        { id: 1, name: "Monthly product", month_price: 1000, count: 14 },
+        { id: 2, name: "Mixed product", month_price: 1000, onetime_price: 2000, count: 25, credit_order_count: 8, credit_remaining_user_count: 3 },
         { id: 3, name: "Unpriced draft", month_price: null, onetime_price: null },
         { id: 4, name: "Reset-only product", reset_price: 500 },
-        { id: 5, name: "Zero-price credit pack", onetime_price: 0 },
+        { id: 5, name: "Zero-price credit pack", onetime_price: 0, credit_order_count: 0, credit_remaining_user_count: 0 },
         { id: 6, name: "USD credit pack", usd_prices: { onetime_price: 200 } },
         { id: 7, name: "USD periodic product", usd_prices: { month_price: 100 } },
     ];
@@ -770,6 +770,12 @@ it("lists periodic products and credit packs in their own tabs with all products
     }));
     const view = render(<AdminContent route="plans" />);
     await screen.findByText("Monthly product");
+    const statistics = (name: string) => screen.getByText(name, { exact: true }).closest("tr")?.querySelector('td[data-label="统计"]');
+    const requestedCreditStatistics = () => api.request.mock.calls.some(([path]) =>
+        path.includes("plan/fetch?") && path.includes("include_credit_stats=1"),
+    );
+    expect(requestedCreditStatistics()).toBe(false);
+    expect(statistics("Mixed product")?.textContent).toBe("25");
     expect(screen.getByRole("button", { name: "新建周期套餐" })).toBeTruthy();
     for (const name of ["Mixed product", "Unpriced draft", "Reset-only product", "USD periodic product"])
         expect(screen.getByText(name)).toBeTruthy();
@@ -783,6 +789,10 @@ it("lists periodic products and credit packs in their own tabs with all products
     view.rerender(<AdminContent route="plans-credits" />);
     await screen.findByRole("tab", { name: "额度包", selected: true });
     await screen.findByText("Zero-price credit pack");
+    expect(requestedCreditStatistics()).toBe(true);
+    expect(statistics("Mixed product")?.textContent).toBe("有余量 3 人累计开通 8 单");
+    expect(statistics("Zero-price credit pack")?.textContent).toBe("有余量 0 人累计开通 0 单");
+    expect(statistics("USD credit pack")?.textContent).toBe("—");
     expect(screen.getByRole("button", { name: "新建额度包" })).toBeTruthy();
     expect(screen.getByText("Mixed product")).toBeTruthy();
     expect(screen.getByText("USD credit pack")).toBeTruthy();

@@ -178,12 +178,10 @@ export default function AdminApp() {
     }, [sessionError]);
     if (loading && !sessionError)
         return (
-            <WorkspaceAccess>
-                <p className="workspace-access-loading" role="status">
-                    <span className="spinner" aria-hidden="true" />
-                    Checking your session…
-                </p>
-            </WorkspaceAccess>
+            <div className="admin-session-loading" lang="en-US" dir="ltr" role="status">
+                <span className="spinner" aria-hidden="true" />
+                Checking your session…
+            </div>
         );
     if (sessionError)
         return (

@@ -114,6 +114,7 @@ export function Editor({
     const formId = useId();
     const formElement = useRef<HTMLFormElement>(null);
     const errorElement = useRef<HTMLDivElement>(null);
+    const [dateInputZone] = useState(inputTimeZone);
     const [invalidField, setInvalidField] = useState<string | null>(null);
     const initialFields = resolveFields
         ? resolveFields(fields, initial)
@@ -121,7 +122,9 @@ export function Editor({
     const editableInitial = Object.fromEntries(
         Object.entries(initial).map(([key, value]) => {
             const field = initialFields.find((field) => field.key === key);
-            return [key, field?.type === "datetime-local" ? dateTimeFieldValue(value || null) : inputValue(field, value)];
+            return [key, field?.type === "datetime-local"
+                ? dateTimeFieldValue(value === 0 || value === "0" ? null : value, dateInputZone)
+                : inputValue(field, value)];
         }),
     );
     const [value, setValue] = useState<Row>(() => ({
@@ -293,7 +296,7 @@ export function Editor({
                     }
                 }
                 if (f.type === "datetime-local")
-                    body[f.key] = dateTimeFieldInstant(body[f.key], initial[f.key]);
+                    body[f.key] = dateTimeFieldInstant(body[f.key], initial[f.key], dateInputZone);
             }
             validatingField = undefined;
             await onSave(body);
@@ -342,7 +345,7 @@ export function Editor({
             {activeFields.some((field) => field.type === "datetime-local") && (
                 <p className="muted">
                     {tx("日期时间按 {{zone}} 输入和显示。", {
-                        zone: inputTimeZone(),
+                        zone: dateInputZone,
                     })}
                 </p>
             )}

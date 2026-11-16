@@ -150,13 +150,16 @@ describe("admin dependency behavior", () => {
             expired_at: "2030-01-01",
         });
     });
-    it("rejects reversed validity periods", () =>
-        expect(
-            validateResource({
-                started_at: "2026-10-10",
-                ended_at: "2026-10-01",
-            }),
-        ).toBeTruthy());
+    it("rejects reversed and equal validity instants while accepting chronological and unbounded periods", () => {
+        const start = Date.parse("2026-10-01T00:00:00Z") / 1000;
+        const end = Date.parse("2026-10-10T00:00:00Z") / 1000;
+        const error = "结束时间必须晚于开始时间";
+        expect(validateResource({ started_at: end, ended_at: start })).toBe(error);
+        expect(validateResource({ started_at: start, ended_at: start })).toBe(error);
+        expect(validateResource({ started_at: start, ended_at: end })).toBeUndefined();
+        expect(validateResource({ started_at: 0, ended_at: end })).toBeUndefined();
+        expect(validateResource({ started_at: start, ended_at: 0 })).toBeUndefined();
+    });
     it("hides match conditions for the default outbound action and unused block arguments", () => {
         expect(
             resourceFields(

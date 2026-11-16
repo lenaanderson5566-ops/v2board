@@ -54,14 +54,15 @@ class TrafficCreditService
                 $user->device_limit = $snapshot['device_limit'];
             }
             CreditExpiryService::grant($user, (int)$order->credit_bytes, 'order:'.$order->id);
-            $user->save();
+            if (!$user->save()) throw new \RuntimeException('Could not save granted credits');
             DB::table('v2_traffic_credit_log')->insert([
                 'user_id' => $user->id, 'reference' => 'order:'.$order->id,
                 'bytes' => $order->credit_bytes, 'kind' => 'purchase',
                 'snapshot' => json_encode($snapshot), 'created_at' => time(),
             ]);
             $order->status = 3;
-            $order->save();
+            if (!$order->save()) throw new \RuntimeException('Could not complete credit order');
+            ServiceNotification::schedule($user, false);
         }, 3);
     }
 

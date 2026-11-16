@@ -84,6 +84,30 @@ it("keeps an active expiry draft in business time while administrator display ti
     } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai", true); }
 });
 
+it("uses the business timezone shown when a date form was opened until the form closes", async () => {
+    const { configureTimeZone } = await import("./timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    const original = Date.parse("2026-10-19T00:00:37Z") / 1000;
+    const save = vi.fn().mockResolvedValue(undefined);
+    const editor = <Editor fields={[
+        { key: "name", label: "名称", type: "text" },
+        { key: "expiry", label: "到期时间", type: "datetime-local" },
+    ]} initial={{ name: "Original", expiry: original }} onSave={save} />;
+    try {
+        const view = render(editor);
+        configureTimeZone("America/New_York", true);
+        view.rerender(<>{editor}</>);
+        expect(screen.getByText(/日期时间按 Asia\/Shanghai 输入和显示/)).toBeTruthy();
+        fireEvent.change(screen.getByLabelText("名称"), { target: { value: "Updated" } });
+        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        await waitFor(() => expect(save).toHaveBeenCalledWith({ name: "Updated", expiry: original }));
+
+        fireEvent.change(screen.getByLabelText("到期时间"), { target: { value: "2026-10-19T09:00:37" } });
+        fireEvent.click(screen.getByRole("button", { name: "保存" }));
+        await waitFor(() => expect(save).toHaveBeenCalledWith({ name: "Updated", expiry: original + 3600 }));
+    } finally { configureTimeZone("Asia/Shanghai", true); }
+});
+
 it.each(["2026-11-01T05:30:37Z", "2026-11-01T06:30:37Z"])("retains an unchanged expiry within the DST repeated hour: %s", async (iso) => {
     const { configureTimeZone } = await import("./timezone");
     configureTimeZone("America/New_York", true);

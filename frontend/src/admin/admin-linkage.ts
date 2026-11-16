@@ -202,8 +202,8 @@ export function linkResource(
 }
 export function validateResource(values: Row): string | undefined {
     if (
-        values.started_at &&
-        values.ended_at &&
+        typeof values.started_at === "number" && values.started_at !== 0 &&
+        typeof values.ended_at === "number" && values.ended_at !== 0 &&
         values.ended_at <= values.started_at
     )
         return "结束时间必须晚于开始时间";

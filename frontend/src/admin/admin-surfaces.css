@@ -152,9 +152,10 @@ body[data-console="admin"] .table-viewport th {
     background: var(--admin-surface-soft);
 }
 body[data-console="admin"] .table-viewport :is(th, td) {
-    padding: 12px var(--admin-space);
+    padding: 8px 12px;
     vertical-align: middle;
 }
+body[data-console="admin"] .table-viewport th .table-sort { min-height: var(--admin-row-control-height); }
 body[data-console="admin"] .table-viewport th.table-actions { z-index: 1; }
 body[data-console="admin"] .pager {
     padding: var(--admin-space);
@@ -176,6 +177,7 @@ body[data-console="admin"] :is(.admin-section-head p, .panel-body > p, .admin-lo
 }
 @media (max-width: 600px) {
     body[data-console="admin"] { --admin-space: 12px; --admin-control-height: 40px; }
+    body[data-console="admin"] .table-viewport :is(th, td) { padding: 12px var(--admin-space); }
     body[data-console="admin"] .panel-head > .actions { width: 100%; }
     body[data-console="admin"] .panel-head > .actions:empty { display: none; }
     body[data-console="admin"] .pager { gap: 12px; }
@@ -205,7 +207,34 @@ body[data-console="admin"] :is(.release-card,.risk-rule-card) p { line-height: 1
 body[data-console="admin"] .user-toolbar > form.actions { flex: 1 1 460px; }
 body[data-console="admin"] .user-toolbar > form.actions input { flex: 1 1 220px; max-width: 360px; }
 body[data-console="admin"] .user-toolbar-actions { margin-left: auto; flex: 0 0 auto; }
-body[data-console="admin"] .user-toolbar > p { margin: 4px 0 0; }
+body[data-console="admin"] .user-toolbar-summary { flex: 1 1 100%; min-width: 0; display: grid; gap: 8px; }
+body[data-console="admin"] .user-toolbar-summary > p { margin: 0; }
+body[data-console="admin"] :is(.admin-user-activity-link, .users-page .table-viewport td > button.link) {
+    min-height: var(--admin-row-control-height);
+    max-width: 100%;
+    justify-content: flex-start;
+    padding: 4px 0;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    color: var(--accent);
+    text-align: start;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+body[data-console="admin"] :is(.admin-user-activity-link, .users-page .table-viewport td > button.link):hover {
+    background: transparent;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+body[data-console="admin"] :is(.admin-user-activity-link, .users-page .table-viewport td > button.link):focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+body[data-console="admin"] .table-viewport td > :is(.admin-user-activity-link, .users-page button.link) {
+    inline-size: clamp(10rem, 24vw, 17rem);
+    max-width: none;
+}
 @media (max-width: 600px) {
     body[data-console="admin"] .user-toolbar > form.actions { flex-basis: 100%; }
     body[data-console="admin"] .user-toolbar > form.actions input { flex-basis: 100%; max-width: none; }
@@ -237,6 +266,9 @@ body[data-console="admin"] .admin-workspace-tabs > .section-tabs { margin-bottom
 body[data-console="admin"] .admin-workspace-tabs > [role="tabpanel"] { outline-offset: 3px; }
 body[data-console="admin"] .admin-workspace-tabs > [role="tabpanel"]:focus-visible { outline: 2px solid var(--accent); }
 body[data-console="admin"] :is(.panel-body, .pad) > p.muted { font-size: 12px; line-height: 1.7; margin-block: 8px 12px; }
+body[data-console="admin"] .mail-log-explanation { padding: 8px var(--admin-space); font-size: 13px; }
+body[data-console="admin"] .mail-log-explanation > summary { color: var(--accent); cursor: pointer; width: fit-content; }
+body[data-console="admin"] .mail-log-explanation > p { margin: 8px 0 0; max-width: 76ch; line-height: 1.65; }
 body[data-console="admin"] .panel-head > :is(h2, div) { min-width: 0; }
 body[data-console="admin"] .admin-filter-actions { flex-wrap: wrap; }
 body[data-console="admin"] .admin-filter-actions > a { align-self: center; font-size: 12px; }
@@ -316,6 +348,9 @@ body[data-console="admin"] :is(.admin-credit-order-ref, .admin-payment-diagnosti
 }
 
 /* Dialogs share the page rhythm; business layouts keep their own grids. */
+body[data-console="admin"] .overlay > .modal {
+    scroll-padding-block: calc(var(--admin-control-height) + var(--admin-space) + var(--admin-space) + 12px);
+}
 body[data-console="admin"] .modal > .panel-head {
     position: sticky;
     top: 0;

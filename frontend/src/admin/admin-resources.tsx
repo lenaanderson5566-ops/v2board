@@ -507,7 +507,11 @@ export const resources: Record<string, Resource> = {
             [
                 "started_at",
                 "有效期",
-                (r) => `${date(r.started_at)} — ${date(r.ended_at)}`,
+                (r) => {
+                    const start = r.started_at === 0 || r.started_at === "0" ? "不限开始时间" : date(r.started_at);
+                    const end = r.ended_at === 0 || r.ended_at === "0" ? "无固定到期" : date(r.ended_at);
+                    return `${start} — ${end}`;
+                },
             ],
             ["status", "状态"],
         ],
@@ -528,8 +532,8 @@ export const resources: Record<string, Resource> = {
                 ],
             },
             field("plan_id", "套餐", "number"),
-            field("started_at", "开始时间", "datetime-local", true),
-            field("ended_at", "到期时间", "datetime-local", true),
+            { ...field("started_at", "开始时间", "datetime-local"), hint: "留空时，生成后可立即兑换。" },
+            { ...field("ended_at", "到期时间", "datetime-local"), hint: "留空时，礼品卡长期有效。" },
             field("limit_use", "可用次数", "number"),
         ],
         defaults: { generate_count: 1, type: 1 },

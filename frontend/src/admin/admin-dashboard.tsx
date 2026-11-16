@@ -303,7 +303,7 @@ function IncomeOverview() {
                                 )}
                             </div>
                             <p className="pad muted">
-                                按 {stats.usage.timezone} 自然日统计，近 7 / 30
+                                统计窗口按 {stats.usage.timezone} 自然日划分，近 7 / 30
                                 天均包含今日；有节点上报流量才算活跃，同一用户跨设备、节点及日期去重。流量为上传＋下载，不乘计费倍率。最多缓存
                                 2 分钟，另有节点上报和队列延迟。
                             </p>
@@ -317,7 +317,7 @@ function IncomeOverview() {
                                 <span>每日流量趋势</span>
                                 <span className="muted">
                                     单位：GiB · 今日尚未结束 ·
-                                    没有记录的日期不补零
+                                    按记录原业务日期标注 · 没有记录的日期不补零
                                 </span>
                             </div>
                             <HistoryChart

@@ -477,6 +477,14 @@ test.describe("desktop admin frontend", () => {
         });
         await page.goto(`${consoleOrigin}/admin.html#/users`);
         const search = page.getByRole("button", { name: "搜索", exact: true });
+        const userRow = page.getByRole("row").filter({ hasText: "account@example.test" });
+        const userLink = userRow.getByRole("button", { name: "ID: 7 · account@example.test" });
+        await expect(userLink).toBeVisible();
+        expect((await userLink.boundingBox()).width).toBeGreaterThanOrEqual(160);
+        expect((await userRow.boundingBox()).height).toBeLessThan(62);
+        expect((await userRow.locator(".table-actions").boundingBox()).width).toBeLessThan(165);
+        await expect(userLink).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+        await expect(userLink).toHaveCSS("border-top-width", "0px");
         const batch = page.getByRole("button", { name: "批量操作" });
         await expect(search).toHaveClass("primary");
         await batch.focus();
@@ -511,6 +519,40 @@ test.describe("desktop admin frontend", () => {
         await Promise.all([refusal, remove.click()]);
         await expect(more).toBeFocused();
         expect(writes).toEqual([]);
+    });
+
+    test("desktop settings keep compact fields and drawer focus below the title", async ({ page, context }) => {
+        const user = { id: 7, email: "account@example.test", transfer_enable: 1073741824, expired_at: 1900000000 };
+        await consoleFixture(context, "admin", path => {
+            if (path === "/api/v1/test-admin/config/fetch") return {
+                site: { app_name: "Example service", app_url: "https://console.example.test", app_description: "Example site description" },
+            };
+            if (path === "/api/v1/test-admin/console/configSchema") return {};
+            if (path === "/api/v1/test-admin/server/group/fetch") return [];
+            if (path === "/api/v1/test-admin/plan/fetch") return [];
+            if (path === "/api/v1/test-admin/user/fetch") return [user];
+            if (path === "/api/v1/test-admin/user/getUserInfoById") return { ...user, edit_versions: {} };
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/site-settings`);
+        const name = page.locator("[data-field=app_name] input");
+        await expect(name).toHaveValue("Example service");
+        const label = page.locator("[data-field=app_name] > span");
+        expect((await label.boundingBox()).width).toBeLessThan(220);
+        expect((await name.boundingBox()).width).toBeLessThanOrEqual(512);
+
+        await page.goto(`${consoleOrigin}/admin.html#/users`);
+        await page.getByRole("button", { name: "编辑", exact: true }).click();
+        const dialog = page.getByRole("dialog", { name: "编辑 · 用户管理" });
+        const email = dialog.locator("[data-field=email] input");
+        await expect(email).toHaveValue(user.email);
+        const header = dialog.locator(".panel-head").first();
+        const title = await header.boundingBox();
+        const reserved = await dialog.evaluate(dialog => Number.parseFloat(getComputedStyle(dialog).scrollPaddingBlockStart));
+        expect(reserved).toBeGreaterThanOrEqual(title.height);
+        await dialog.evaluate(dialog => { dialog.scrollTop = dialog.scrollHeight; });
+        await email.focus();
+        await expect(email).toBeFocused();
+        expect((await email.boundingBox()).y).toBeGreaterThanOrEqual(title.y + title.height);
     });
 });
 

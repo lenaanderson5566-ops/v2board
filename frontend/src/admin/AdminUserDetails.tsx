@@ -7,6 +7,7 @@ import { adminOrderPlan, adminOrderType } from "./admin-order-labels";
 import { AdminOrderDetails } from "./AdminOrderDetails";
 import { admin, query, bytes, money, type Row } from "../shared/api";
 import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
+import { calendarDay, instantDate, validZone } from "../shared/timezone";
 import { StatusBadge } from "../shared/StatusBadge";
 import { Modal, State, Table, Pager, useData } from "../shared/ui";
 export function AdminUserDetails({row, close}: {row:Row; close:()=>void}) {
@@ -17,7 +18,7 @@ export function AdminUserDetails({row, close}: {row:Row; close:()=>void}) {
             {value:"orders",label:"订单"},{value:"traffic",label:"流量记录"},
             {value:"credits",label:"流量额度包"}
         ]}>
-            {tab !== "activity" && <AdminLogTimeZone />}
+            {tab !== "activity" && tab !== "traffic" && <AdminLogTimeZone />}
             {tab === "activity" && <UserActivityContent
                 row={{user_id:row.id,email:row.email}}
                 onViewCreditBatches={() => setTab({ value: "credits", focusPanel: true })}
@@ -189,11 +190,18 @@ function UserTraffic({ row }: { row: Row }) {
     );
     return (
         <div className="pad">
+            <p className="muted">日期按记录生成时的业务时区显示。旧记录沿用上海时区。</p>
             <State {...d} retry={d.reload}>
                 <Table
                     data={d.data || []}
                     columns={[
-                        ["record_at", "日期", (r) => date(r.record_at)],
+                        ["record_at", "统计日期", (r) => {
+                            const at = instantDate(r.record_at);
+                            const recordedZone = r.record_timezone;
+                            const zone = typeof recordedZone === "string" && validZone(recordedZone)
+                                ? recordedZone : "Asia/Shanghai";
+                            return at ? calendarDay(at, zone) : "—";
+                        }],
                         ["u", "上传", (r) => bytes(r.u)],
                         ["d", "下载", (r) => bytes(r.d)],
                         ["server_rate", "倍率", (record) => formatMultiplier(record.server_rate)],

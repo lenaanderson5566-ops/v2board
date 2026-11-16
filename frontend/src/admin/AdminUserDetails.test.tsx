@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { afterEach, expect, it, vi } from "vitest";
 import { AdminUserDetails } from "./AdminUserDetails";
 import { logTime } from "./admin-log-time";
+import { configureTimeZone, setAdminDisplayTimeZone } from "../shared/timezone";
 
 const readRequest = vi.hoisted(() => {
     window.FASTAI = { mode: "admin", adminPath: "test-admin", opsPath: "test-ops" } as typeof window.FASTAI;
@@ -88,4 +89,43 @@ it("pages credit batches and returns to page one when the status filter changes"
     expect(readRequest).toHaveBeenCalledWith("test-admin/user/creditBatches?user_id=42&current=1&pageSize=10&status=expired", undefined, false);
     expect(await screen.findByText("暂无待到期额度")).toBeTruthy();
     expect(screen.queryByText("首次使用奖励")).toBeNull();
+});
+
+it("shows each traffic bucket's original business date across administrator time zone changes", async () => {
+    const seconds = (iso: string) => Date.parse(iso) / 1000;
+    readRequest.mockImplementation(async (path: string) => {
+        if (!path.includes("/stat/getStatUser")) return { data: { user: {}, events: [] } };
+        return {
+            data: [
+                { id: 1, record_at: seconds("2026-10-03T18:15:00Z"), record_timezone: "Asia/Kathmandu", u: 10, d: 20, server_rate: 1 },
+                { id: 2, record_at: seconds("2026-10-02T16:00:00Z"), record_timezone: null, u: 11, d: 21, server_rate: 1 },
+                { id: 3, record_at: seconds("2026-10-01T16:00:00Z"), record_timezone: "invalid-zone", u: 12, d: 22, server_rate: 1 },
+            ],
+            total: 3,
+        };
+    });
+    configureTimeZone("UTC", true);
+    setAdminDisplayTimeZone("America/Los_Angeles");
+    try {
+        const row = { id: 42 };
+        const close = vi.fn();
+        const view = render(<AdminUserDetails row={row} close={close} />);
+        fireEvent.mouseDown(screen.getByRole("tab", { name: "流量记录" }), { button: 0, ctrlKey: false });
+        const traffic = await screen.findByRole("table");
+        expect(within(traffic).getByText("统计日期")).toBeTruthy();
+        for (const [usage, day] of [["10 B", "2026-10-04"], ["11 B", "2026-10-03"], ["12 B", "2026-10-02"]]) {
+            expect(await within(traffic).findByText(usage)).toBeTruthy();
+            const record = within(traffic).getByText(usage).closest("tr")!;
+            expect(within(record).getByText(day)).toBeTruthy();
+        }
+        configureTimeZone("Pacific/Kiritimati", true);
+        setAdminDisplayTimeZone("Asia/Tokyo");
+        view.rerender(<AdminUserDetails row={row} close={close} />);
+        expect(within(within(traffic).getByText("10 B").closest("tr")!).getByText("2026-10-04")).toBeTruthy();
+        expect(within(within(traffic).getByText("11 B").closest("tr")!).getByText("2026-10-03")).toBeTruthy();
+        expect(readRequest.mock.calls.filter(([path]) => path.includes("/stat/getStatUser"))).toHaveLength(1);
+    } finally {
+        configureTimeZone("Asia/Shanghai", true);
+        setAdminDisplayTimeZone("business");
+    }
 });

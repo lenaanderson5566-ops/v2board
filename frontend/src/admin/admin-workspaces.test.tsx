@@ -1116,6 +1116,46 @@ it("keeps a deleted gift-card plan selected and submits its original ID after di
     )).toBe(true));
 });
 
+it("preserves unbounded gift-card dates without exposing Unix epoch as a date", async () => {
+    const fixture = { id: 13, name: "长期兑换礼品卡", type: 1, value: 300, started_at: "0", ended_at: 0 };
+    api.request.mockImplementation(async (path: string) => path.includes("giftcard/fetch")
+        ? { data: [fixture], total: 1 }
+        : { data: [] });
+    const { ResourcePage } = await import("./admin");
+    render(<ResourcePage resource={resources.giftcards} />);
+    expect(await screen.findByText("不限开始时间 — 无固定到期")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "编辑" }));
+    const dialog = within(await screen.findByRole("dialog"));
+    expect((dialog.getByLabelText("开始时间") as HTMLInputElement).value).toBe("");
+    expect((dialog.getByLabelText("到期时间") as HTMLInputElement).value).toBe("");
+    fireEvent.click(dialog.getByRole("button", { name: "保存" }));
+    await waitFor(() => expect(api.request.mock.calls.some(([path, body]) =>
+        path.endsWith("giftcard/generate") && body.started_at === 0 && body.ended_at === 0,
+    )).toBe(true));
+});
+
+it("validates coupon windows by exact instant, even when the DST end wall time looks earlier", async () => {
+    const start = Date.parse("2026-11-01T05:45:37Z") / 1000;
+    const end = Date.parse("2026-11-01T06:15:41Z") / 1000;
+    const coupon = { id: 42, name: "回拨窗口券", type: 2, value: 10, started_at: start, ended_at: end, limit_use: 2 };
+    api.request.mockImplementation(async (path: string) => path.includes("coupon/fetch")
+        ? { data: [coupon], total: 1 }
+        : { data: [] });
+    const { configureTimeZone } = await import("../shared/timezone");
+    const { ResourcePage } = await import("./admin");
+    configureTimeZone("America/New_York", true);
+    try {
+        render(<ResourcePage resource={resources.coupons} />);
+        fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
+        const dialog = within(await screen.findByRole("dialog"));
+        fireEvent.change(dialog.getByDisplayValue(coupon.name), { target: { value: "更新的回拨窗口券" } });
+        fireEvent.click(dialog.getByRole("button", { name: "保存" }));
+        await waitFor(() => expect(api.request.mock.calls.some(([path, body]) =>
+            path.endsWith("coupon/generate") && body.started_at === start && body.ended_at === end,
+        )).toBe(true));
+    } finally { configureTimeZone("Asia/Shanghai", true); }
+});
+
 it("preserves unavailable coupon plan restrictions alongside named selections", async () => {
     api.request.mockImplementation(async (path: string) => ({ data: path.includes("plan/fetch")
         ? [{ id: 7, name: "Basic" }]

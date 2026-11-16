@@ -498,14 +498,15 @@ body[data-console="admin"] .settings-panel .form {
 }
 body[data-console="admin"] .settings-panel .form > label {
     display: grid;
-    grid-template-columns: minmax(180px, 35%) 1fr;
-    padding: 20px 24px;
+    grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
+    gap: 4px var(--admin-space);
+    padding: 16px 24px;
     border-bottom: 1px solid #e8e8e8;
     align-items: start;
 }
 body[data-console="admin"] .settings-panel .form > label > small {
-    grid-column: 1;
-    grid-row: 2;
+    grid-column: 2;
+    max-width: 32rem;
     color: #6c757d;
 }
 body[data-console="admin"]
@@ -514,17 +515,13 @@ body[data-console="admin"]
     > label
     > :not(span):not(small) {
     grid-column: 2;
-    grid-row: 1/3;
+    grid-row: 1;
 }
 body[data-console="admin"] .settings-panel .form-actions {
     justify-content: flex-end;
 }
 body[data-console="admin"] .editor {
     padding: var(--admin-space);
-}
-body[data-console="admin"] .modal .field-grid {
-    grid-template-columns: 1fr;
-    gap: 20px;
 }
 body[data-console="admin"] .field-grid > :is(label, .field-group-row) {
     font-size: 14px;
@@ -552,8 +549,9 @@ body[data-console="admin"] .settings-panel .field-grid {
 }
 body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) {
     display: grid;
-    grid-template-columns: minmax(180px, 35%) 1fr;
-    padding: 20px 24px;
+    grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
+    gap: 4px var(--admin-space);
+    padding: 16px 24px;
     border-bottom: 1px solid #e8e8e8;
     align-items: start;
 }
@@ -562,9 +560,16 @@ body[data-console="admin"] .settings-panel .field-grid > label > .input-control 
     min-width: 0;
     align-self: stretch;
 }
+body[data-console="admin"] .settings-panel :is(.field-grid, .form) > label:not(.wide) > :is(.input-control, .password-control, select, input:not([type="checkbox"]):not([type="radio"])) {
+    width: 100%;
+    max-width: 32rem;
+    min-width: 0;
+    justify-self: start;
+}
 body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) > small {
-    grid-column: 1;
-    grid-row: 2;
+    grid-column: 2;
+    max-width: 32rem;
+    overflow-wrap: anywhere;
 }
 body[data-console="admin"]
     .settings-panel
@@ -572,7 +577,7 @@ body[data-console="admin"]
     > :is(label, .field-group-row)
     > :not(span):not(small) {
     grid-column: 2;
-    grid-row: 1/3;
+    grid-row: 1;
 }
 body[data-console="admin"] .settings-panel .form-bottom {
     margin: 0;
@@ -598,20 +603,14 @@ body[data-console="admin"] .user-toolbar {
     align-items: center;
     gap: 8px;
 }
-body[data-console="admin"] .user-toolbar .muted {
-    flex-basis: 100%;
+body[data-console="admin"] .users-page > .panel .table-scroll :is(th, td).table-actions {
+    min-width: 0;
+    width: 1%;
+    white-space: nowrap;
 }
-body[data-console="admin"] .users-page > .panel .table-scroll th:last-child,
-body[data-console="admin"] .users-page > .panel .table-scroll td:last-child {
-    min-width: 180px;
-}
-body[data-console="admin"]
-    .users-page
-    > .panel
-    .table-scroll
-    td:last-child
-    > .actions {
-    width: 180px;
+body[data-console="admin"] .users-page > .panel .table-scroll td.table-actions > .actions {
+    width: max-content;
+    flex-wrap: nowrap;
 }
 body[data-console="admin"] .users-page .row-menu summary {
     border: 0;

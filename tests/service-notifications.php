@@ -8,12 +8,15 @@ use App\Models\Plan;
 use App\Models\Order;
 use App\Models\Giftcard;
 use App\Models\Ticket;
+use App\Jobs\OrderHandleJob;
 use App\Jobs\SendEmailJob;
 use App\Http\Controllers\V1\Admin\GiftcardController;
+use App\Http\Controllers\V1\Admin\OrderController;
 use App\Http\Controllers\V1\Admin\PlanController;
 use App\Http\Requests\Admin\GiftcardGenerate;
 use App\Services\OrderService;
 use App\Services\ServiceNotification;
+use App\Services\TrafficCreditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -66,6 +69,48 @@ try {
         if ($expected) $assert($params(Queue::pushed(SendEmailJob::class)->last())['template_name']===($type===2?'serviceRenewed':'serviceActivated'),'Correct order template: '.$type);
         (new OrderService($order))->open();
         $assert($count()===$before+$expected,'Repeated fulfillment does not notify again: '.$type);
+    }
+    foreach (['gateway-credit-test'=>true, 'manual_operation'=>true, 'opted-out-credit-test'=>false] as $callback=>$notify) {
+        $recipient = $makeUser(['remind_service'=>$notify]);
+        $order = new Order([
+            'user_id'=>$recipient->id, 'plan_id'=>$plan->id, 'trade_no'=>'nt'.bin2hex(random_bytes(12)),
+            'period'=>'onetime_price', 'type'=>5, 'total_amount'=>1000, 'status'=>0,
+        ]);
+        TrafficCreditService::snapshotPurchase($order, $plan);
+        $order->save();
+        $orders[] = $order->id;
+        $before = $count();
+        if ($callback === 'manual_operation') {
+            (new OrderController())->paid(Request::create('/admin/order/paid', 'POST', ['trade_no'=>$order->trade_no]));
+        } else {
+            (new OrderService($order))->paid($callback);
+        }
+        $assert($order->fresh()->status===1 && $count()===$before, 'Payment confirmation alone does not send a credit email');
+
+        $job = new OrderHandleJob($order->trade_no);
+        if ($callback === 'gateway-credit-test') {
+            DB::beginTransaction();
+            try {
+                $job->handle();
+                $assert($count()===$before, 'Credit email waits for the outer fulfillment transaction to commit');
+            } finally {
+                DB::rollBack();
+            }
+            $assert($order->fresh()->status===1 && $recipient->fresh()->credit_balance===0 && $count()===$before,
+                'Rolled-back credit fulfillment does not send an email');
+        }
+
+        $job->handle();
+        $assert($order->fresh()->status===3 && $recipient->fresh()->credit_balance===$order->credit_bytes,
+            'Credit order completes and grants the snapshotted allowance');
+        $assert($count()===$before+(int)$notify, 'Completed credit order respects the service notification preference');
+        if ($notify) {
+            $assert($params(Queue::pushed(SendEmailJob::class)->last()) === [
+                'email'=>$recipient->email, 'template_name'=>'serviceActivated', 'template_value'=>[],
+            ], 'Credit purchase reuses the original service activation email');
+        }
+        $job->handle();
+        $assert($count()===$before+(int)$notify, 'Repeated credit fulfillment does not send another email');
     }
     foreach ([1,2,3,4,5] as $type) {
         $recipient=$makeUser($type===5?[]:['plan_id'=>$plan->id,'expired_at'=>time()+86400,'transfer_enable'=>1073741824]);
@@ -147,6 +192,8 @@ try {
     echo "Service notifications and gift cards: $checks checks passed; no real mail sent.\n";
 } finally {
     while (DB::transactionLevel()>0) DB::rollBack();
+    DB::table('v2_credit_batch')->whereIn('user_id', $users)->delete();
+    DB::table('v2_traffic_credit_log')->whereIn('user_id', $users)->delete();
     Giftcard::whereIn('id',$cards)->delete(); Order::whereIn('id',$orders)->delete();
     if ($ticket) $ticket->delete();
     User::whereIn('id',$users)->delete(); if ($plan) $plan->delete();

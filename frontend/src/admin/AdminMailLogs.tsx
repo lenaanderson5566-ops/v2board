@@ -102,8 +102,6 @@ export function AdminMailLogs() {
     );
     return (
         <>
-            {" "}
-            <OperationsDetails section="delivery" />
             <Panel
                 title="邮件发送日志"
                 actions={
@@ -130,12 +128,14 @@ export function AdminMailLogs() {
                 {view === "campaigns" && <AdminMailCampaigns />}
                 {view === "logs" && (
                     <>
-                        <MailHealth />
-                        <p className="pad muted">
-                            记录实际发送尝试；服务商接受不代表已送达收件箱。结果不确定时先核查服务商记录，避免重复发送。邮箱脱敏，正文、验证码及原始错误响应不展示。HTTP
-                            200 仅表示 API 受理，SMTP 550
-                            也不等于用户拉黑。配置签名回调后可查看最终退信和投诉；核实无效邮箱后暂停非必要邮件，不建议删除网站账号。
-                        </p>
+                        <details className="mail-log-explanation">
+                            <summary>查看日志说明</summary>
+                            <p className="muted">
+                                记录实际发送尝试；服务商接受不代表已送达收件箱。结果不确定时先核查服务商记录，避免重复发送。邮箱脱敏，正文、验证码及原始错误响应不展示。HTTP
+                                200 仅表示 API 受理，SMTP 550
+                                也不等于用户拉黑。配置签名回调后可查看最终退信和投诉；核实无效邮箱后暂停非必要邮件，不建议删除网站账号。
+                            </p>
+                        </details>
                         <AdminFilterBar
                             className="admin-log-filters"
                             onSubmit={(e) => {
@@ -475,9 +475,11 @@ export function AdminMailLogs() {
                             loading={logs.loading}
                             onChange={setPage}
                         />
+                        <MailHealth />
                     </>
                 )}
             </Panel>
+            <OperationsDetails section="delivery" />
         </>
     );
 }

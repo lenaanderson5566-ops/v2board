@@ -91,6 +91,32 @@ it("rejects reversed time bounds before querying", async () => {
     fireEvent.click(screen.getByRole("button", { name: "查询" }));
     expect(screen.getByText("结束时间不能早于开始时间")).toBeTruthy();
 });
+it("retains the rolling lower bound in a repeated DST hour and when the business timezone changes", async () => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    const now = Date.parse("2026-11-02T05:30:37Z");
+    const expectedFrom = now / 1000 - 86400;
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    configureTimeZone("America/New_York", true);
+    try {
+        setup();
+        const view = render(<AdminSystemLogs />);
+        await screen.findByText("暂无匹配日志");
+        const request = () => new URLSearchParams(String(api.request.mock.calls.at(-1)?.[0]).split("?")[1]);
+        expect(request().get("from")).toBe(String(expectedFrom));
+        expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value.replace(/\.0{1,3}$/, "")).toBe("2026-11-01T01:30:37");
+
+        configureTimeZone("UTC", true);
+        view.rerender(<AdminSystemLogs />);
+        expect(screen.getByText(/此筛选表单使用打开时的业务时区 America\/New_York/)).toBeTruthy();
+        fireEvent.change(screen.getByLabelText("日志级别"), { target: { value: "ERROR" } });
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        await waitFor(() => expect(request().get("level")).toBe("ERROR"));
+        expect(request().get("from")).toBe(String(expectedFrom));
+    } finally {
+        clock.mockRestore();
+        configureTimeZone("Asia/Shanghai", true);
+    }
+});
 it("keeps opt-in retention at zero and saves the selected duration", async () => {
     setup();
     render(<AdminLogSettings route="log-settings" />);

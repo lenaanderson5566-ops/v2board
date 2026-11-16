@@ -803,9 +803,10 @@ export function ResourcePage({
                                         values,
                                     )
                                 }
-                                validate={values => validateResource(values) ??
-                                    (planView === "credits" ? validateCreditPlan(values) : undefined)}
+                                validate={planView === "credits" ? validateCreditPlan : undefined}
                                 onSave={async (body) => {
+                                    const timeError = validateResource(body);
+                                    if (timeError) throw new Error(timeError);
                                     const clean: Row = {};
                                     resource.fields.forEach((field) => {
                                         if (
@@ -818,6 +819,10 @@ export function ResourcePage({
                                             clean[field.key] = body[field.key];
                                     });
                                     if (editing[key]) clean[key] = editing[key];
+                                    if (kind === "giftcards") {
+                                        clean.started_at ??= 0;
+                                        clean.ended_at ??= 0;
+                                    }
                                     if (kind === "users") {
                                         const keys = Object.keys(clean).filter(field => field !== key);
                                         if (!keys.length) {

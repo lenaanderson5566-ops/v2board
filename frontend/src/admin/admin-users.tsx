@@ -289,44 +289,35 @@ export function UsersPage() {
                                 </button>
                             </AdminRowMenu>
                         </div>
-                        <p className="muted">
-                            {filters.length
-                                ? `当前筛选结果 ${total} 名用户；批量操作使用全部匹配结果，不限当前页。`
-                                : `共 ${total} 名用户；批量封禁和删除需要先设置筛选条件。`}
-                        </p>
-                        {filters.map((f, i) => (
-                            <span className="filter-chip" key={i}>
-                                {
-                                    userFilterFields.find(
-                                        ([key]) => key === f.key,
-                                    )?.[1]
-                                }{" "}
-                                {f.condition}{" "}
-                                {["uuid", "token"].includes(f.key)
-                                    ? "已填写"
-                                    : f.key === "plan_id"
-                                      ? adminPlanLabel({ plan_id: f.value }, plans, { empty: "无套餐" })
-                                      : String(f.value)}{" "}
-                                <button
-                                    aria-label={`移除筛选条件 ${i + 1}`}
-                                    onClick={() =>
-                                        setFilters(
-                                            filters.filter(
-                                                (_, index) => index !== i,
-                                            ),
-                                        )
-                                    }
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        ))}
-                        {error && (
-                            <p className="alert" role="alert">
-                                {error}
+                        <div className="user-toolbar-summary">
+                            <p className="muted">
+                                {filters.length
+                                    ? `当前筛选结果 ${total} 名用户；批量操作使用全部匹配结果，不限当前页。`
+                                    : `共 ${total} 名用户；批量封禁和删除需要先设置筛选条件。`}
                             </p>
-                        )}
-                        {notice && <p role="status">{notice}</p>}
+                            {filters.length > 0 && <div className="actions">
+                                {filters.map((f, i) => (
+                                    <span className="filter-chip" key={i}>
+                                        {userFilterFields.find(([key]) => key === f.key)?.[1]}{" "}
+                                        {f.condition}{" "}
+                                        {["uuid", "token"].includes(f.key)
+                                            ? "已填写"
+                                            : f.key === "plan_id"
+                                              ? adminPlanLabel({ plan_id: f.value }, plans, { empty: "无套餐" })
+                                              : String(f.value)}{" "}
+                                        <button
+                                            type="button"
+                                            aria-label={`移除筛选条件 ${i + 1}`}
+                                            onClick={() => setFilters(filters.filter((_, index) => index !== i))}
+                                        >
+                                            ×
+                                        </button>
+                                    </span>
+                                ))}
+                            </div>}
+                            {error && <p className="alert" role="alert">{error}</p>}
+                            {notice && <p role="status">{notice}</p>}
+                        </div>
                     </div>
                 }
                 extraActions={(row, context, secondary) => (

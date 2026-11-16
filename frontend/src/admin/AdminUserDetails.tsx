@@ -1,5 +1,5 @@
 import { formatMultiplier } from "../shared/number-format";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { UserActivityContent } from "./UserActivityContent";
 import { adminUserLabel } from "./admin-user-label";
@@ -10,19 +10,22 @@ import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
 import { StatusBadge } from "../shared/StatusBadge";
 import { Modal, State, Table, Pager, useData } from "../shared/ui";
 export function AdminUserDetails({row, close}: {row:Row; close:()=>void}) {
-    const [tab,setTab] = useState("activity");
+    const [{ value: tab, focusPanel }, setTab] = useState({ value: "activity", focusPanel: false });
     return <Modal title={`用户详情 · ${adminUserLabel({user_id:row.id,email:row.email})}`} variant="drawer" wide className="user-details-drawer" close={close}>
-        <AdminTabs label="用户详情视图" value={tab} onChange={setTab} options={[
+        <AdminTabs label="用户详情视图" value={tab} onChange={value => setTab({ value, focusPanel: false })} options={[
             {value:"activity",label:"活动记录"},{value:"invitations",label:"邀请用户"},
             {value:"orders",label:"订单"},{value:"traffic",label:"流量记录"},
             {value:"credits",label:"流量额度包"}
         ]}>
             {tab !== "activity" && <AdminLogTimeZone />}
-            {tab === "activity" && <UserActivityContent row={{user_id:row.id,email:row.email}}/>}
+            {tab === "activity" && <UserActivityContent
+                row={{user_id:row.id,email:row.email}}
+                onViewCreditBatches={() => setTab({ value: "credits", focusPanel: true })}
+            />}
             {tab === "invitations" && <UserInvitations row={row}/>}
             {tab === "orders" && <UserOrders row={row}/>}
             {tab === "traffic" && <UserTraffic row={row}/>}
-            {tab === "credits" && <UserCredits row={row}/>}
+            {tab === "credits" && <UserCredits row={row} focusOnOpen={focusPanel}/>}
         </AdminTabs>
     </Modal>;
 }
@@ -115,7 +118,11 @@ const creditSources: Record<string, string> = {
     invite_friend_use: "好友首次使用奖励",
 };
 
-function UserCredits({ row }: { row: Row }) {
+function UserCredits({ row, focusOnOpen }: { row: Row; focusOnOpen: boolean }) {
+    const view = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        if (focusOnOpen) view.current?.focus();
+    }, [focusOnOpen]);
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
     const [status, setStatus] = useState("");
@@ -123,7 +130,7 @@ function UserCredits({ row }: { row: Row }) {
     const d = useData<Row[]>(query(admin("user/creditBatches"), { user_id: row.id, current: page, pageSize, status }));
     const summary = d.meta?.summary;
 
-    return <div className="pad user-activity">
+    return <div className="pad user-activity" role="region" aria-label="流量额度批次" tabIndex={-1} ref={view}>
         <State {...d} retry={d.reload}>
             {summary && <section className="user-activity-summary" aria-label="流量额度概况">
                 <dl>

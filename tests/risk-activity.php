@@ -3,6 +3,7 @@ $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
 use App\Models\User;
 use App\Models\Plan;
+use App\Models\Order;
 use App\Models\RiskRuleHit;
 use App\Models\UserOnlineSnapshot;
 use Illuminate\Support\Facades\DB;
@@ -58,6 +59,7 @@ try {
  $activity=$decode($c->getUserActivity(Request::create('/','GET',['user_id'=>$u->id])))['data'];
  $assert($activity['user']['id']===$u->id && !isset($activity['user']['token']));
  $assert($activity['user']['expired_at']===null && (int)$activity['user']['transfer_enable']===1073741824);
+ $assert($activity['user']['has_recurring_order_history'] === false);
  $assert(array_key_exists('current_plan_name', $activity['user']) && $activity['user']['current_plan_name'] === null);
  $assert(count(array_filter($activity['events'],fn($r)=>($r['rule_key']??'')==='test_activity'))===2);
  $plan = Plan::create(['name'=>'Activity plan', 'group_id'=>1, 'transfer_enable'=>1]);
@@ -65,6 +67,7 @@ try {
  $activityUser = fn () => $decode($c->getUserActivity(Request::create('/', 'GET', ['user_id'=>$u->id])))['data']['user'];
  $active = $activityUser();
  $assert($active['current_plan_name'] === 'Activity plan' && !array_key_exists('plan_id', $active));
+ $assert(!array_key_exists('has_recurring_order_history', $active));
  $plan->update(['name'=>'Renamed activity plan']);
  $assert($activityUser()['current_plan_name'] === 'Renamed activity plan');
  foreach ([
@@ -78,6 +81,17 @@ try {
  $u->fill(['expired_at'=>time()+3600, 'transfer_enable'=>1073741824])->save();
  $plan->delete();
  $assert($activityUser()['current_plan_name'] === null);
+ $u->fill(['expired_at'=>0, 'transfer_enable'=>0])->save();
+ $assert($activityUser()['has_recurring_order_history'] === false);
+ // An opening, free, manual order still establishes recurring history even after its plan is deleted.
+ $order = Order::create([
+    'user_id'=>$u->id, 'plan_id'=>$plan->id, 'period'=>'month_price', 'type'=>1,
+    'trade_no'=>App\Utils\Helper::guid(), 'status'=>1, 'total_amount'=>0,
+    'paid_at'=>null, 'callback_no'=>'manual_operation', 'credit_bytes'=>0,
+ ]);
+ $assert($activityUser()['has_recurring_order_history'] === true);
+ $order->update(['status'=>4]);
+ $assert($activityUser()['has_recurring_order_history'] === true);
  $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/risk/user-activity/fetch?user_id='.$u->id);
  $r->headers->set('Accept','application/json');
  $assert(app(Illuminate\Contracts\Http\Kernel::class)->handle($r)->getStatusCode()===403);

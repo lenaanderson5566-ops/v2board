@@ -280,28 +280,58 @@ test("mobile checkout opens a gateway, returns to the paid order and submits onl
 });
 
 test("mobile admin users prioritize account columns and distinguish subscription expiry", async ({ page, context }) => {
-    const now = Math.floor(Date.now() / 1000);
-    const account = { plan_id: 1, transfer_enable: 1073741824, banned: 0 };
+    const fixedTime = new Date("2026-11-16T10:19:52Z");
+    await page.clock.setFixedTime(fixedTime);
+    const now = fixedTime.getTime() / 1000;
+    const gib = 1024 ** 3;
+    const account = { plan_id: 1, plan_name: "测试周期套餐", transfer_enable: gib, banned: 0 };
     await consoleFixture(context, "admin", path => {
         if (path === "/api/v1/test-admin/config/fetch") return {};
-        if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
+        if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试周期套餐" }, { id: 2, name: "测试额度包" }];
         if (path === "/api/v1/test-admin/user/fetch") return [
-            { ...account, id: 1, email: "expired@example.test", expired_at: now - 86400, currency: "USD", total_recharge_amount: 1234 },
-            { ...account, id: 2, email: "active@example.test", expired_at: now + 86400, currency: "CNY", total_recharge_amount: 0 },
-            { ...account, id: 3, email: "unknown@example.test", expired_at: null, currency: "CNY" },
+            { ...account, id: 1, email: "expired@example.test", expired_at: now - 3 * 86400, currency: "USD", total_recharge_amount: 1234 },
+            { ...account, id: 2, email: "active@example.test", expired_at: now + 27 * 86400, currency: "CNY", total_recharge_amount: 0, credit_balance: 2 * gib, total_used: gib },
+            { id: 3, email: "unknown@example.test", transfer_enable: 0, expired_at: null, currency: "CNY", banned: 0 },
+            { ...account, id: 4, email: "expiring@example.test", expired_at: now + 2 * 86400, credit_balance: 0 },
+            { id: 5, email: "purchased@example.test", transfer_enable: 0, expired_at: 0, has_recurring_order_history: true, banned: 0 },
+            { id: 6, email: "never@example.test", transfer_enable: 0, expired_at: 0, has_recurring_order_history: false, banned: 0 },
+            { id: 7, email: "missing@example.test", transfer_enable: 0, has_recurring_order_history: false, banned: 0 },
+            { id: 8, email: "credit-only@example.test", plan_id: 2, plan_name: "测试额度包", transfer_enable: 0, expired_at: 0, has_recurring_order_history: false, credit_balance: 3 * gib, banned: 0 },
+            { id: 9, email: "legacy@example.test", plan_id: 2, plan_name: "测试额度包", transfer_enable: gib, expired_at: null, credit_balance: 0, banned: 0 },
         ];
     });
     await page.goto(`${consoleOrigin}/admin.html#/users`);
-    const expired = page.getByText("已到期", { exact: true });
-    const active = page.getByText("未到期", { exact: true });
+    const userCell = (email, label) => page.getByRole("row").filter({ hasText: email }).locator(`td[data-label="${label}"]`);
+    const expiryCell = (email) => userCell(email, "周期到期");
+    const expired = expiryCell("expired@example.test").getByText("已到期", { exact: true });
+    const expiringCell = expiryCell("expiring@example.test");
+    const expiring = expiringCell.getByText("即将到期", { exact: true });
     await expect(expired).toHaveAttribute("data-tone", "danger");
-    await expect(active).toHaveAttribute("data-tone", "success");
-    const [expiredColor, activeColor] = await Promise.all(
-        [expired, active].map(badge => badge.evaluate(element => getComputedStyle(element).color)),
+    await expect(expiring).toHaveAttribute("data-tone", "warning");
+    const [expiredColor, warningColor] = await Promise.all(
+        [expired, expiring].map(badge => badge.evaluate(element => getComputedStyle(element).color)),
     );
-    expect(expiredColor).not.toBe(activeColor);
+    expect(expiredColor).not.toBe(warningColor);
+    const activeCell = expiryCell("active@example.test");
+    const timestamp = activeCell.locator("time");
+    await expect(timestamp).toHaveText(/\s\d{2}:\d{2}$/);
+    await expect(timestamp).toHaveAttribute("datetime", "2026-12-13T10:19:52.000Z");
+    await expect(activeCell.getByText("有效期内", { exact: true })).toBeVisible();
+    await expect(activeCell.locator(".status-badge")).toHaveCount(0);
+    for (const [email, label] of [
+        ["unknown@example.test", "到期时间未记录"],
+        ["purchased@example.test", "到期时间未记录"],
+        ["never@example.test", "尚未购买周期套餐"],
+        ["missing@example.test", "到期信息缺失"],
+        ["credit-only@example.test", "尚未购买周期套餐"],
+        ["legacy@example.test", "旧版流量无固定到期"],
+    ]) {
+        const cell = expiryCell(email);
+        await expect(cell).toHaveText(label);
+        await expect(cell.locator("time")).toHaveCount(0);
+    }
     const priority = [
-        "邮箱", "订阅", "订阅到期", "余额", "累计充值", "佣金", "流量（GiB）", "已用（GiB）", "剩余额度", "状态",
+        "邮箱", "周期套餐", "周期到期", "余额", "累计充值", "佣金", "基础流量（GiB）", "已用（GiB）", "可用独立额度", "状态",
     ];
     const headers = page.getByRole("columnheader");
     for (const [index, name] of priority.entries()) {
@@ -311,11 +341,25 @@ test("mobile admin users prioritize account columns and distinguish subscription
         const row = page.getByRole("row").filter({ hasText: email });
         await expect(row.locator('td[data-label="累计充值"]')).toHaveText(amount);
     }
+    for (const [email, plan, balance] of [
+        ["active@example.test", "测试周期套餐", "2 GiB"],
+        ["expiring@example.test", "测试周期套餐", "0 B"],
+        ["credit-only@example.test", "—", "3 GiB"],
+        ["legacy@example.test", "—", "0 B"],
+        ["unknown@example.test", "—", "—"],
+    ]) {
+        await expect(userCell(email, "周期套餐")).toHaveText(plan);
+        await expect(userCell(email, "可用独立额度")).toHaveText(balance);
+    }
     expect(await page.locator(".users-page .table-viewport").evaluate(viewport => {
         viewport.scrollLeft = 40;
         return viewport.scrollLeft > 0;
     })).toBe(true);
     await expectPageWidth(page, 390);
+    await page.setViewportSize({ width: 1280, height: 900 });
+    const dateBounds = await expiringCell.locator("time").boundingBox();
+    const statusBounds = await expiring.boundingBox();
+    expect(dateBounds.y + dateBounds.height).toBeLessThan(statusBounds.y);
 });
 
 test.describe("desktop admin frontend", () => {
@@ -441,19 +485,24 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     const requestId = "12345678-1234-4234-8234-123456789abc";
     const rawResponse = '{"reference":"' + "abcdefghij".repeat(30) + '"}';
     const rawRequests = [];
+    const creditRequests = [];
     const order = {
         id: 1, trade_no: tradeNo, user_id: 7, email,
         currency: "CNY", period: "month_price", type: 1, status: 0, plan_id: 1,
         total_amount: 5880, created_at: 1791849600,
     };
-    await consoleFixture(context, "admin", path => {
+    await consoleFixture(context, "admin", (path, request) => {
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
         if (path === "/api/v1/test-admin/order/fetch") return [order];
         if (path === "/api/v1/test-ops/risk/user-activity/fetch") return {
-            user: { id: 7, email, current_plan_name: "当前生效的测试套餐", transfer_enable: 1073741824, expired_at: 1950000000 },
+            user: { id: 7, email, current_plan_name: "当前生效的测试套餐", transfer_enable: 1073741824, expired_at: 1950000000, credit_balance: 1073741824 },
             events: [],
         };
+        if (path === "/api/v1/test-admin/user/creditBatches") {
+            creditRequests.push(new URL(request.url()).searchParams.get("user_id"));
+            return [];
+        }
         if (path === "/api/v1/test-admin/order/detail") return {
             ...order,
             payment_attempt_history: { available: true, events: [{
@@ -503,8 +552,16 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await user.click();
     const userDetails = page.getByRole("dialog", { name: /^用户详情/ });
     const account = userDetails.getByRole("region", { name: "账户概况" });
-    await expect(account.getByText("当前有效套餐")).toBeVisible();
+    await expect(account.getByText("当前周期套餐")).toBeVisible();
     await expect(account.getByText("当前生效的测试套餐")).toBeVisible();
+    await expect(account.locator(".admin-subscription-expiry time")).toHaveText(/\d{2}:\d{2}:\d{2}$/);
+    await expect(account.getByText("可用独立额度")).toBeVisible();
+    await expect(account.getByText("1 GiB")).toBeVisible();
+    expect(creditRequests).toEqual([]);
+    await account.getByRole("button", { name: "查看额度批次" }).click();
+    await expect(userDetails.getByRole("tab", { name: "流量额度包" })).toHaveAttribute("aria-selected", "true");
+    await expect(userDetails.getByRole("region", { name: "流量额度批次" })).toBeFocused();
+    await expect.poll(() => creditRequests).toEqual(["7"]);
     await page.keyboard.press("Escape");
     await expect(user).toBeFocused();
     await page.keyboard.press("Escape");

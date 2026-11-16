@@ -30,11 +30,14 @@ it("loads the selected user's credit batches on demand and opens their linked or
                 { id: 2, source: "upgrade", order_id: null, trade_no: null, plan_name: null, granted_bytes: null, remaining_bytes: 1024, available_bytes: 0, created_at: 1700000000, expires_at: 1760000000, status: "expired" },
             ],
         };
-        return { data: { user: { email: "credit@example.com" }, events: [] } };
+        return { data: { user: { email: "credit@example.com", credit_balance: summary.available_bytes, transfer_enable: 0 }, events: [] } };
     });
     render(<AdminUserDetails row={{ id: 42, email: "credit@example.com" }} close={vi.fn()} />);
+    const shortcut = await screen.findByRole("button", { name: "查看额度批次" });
     expect(readRequest.mock.calls.some(([path]) => path.includes("creditBatches"))).toBe(false);
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "流量额度包" }), { button: 0, ctrlKey: false });
+    fireEvent.click(shortcut);
+    expect(screen.getByRole("tab", { name: "流量额度包" }).getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(screen.getByRole("region", { name: "流量额度批次" }));
 
     const overview = await screen.findByRole("region", { name: "流量额度概况" });
     expect(within(overview).getByText("3 GiB")).toBeTruthy();
@@ -64,7 +67,7 @@ it("loads the selected user's credit batches on demand and opens their linked or
 
 it("pages credit batches and returns to page one when the status filter changes", async () => {
     readRequest.mockImplementation(async (path: string) => {
-        if (!path.includes("creditBatches")) return { data: { events: [] } };
+        if (!path.includes("creditBatches")) return { data: { user: { credit_balance: 0 }, events: [] } };
         const params = new URLSearchParams(path.split("?")[1]);
         return {
             data: params.has("status") ? [] : [{ id: 1, source: "invite_first_use", status: "used", available_bytes: 0 }],
@@ -73,6 +76,9 @@ it("pages credit batches and returns to page one when the status filter changes"
         };
     });
     render(<AdminUserDetails row={{ id: 42 }} close={vi.fn()} />);
+    const account = await screen.findByRole("region", { name: "账户概况" });
+    expect(within(account).getByText("0 B")).toBeTruthy();
+    expect(within(account).queryByRole("button", { name: "查看额度批次" })).toBeNull();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "流量额度包" }), { button: 0, ctrlKey: false });
     await screen.findByText("暂无待到期额度");
     fireEvent.click(screen.getByRole("button", { name: "下一页" }));

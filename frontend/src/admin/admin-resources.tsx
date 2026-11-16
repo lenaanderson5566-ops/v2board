@@ -4,13 +4,14 @@ import { languages } from "../shared/language-options";
 import { admin, bytes, date, money, ops, type Row } from "../shared/api";
 import type { Field } from "../shared/ui";
 import { logTime } from "./admin-log-time";
-import { AdminSubscriptionExpiry } from "./AdminSubscriptionExpiry";
+import { AdminSubscriptionExpiry, hasRecordedPeriodicPlan } from "./AdminSubscriptionExpiry";
 import { AdminRiskReview } from "./AdminRiskReview";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { ClientUaStats } from "./ClientUaStats";
 import { field, nameColumn, resetOptions } from "./admin-fields";
 import { adminUserLabel } from "./admin-user-label";
 import { adminOrderPeriod, adminOrderType } from "./admin-order-labels";
+import { adminPlanLabel } from "./admin-plan-reference";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
 import { routeActionLabel, routeDetails } from "./route-form";
 import type { Resource } from "./admin";
@@ -224,8 +225,8 @@ export const resources: Record<string, Resource> = {
                     />
                 ),
             ],
-            ["plan_name", "订阅"],
-            ["expired_at", "订阅到期", (r) => <AdminSubscriptionExpiry user={r} />],
+            ["plan_name", "周期套餐", (r) => hasRecordedPeriodicPlan(r) ? adminPlanLabel(r) : "—"],
+            ["expired_at", "周期到期", (r) => <AdminSubscriptionExpiry user={r} precision="minute" />],
             ["balance", "余额", (r) => money(r.balance, r.currency)],
             ["total_recharge_amount", "累计充值", (r) => money(r.total_recharge_amount, r.currency || "CNY")],
             [
@@ -235,7 +236,7 @@ export const resources: Record<string, Resource> = {
             ],
             [
                 "transfer_enable",
-                "流量（GiB）",
+                "基础流量（GiB）",
                 (r) => r.transfer_enable == null ? "—" : formatNumber(Number(r.transfer_enable) / 1073741824),
             ],
             [
@@ -243,7 +244,7 @@ export const resources: Record<string, Resource> = {
                 "已用（GiB）",
                 (r) => r.total_used == null ? "—" : formatNumber(Number(r.total_used) / 1073741824),
             ],
-            ["credit_balance", "剩余额度", (r) => bytes(r.credit_balance || 0)],
+            ["credit_balance", "可用独立额度", (r) => bytes(r.credit_balance)],
             [
                 "banned",
                 "状态",
@@ -280,8 +281,8 @@ export const resources: Record<string, Resource> = {
         fields: [
             field("email", "邮箱", "text", true),
             field("password", "新密码（留空不修改）", "password"),
-            field("plan_id", "套餐", "number"),
-            field("transfer_enable", "流量 (GiB)", "number"),
+            field("plan_id", "关联套餐", "number"),
+            field("transfer_enable", "基础流量（GiB）", "number"),
             field("u", "已用上传（GiB）", "number"),
             field("d", "已用下载（GiB）", "number"),
             {
@@ -290,8 +291,8 @@ export const resources: Record<string, Resource> = {
                 step: 0.01,
             },
             {
-                ...field("expired_at", "订阅到期", "datetime-local"),
-                hint: "仅填写订阅的到期日期。只改余额时会保留原到期值。流量额度包的到期日在用户详情的「流量额度包」中查看。",
+                ...field("expired_at", "周期到期", "datetime-local"),
+                hint: "设置周期套餐的到期时间。只改余额时会保留原到期值。独立额度按批次到期，可在用户详情查看。",
             },
             field("device_limit", "设备限制", "number"),
             field("speed_limit", "速率限制", "number"),

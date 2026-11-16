@@ -5,42 +5,78 @@ vi.mock("../shared/api", () => ({ admin: (s:string)=>s, query: vi.fn((s:string)=
 const load = vi.hoisted(()=>vi.fn());
 vi.mock("../shared/ui",()=>({useData:load, Table:()=>null, Pager:()=>null, Modal:({children,close}:any)=><div role="dialog"><button onClick={close}>关闭</button>{children}</div>,State:({children}:any)=><>{children}</>}));
 import { query } from "../shared/api";
+import { configureTimeZone } from "../shared/timezone";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { AdminSubscriptionExpiry } from "./AdminSubscriptionExpiry";
-afterEach(cleanup);
+afterEach(() => {
+    cleanup();
+    vi.restoreAllMocks();
+    configureTimeZone("Asia/Shanghai");
+});
 it.each([
-    [{expired_at:0}, "未设置到期（默认值）", false],
-    [{expired_at:"0", credit_balance:"100"}, "未设置到期（默认值）", true],
-    [{expired_at:null, transfer_enable:0, credit_balance:100}, "未设置到期（空值）", true],
-    [{expired_at:null, transfer_enable:"1073741824"}, "无固定到期", false],
-    [{}, "到期信息缺失", false],
-] as const)("explains an absent subscription date without displaying the epoch: %j", (user, label, credits) => {
+    [{expired_at:0, transfer_enable:0, has_recurring_order_history:false}, "尚未购买周期套餐"],
+    [{expired_at:null, transfer_enable:0, has_recurring_order_history:false}, "尚未购买周期套餐"],
+    [{expired_at:"0", has_recurring_order_history:true}, "到期时间未记录"],
+    [{expired_at:null, transfer_enable:0}, "到期时间未记录"],
+    [{expired_at:0, transfer_enable:1024, has_recurring_order_history:false}, "到期时间未记录"],
+    [{expired_at:0, has_recurring_order_history:"false" as unknown as boolean}, "到期时间未记录"],
+    [{expired_at:null, transfer_enable:"1073741824", has_recurring_order_history:false}, "旧版流量无固定到期"],
+    [{expired_at:"unknown", has_recurring_order_history:false}, "到期信息缺失"],
+    [{}, "到期信息缺失"],
+] as const)("explains an absent subscription date without displaying the epoch: %j", (user, label) => {
     const {container} = render(<AdminSubscriptionExpiry user={user} />);
     expect(screen.getByText(label).hasAttribute("data-tone")).toBe(false);
-    expect(Boolean(screen.queryByText("另有可用流量额度包"))).toBe(credits);
     expect(container.querySelector("time")).toBeNull();
 });
-it("keeps a real subscription date and labels its time status separately from credits", () => {
-    const {container, rerender} = render(<AdminSubscriptionExpiry user={{expired_at:1_700_000_000, credit_balance:100}} />);
-    expect(screen.getByText("已到期").getAttribute("data-tone")).toBe("danger");
-    expect(screen.getByText("另有可用流量额度包")).toBeTruthy();
-    expect(container.querySelector("time")?.dateTime).toBe(new Date(1_700_000_000_000).toISOString());
+it("keeps a real subscription date and labels the elapsed status", () => {
+    configureTimeZone("Asia/Shanghai", true);
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-16T10:19:52Z"));
+    const {container, rerender} = render(<AdminSubscriptionExpiry user={{expired_at:1_700_000_000, has_recurring_order_history:false}} />);
+    const expired = screen.getByText("已到期");
+    expect(expired.getAttribute("data-tone")).toBe("danger");
+    const time = container.querySelector("time");
+    expect(time?.dateTime).toBe(new Date(1_700_000_000_000).toISOString());
+    expect(time?.nextElementSibling).toBe(expired);
     rerender(<AdminSubscriptionExpiry user={{expired_at:-28_800}} />);
     expect(screen.getByText("已到期")).toBeTruthy();
     expect(container.querySelector("time")?.dateTime).toBe("1969-12-31T16:00:00.000Z");
-    const future = Math.floor(Date.now() / 1000) + 3600;
-    rerender(<AdminSubscriptionExpiry user={{expired_at:future}} />);
-    expect(screen.getByText("未到期").getAttribute("data-tone")).toBe("success");
-    expect(container.querySelector("time")?.dateTime).toBe(new Date(future * 1000).toISOString());
+});
+it.each([
+    ["2026-11-23T10:19:53Z", "有效期内", null],
+    ["2026-11-23T10:19:52Z", "即将到期", "warning"],
+    ["2026-11-16T10:19:53Z", "即将到期", "warning"],
+    ["2026-11-16T10:19:52Z", "已到期", "danger"],
+] as const)("shows only actionable expiry statuses for %s and retains time precision", (date, label, tone) => {
+    configureTimeZone("Asia/Shanghai", true);
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-16T10:19:52Z"));
+    const user = {expired_at:date, has_recurring_order_history:false};
+    const {container, rerender} = render(<AdminSubscriptionExpiry user={user} precision="minute" />);
+    const time = container.querySelector("time")!;
+    const status = screen.getByText(label);
+    expect(status.getAttribute("data-tone")).toBe(tone);
+    expect(time.nextElementSibling).toBe(status);
+    expect(time.textContent).toMatch(/\b18:19$/);
+    expect(time.dateTime).toBe(new Date(date).toISOString());
+    rerender(<AdminSubscriptionExpiry user={user} />);
+    expect(time.textContent).toMatch(/\b18:19:5[23]$/);
+});
+it("preserves a future date when there is no activated periodic allowance", () => {
+    vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-11-16T10:19:52Z"));
+    const {container} = render(<AdminSubscriptionExpiry user={{expired_at:"2026-11-17T10:19:53Z", transfer_enable:0}} />);
+    expect(container.querySelector("time")?.dateTime).toBe("2026-11-17T10:19:53.000Z");
+    expect(screen.getByText("周期权益未开通").hasAttribute("data-tone")).toBe(false);
+    expect(screen.queryByText("即将到期")).toBeNull();
 });
 it("loads only the selected user when opened and closes the drawer",()=>{
- load.mockReturnValue({data:{user:{email:"test@example.com",current_plan_name:"月度套餐"},events:[{id:1,kind:"登录",at:123,ip:"192.0.2.1",is_success:false}]},reload:vi.fn()});
+ load.mockReturnValue({data:{user:{email:"test@example.com",current_plan_name:"月度套餐",credit_balance:100},events:[{id:1,kind:"登录",at:123,ip:"192.0.2.1",is_success:false}]},reload:vi.fn()});
  render(<AdminUserActivityLink row={{user_id:7,email:"test@example.com"}}/>);
  expect(screen.queryByRole("dialog")).toBeNull();
  fireEvent.click(screen.getByRole("button",{name:/ID: 7/}));
  expect(load).toHaveBeenCalledWith("risk/user-activity/fetch?user_id=7");
- expect(screen.getByText("当前有效套餐")).toBeTruthy();
+ expect(screen.getByText("当前周期套餐")).toBeTruthy();
  expect(screen.getByText("月度套餐")).toBeTruthy();
+ expect(screen.getByText("可用独立额度")).toBeTruthy();
+ expect(screen.getByRole("button",{name:"查看额度批次"})).toBeTruthy();
  expect(screen.getByText("登录失败")).toBeTruthy();
  fireEvent.mouseDown(screen.getByRole("tab",{name:"邀请用户"}),{button:0,ctrlKey:false});
  expect(query).toHaveBeenCalledWith("user/fetch",expect.objectContaining({filter:[{key:"invite_user_id",condition:"=",value:7}]}));
@@ -58,7 +94,7 @@ it("does not open a user drawer for unidentified events",()=>{
 });
 
 it("separates event fields, filters counts and shows an empty selected category", () => {
- load.mockReturnValue({data:{user:{email:"test@example.com",banned:"0",expired_at:null,transfer_enable:0,credit_balance:100,current_plan_name:null},events:[
+ load.mockReturnValue({data:{user:{email:"test@example.com",banned:"0",expired_at:null,transfer_enable:0,credit_balance:100,current_plan_name:null,has_recurring_order_history:false},events:[
   {id:1,kind:"订阅",at:123,ip:"192.0.2.1",traffic_u:0,traffic_d:20,user_agent:"<img src=x onerror=alert(1)>"},
   {id:2,kind:"连接",at:122,ip:"192.0.2.2",node:"Tokyo",client_type:"FastAI"},
   {id:3,kind:"风控",at:121,rule_key:"rule",rule_name:"频率检测",payload:null},
@@ -67,8 +103,10 @@ it("separates event fields, filters counts and shows an empty selected category"
  fireEvent.click(screen.getByRole("button",{name:/ID: 7/}));
  expect(screen.getByRole("region",{name:"账户概况"})).toBeTruthy();
  expect(screen.getByText("暂无有效周期套餐")).toBeTruthy();
- expect(screen.getByText("另有可用流量额度包")).toBeTruthy();
- expect(screen.getByText("未设置到期（空值）")).toBeTruthy();
+ expect(screen.getByText("周期到期")).toBeTruthy();
+ expect(screen.getByText("可用独立额度").nextElementSibling?.textContent).toContain("100");
+ expect(screen.queryByText("另有可用流量额度包")).toBeNull();
+ expect(screen.getByText("尚未购买周期套餐")).toBeTruthy();
  expect(screen.getByText("正常")).toBeTruthy();
  expect(screen.getByRole("article",{name:"订阅记录"}).querySelector("dd")?.textContent).toContain("192.0.2.1");
  expect(screen.getByText("0 / 20")).toBeTruthy();

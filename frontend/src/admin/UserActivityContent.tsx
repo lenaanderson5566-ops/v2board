@@ -11,7 +11,10 @@ const activityKinds = ["全部", "订阅", "连接", "风控", "登录"];
 const activityTones: Record<string, string> = { "订阅": "subscription", "连接": "connection", "风控": "risk", "登录": "login" };
 const formatBytes = (value: unknown) => value == null ? "—" : bytes(Number(value));
 
-export function UserActivityContent({ row }: { row: Row }) {
+export function UserActivityContent({ row, onViewCreditBatches }: {
+    row: Row;
+    onViewCreditBatches?: () => void;
+}) {
     const [kind, setKind] = useState("全部");
     const d = useData(ops(`risk/user-activity/fetch?user_id=${encodeURIComponent(row.user_id)}`));
     const events = rows(d.data?.events);
@@ -27,9 +30,17 @@ export function UserActivityContent({ row }: { row: Row }) {
                 {user && <section className="user-activity-summary" aria-label="账户概况">
                     <dl>
                         <div><dt>账户状态</dt><dd>{Number(user.banned) === 1 ? "已封禁" : "正常"}</dd></div>
-                        <div><dt>当前有效套餐</dt><dd>{user.current_plan_name || "暂无有效周期套餐"}</dd></div>
-                        <div><dt>订阅到期</dt><dd><AdminSubscriptionExpiry user={user} /></dd></div>
-                        <div><dt>流量包剩余</dt><dd>{formatBytes(user.credit_balance)}</dd></div>
+                        <div><dt>当前周期套餐</dt><dd>{user.current_plan_name || "暂无有效周期套餐"}</dd></div>
+                        <div><dt>周期到期</dt><dd><AdminSubscriptionExpiry user={user} /></dd></div>
+                        <div>
+                            <dt>可用独立额度</dt>
+                            <dd className="user-activity-credit-balance">
+                                <span>{formatBytes(user.credit_balance)}</span>
+                                {onViewCreditBatches && Number(user.credit_balance) > 0 && (
+                                    <button type="button" onClick={onViewCreditBatches}>查看额度批次</button>
+                                )}
+                            </dd>
+                        </div>
                         <div><dt>累计上传 / 下载</dt><dd>{formatBytes(user.u)} / {formatBytes(user.d)}</dd></div>
                     </dl>
                 </section>}

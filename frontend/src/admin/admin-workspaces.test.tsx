@@ -1384,10 +1384,10 @@ it.each([
 });
 
 it.each([
-    {expiry:0, label:"未设置到期（默认值）", field:"备注", value:"new note", update:{remarks:"new note", edit_versions:{remarks:"note-version"}}},
-    {expiry:null, label:"未设置到期（空值）", field:"余额（账号币种）", value:"12.34", update:{balance:1234, edit_versions:{balance:"balance-version"}}},
-])("shows $label and submits only the modified account field and its version", async ({expiry,label,field,value,update}) => {
-    const account = {id:7,email:"guest@example.com",balance:450,u:1073741824,banned:0,is_admin:0,remarks:"old note",expired_at:expiry,transfer_enable:0};
+    {expiry:0, history:false, label:"尚未购买周期套餐", field:"备注", value:"new note", update:{remarks:"new note", edit_versions:{remarks:"note-version"}}},
+    {expiry:null, history:true, label:"到期时间未记录", field:"余额（账号币种）", value:"12.34", update:{balance:1234, edit_versions:{balance:"balance-version"}}},
+])("shows $label and submits only the modified account field and its version", async ({expiry,history,label,field,value,update}) => {
+    const account = {id:7,email:"guest@example.com",balance:450,u:1073741824,banned:0,is_admin:0,remarks:"old note",expired_at:expiry,transfer_enable:0,has_recurring_order_history:history};
     api.request.mockImplementation(async (path: string) => {
         if (path.includes("user/getUserInfoById")) return {data:{...account,edit_versions:{remarks:"note-version",balance:"balance-version"}}};
         if (path.includes("user/fetch")) return {data:[account],total:1};
@@ -1423,7 +1423,7 @@ it.each([0, 2, 3])("prioritizes account and subscription columns in the version 
         await screen.findByRole("button", { name: /ID: 7.*guest@example.com/ });
         const headers = screen.getAllByRole("columnheader");
         const priority = [
-            "邮箱", "订阅", "订阅到期", "余额", "累计充值", "佣金", "流量（GiB）", "已用（GiB）", "剩余额度", "状态",
+            "邮箱", "周期套餐", "周期到期", "余额", "累计充值", "佣金", "基础流量（GiB）", "已用（GiB）", "可用独立额度", "状态",
         ];
         expect(headers.slice(0, priority.length)).toEqual(
             priority.map(name => screen.getByRole("columnheader", { name })),
@@ -1434,6 +1434,37 @@ it.each([0, 2, 3])("prioritizes account and subscription columns in the version 
     } finally {
         if (previous === null) localStorage.removeItem(viewKey);
         else localStorage.setItem(viewKey, previous);
+    }
+});
+
+it("shows recorded periodic plans without treating independent credits or old permanent grants as subscriptions", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const profile = { invite_user_id: 10, plan_id: 1, transfer_enable: 1073741824 };
+    api.request.mockImplementation(async (path: string) => path.includes("user/fetch")
+        ? { data: [
+            { ...profile, id: 1, email: "active@example.test", plan_name: "当前周期产品", expired_at: now + 3600, credit_balance: 0 },
+            { ...profile, id: 2, email: "expired@example.test", plan_name: "已到期周期产品", expired_at: now - 3600 },
+            { ...profile, id: 3, email: "credits@example.test", plan_name: "仅额度商品", expired_at: 0, transfer_enable: 0, credit_balance: 1073741824 },
+            { ...profile, id: 4, email: "legacy@example.test", plan_name: "旧版无限期商品", expired_at: null },
+        ], total: 4 }
+        : { data: [] });
+
+    const cell = (email: string, label: string) =>
+        screen.getByRole("row", { name: new RegExp(email) }).querySelector(`[data-label="${label}"]`)?.textContent;
+    const users = render(<UsersPage />);
+    await screen.findByText("当前周期产品");
+    expect(cell("expired@example.test", "周期套餐")).toBe("已到期周期产品");
+    expect(cell("credits@example.test", "周期套餐")).toBe("—");
+    expect(cell("legacy@example.test", "周期套餐")).toBe("—");
+    expect(cell("active@example.test", "可用独立额度")).toBe("0 B");
+    expect(cell("expired@example.test", "可用独立额度")).toBe("—");
+    expect(cell("credits@example.test", "可用独立额度")).toBe("1 GiB");
+    users.unmount();
+
+    render(<AdminContent route="invitations" />);
+    await screen.findByText("当前周期产品");
+    for (const email of ["expired@example.test", "credits@example.test", "legacy@example.test"]) {
+        expect(cell(email, "当前周期套餐")).toBe("—");
     }
 });
 

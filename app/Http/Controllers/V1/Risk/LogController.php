@@ -14,6 +14,7 @@ use App\Models\ServerGroup;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
+use App\Services\AdminRecurringOrderHistory;
 use App\Services\RiskLogService;
 use App\Services\RiskStatisticsService;
 use App\Services\ClientStrategyService;
@@ -741,6 +742,7 @@ class LogController extends Controller
             'id', 'email', 'expired_at', 'banned', 'u', 'd', 'transfer_enable', 'credit_balance', 'plan_id',
         ]);
         if ($user) {
+            AdminRecurringOrderHistory::append(collect([$user]));
             $user['current_plan_name'] = $user->plan_id && $user->expired_at !== null && TrafficCreditService::hasPeriod($user)
                 ? Plan::query()->whereKey($user->plan_id)->value('name')
                 : null;

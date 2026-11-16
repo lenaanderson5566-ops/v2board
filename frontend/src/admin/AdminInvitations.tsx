@@ -4,9 +4,12 @@ import { InvitationEmails } from "./InvitationEmails";
 import { InvitationReviews } from "./InvitationReviews";
 import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
+import { instantDate } from "../shared/timezone";
+import { hasRecordedPeriodicPlan } from "./AdminSubscriptionExpiry";
 import { ResourcePage } from "./admin";
 import { OrdersPage } from "./admin-orders";
 import { adminUserLabel } from "./admin-user-label";
+import { adminPlanLabel } from "./admin-plan-reference";
 
 function validatedReviewId(id: string | null) {
     return id && /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id))
@@ -35,7 +38,10 @@ const invitationResource = {
                 }),
         ],
         ["created_at", "注册时间", (r: Row) => date(r.created_at)],
-        ["plan_name", "当前订阅", (r: Row) => r.plan_name || "无套餐"],
+        ["plan_name", "当前周期套餐", (r: Row) => {
+            const expiry = instantDate(r.expired_at);
+            return expiry && expiry.getTime() > Date.now() && hasRecordedPeriodicPlan(r) ? adminPlanLabel(r) : "—";
+        }],
         [
             "last_subscribe_at",
             "最近获取订阅",

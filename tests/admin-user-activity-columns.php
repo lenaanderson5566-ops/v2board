@@ -15,6 +15,7 @@ Schema::create('v2_user', function (Blueprint $table) {
     $table->string('token')->default('test-token');
     $table->string('currency')->default('CNY');
     $table->integer('credit_balance')->default(0);
+    $table->integer('expired_at')->nullable()->default(0);
 });
 Schema::create('v2_plan', function (Blueprint $table) {$table->increments('id'); $table->string('name');});
 Schema::create('v2_order', function (Blueprint $table) {
@@ -27,6 +28,7 @@ Schema::create('v2_order', function (Blueprint $table) {
     $table->integer('total_amount');
     $table->integer('handling_amount')->default(0);
     $table->integer('surplus_amount')->default(0);
+    $table->integer('credit_bytes')->nullable();
     $table->integer('paid_at')->nullable();
     $table->integer('payment_id')->nullable();
     $table->string('callback_no')->nullable();
@@ -47,11 +49,12 @@ DB::table('v2_user')->insert([
     ['id' => 2, 'email' => 'guest@example.com', 'invite_user_id' => 1, 't' => 100, 'last_login_at' => 120],
     ['id' => 3, 'email' => 'traffic@example.com', 'invite_user_id' => null, 't' => 200, 'last_login_at' => 0],
 ]);
-DB::table('v2_user')->where('id', 3)->update(['currency' => 'USD']);
+DB::table('v2_user')->where('id', 1)->update(['expired_at' => null]);
+DB::table('v2_user')->where('id', 3)->update(['currency' => 'USD', 'expired_at' => 1800000000]);
 $recharge = [
     'user_id' => 2, 'plan_id' => 0, 'period' => 'deposit', 'currency' => 'CNY',
     'status' => 3, 'total_amount' => 1250, 'handling_amount' => 50, 'surplus_amount' => 0,
-    'paid_at' => 100, 'payment_id' => 1, 'callback_no' => 'gateway-reference',
+    'paid_at' => 100, 'payment_id' => 1, 'callback_no' => 'gateway-reference', 'credit_bytes' => null,
 ];
 DB::table('v2_order')->insert(array_map(fn ($overrides) => array_replace($recharge, $overrides), [
     [],
@@ -62,6 +65,11 @@ DB::table('v2_order')->insert(array_map(fn ($overrides) => array_replace($rechar
     ['status' => 1],
     ['status' => 2],
     ['period' => 'month_price', 'plan_id' => 1],
+    ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'credit_bytes' => 1024],
+    ['user_id' => 1, 'period' => 'onetime_price', 'plan_id' => 1],
+    ['user_id' => 1, 'period' => 'reset_price', 'plan_id' => 1],
+    ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'status' => 0],
+    ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'status' => 2],
     ['plan_id' => 1],
     ['callback_no' => 'manual_operation'],
     ['callback_no' => ' '],
@@ -98,8 +106,22 @@ $assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query
 $assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_user_online_snapshot'))) === 1);
 $assert(array_column($data, 'total_recharge_amount') === [0, 2000, 625],
     'Only completed external top-up principal is counted in the account currency');
-$assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_order'))) === 1,
-    'Recharge totals are fetched with one grouped query for the page');
+$assert($data[0]['has_recurring_order_history'] === false && $data[1]['has_recurring_order_history'] === true
+    && !array_key_exists('has_recurring_order_history', $data[2]),
+    'Only explicit unset expiries receive a boolean based on qualifying recurring order history');
+$orderQueries = array_values(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_order')));
+$assert(count($orderQueries) === 2, 'The page batches recharge totals and recurring order history into one query each');
+$historyQuery = array_values(array_filter($orderQueries, fn ($query) => str_contains($query['query'], 'credit_bytes')))[0];
+$assert(array_slice($historyQuery['bindings'], 0, 2) === [1, 2] && count($historyQuery['bindings']) === 12,
+    'The recurring history lookup is limited to unset-expiry users on this page');
+
+DB::table('v2_user')->where('id', 1)->update(['expired_at' => 'malformed-date']);
+DB::table('v2_user')->where('id', 2)->update(['expired_at' => 1800000000]);
+DB::flushQueryLog();
+$data = json_decode((new UserController())->fetch($request)->getContent(), true)['data'];
+$assert(array_column($data, 'has_recurring_order_history') === []
+    && count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_order'))) === 1,
+    'Known and malformed expiries omit the history flag and skip the history query');
 echo "User activity columns: identity, timestamps, source filtering and batched lookup passed\n";
 
 for ($id = 4; $id <= 113; $id++) {

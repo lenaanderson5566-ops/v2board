@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UserUpdate;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\AdminRecurringOrderHistory;
 use App\Services\AuthService;
 use App\Utils\Helper;
 use Illuminate\Http\Request;
@@ -91,6 +92,7 @@ class UserController extends Controller
         $res = $userModel->forPage($current, $pageSize)
             ->get();
         \App\Services\AdminUserIdentity::append($res);
+        AdminRecurringOrderHistory::append($res);
         $userIds = $res->pluck('id');
         $lastConnections = \App\Models\UserOnlineSnapshot::query()
             ->whereIn('user_id', $userIds)->where('source', 'alive')

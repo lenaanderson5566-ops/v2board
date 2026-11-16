@@ -142,8 +142,8 @@ export function ResourcePage({
     const [editing, setEditing] = useState<Row | null>(null);
     const needsPlanDirectory = resource.fields.some(field =>
         ["plan_id", "limit_plan_ids"].includes(field.key),
-    ) || resource.columns.some(([key]) =>
-        ["plan_id", "plan_name", "limit_plan_ids"].includes(key),
+    ) || resource.columns.some(([key, , render]) =>
+        key === "limit_plan_ids" || (!render && (key === "plan_id" || key === "plan_name")),
     );
     const fetchedPlans = useData<Row[]>(
         !planDirectory && needsPlanDirectory ? admin("plan/fetch") : "",
@@ -483,7 +483,7 @@ export function ResourcePage({
                             .map(([key, label, render]) => {
                                 if (kind === "users" && key === "id" && onUserDetails)
                                     return [key, label, (r: Row) => <button className="link" onClick={() => onUserDetails(r)}>{adminUserLabel({user_id:r.id,email:r.email})}</button>] as [string,string,(r:Row)=>ReactNode];
-                                if (key === "plan_id" || key === "plan_name")
+                                if (!render && (key === "plan_id" || key === "plan_name"))
                                     return [key, label, (r: Row) => orderResource ? adminOrderPlan(r, plans) : adminPlanLabel(r, plans)] as [string, string, (r: Row) => ReactNode];
                                 if (key === "limit_plan_ids")
                                     return [key, label, (r: Row) => (Array.isArray(r[key]) && r[key].length)

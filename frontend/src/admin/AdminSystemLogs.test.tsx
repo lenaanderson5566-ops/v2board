@@ -45,7 +45,8 @@ function setup() {
 it("submits exact filters and resets pagination", async () => {
     setup();
     render(<AdminSystemLogs />);
-    await screen.findByText("暂无匹配日志");
+    expect((await screen.findByText("暂无匹配日志")).getAttribute("role")).toBe("status");
+    expect(screen.queryByRole("region", { name: "数据表格" })).toBeNull();
     fireEvent.change(screen.getByLabelText("日志级别"), {
         target: { value: "ERROR" },
     });

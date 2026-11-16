@@ -364,6 +364,61 @@ it("restores order search from applied filters and queries email without droppin
     expect((screen.getByLabelText("订单查询字段") as HTMLSelectElement).value).toBe("email");
     expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("guest@example.com");
 });
+it("keeps the advanced order filter open for whitespace and submits the trimmed value", async () => {
+    window.location.hash = "#/orders?status=0";
+    render(<OrdersPage />);
+    await screen.findByRole("button", { name: "订单详情" });
+    api.request.mockClear();
+
+    fireEvent.click(screen.getByRole("button", { name: "高级筛选（1）" }));
+    const dialog = screen.getByRole("dialog", { name: "订单高级筛选" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "添加条件" }));
+    const email = within(dialog).getByLabelText("订单筛选值 2");
+    const apply = within(dialog).getByRole("button", { name: "应用筛选" });
+    fireEvent.change(email, { target: { value: "   " } });
+    apply.focus();
+    fireEvent.click(apply);
+    expect(within(dialog).getByRole("alert").textContent).toContain("第 2 条");
+    expect(email.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(email);
+    expect(api.request.mock.calls.some(([path]) => String(path).includes("order/fetch"))).toBe(false);
+
+    fireEvent.change(email, { target: { value: "  guest@example.com  " } });
+    fireEvent.click(apply);
+    expect(screen.queryByRole("dialog", { name: "订单高级筛选" })).toBeNull();
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => {
+        const query = new URLSearchParams(String(path).split("?")[1]);
+        return query.get("filter[0][key]") === "status" && query.get("filter[0][value]") === "0" &&
+            query.get("filter[1][key]") === "email" && query.get("filter[1][value]") === "guest@example.com";
+    })).toBe(true));
+});
+it("enforces the 20-condition limit for both advanced filters and quick search", async () => {
+    const filters = Array.from({ length: 19 }, (_, index) => ({ key: "user_id", condition: "!=", value: String(index + 1) }));
+    sessionStorage.setItem("admin.list.order-filters", JSON.stringify({ filters }));
+    render(<OrdersPage />);
+    await screen.findByRole("button", { name: "订单详情" });
+
+    fireEvent.click(screen.getByRole("button", { name: "高级筛选（19）" }));
+    const dialog = screen.getByRole("dialog", { name: "订单高级筛选" });
+    const add = within(dialog).getByRole("button", { name: "添加条件" }) as HTMLButtonElement;
+    fireEvent.click(add);
+    expect(add.disabled).toBe(true);
+    expect(within(dialog).getByRole("status").textContent).toContain("20 条");
+    fireEvent.change(within(dialog).getByLabelText("订单筛选值 20"), { target: { value: "guest@example.com" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "应用筛选" }));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => {
+        const query = new URLSearchParams(String(path).split("?")[1]);
+        return query.get("filter[19][value]") === "guest@example.com" && !query.has("filter[20][key]");
+    })).toBe(true));
+
+    api.request.mockClear();
+    fireEvent.change(screen.getByLabelText("订单查询字段"), { target: { value: "trade_no" } });
+    fireEvent.change(screen.getByLabelText("订单查询内容"), { target: { value: "order-123" } });
+    const quickSearch = screen.getByRole("form", { name: "订单快速查询" });
+    expect((within(quickSearch).getByRole("button", { name: "查询" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.submit(quickSearch);
+    expect(api.request.mock.calls.some(([path]) => String(path).includes("order/fetch"))).toBe(false);
+});
 it("clears the user email draft together with its applied filter chip", async () => {
     render(<UsersPage />);
     await screen.findByRole("button", { name: "编辑" });
@@ -1214,6 +1269,105 @@ it("uses the accepted ticket deep link and filters the selected queue without lo
     expect((screen.getByLabelText("工单回复状态") as HTMLSelectElement).value).toBe("0");
 });
 
+it("keeps ticket search and pagination focused while applying filters and page size", async () => {
+    const { AdminTickets } = await import("./admin-content");
+    const queries: URLSearchParams[] = [];
+    let completeSizeChange!: () => void;
+    api.request.mockImplementation(async (path: string) => {
+        if (!path.includes("/ticket/fetch?")) return { data: [] };
+        const params = new URLSearchParams(path.split("?")[1]);
+        queries.push(params);
+        if (params.get("email") === "unavailable@example.com") throw new Error("工单暂时无法读取");
+        const page = Number(params.get("current"));
+        const size = Number(params.get("pageSize"));
+        const result = {
+            data: [{ id: page, subject: `页码 ${page} · 每页 ${size} · ${params.get("email") || "全部邮箱"}`, status: 0 }],
+            total: 21,
+        };
+        if (size === 50) return new Promise(resolve => { completeSizeChange = () => resolve(result); });
+        return result;
+    });
+
+    render(<AdminTickets route="tickets" />);
+    await screen.findByText("页码 1 · 每页 20 · 全部邮箱");
+    expect(screen.getByRole("columnheader", { name: "最后更新" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "最后回复" })).toBeNull();
+    const pager = screen.getByRole("navigation", { name: "分页" });
+    const next = within(pager).getByRole("button", { name: "下一页" });
+    next.focus();
+    fireEvent.click(next);
+    await screen.findByText("页码 2 · 每页 20 · 全部邮箱");
+    expect(document.activeElement).toBe(next);
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+
+    const email = screen.getByLabelText("工单用户邮箱");
+    email.focus();
+    fireEvent.change(email, { target: { value: " guest@example.com " } });
+    fireEvent.submit(email.closest("form")!);
+    await screen.findByText("页码 1 · 每页 20 · guest@example.com");
+    expect(screen.getByLabelText("工单用户邮箱")).toBe(email);
+    expect(document.activeElement).toBe(email);
+    expect(queries.filter(params => params.has("email")).map(params => params.get("current"))).toEqual(["1"]);
+
+    fireEvent.click(next);
+    await screen.findByText("页码 2 · 每页 20 · guest@example.com");
+    const size = within(pager).getByLabelText("每页显示行数");
+    size.focus();
+    fireEvent.change(size, { target: { value: "50" } });
+    await waitFor(() => expect(size.getAttribute("aria-disabled")).toBe("true"));
+    expect(within(pager).getByText("正在加载…")).toBeTruthy();
+    expect(pager.textContent).not.toContain("共 0 条");
+    expect(document.activeElement).toBe(size);
+    expect(screen.getByRole("navigation", { name: "分页" })).toBe(pager);
+    fireEvent.click(next);
+    await waitFor(() => expect(queries.filter(params => params.get("pageSize") === "50")
+        .map(params => params.get("current"))).toEqual(["1"]));
+    completeSizeChange();
+    await screen.findByText("页码 1 · 每页 50 · guest@example.com");
+    expect(document.activeElement).toBe(size);
+    expect(size.getAttribute("aria-disabled")).toBeNull();
+
+    fireEvent.change(email, { target: { value: "unavailable@example.com" } });
+    fireEvent.submit(email.closest("form")!);
+    await screen.findByText("工单暂时无法读取");
+    expect(within(pager).getByText("页面暂时无法加载")).toBeTruthy();
+    expect(pager.textContent).not.toContain("共 0 条");
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+    expect(size.getAttribute("aria-disabled")).toBeNull();
+});
+
+it("returns to the last available ticket page after closing its final row", async () => {
+    const { AdminTickets } = await import("./admin-content");
+    const pages: number[] = [];
+    let closed = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/ticket/close")) {
+            closed = true;
+            return { data: true };
+        }
+        if (!path.includes("/ticket/fetch?")) return { data: [] };
+        const page = Number(new URLSearchParams(path.split("?")[1]).get("current"));
+        pages.push(page);
+        return {
+            data: page === 2 && closed ? [] : [{ id: page, subject: page === 2 ? "末页工单" : "首页工单", status: 0 }],
+            total: closed ? 20 : 21,
+        };
+    });
+    render(<AdminTickets route="tickets" />);
+    await screen.findByText("首页工单");
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    const finalTicket = await screen.findByText("末页工单");
+    fireEvent.click(within(finalTicket.closest("tr")!).getByRole("button", { name: "关闭工单" }));
+    const dialog = screen.getByRole("dialog", { name: "关闭工单" });
+    expect(closed).toBe(false);
+    fireEvent.click(within(dialog).getByRole("button", { name: "关闭工单" }));
+    await screen.findByText("首页工单");
+    expect(screen.queryByText("末页工单")).toBeNull();
+    expect(pages).toEqual([1, 2, 2, 1]);
+    expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 1 页");
+    expect(api.request).toHaveBeenCalledWith("test-admin/ticket/close", { id: 2 });
+});
+
 it("keeps ticket replies open and opens the selected user drawer without rendering HTML", async () => {
     const { AdminTickets } = await import("./admin-content");
     const attack = '<img src=x onerror=alert(1)><svg onload=alert(2)></svg>';
@@ -2025,6 +2179,149 @@ it("does not clamp a page based on unknown loading totals or a failed read", asy
     await screen.findByText("Last group");
     expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 2 页");
     expect(pageOneReads()).toBe(1);
+});
+
+it.each(["coupons", "giftcards"] as const)("keeps %s searches and refreshes on the current page", async kind => {
+    const { ResourcePage } = await import("./admin");
+    const resource = resources[kind];
+    const pages: string[] = [];
+    let refreshed = false;
+    api.request.mockImplementation(async (path: string) => {
+        if (!path.startsWith(`${resource.fetch}?`)) return { data: [] };
+        const page = new URLSearchParams(path.split("?")[1]).get("current")!;
+        pages.push(page);
+        const product = { type: 2, value: 10 };
+        return {
+            data: page === "2" ? [
+                { ...product, id: 21, name: refreshed ? "Target offer updated" : "Target offer" },
+                { ...product, id: 22, name: "Other offer" },
+            ] : [{ ...product, id: 1, name: "First-page offer" }],
+            total: 22,
+        };
+    });
+
+    const view = render(<ResourcePage resource={resource} refreshKey={0} />);
+    await screen.findByRole("cell", { name: "First-page offer" });
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    await screen.findByRole("cell", { name: "Target offer" });
+
+    const search = screen.getByRole("textbox", { name: "搜索列表" }) as HTMLInputElement;
+    search.focus();
+    fireEvent.change(search, { target: { value: "Target" } });
+    expect(screen.getByText(/仅筛选当前第 2 页.*匹配 1 条/)).toBeTruthy();
+    expect(screen.queryByRole("cell", { name: "Other offer" })).toBeNull();
+    expect(pages).toEqual(["1", "2"]);
+
+    refreshed = true;
+    view.rerender(<ResourcePage resource={resource} refreshKey={1} />);
+    await screen.findByRole("cell", { name: "Target offer updated" });
+    expect(pages).toEqual(["1", "2", "2"]);
+    expect(search.value).toBe("Target");
+    expect(document.activeElement).toBe(search);
+    const clear = screen.getByRole("button", { name: "清除搜索" });
+    clear.focus();
+    fireEvent.click(clear);
+    expect(screen.getByRole("cell", { name: "Other offer" })).toBeTruthy();
+    expect(document.activeElement).toBe(search);
+    expect(within(screen.getByRole("navigation", { name: "分页" })).getByText(/第 2 页/)).toBeTruthy();
+    expect(pages).toEqual(["1", "2", "2"]);
+});
+
+it("queries page one for a changed user search and guards the focused page-size selector during loading", async () => {
+    const storageKey = "admin.users.view.v1";
+    const savedView = localStorage.getItem(storageKey);
+    localStorage.removeItem(storageKey);
+    const queries: URLSearchParams[] = [];
+    let completeSizeChange: (() => void) | undefined;
+    api.request.mockImplementation(async (path: string) => {
+        if (!path.includes("/user/fetch?")) return { data: [] };
+        const params = new URLSearchParams(path.split("?")[1]);
+        queries.push(params);
+        const page = params.get("current"), size = params.get("pageSize");
+        const prefix = params.has("filter[0][value]") ? "filtered-" : "";
+        const result = { data: [{ id: 7, email: `${prefix}page-${page}-size-${size}@example.com` }], total: 101 };
+        if (size === "50") return new Promise(resolve => { completeSizeChange = () => resolve(result); });
+        return result;
+    });
+
+    try {
+        render(<UsersPage />);
+        await screen.findByRole("button", { name: /page-1-size-10@example.com/ });
+        fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+        await screen.findByRole("button", { name: /page-2-size-10@example.com/ });
+
+        const search = screen.getByRole("textbox", { name: "搜索所有用户邮箱" });
+        search.focus();
+        fireEvent.change(search, { target: { value: "guest@example.com" } });
+        fireEvent.submit(screen.getByRole("form", { name: "用户搜索与筛选" }));
+        await screen.findByRole("button", { name: /filtered-page-1-size-10@example.com/ });
+        expect(screen.getByRole("textbox", { name: "搜索所有用户邮箱" })).toBe(search);
+        expect(document.activeElement).toBe(search);
+        expect(queries.filter(params => params.get("filter[0][value]") === "guest@example.com")
+            .map(params => params.get("current"))).toEqual(["1"]);
+
+        fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+        await screen.findByRole("button", { name: /filtered-page-2-size-10@example.com/ });
+        const size = screen.getByRole("combobox", { name: "每页显示行数" }) as HTMLSelectElement;
+        size.focus();
+        fireEvent.change(size, { target: { value: "50" } });
+        await waitFor(() => expect(completeSizeChange).toBeTypeOf("function"));
+        expect(size.getAttribute("aria-disabled")).toBe("true");
+        expect(size.disabled).toBe(false);
+        expect(document.activeElement).toBe(size);
+        const count = queries.length;
+        fireEvent.change(size, { target: { value: "100" } });
+        fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+        expect(queries).toHaveLength(count);
+        expect(size.value).toBe("50");
+
+        completeSizeChange!();
+        await screen.findByRole("button", { name: /filtered-page-1-size-50@example.com/ });
+        expect(document.activeElement).toBe(size);
+        expect(size.getAttribute("aria-disabled")).toBeNull();
+        expect(queries.filter(params => params.get("pageSize") === "50").map(params => params.get("current"))).toEqual(["1"]);
+    } finally {
+        cleanup();
+        if (savedView === null) localStorage.removeItem(storageKey);
+        else localStorage.setItem(storageKey, savedView);
+    }
+});
+
+it.each([
+    { moveFocus: false, outcome: "restores focus to the sorted header" },
+    { moveFocus: true, outcome: "keeps focus on the search box after the user moved it" },
+])("$outcome when user results finish loading", async ({ moveFocus }) => {
+    const storageKey = "admin.users.view.v1";
+    const savedView = localStorage.getItem(storageKey);
+    localStorage.removeItem(storageKey);
+    let completeSort: (() => void) | undefined;
+    api.request.mockImplementation(async (path: string) => {
+        if (!path.includes("/user/fetch?")) return { data: [] };
+        const params = new URLSearchParams(path.split("?")[1]);
+        if (params.get("sort_type") === "ASC") return new Promise(resolve => {
+            completeSort = () => resolve({ data: [{ id: 2, email: "ascending@example.com" }], total: 1 });
+        });
+        return { data: [{ id: 1, email: "descending@example.com" }], total: 1 };
+    });
+
+    try {
+        render(<UsersPage />);
+        await screen.findByRole("button", { name: /descending@example.com/ });
+        const sort = screen.getByRole("button", { name: "加入时间" });
+        sort.focus();
+        fireEvent.click(sort);
+        await waitFor(() => expect(completeSort).toBeTypeOf("function"));
+        const search = screen.getByRole("textbox", { name: "搜索所有用户邮箱" });
+        if (moveFocus) search.focus();
+        completeSort!();
+        await screen.findByRole("button", { name: /ascending@example.com/ });
+        expect(screen.getByRole("columnheader", { name: "加入时间" }).getAttribute("aria-sort")).toBe("ascending");
+        expect(document.activeElement).toBe(moveFocus ? search : screen.getByRole("button", { name: "加入时间" }));
+    } finally {
+        cleanup();
+        if (savedView === null) localStorage.removeItem(storageKey);
+        else localStorage.setItem(storageKey, savedView);
+    }
 });
 
 it("keeps monetary trend precision while traffic totals omit redundant decimals", () => {

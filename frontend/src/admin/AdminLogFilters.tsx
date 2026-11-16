@@ -2,6 +2,7 @@ import { AdminFilterBar } from "./AdminFilterBar";
 import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { useState } from "react";
 import type { Row } from "../shared/api";
+import { FilterActions } from "../shared/ui/controls";
 
 export type AdminLogKind = "login" | "subscribe" | "connection" | "risk";
 
@@ -118,19 +119,13 @@ export function AdminLogFilters({
                 </label>
             )}
             <div className="admin-filter-actions">
-            <button type="submit" className="primary">查询</button>
-            <button
-                type="button"
-                onClick={() => {
+                <FilterActions onReset={() => {
                     setDraft({});
                     setError("");
                     onApply({});
-                }}
-            >
-                重置
-            </button>
+                }} />
             </div>
-            {error && <span role="alert">{error}</span>}
+            {error && <p className="alert admin-filter-error" role="alert">{error}</p>}
         </AdminFilterBar>
     );
 }

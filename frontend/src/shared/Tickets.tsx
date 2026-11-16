@@ -30,6 +30,7 @@ export function Tickets({
     isAdmin = false,
     queryParams = {},
     toolbar,
+    pagination,
     pageSize = 20,
     onPageSizeChange,
     heading,
@@ -40,6 +41,7 @@ export function Tickets({
     isAdmin?: boolean;
     queryParams?: Row;
     toolbar?: ReactNode;
+    pagination?: { page: number; onChange: (page: number) => void };
     pageSize?: number;
     onPageSizeChange?: (size:number)=>void;
     heading?: string;
@@ -47,7 +49,9 @@ export function Tickets({
     renderAdminConversation?: (props: TicketConversationProps) => ReactNode;
     orderTradeNo?: string;
 }) {
-    const [page, setPage] = useState(1);
+    const [localPage, setLocalPage] = useState(1);
+    const page = pagination?.page ?? localPage;
+    const setPage = pagination?.onChange ?? setLocalPage;
     const prefix = isAdmin ? boot.adminPath : "user";
     const ticketAccount = useData(isAdmin ? "" : "user/info");
     const ticketPolicy = ticketAccount.data?.ticket_creation;
@@ -67,6 +71,28 @@ export function Tickets({
                 ? query(`${prefix}/ticket/fetch`, { id })
                 : "",
         );
+    const lastPage = isAdmin && !d.loading && !d.error && Array.isArray(d.data)
+        ? Math.max(1, Math.ceil(d.total / pageSize))
+        : page;
+    const recoveringPage = page > lastPage;
+    useEffect(() => {
+        if (recoveringPage) setPage(lastPage);
+    }, [recoveringPage, lastPage, setPage]);
+    const pager = (
+        <Pager
+            page={recoveringPage ? lastPage : page}
+            total={d.total}
+            size={pageSize}
+            loading={d.loading || recoveringPage}
+            totalUnavailable={isAdmin && d.data == null}
+            preserveFocus={isAdmin}
+            onSizeChange={onPageSizeChange ? size => {
+                setPage(1);
+                onPageSizeChange(size);
+            } : undefined}
+            onChange={setPage}
+        />
+    );
     useEffect(()=>{
         if(isAdmin) return;
         const openFromHash=()=>{const value=Number(new URLSearchParams(location.hash.split("?")[1]).get("ticketId"));if(Number.isSafeInteger(value) && value>0)setId(value);};
@@ -179,7 +205,7 @@ export function Tickets({
                 }
             >
                 {toolbar}
-                <State {...d} retry={d.reload}>
+                <State {...d} loading={d.loading || recoveringPage} retry={d.reload}>
                     <Table
                         data={d.data || []}
                         columns={
@@ -223,17 +249,9 @@ export function Tickets({
                             </>
                         )}
                     />
-                    {(d.total > 0 || !d.loading) && (
-                        <Pager
-                            page={page}
-                            total={d.total}
-                            size={pageSize}
-                            loading={d.loading}
-                            onSizeChange={onPageSizeChange ? size=>{setPage(1);onPageSizeChange(size);} : undefined}
-                            onChange={setPage}
-                        />
-                    )}
+                    {!isAdmin && (d.total > 0 || !d.loading) && pager}
                 </State>
+                {isAdmin && pager}
             </Panel>
             {creating && (isAdmin || (!ticketAccount.loading && !ticketAccount.error && ticketPolicy === "allowed")) && (
                 <Modal title={tx("创建工单")} close={() => setCreating(false)}>

@@ -157,6 +157,31 @@ body[data-console="admin"] .table-viewport :is(th, td) {
 }
 body[data-console="admin"] .table-viewport th .table-sort { min-height: var(--admin-row-control-height); }
 body[data-console="admin"] .table-viewport th.table-actions { z-index: 1; }
+@media (min-width: 1100px) {
+    body[data-console="admin"] .table-viewport .table-identity {
+        position: sticky;
+        inset-inline-start: 0;
+        z-index: 1;
+        background-color: var(--surface);
+        box-shadow: 1px 0 var(--border);
+    }
+    body[data-console="admin"] .table-viewport th.table-identity { background-color: var(--admin-surface-soft); }
+}
+body[data-console="admin"] .admin-resource-data { min-width: 0; }
+body[data-console="admin"] .admin-local-search-summary {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 8px var(--admin-space);
+    font-size: 12px;
+    color: var(--muted);
+}
+body[data-console="admin"] .admin-local-search-summary button { min-height: 32px; padding: 4px 8px; }
+body[data-console="admin"] .pager :is(button, select)[aria-disabled="true"] {
+    opacity: .5;
+    cursor: not-allowed;
+}
 body[data-console="admin"] .pager {
     padding: var(--admin-space);
     margin: 0;
@@ -478,7 +503,7 @@ body[data-console="admin"] .admin-order-filter-summary { order: 2; flex: 1 1 100
 body[data-console="admin"] :is(.admin-order-filter-summary, .user-toolbar) .filter-chip { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--admin-surface-soft); overflow-wrap: anywhere; }
 body[data-console="admin"] :is(.admin-order-filter-summary, .user-toolbar) .filter-chip > button { flex: 0 0 auto; min-width: var(--admin-row-control-height); min-height: var(--admin-row-control-height); padding: 2px; border: 0; box-shadow: none; background: transparent; }
 body[data-console="admin"] :is(.admin-order-filter-summary, .user-toolbar) .filter-chip > button:hover { background: #f2efff; }
-body[data-console="admin"] .admin-order-toolbar ~ .admin-data-state .table-actions .actions { flex-wrap: nowrap; }
+body[data-console="admin"] .admin-order-toolbar ~ :is(.admin-data-state, .admin-resource-data) .table-actions .actions { flex-wrap: nowrap; }
 @media (max-width: 600px) {
     body[data-console="admin"] .admin-order-quick-search.admin-filter-bar { flex-basis: 100%; }
     body[data-console="admin"] .admin-order-quick-search.admin-filter-bar > select { flex: 1 1 100%; width: 100%; }

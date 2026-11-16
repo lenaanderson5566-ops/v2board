@@ -72,6 +72,7 @@ export function ResourcePage({
     extraActions,
     headerActions,
     onUserDetails,
+    refreshKey = 0,
     searchable = true,
     pageSize: initialPageSize = 20,
     onPageSizeChange,
@@ -89,6 +90,7 @@ export function ResourcePage({
     extraActions?: (row: Row, context?: boolean, secondary?: ReactNode) => ReactNode;
     headerActions?: ReactNode;
     onUserDetails?: (row: Row) => void;
+    refreshKey?: number;
     searchable?: boolean;
     pageSize?: number;
     onPageSizeChange?: (size: number) => void;
@@ -215,15 +217,24 @@ export function ResourcePage({
                         }
                       : field,
     );
-    const [page, setPage] = useState(() =>
-            Number.isInteger(savedView.page) && savedView.page > 0
-                ? savedView.page
-                : 1,
-        ),
-        [search, setSearch] = useState(() =>
+    const [search, setSearch] = useState(() =>
             typeof savedView.search === "string" ? savedView.search : "",
         ),
         [error, setError] = useState("");
+    const searchesServer = Boolean(resource.serverSearch || resource.title.includes("日志") ||
+        resource.title.includes("黑名单") || kind === "online");
+    const pageContext = JSON.stringify([viewKey, queryParams, pageSize, logFilters, searchesServer ? search : ""]);
+    const [pagination, setPagination] = useState(() => ({
+        context: pageContext,
+        page: Number.isInteger(savedView.page) && savedView.page > 0 ? savedView.page : 1,
+    }));
+    // Resolve page one before useData observes a changed query, without remounting the toolbar.
+    const page = pagination.context === pageContext ? pagination.page : 1;
+    if (pagination.context !== pageContext) setPagination({ context: pageContext, page: 1 });
+    const setPage = (next: number) => setPagination({ context: pageContext, page: next });
+    const tableContainer = useRef<HTMLDivElement>(null);
+    const listSearchInput = useRef<HTMLInputElement>(null);
+    const sortFocus = useRef<{ key: string; target: Element | null } | null>(null);
     const [routeUsage, setRouteUsage] = useState("");
     const [routeFilter, setRouteFilter] = useState("");
     const [showAllPlanProducts, setShowAllPlanProducts] = useState(false);
@@ -267,6 +278,20 @@ export function ResourcePage({
             ...(kind === "routes" ? { backend: "v2box" } : {}),
         }),
     );
+    const previousRefresh = useRef(refreshKey);
+    useEffect(() => {
+        if (previousRefresh.current === refreshKey) return;
+        previousRefresh.current = refreshKey;
+        d.reload();
+    }, [refreshKey, d.reload]);
+    useEffect(() => {
+        if (d.loading || !sortFocus.current) return;
+        const pending = sortFocus.current;
+        sortFocus.current = null;
+        if (d.error || (document.activeElement !== document.body && document.activeElement !== pending.target)) return;
+        Array.from(tableContainer.current?.querySelectorAll<HTMLButtonElement>(".table-sort") || [])
+            .find(button => button.dataset.sortKey === pending.key)?.focus();
+    }, [d.loading, d.error, d.data, pageContext]);
     const total = d.total || (Array.isArray(d.data) ? d.data.length : 0);
     useEffect(() => {
         if (d.loading || d.error || !Array.isArray(d.data)) return;
@@ -379,6 +404,7 @@ export function ResourcePage({
                             <div className="search">
                                 <Search size={16} />
                                 <input
+                                    ref={listSearchInput}
                                     placeholder={
                                         kind === "routes" ? "备注、域名、IP、端口或出口…" : kind === "online" ||
                                         resource.title.includes("日志")
@@ -388,7 +414,6 @@ export function ResourcePage({
                                     value={search}
                                     onChange={(e) => {
                                         setSearch(e.target.value);
-                                        setPage(1);
                                     }}
                                     aria-label="搜索列表"
                                 />
@@ -476,10 +501,23 @@ export function ResourcePage({
                         分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。
                     </p>
                 )}
+                {searchable && !searchesServer && search && Array.isArray(d.data) && (
+                    <div className="admin-local-search-summary" role="status">
+                        <span>{d.total > fetchedRows.length
+                            ? `仅筛选当前第 ${page} 页：匹配 ${list.length} 条。其他页可翻页后继续筛选。`
+                            : `当前列表匹配 ${list.length} 条。`}</span>
+                        <button type="button" onClick={() => {
+                            setSearch("");
+                            listSearchInput.current?.focus();
+                        }}>清除搜索</button>
+                    </div>
+                )}
+                <div ref={tableContainer} className="admin-resource-data">
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
                     <Table
                         data={list}
+                        stickyColumn={kind === "users" ? "id" : undefined}
                         columns={resource.columns
                             .filter(([key]) => !hiddenColumns.includes(key) && (!ownDisplaySettings || selectedColumns.includes(key)))
                             .map(([key, label, render]) => {
@@ -580,7 +618,10 @@ export function ResourcePage({
                                 : undefined
                         }
                         sort={tableSort}
-                        onSort={onTableSort}
+                        onSort={onTableSort ? (key, direction) => {
+                            sortFocus.current = { key, target: document.activeElement };
+                            onTableSort(key, direction);
+                        } : undefined}
                         actions={
                             resource.save ||
                             resource.drop ||
@@ -696,13 +737,17 @@ export function ResourcePage({
                                 : undefined
                         }
                     />
-                    {(total > 0 || !d.loading) && (
+                </State>
+                </div>
+                    {(kind === "users" || total > 0 || (!d.loading && !d.error)) && (
                         <Pager
+                            preserveFocus={kind === "users"}
+                            totalUnavailable={d.data == null}
                             page={page}
                             total={d.total || list.length}
                             size={d.total > 0 ? pageSize : Math.max(pageSize, list.length)}
                             loading={d.loading}
-                            onSizeChange={d.total > 0 ? (size) => {
+                            onSizeChange={d.total > 0 || kind === "users" ? (size) => {
                                 setPage(1);
                                 if (onPageSizeChange) onPageSizeChange(size);
                                 else setLocalPageSize(size);
@@ -710,7 +755,6 @@ export function ResourcePage({
                             onChange={setPage}
                         />
                     )}
-                </State>
             </Panel>
             {editing && (
                 <Modal

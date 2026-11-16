@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 145146,
+      "startupGzipBytes": 145148,
       "startupBytes": 478123,
       "startupFileCount": 17,
       "largestStartupAssets": [
@@ -18,9 +18,9 @@
           "gzipBytes": 55126
         },
         {
-          "file": "assets/app-D4z7ypy2.js",
+          "file": "assets/app-BKVc0h5n.js",
           "bytes": 12717,
-          "gzipBytes": 5329
+          "gzipBytes": 5330
         },
         {
           "file": "assets/runtime-config-BJ8nrd11.js",
@@ -38,52 +38,52 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 145146,
+          "gzipBytes": 145148,
           "bytes": 478123,
           "fileCount": 17
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 214007,
+          "gzipBytes": 214009,
           "bytes": 795043,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 227327,
+          "gzipBytes": 227330,
           "bytes": 839892,
           "fileCount": 34
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 217334,
+          "gzipBytes": 217336,
           "bytes": 761640,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 230654,
+          "gzipBytes": 230657,
           "bytes": 806489,
           "fileCount": 34
         }
       ],
-      "totalBytes": 3564298,
+      "totalBytes": 3564930,
       "fileCount": 352
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 318484,
-      "startupBytes": 1060150,
+      "startupGzipBytes": 318696,
+      "startupBytes": 1061531,
       "startupFileCount": 27,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-BQ-MK_Rk.js",
+          "file": "assets/AdminApp-BChkBzay.js",
           "bytes": 322571,
-          "gzipBytes": 92641
+          "gzipBytes": 92622
         },
         {
           "file": "assets/render-app-BUWuuQgj.js",
@@ -101,13 +101,13 @@
           "gzipBytes": 47484
         },
         {
-          "file": "assets/AdminApp-C_iCRJny.css",
-          "bytes": 80242,
-          "gzipBytes": 13483
+          "file": "assets/AdminApp-T0tN4z07.css",
+          "bytes": 81623,
+          "gzipBytes": 13716
         }
       ],
       "budget": 460800,
-      "totalBytes": 5124138,
+      "totalBytes": 5130713,
       "fileCount": 134
     }
   ],

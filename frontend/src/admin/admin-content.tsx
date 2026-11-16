@@ -33,9 +33,16 @@ export function AdminTickets({ route }: { route: string }) {
     const [draftEmail, setDraftEmail] = useState("");
     const [{ status, reply }, setQueue] = useState(() => readTicketQueue(route));
     const [pageSize, setPageSize] = useState(20);
+    const [page, setPage] = useState(1);
     useEffect(() => {
         setQueue(readTicketQueue(route));
+        setPage(1);
     }, [route]);
+    function selectQueue(next: { status: string; reply: string }) {
+        if (status === next.status && reply === next.reply) return;
+        setQueue(next);
+        setPage(1);
+    }
     const queue = ticketQueues.find(item => item.status === status && item.reply === reply)?.value
         ?? (status === "1" ? "closed" : "all");
     const params = {
@@ -51,14 +58,14 @@ export function AdminTickets({ route }: { route: string }) {
             value={queue}
             onChange={value => {
                 const next = ticketQueues.find(item => item.value === value);
-                if (next) setQueue({ status: next.status, reply: next.reply });
+                if (next) selectQueue({ status: next.status, reply: next.reply });
             }}
         />
         <Tickets
-            key={JSON.stringify({ params, pageSize })}
             isAdmin
             renderAdminConversation={(props) => <AdminTicketConversation key={props.id} {...props} />}
             queryParams={params}
+            pagination={{ page, onChange: setPage }}
             pageSize={pageSize}
             onPageSizeChange={setPageSize}
             heading="工单管理"
@@ -87,14 +94,17 @@ export function AdminTickets({ route }: { route: string }) {
                     ),
                 ],
                 ["created_at", "创建时间", (r) => date(r.created_at)],
-                ["updated_at", "最后回复", (r) => date(r.updated_at)],
+                ["updated_at", "最后更新", (r) => date(r.updated_at)],
             ]}
             toolbar={
                 <AdminFilterBar
-
                     onSubmit={(e) => {
                         e.preventDefault();
-                        setEmail(draftEmail.trim());
+                        const next = draftEmail.trim();
+                        if (next !== email) {
+                            setEmail(next);
+                            setPage(1);
+                        }
                     }}
                 >
                     <input
@@ -103,14 +113,14 @@ export function AdminTickets({ route }: { route: string }) {
                         value={draftEmail}
                         onChange={(e) => setDraftEmail(e.target.value)}
                     />
-                    <button>搜索</button>
+                    <button type="submit" className="primary">搜索</button>
                     {status !== "0" && (
                         <select
                             aria-label="工单回复状态"
                             value={reply}
                             onChange={event => {
                                 const next = event.target.value;
-                                setQueue({ status, reply: next === "0" || next === "1" ? next : "" });
+                                selectQueue({ status, reply: next === "0" || next === "1" ? next : "" });
                             }}
                         >
                             <option value="">全部回复状态</option>
@@ -124,7 +134,8 @@ export function AdminTickets({ route }: { route: string }) {
                         onClick={() => {
                             setEmail("");
                             setDraftEmail("");
-                            setQueue({ status: "", reply: "" });
+                            selectQueue({ status: "", reply: "" });
+                            setPage(1);
                         }}
                     >
                         重置筛选

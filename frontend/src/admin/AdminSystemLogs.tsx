@@ -152,30 +152,28 @@ export function AdminSystemLogs() {
                             }
                         />
                     </label>
-                    <button className="primary">查询</button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setDraft(toDraft(empty, dateInputZone));
-                            setFilters(empty);
-                            setPage(1);
-                            setError("");
-                        }}
-                    >
-                        清除筛选
-                    </button>
+                    <div className="admin-filter-actions">
+                        <button type="submit" className="primary">查询</button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setDraft(toDraft(empty, dateInputZone));
+                                setFilters(empty);
+                                setPage(1);
+                                setError("");
+                            }}
+                        >
+                            清除筛选
+                        </button>
+                    </div>
+                    {error && <p className="alert admin-filter-error" role="alert">{error}</p>}
                 </AdminFilterBar>
-                {error && (
-                    <p className="alert" role="alert">
-                        {error}
-                    </p>
-                )}
                 <p className="admin-log-note muted">
                     默认查看最近 24
                     小时。历史日志的检索字段由清理任务分批补齐；不展示原始请求参数、异常内容或历史敏感字段。
                 </p>
                 <State {...logs} retry={logs.reload}>
-                    <TableViewport>
+                    {logs.data?.length ? <TableViewport>
                         <table>
                             <thead>
                                 <tr>
@@ -213,12 +211,11 @@ export function AdminSystemLogs() {
                                 ))}
                             </tbody>
                         </table>
-                        {!logs.data?.length && (
-                            <p className="pad">暂无匹配日志</p>
-                        )}
-                    </TableViewport>
+                    </TableViewport> : !logs.loading && !logs.error && (
+                        <p className="admin-log-empty" role="status">暂无匹配日志</p>
+                    )}
                 </State>
-                <Pager
+                {logs.total > 0 && <Pager
                     page={page}
                     total={logs.total}
                     size={pageSize}
@@ -228,7 +225,7 @@ export function AdminSystemLogs() {
                         setPageSize(size);
                         setPage(1);
                     }}
-                />
+                />}
             </Panel>
         </>
     );

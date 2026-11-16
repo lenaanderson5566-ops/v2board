@@ -177,7 +177,7 @@ export function UsersPage() {
                 </AdminDisplaySettings>
             )}
             <ResourcePage
-                key={JSON.stringify({ params, pageSize, revision })}
+                refreshKey={revision}
                 resource={resources.users}
                 planDirectory={plans}
                 hiddenColumns={resources.users.columns

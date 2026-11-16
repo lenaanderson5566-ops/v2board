@@ -17,8 +17,10 @@ export function Table({
     onSort,
     onReorder,
     compact = false,
+    stickyColumn,
 }: {
     compact?: boolean;
+    stickyColumn?: string;
     data: Row[];
     columns: [string, string, ((row: Row) => ReactNode)?][];
     actions?: (row: Row, context?: boolean) => ReactNode;
@@ -119,6 +121,7 @@ export function Table({
                             <th
                                 scope="col"
                                 key={k}
+                                className={stickyColumn === k ? "table-identity" : undefined}
                                 aria-sort={
                                     sort?.key === k
                                         ? sort.direction === "ASC"
@@ -131,6 +134,7 @@ export function Table({
                                     <button
                                         type="button"
                                         className="table-sort"
+                                        data-sort-key={k}
                                         onClick={() =>
                                             onSort(
                                                 k,
@@ -245,7 +249,7 @@ export function Table({
                                 </td>
                             )}
                             {columns.map(([k, label, render]) => (
-                                <td key={k} data-label={label}>
+                                <td key={k} data-label={label} className={stickyColumn === k ? "table-identity" : undefined}>
                                     {boot.mode === "admin" ? (
                                         k === "ip" && !render ? (
                                             <IpLocation row={r} />

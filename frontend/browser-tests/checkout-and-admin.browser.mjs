@@ -485,6 +485,19 @@ test.describe("desktop admin frontend", () => {
         expect((await userRow.locator(".table-actions").boundingBox()).width).toBeLessThan(165);
         await expect(userLink).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
         await expect(userLink).toHaveCSS("border-top-width", "0px");
+        const viewport = page.locator(".users-page .table-viewport");
+        const identity = userRow.locator('td[data-label="邮箱"]');
+        const plan = userRow.locator('td[data-label="周期套餐"]');
+        const identityLeft = (await identity.boundingBox()).x;
+        const planLeft = (await plan.boundingBox()).x;
+        await viewport.evaluate(element => { element.scrollLeft = 400; });
+        expect(await viewport.evaluate(element => element.scrollLeft)).toBeGreaterThan(100);
+        expect(Math.abs((await identity.boundingBox()).x - identityLeft)).toBeLessThan(2);
+        expect((await plan.boundingBox()).x).toBeLessThan(planLeft - 100);
+        await expect(userLink).toBeVisible();
+        await expect(userRow.getByRole("button", { name: "编辑", exact: true })).toBeInViewport();
+        await page.screenshot({ path: test.info().outputPath("admin-users-scrolled.png") });
+        await viewport.evaluate(element => { element.scrollLeft = 0; });
         const batch = page.getByRole("button", { name: "批量操作" });
         await expect(search).toHaveClass("primary");
         await batch.focus();
@@ -553,6 +566,90 @@ test.describe("desktop admin frontend", () => {
         await email.focus();
         await expect(email).toBeFocused();
         expect((await email.boundingBox()).y).toBeGreaterThanOrEqual(title.y + title.height);
+    });
+
+    test("coupon recipient details fit desktop content and recover from an empty filter", async ({ page, context }) => {
+        await consoleFixture(context, "admin", path => {
+            if (path === "/api/v1/test-admin/config/fetch") return {};
+            if (path === "/api/v1/test-admin/coupon/fetch") return [];
+        });
+        await context.route(`${consoleOrigin}/api/v1/test-admin/coupon-campaign/*`, async route => {
+            const url = new URL(route.request().url());
+            const data = url.pathname.endsWith("/fetch") ? [{
+                id: 3, couponName: "回归优惠", discountPercent: 10, scope: "filtered", status: "completed",
+                matched: 2, issued: 1, skipped: 1, failed: 0, pending: 0, cancelled: 0, createdAt: 1794800000,
+            }] : url.searchParams.get("status") ? [] : [
+                    { user_id: 7, status: "issued", reason: "issued", updated_at: 1794800000 },
+                    { user_id: 8, status: "skipped", reason: "already_claimed", updated_at: 1794800000 },
+                ];
+            return route.fulfill({ json: { data, total: data.length } });
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/coupons`);
+        await page.getByRole("tab", { name: "发放记录", exact: true }).click();
+        const trigger = page.getByRole("button", { name: "查看明细" });
+        await trigger.click();
+        const dialog = page.getByRole("dialog", { name: "批次 #3 发放明细" });
+        await expect(dialog.getByText("已领取或已使用")).toBeVisible();
+        await expect(dialog.getByRole("navigation", { name: "分页" })).toContainText("共 2 条");
+        expect((await dialog.boundingBox()).width).toBeGreaterThan(700);
+        await page.screenshot({ path: test.info().outputPath("admin-coupon-recipients.png") });
+        const status = dialog.getByLabel("结果筛选");
+        await status.selectOption("failed");
+        await expect(dialog.getByText("没有符合所选结果的发放记录")).toBeVisible();
+        await expect(dialog.getByRole("table")).toHaveCount(0);
+        await dialog.getByRole("button", { name: "清除结果筛选" }).click();
+        await expect(dialog.getByText("已领取或已使用")).toBeVisible();
+        await expect(status).toBeFocused();
+        await page.keyboard.press("Escape");
+        await expect(trigger).toBeFocused();
+    });
+
+    test("desktop mail logs keep advanced conditions visible as a count and focus invalid fields", async ({ page, context }) => {
+        const requests = [];
+        const mail = { id: 7, email: "mail@example.test", status: "accepted", provider: "mailgun" };
+        await consoleFixture(context, "admin", (path, request) => {
+            if (path === "/api/v1/test-admin/config/fetch") return {};
+            if (path === "/api/v1/test-admin/mail-logs/health") return {};
+            if (path === "/api/v1/test-admin/mail-logs/suppressions") return [];
+            if (path === "/api/v1/test-admin/mail-logs/fetch") {
+                const query = new URL(request.url()).searchParams;
+                requests.push(query);
+                return query.has("enhanced_code") ? [] : [mail];
+            }
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/mail-logs`);
+        await expect(page.getByRole("row").filter({ hasText: mail.email })).toBeVisible();
+        const filter = page.getByRole("form", { name: "筛选条件" })
+            .filter({ has: page.getByLabel("收件邮箱（精确查询）") });
+        const advanced = filter.getByRole("button", { name: /^高级筛选/ });
+        const query = filter.getByRole("button", { name: "查询" });
+        const smtp = filter.getByLabel("SMTP 增强码");
+        await expect(smtp).toBeHidden();
+        expect((await filter.boundingBox()).height).toBeLessThan(120);
+        await page.screenshot({ path: test.info().outputPath("admin-mail-default.png") });
+        await advanced.click();
+        await smtp.fill("invalid");
+        await advanced.click();
+        await expect(advanced).toContainText("有未提交的条件");
+        await query.click();
+        await expect(advanced).toHaveAttribute("aria-expanded", "true");
+        await expect(smtp).toBeFocused();
+        expect(requests).toHaveLength(1);
+
+        await smtp.fill("5.1.1");
+        await filter.getByLabel("投递反馈").selectOption("temporary");
+        await advanced.click();
+        await query.click();
+        await expect(page.getByText("暂无匹配邮件日志")).toBeVisible();
+        await expect(advanced).toContainText("已应用 2 项");
+        await expect(advanced).not.toContainText("未提交");
+        expect(requests.at(-1).get("enhanced_code")).toBe("5.1.1");
+        expect(requests.at(-1).get("delivery_status")).toBe("temporary");
+        await filter.getByRole("button", { name: "重置" }).click();
+        await expect(advanced).toHaveText("高级筛选");
+        await expect(page.getByRole("row").filter({ hasText: mail.email })).toBeVisible();
+        await advanced.click();
+        await page.screenshot({ path: test.info().outputPath("admin-mail-advanced.png") });
     });
 });
 

@@ -21,6 +21,7 @@ const orderSearchFields = [
     ["user_id", "用户 ID"],
     ["callback_no", "回调单号"],
 ] as const;
+const maxOrderFilters = 20;
 const orderFilterLabels: Row = {
     email: "用户邮箱", trade_no: "订单号", status: "订单状态",
     commission_status: "佣金状态", user_id: "用户 ID", invite_user_id: "邀请人 ID",
@@ -137,6 +138,7 @@ export function OrdersPage({
     }, [orderViewKey, filter]);
     const [draft, setDraft] = useState<Row[]>(filter),
         [showFilter, setShowFilter] = useState(false),
+        [checkFilterDraft, setCheckFilterDraft] = useState(false),
         [selected, setSelected] = useState<Row | null>(null),
         [selectedUser, setSelectedUser] = useState<Row | null>(null),
         [assign, setAssign] = useState(false),
@@ -148,11 +150,16 @@ export function OrdersPage({
     useEffect(() => {
         if (!commissionMode) setSearchText(String(filter.find(item => item.key === searchField)?.value || ""));
     }, [filter, searchField, commissionMode]);
+    const quickSearchValue = searchText.trim();
+    const otherFilters = filter.filter(item => item.key !== searchField);
+    const quickSearchAtLimit = otherFilters.length + Number(Boolean(quickSearchValue)) > maxOrderFilters;
+    const draftAtLimit = draft.length >= maxOrderFilters;
+    const emptyDraftIndex = checkFilterDraft ? draft.findIndex(item => !String(item.value ?? "").trim()) : -1;
     const plans = useData<Row[]>(admin("plan/fetch"));
     return (
         <>
             <ResourcePage
-                key={JSON.stringify({ filter, revision })}
+                refreshKey={revision}
                 resource={
                     commissionMode ? commissionResource : resources.orders
                 }
@@ -172,17 +179,26 @@ export function OrdersPage({
                         {!commissionMode && <AdminFilterBar className="admin-order-quick-search" aria-label={tx("订单快速查询")}
                             onSubmit={event => {
                                 event.preventDefault();
-                                const value = searchText.trim();
-                                setFilter(previous => [...previous.filter(item => item.key !== searchField),
-                                    ...(value ? [{ key: searchField, condition: searchField === "email" ? "模糊" : "=", value }] : [])]);
+                                if (quickSearchAtLimit) return;
+                                setFilter([...otherFilters, ...(quickSearchValue ? [{
+                                    key: searchField,
+                                    condition: searchField === "email" ? "模糊" : "=",
+                                    value: quickSearchValue,
+                                }] : [])]);
                             }}>
                             <select aria-label={tx("订单查询字段")} value={searchField} onChange={event => setSearchField(event.target.value)}>
                                 {orderSearchFields.map(([key, label]) => <option key={key} value={key}>{tx(label)}</option>)}
                             </select>
                             <input aria-label={tx("订单查询内容")} placeholder={tx("输入订单号、邮箱或用户 ID")}
+                                aria-describedby={quickSearchAtLimit ? "admin-order-quick-search-limit" : undefined}
                                 value={searchText} onChange={event => setSearchText(event.target.value)} />
-                            <button type="submit">{tx("查询")}</button>
+                            <button type="submit" disabled={quickSearchAtLimit}>{tx("查询")}</button>
                         </AdminFilterBar>}
+                        {!commissionMode && quickSearchAtLimit && (
+                            <span className="muted admin-order-filter-summary" role="status" id="admin-order-quick-search-limit">
+                                最多可添加 {maxOrderFilters} 条筛选条件，请先移除一条再查询。
+                            </span>
+                        )}
                         {commissionMode && (
                             <label>
                                 佣金状态{" "}
@@ -283,6 +299,7 @@ export function OrdersPage({
                             <button
                                 onClick={() => {
                                     setDraft(structuredClone(filter));
+                                    setCheckFilterDraft(false);
                                     setShowFilter(true);
                                 }}
                             >
@@ -344,9 +361,18 @@ export function OrdersPage({
                 <Modal title="订单高级筛选" close={() => setShowFilter(false)}>
                     <form
                         className="pad"
+                        noValidate
                         onSubmit={(e) => {
                             e.preventDefault();
-                            setFilter(draft);
+                            if (draft.length > maxOrderFilters) return;
+                            const normalized = draft.map(item => ({ ...item, value: String(item.value ?? "").trim() }));
+                            const emptyIndex = normalized.findIndex(item => !item.value);
+                            if (emptyIndex >= 0) {
+                                setCheckFilterDraft(true);
+                                e.currentTarget.querySelector<HTMLInputElement | HTMLSelectElement>(`[aria-label="订单筛选值 ${emptyIndex + 1}"]`)?.focus();
+                                return;
+                            }
+                            setFilter(normalized);
                             setShowFilter(false);
                         }}
                     >
@@ -427,8 +453,10 @@ export function OrdersPage({
                                 ) ? (
                                     <select
                                         aria-label={`订单筛选值 ${i + 1}`}
+                                        aria-invalid={i === emptyDraftIndex || undefined}
+                                        aria-describedby={i === emptyDraftIndex ? "admin-order-filter-value-error" : undefined}
                                         required
-                                        value={f.value}
+                                        value={f.value ?? ""}
                                         onChange={(e) =>
                                             setDraft(
                                                 draft.map((x, j) =>
@@ -467,8 +495,10 @@ export function OrdersPage({
                                 ) : (
                                     <input
                                         aria-label={`订单筛选值 ${i + 1}`}
+                                        aria-invalid={i === emptyDraftIndex || undefined}
+                                        aria-describedby={i === emptyDraftIndex ? "admin-order-filter-value-error" : undefined}
                                         required
-                                        value={f.value}
+                                        value={f.value ?? ""}
                                         onChange={(e) =>
                                             setDraft(
                                                 draft.map((x, j) =>
@@ -496,9 +526,20 @@ export function OrdersPage({
                                 </button>
                             </div>
                         ))}
+                        {emptyDraftIndex >= 0 && (
+                            <p id="admin-order-filter-value-error" className="alert" role="alert">
+                                请填写第 {emptyDraftIndex + 1} 条筛选条件的值。
+                            </p>
+                        )}
+                        {draftAtLimit && (
+                            <p className="muted" role="status">
+                                最多可添加 {maxOrderFilters} 条筛选条件。{draft.length > maxOrderFilters && "请先移除多余条件。"}
+                            </p>
+                        )}
                         <div className="actions">
                             <button
                                 type="button"
+                                disabled={draftAtLimit}
                                 onClick={() =>
                                     setDraft([
                                         ...draft,
@@ -515,7 +556,7 @@ export function OrdersPage({
                             <button type="button" onClick={() => setDraft([])}>
                                 重置条件
                             </button>
-                            <button className="primary">应用筛选</button>
+                            <button type="submit" className="primary" disabled={draft.length > maxOrderFilters}>应用筛选</button>
                         </div>
                     </form>
                 </Modal>

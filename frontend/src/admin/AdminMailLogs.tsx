@@ -7,7 +7,7 @@ import { AdminChoiceGroup } from "./AdminChoices";
 import { Pager, FilterActions } from "../shared/ui";
 import { AdminMailCampaigns } from "./AdminMailCampaigns";
 import { MailHealth } from "./MailHealth";
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
 import { parseDateTimeInput } from "../shared/timezone";
@@ -85,15 +85,30 @@ const empty = {
     stream: "",
     delivery_status: "",
 };
+const advancedFields = ["stream", "delivery_status", "transport_code", "enhanced_code", "template", "from", "to"] as const;
+
 export function AdminMailLogs() {
     const [pageSize, setPageSize] = useState(20);
     const [view, setView] = useState("logs");
     const [draft, setDraft] = useState(empty),
-        [filters, setFilters] = useState<Record<string, string>>({}),
+        [applied, setApplied] = useState<{ params: Record<string, string>; draft: typeof empty }>({ params: {}, draft: empty }),
         [page, setPage] = useState(1),
         [error, setError] = useState("");
+    const [advancedOpen, setAdvancedOpen] = useState(false);
+    const advancedId = useId();
+    const hiddenInvalidInput = useRef<HTMLInputElement | null>(null);
+    const appliedAdvanced = advancedFields.filter(key => applied.params[key] !== undefined).length;
+    const hasAdvancedDraftChanges = advancedFields.some(key => draft[key] !== applied.draft[key]);
+    useEffect(() => {
+        const input = hiddenInvalidInput.current;
+        if (advancedOpen && input) {
+            hiddenInvalidInput.current = null;
+            input.focus();
+            input.reportValidity();
+        }
+    }, [advancedOpen]);
     const query = new URLSearchParams({
-        ...filters,
+        ...applied.params,
         current: String(page),
         page_size: String(pageSize),
     });
@@ -159,13 +174,12 @@ export function AdminMailLogs() {
                                         next.to &&
                                         Number(next.from) > Number(next.to)
                                     )
-                                        throw new Error(
-                                            "结束时间不能早于开始时间",
-                                        );
-                                    setFilters(next);
+                                        throw new Error("结束时间不能早于开始时间");
+                                    setApplied({ params: next, draft });
                                     setPage(1);
                                     setError("");
                                 } catch (err) {
+                                    setAdvancedOpen(true);
                                     setError((err as Error).message);
                                 }
                             }}
@@ -203,77 +217,6 @@ export function AdminMailLogs() {
                                 </select>
                             </label>
                             <label>
-                                邮件用途
-                                <select
-                                    value={draft.stream}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            stream: e.target.value,
-                                        })
-                                    }
-                                >
-                                    <option value="">全部</option>
-                                    <option value="transactional">
-                                        事务邮件
-                                    </option>
-                                    <option value="announcement">
-                                        活动与推广
-                                    </option>
-                                </select>
-                            </label>
-                            <label>
-                                投递反馈
-                                <select
-                                    value={draft.delivery_status}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            delivery_status: e.target.value,
-                                        })
-                                    }
-                                >
-                                    <option value="">全部</option>
-                                    {Object.entries(deliveries).map(
-                                        ([key, label]) => (
-                                            <option key={key} value={key}>
-                                                {label}
-                                            </option>
-                                        ),
-                                    )}
-                                </select>
-                            </label>
-                            <label>
-                                响应状态码
-                                <input
-                                    type="number"
-                                    min="100"
-                                    max="599"
-                                    value={draft.transport_code}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            transport_code: e.target.value,
-                                        })
-                                    }
-                                    placeholder="例如 429、550"
-                                />
-                            </label>
-                            <label>
-                                SMTP 增强码
-                                <input
-                                    value={draft.enhanced_code}
-                                    pattern="[45]\.[0-9]{1,3}\.[0-9]{1,3}"
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            enhanced_code: e.target.value,
-                                        })
-                                    }
-                                    placeholder="例如 5.1.1"
-                                />
-                            </label>
-                            <label>
                                 状态
                                 <select
                                     value={draft.status}
@@ -294,72 +237,163 @@ export function AdminMailLogs() {
                                     )}
                                 </select>
                             </label>
-                            <label>
-                                邮件类型
-                                <select
-                                    value={draft.template}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            template: e.target.value,
-                                        })
-                                    }
-                                >
-                                    <option value="">全部</option>
-                                    {Object.entries(types).map(
-                                        ([value, label]) => (
-                                            <option key={value} value={value}>
-                                                {label}
-                                            </option>
-                                        ),
-                                    )}
-                                </select>
-                            </label>
-                            <label>
-                                开始时间
-                                <input
-                                    type="datetime-local"
-                                    step={1}
-                                    value={draft.from}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            from: e.target.value,
-                                        })
-                                    }
-                                />
-                            </label>
-                            <label>
-                                结束时间
-                                <input
-                                    type="datetime-local"
-                                    step={1}
-                                    value={draft.to}
-                                    onChange={(e) =>
-                                        setDraft({
-                                            ...draft,
-                                            to: e.target.value,
-                                        })
-                                    }
-                                />
-                            </label>
-                            <FilterActions
-                                loading={logs.loading}
-                                onReset={() => {
-                                    setDraft(empty);
-                                    setFilters({});
-                                    setPage(1);
-                                    setError("");
+                            <button
+                                type="button"
+                                aria-expanded={advancedOpen}
+                                aria-controls={advancedId}
+                                onClick={() => setAdvancedOpen(open => !open)}
+                            >
+                                高级筛选{appliedAdvanced > 0 && `（已应用 ${appliedAdvanced} 项）`}
+                                {!advancedOpen && hasAdvancedDraftChanges && " · 有未提交的条件"}
+                            </button>
+                            <fieldset
+                                id={advancedId}
+                                className="admin-filter-advanced"
+                                hidden={!advancedOpen}
+                                aria-label="高级筛选条件"
+                                onInvalidCapture={event => {
+                                    if (advancedOpen || !(event.target instanceof HTMLInputElement)) return;
+                                    event.preventDefault();
+                                    hiddenInvalidInput.current ??= event.target;
+                                    setAdvancedOpen(true);
                                 }}
-                            />
+                            >
+                                <label>
+                                    邮件用途
+                                    <select
+                                        value={draft.stream}
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                stream: e.target.value,
+                                            })
+                                        }
+                                    >
+                                        <option value="">全部</option>
+                                        <option value="transactional">
+                                            事务邮件
+                                        </option>
+                                        <option value="announcement">
+                                            活动与推广
+                                        </option>
+                                    </select>
+                                </label>
+                                <label>
+                                    投递反馈
+                                    <select
+                                        value={draft.delivery_status}
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                delivery_status: e.target.value,
+                                            })
+                                        }
+                                    >
+                                        <option value="">全部</option>
+                                        {Object.entries(deliveries).map(
+                                            ([key, label]) => (
+                                                <option key={key} value={key}>
+                                                    {label}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                                <label>
+                                    响应状态码
+                                    <input
+                                        type="number"
+                                        min="100"
+                                        max="599"
+                                        value={draft.transport_code}
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                transport_code: e.target.value,
+                                            })
+                                        }
+                                        placeholder="例如 429、550"
+                                    />
+                                </label>
+                                <label>
+                                    SMTP 增强码
+                                    <input
+                                        value={draft.enhanced_code}
+                                        pattern="[45]\.[0-9]{1,3}\.[0-9]{1,3}"
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                enhanced_code: e.target.value,
+                                            })
+                                        }
+                                        placeholder="例如 5.1.1"
+                                    />
+                                </label>
+                                <label>
+                                    邮件类型
+                                    <select
+                                        value={draft.template}
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                template: e.target.value,
+                                            })
+                                        }
+                                    >
+                                        <option value="">全部</option>
+                                        {Object.entries(types).map(
+                                            ([value, label]) => (
+                                                <option key={value} value={value}>
+                                                    {label}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                </label>
+                                <label>
+                                    开始时间
+                                    <input
+                                        type="datetime-local"
+                                        step={1}
+                                        value={draft.from}
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                from: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </label>
+                                <label>
+                                    结束时间
+                                    <input
+                                        type="datetime-local"
+                                        step={1}
+                                        value={draft.to}
+                                        onChange={(e) =>
+                                            setDraft({
+                                                ...draft,
+                                                to: e.target.value,
+                                            })
+                                        }
+                                    />
+                                </label>
+                            </fieldset>
+                            <div className="admin-filter-actions">
+                                <FilterActions
+                                    loading={logs.loading}
+                                    onReset={() => {
+                                        setDraft(empty);
+                                        setApplied({ params: {}, draft: empty });
+                                        setPage(1);
+                                        setError("");
+                                    }}
+                                />
+                            </div>
+                            {error && <p className="alert admin-filter-error" role="alert">{error}</p>}
                         </AdminFilterBar>
-                        {error && (
-                            <p className="error" role="alert">
-                                {error}
-                            </p>
-                        )}
                         <State {...logs} retry={logs.reload}>
-                            <TableViewport>
+                            {logs.data?.length ? <TableViewport>
                                 <table>
                                     <thead>
                                         <tr>
@@ -459,12 +493,11 @@ export function AdminMailLogs() {
                                         ))}
                                     </tbody>
                                 </table>
-                                {!logs.data?.length && (
-                                    <p className="pad">暂无匹配邮件日志</p>
-                                )}
-                            </TableViewport>
+                            </TableViewport> : !logs.loading && !logs.error && (
+                                <p className="admin-log-empty" role="status">暂无匹配邮件日志</p>
+                            )}
                         </State>
-                        <Pager
+                        {logs.total > 0 && <Pager
                             size={pageSize}
                             onSizeChange={(size) => {
                                 setPageSize(size);
@@ -474,7 +507,7 @@ export function AdminMailLogs() {
                             total={logs.total}
                             loading={logs.loading}
                             onChange={setPage}
-                        />
+                        />}
                         <MailHealth />
                     </>
                 )}

@@ -25,6 +25,8 @@ export function Pager({
     total,
     size = 20,
     loading = false,
+    totalUnavailable = false,
+    preserveFocus = false,
     onChange,
     onSizeChange,
 }: {
@@ -32,20 +34,40 @@ export function Pager({
     total: number;
     size?: number;
     loading?: boolean;
+    totalUnavailable?: boolean;
+    preserveFocus?: boolean;
     onChange: (page: number) => void;
     onSizeChange?: (size: number) => void;
 }) {
     const count = Math.max(0, Number(total) || 0),
         limit = Math.max(1, size);
     const pages = Math.ceil(count / limit);
+    // Native disabled buttons can drop focus in a list that stays mounted while loading.
+    const controlState = (unavailable: boolean) => ({
+        disabled: unavailable && !preserveFocus,
+        "aria-disabled": unavailable && preserveFocus ? true : undefined,
+    });
+    const pageButton = (next: number, boundary: boolean) => {
+        const unavailable = loading || totalUnavailable || boundary;
+        return {
+            ...controlState(unavailable),
+            onClick: () => {
+                if (!unavailable) onChange(next);
+            },
+        };
+    };
     return (
         <nav className="pager" aria-label={tx("分页")} aria-busy={loading}>
             <span>
-                {tx("共 {{total}} 条 · 第 {{page}} 页", {
-                    total: count,
-                    page: count ? page : 0,
-                })}{" "}
-                · {tx("共 {{total}} 页", { total: pages })}
+                {totalUnavailable ? tx(loading ? "正在加载…" : "页面暂时无法加载") : (
+                    <>
+                        {tx("共 {{total}} 条 · 第 {{page}} 页", {
+                            total: count,
+                            page: count ? page : 0,
+                        })}{" "}
+                        · {tx("共 {{total}} 页", { total: pages })}
+                    </>
+                )}
             </span>
             {onSizeChange && (
                 <label className="pager-size">
@@ -53,10 +75,10 @@ export function Pager({
                     <select
                         aria-label={tx("每页显示行数")}
                         value={size}
-                        disabled={loading}
-                        onChange={(event) =>
-                            onSizeChange(Number(event.target.value))
-                        }
+                        {...controlState(loading)}
+                        onChange={(event) => {
+                            if (!loading) onSizeChange(Number(event.target.value));
+                        }}
                     >
                         {[...new Set([10, 20, 50, 100, size])]
                             .sort((a, b) => a - b)
@@ -71,32 +93,28 @@ export function Pager({
             <div className="pager-buttons">
                 <button
                     type="button"
-                    disabled={loading || page <= 1}
-                    onClick={() => onChange(1)}
+                    {...pageButton(1, page <= 1)}
                     aria-label={tx("首页")}
                 >
                     «
                 </button>
                 <button
                     type="button"
-                    disabled={loading || page <= 1}
-                    onClick={() => onChange(page - 1)}
+                    {...pageButton(page - 1, page <= 1)}
                     aria-label={tx("上一页")}
                 >
                     <ChevronLeft size={16} />
                 </button>
                 <button
                     type="button"
-                    disabled={loading || page >= pages}
-                    onClick={() => onChange(page + 1)}
+                    {...pageButton(page + 1, page >= pages)}
                     aria-label={tx("下一页")}
                 >
                     <ChevronRight size={16} />
                 </button>
                 <button
                     type="button"
-                    disabled={loading || page >= pages}
-                    onClick={() => onChange(pages)}
+                    {...pageButton(pages, page >= pages)}
                     aria-label={tx("末页")}
                 >
                     »

@@ -2,6 +2,9 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AdminLogFilters } from "./AdminLogFilters";
+vi.hoisted(() => {
+    window.FASTAI = { mode: "admin" } as typeof window.FASTAI;
+});
 afterEach(cleanup);
 it("restores applied filters and preserves the failed status", () => {
     const apply = vi.fn();

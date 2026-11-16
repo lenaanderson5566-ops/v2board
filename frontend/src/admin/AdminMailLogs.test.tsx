@@ -18,15 +18,27 @@ afterEach(() => { cleanup(); vi.clearAllMocks(); });
 it("queries exact email, provider and status without issuing a send", async () => {
     api.request.mockResolvedValue({ data: [], total: 0 });
     render(<AdminMailLogs />);
-    await screen.findByText("暂无匹配邮件日志");
+    expect((await screen.findByText("暂无匹配邮件日志")).getAttribute("role")).toBe("status");
+    expect(screen.queryByRole("region", { name: "数据表格" })).toBeNull();
     fireEvent.change(screen.getByLabelText("收件邮箱（精确查询）"), {target:{value:"person@example.test"}});
     fireEvent.change(screen.getByLabelText("发送通道"), {target:{value:"mailgun"}});
     fireEvent.change(screen.getByLabelText("状态"), {target:{value:"uncertain"}});
+    const advanced = screen.getByRole("button", { name: "高级筛选" });
+    expect(screen.queryByRole("group", { name: "高级筛选条件" })).toBeNull();
+    fireEvent.click(advanced);
+    expect(screen.getByRole("group", { name: "高级筛选条件" })).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("投递反馈"), { target: { value: "temporary" } });
+    fireEvent.click(advanced);
+    expect(advanced.textContent).toContain("有未提交的条件");
+    expect(api.request).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getByRole("button", {name:"查询"}));
-    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("email=person%40example.test") && path.includes("provider=mailgun") && path.includes("status=uncertain") && path.includes("current=1"))).toBe(true));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("email=person%40example.test") && path.includes("provider=mailgun") && path.includes("status=uncertain") && path.includes("delivery_status=temporary") && path.includes("current=1"))).toBe(true));
+    expect(advanced.textContent).toContain("已应用 1 项");
+    expect(advanced.textContent).not.toContain("未提交");
     expect(api.request.mock.calls.every(([path, body]) => path.includes("mail-logs/fetch") && body === undefined)).toBe(true);
     fireEvent.click(screen.getByRole("button", {name:"重置"}));
     await waitFor(() => expect(api.request.mock.calls.at(-1)?.[0]).toBe("test-admin/mail-logs/fetch?current=1&page_size=20"));
+    expect(advanced.textContent).toBe("高级筛选");
 });
 it("labels provider acceptance accurately and escapes provider message IDs", async () => {
     api.request.mockResolvedValue({ data:[{id:1,email:"p***@example.test",template:"test",provider:"mailgun",status:"accepted",message_id:"<img src=x onerror=alert(1)>",created_at:1700000000,duration_ms:20}],total:1 });
@@ -42,16 +54,21 @@ it("disables refresh while loading and displays fetch errors", async () => {
     expect((screen.getByRole("button",{name:"刷新"}) as HTMLButtonElement).disabled).toBe(true);
     reject(new Error("MAIL_LOG_UNAVAILABLE"));
     await screen.findByText("MAIL_LOG_UNAVAILABLE");
+    expect(screen.queryByText("暂无匹配邮件日志")).toBeNull();
     expect((screen.getByRole("button",{name:"刷新"}) as HTMLButtonElement).disabled).toBe(false);
 });
 it("rejects reversed date filters before requesting", async () => {
     api.request.mockResolvedValue({data:[],total:0}); render(<AdminMailLogs />);
     await screen.findByText("暂无匹配邮件日志");
     const before=api.request.mock.calls.length;
+    const advanced = screen.getByRole("button", { name: "高级筛选" });
+    fireEvent.click(advanced);
     fireEvent.change(screen.getByLabelText(/开始时间/),{target:{value:"2026-10-14T12:00"}});
     fireEvent.change(screen.getByLabelText(/结束时间/),{target:{value:"2026-10-13T12:00"}});
+    fireEvent.click(advanced);
     fireEvent.click(screen.getByRole("button",{name:"查询"}));
     expect(screen.getByRole("alert").textContent).toContain("结束时间不能早于开始时间");
+    expect(advanced.getAttribute("aria-expanded")).toBe("true");
     expect(api.request.mock.calls).toHaveLength(before);
 });
 it("masks API keys and shows only the selected transport fields", () => {

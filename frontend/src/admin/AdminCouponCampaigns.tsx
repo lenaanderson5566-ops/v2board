@@ -1,10 +1,8 @@
 import { formatPercent } from "../shared/number-format";
-import { TableViewport } from "../shared/ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
-import { State, Modal, Reload, Pager } from "../shared/ui";
+import { Empty, Modal, Pager, Reload, State, TableViewport, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
-import { useData } from "../shared/ui";
 import { useAdminOperation } from "./admin-operation";
 import { AdminOperationNotice } from "./admin-section";
 import { AdminRowMenu } from "./AdminRowMenu";
@@ -128,6 +126,8 @@ export function AdminCouponCampaigns() {
             {selected && (
                 <Modal
                     title={`批次 #${selected.id} 发放明细`}
+                    variant="modal"
+                    className="admin-detail-dialog"
                     close={() => setSelected(null)}
                 >
                     <CouponRecipients id={selected.id} />
@@ -187,61 +187,77 @@ function CouponRecipients({ id }: { id: number }) {
     const [pageSize, setPageSize] = useState(50);
     const [page, setPage] = useState(1),
         [status, setStatus] = useState("");
+    const statusInput = useRef<HTMLSelectElement>(null);
     const data = useData<Row[]>(
         admin(
             `coupon-campaign/recipients?id=${id}&current=${page}&pageSize=${pageSize}&status=${status}`,
         ),
     );
+    const recipients = data.data ?? [];
+    const emptyText = data.total > 0 ? "当前页暂无发放记录" : status ? "没有符合所选结果的发放记录" : "暂无发放记录";
     return (
-        <div className="pad">
-            <label>
-                结果筛选
-                <select
-                    value={status}
-                    onChange={(event) => {
-                        setStatus(event.target.value);
-                        setPage(1);
-                    }}
-                >
-                    <option value="">全部</option>
-                    {Object.entries(couponRecipientStatuses).map(
-                        ([value, label]) => (
-                            <option key={value} value={value}>
-                                {label}
-                            </option>
-                        ),
-                    )}
-                </select>
-            </label>
+        <div className="admin-detail-body">
+            <div className="admin-filter-bar">
+                <label>
+                    结果筛选
+                    <select
+                        ref={statusInput}
+                        value={status}
+                        onChange={(event) => {
+                            setStatus(event.target.value);
+                            setPage(1);
+                        }}
+                    >
+                        <option value="">全部</option>
+                        {Object.entries(couponRecipientStatuses).map(
+                            ([value, label]) => (
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
+                            ),
+                        )}
+                    </select>
+                </label>
+                {status && (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setStatus("");
+                            setPage(1);
+                            statusInput.current?.focus();
+                        }}
+                    >
+                        清除结果筛选
+                    </button>
+                )}
+            </div>
             <State {...data} retry={data.reload}>
-                <TableViewport>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>用户 ID</th>
-                                <th>状态</th>
-                                <th>结果</th>
-                                <th>时间</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {data.data?.map((row) => (
-                                <tr key={row.user_id}>
-                                    <td>#{row.user_id}</td>
-                                    <td>
-                                        {couponRecipientStatuses[row.status] ||
-                                            row.status}
-                                    </td>
-                                    <td>
-                                        {couponRecipientReasons[row.reason] ||
-                                            "—"}
-                                    </td>
-                                    <td>{formatInstant(row.updated_at)}</td>
+                {recipients.length ? (
+                    <TableViewport>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>用户 ID</th>
+                                    <th>状态</th>
+                                    <th>结果</th>
+                                    <th>时间</th>
                                 </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </TableViewport>
+                            </thead>
+                            <tbody>
+                                {recipients.map((row) => (
+                                    <tr key={row.user_id}>
+                                        <td>#{row.user_id}</td>
+                                        <td>{couponRecipientStatuses[row.status] || row.status}</td>
+                                        <td>{couponRecipientReasons[row.reason] || "—"}</td>
+                                        <td>{formatInstant(row.updated_at)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </TableViewport>
+                ) : (
+                    <Empty text={emptyText} />
+                )}
             </State>
             <Pager
                 loading={data.loading}

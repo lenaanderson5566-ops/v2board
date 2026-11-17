@@ -76,14 +76,14 @@
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 318696,
+      "startupGzipBytes": 318702,
       "startupBytes": 1061531,
       "startupFileCount": 27,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-BChkBzay.js",
+          "file": "assets/AdminApp-DES_qCoE.js",
           "bytes": 322571,
-          "gzipBytes": 92622
+          "gzipBytes": 92627
         },
         {
           "file": "assets/render-app-BUWuuQgj.js",
@@ -107,7 +107,7 @@
         }
       ],
       "budget": 460800,
-      "totalBytes": 5130713,
+      "totalBytes": 5130594,
       "fileCount": 134
     }
   ],

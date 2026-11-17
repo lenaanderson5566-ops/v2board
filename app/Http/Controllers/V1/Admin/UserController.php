@@ -102,21 +102,24 @@ class UserController extends Controller
             ->whereIn('user_id', $userIds)
             ->select('user_id')->selectRaw('MAX(created_at) AS last_subscribe_at')
             ->groupBy('user_id')->pluck('last_subscribe_at', 'user_id');
-        // A verified external payment contributes its principal in the order currency.
-        $recharges = Order::query()
+        // total_amount is the external principal after balance deductions, before channel fees.
+        $payments = Order::query()
             ->join('v2_user', 'v2_order.user_id', '=', 'v2_user.id')
             ->whereIn('v2_order.user_id', $userIds)
             ->whereColumn('v2_order.currency', 'v2_user.currency')
-            ->where('period', 'deposit')->where('v2_order.plan_id', 0)->where('status', 3)
+            ->whereIn('status', [1, 3, 4])
             ->where('total_amount', '>', 0)->where('paid_at', '>', 0)
             ->where('payment_id', '>', 0)->whereRaw("COALESCE(TRIM(callback_no), '') <> ''")
             ->whereNotIn(DB::raw('TRIM(callback_no)'), ['manual_operation', '佣金划转 Commission transfer'])
-            ->select('v2_order.user_id')->selectRaw('SUM(total_amount) AS amount')
-            ->groupBy('v2_order.user_id')->pluck('amount', 'user_id');
+            ->select('v2_order.user_id')->selectRaw('SUM(total_amount) AS total_paid_amount')
+            ->selectRaw('SUM(CASE WHEN period = ? AND v2_order.plan_id = 0 AND status = 3 THEN total_amount ELSE 0 END) AS total_recharge_amount', ['deposit'])
+            ->groupBy('v2_order.user_id')->get()->keyBy('user_id');
         foreach ($res as $row) {
             $row['last_subscribe_at'] = (int) $lastSubscriptions->get($row->id) ?: null;
             $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
-            $row['total_recharge_amount'] = (int) $recharges->get($row->id, 0);
+            $payment = $payments->get($row->id);
+            $row['total_recharge_amount'] = (int) ($payment->total_recharge_amount ?? 0);
+            $row['total_paid_amount'] = (int) ($payment->total_paid_amount ?? 0);
         }
         $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
         $alive = \App\Services\OnlineDeviceService::forUsers($userIds->all());

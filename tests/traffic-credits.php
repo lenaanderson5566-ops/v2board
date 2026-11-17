@@ -177,9 +177,15 @@ try {
 
  $statsPlan = Plan::create(['name'=>'Mixed statistics fixture', 'group_id'=>1, 'transfer_enable'=>10,
     'onetime_price'=>1000, 'month_price'=>1000]);
- $repeatBuyer = $make(['plan_id'=>$recurring->id]);
  $now = time();
  $future = $now + 86400;
+ $mixedPeriod = ['plan_id'=>$statsPlan->id, 'expired_at'=>$future];
+ $make(['u'=>499, 'd'=>500] + $mixedPeriod);
+ $make(['u'=>500, 'd'=>500] + $mixedPeriod);
+ $make(['u'=>501, 'd'=>500] + $mixedPeriod);
+ $make(['expired_at'=>$now] + $mixedPeriod);
+ $make(['transfer_enable'=>0, 'u'=>0, 'd'=>0, 'credit_balance'=>10] + $mixedPeriod);
+ $repeatBuyer = $make(['plan_id'=>$statsPlan->id, 'expired_at'=>null]);
  $orderWithBatch = function (User $buyer, int $status, int $expiresAt, int $remaining, array $orderFields = [], ?User $batchOwner = null) use ($statsPlan, $now) {
    $order = Order::create($orderFields + [
      'user_id'=>$buyer->id, 'plan_id'=>$statsPlan->id, 'trade_no'=>Str::random(24),
@@ -224,8 +230,9 @@ try {
    $ordinaryPlans = $fetchPlans();
    $assert($orderQueryCount() === 0
      && !array_key_exists('credit_order_count', $ordinaryPlans[$statsPlan->id])
-     && !array_key_exists('credit_remaining_user_count', $ordinaryPlans[$statsPlan->id]),
-     'Ordinary plan lists must not fetch or expose credit statistics');
+     && !array_key_exists('credit_remaining_user_count', $ordinaryPlans[$statsPlan->id])
+     && !array_key_exists('periodic_remaining_user_count', $ordinaryPlans[$statsPlan->id]),
+     'Ordinary plan lists must not fetch or expose remaining entitlement statistics');
    DB::flushQueryLog();
    $statistics = $fetchPlans(['include_credit_stats'=>'1']);
    $assert($orderQueryCount() === 1, 'Credit statistics must use one grouped order query');
@@ -238,6 +245,17 @@ try {
      && $statistics[$recurring->id]['credit_remaining_user_count'] === 0
      && $statistics[$recurring->id]['count'] === $ordinaryPlans[$recurring->id]['count'],
      'Zero-fill all products without changing the existing subscription counts');
+   $assert(!array_key_exists('periodic_remaining_user_count', $statistics[$statsPlan->id]),
+     'Credit statistics do not include periodic statistics unless requested');
+   DB::flushQueryLog();
+   $periodicStatistics = $fetchPlans(['include_periodic_stats'=>'1']);
+   $assert($orderQueryCount() === 0
+     && !array_key_exists('credit_remaining_user_count', $periodicStatistics[$statsPlan->id])
+     && $periodicStatistics[$statsPlan->id]['count'] === $ordinaryPlans[$statsPlan->id]['count'],
+     'Periodic statistics do not query credit orders or replace the existing subscription counts');
+   $assert($periodicStatistics[$statsPlan->id]['periodic_remaining_user_count'] === 1
+     && $periodicStatistics[$plan->id]['periodic_remaining_user_count'] === 0,
+     'Count only unexpired recurring allowances with positive remaining quota, including mixed products');
  } finally { DB::disableQueryLog(); DB::flushQueryLog(); }
  echo "Traffic credits: $checks checks passed\n";
 } finally {foreach($auths as $auth)$auth->removeAllSession(); DB::rollBack();}

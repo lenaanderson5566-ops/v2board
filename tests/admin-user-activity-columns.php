@@ -26,6 +26,7 @@ Schema::create('v2_order', function (Blueprint $table) {
     $table->string('currency');
     $table->integer('status');
     $table->integer('total_amount');
+    $table->integer('balance_amount')->default(0);
     $table->integer('handling_amount')->default(0);
     $table->integer('surplus_amount')->default(0);
     $table->integer('credit_bytes')->nullable();
@@ -53,7 +54,7 @@ DB::table('v2_user')->where('id', 1)->update(['expired_at' => null]);
 DB::table('v2_user')->where('id', 3)->update(['currency' => 'USD', 'expired_at' => 1800000000]);
 $recharge = [
     'user_id' => 2, 'plan_id' => 0, 'period' => 'deposit', 'currency' => 'CNY',
-    'status' => 3, 'total_amount' => 1250, 'handling_amount' => 50, 'surplus_amount' => 0,
+    'status' => 3, 'total_amount' => 1250, 'balance_amount' => 0, 'handling_amount' => 50, 'surplus_amount' => 0,
     'paid_at' => 100, 'payment_id' => 1, 'callback_no' => 'gateway-reference', 'credit_bytes' => null,
 ];
 DB::table('v2_order')->insert(array_map(fn ($overrides) => array_replace($recharge, $overrides), [
@@ -62,16 +63,19 @@ DB::table('v2_order')->insert(array_map(fn ($overrides) => array_replace($rechar
     ['user_id' => 3, 'currency' => 'USD', 'total_amount' => 625],
     ['user_id' => 3, 'total_amount' => 2000], // Mismatched historical order currency.
     ['status' => 0],
-    ['status' => 1],
+    ['status' => 1, 'total_amount' => 400], // Payment confirmed while the wallet credit is being applied.
     ['status' => 2],
-    ['period' => 'month_price', 'plan_id' => 1],
-    ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'credit_bytes' => 1024],
-    ['user_id' => 1, 'period' => 'onetime_price', 'plan_id' => 1],
-    ['user_id' => 1, 'period' => 'reset_price', 'plan_id' => 1],
+    ['period' => 'month_price', 'plan_id' => 1, 'total_amount' => 1800, 'balance_amount' => 200],
+    ['period' => 'quarter_price', 'plan_id' => 1, 'status' => 4, 'total_amount' => 300], // Previously paid, later used for a plan offset.
+    ['period' => 'month_price', 'plan_id' => 1, 'total_amount' => 0, 'balance_amount' => 1700],
+    ['period' => 'reset_price', 'plan_id' => 1, 'total_amount' => 450],
+    ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'credit_bytes' => 1024, 'payment_id' => null],
+    ['user_id' => 1, 'period' => 'onetime_price', 'plan_id' => 1, 'credit_bytes' => 1024, 'total_amount' => 850],
+    ['user_id' => 1, 'period' => 'reset_price', 'plan_id' => 1, 'payment_id' => null],
     ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'status' => 0],
     ['user_id' => 1, 'period' => 'month_price', 'plan_id' => 1, 'status' => 2],
-    ['plan_id' => 1],
     ['callback_no' => 'manual_operation'],
+    ['period' => 'year_price', 'plan_id' => 1, 'status' => 1, 'callback_no' => 'manual_operation'],
     ['callback_no' => ' '],
     ['paid_at' => null],
     ['payment_id' => null],
@@ -106,11 +110,13 @@ $assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query
 $assert(count(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_user_online_snapshot'))) === 1);
 $assert(array_column($data, 'total_recharge_amount') === [0, 2000, 625],
     'Only completed external top-up principal is counted in the account currency');
+$assert(array_column($data, 'total_paid_amount') === [850, 4950, 625],
+    'Confirmed external principal includes direct orders and prior offset orders, with no duplicate wallet spend, fees, or cross-currency amounts');
 $assert($data[0]['has_recurring_order_history'] === false && $data[1]['has_recurring_order_history'] === true
     && !array_key_exists('has_recurring_order_history', $data[2]),
     'Only explicit unset expiries receive a boolean based on qualifying recurring order history');
 $orderQueries = array_values(array_filter(DB::getQueryLog(), fn ($query) => str_contains($query['query'], 'v2_order')));
-$assert(count($orderQueries) === 2, 'The page batches recharge totals and recurring order history into one query each');
+$assert(count($orderQueries) === 2, 'The page batches payment totals and recurring order history into one query each');
 $historyQuery = array_values(array_filter($orderQueries, fn ($query) => str_contains($query['query'], 'credit_bytes')))[0];
 $assert(array_slice($historyQuery['bindings'], 0, 2) === [1, 2] && count($historyQuery['bindings']) === 12,
     'The recurring history lookup is limited to unset-expiry users on this page');
@@ -133,5 +139,9 @@ foreach ([[1000, -2, 100, 1], [1, 1, 10, 1], [20, 2, 20, 21]] as [$size, $page, 
     $result = json_decode((new UserController())->fetch($request)->getContent(), true);
     $assert($result['total'] === 113 && count($result['data']) === $expectedCount);
     $assert($result['data'][0]['id'] === $firstId);
+    if ($firstId === 21) {
+        $assert(array_column($result['data'], 'total_paid_amount') === array_fill(0, $expectedCount, 0),
+            'Users without confirmed external payments receive a zero total');
+    }
 }
 echo "User pagination: bounded size, negative page and page offsets passed\n";

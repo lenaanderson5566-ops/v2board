@@ -65,6 +65,8 @@ const planAccessFields = [
 const periodicPrices = Object.entries(periodicPlanPrices);
 const planPriceColumn = (key: string, label: string): Resource["columns"][number] =>
     [key, label, (plan) => (plan[key] == null ? "—" : money(plan[key]))];
+const remainingUsersColumn = (key: string): Resource["columns"][number] =>
+    [key, "有余量人数", (plan) => plan[key] == null ? "—" : `${formatNumber(plan[key])} 人`];
 
 export const resources: Record<string, Resource> = {
     plans: {
@@ -75,7 +77,7 @@ export const resources: Record<string, Resource> = {
             planNameColumn,
             ["show", "展示"],
             ["renew", "允许续费"],
-            ["count", "统计"],
+            remainingUsersColumn("periodic_remaining_user_count"),
             ["transfer_enable", "流量 (GiB)", (record) => formatNumber(record.transfer_enable)],
             ["device_limit", "设备数限制"],
             ...periodicPrices.map(([key, label]) => planPriceColumn(key, label)),
@@ -109,12 +111,7 @@ export const resources: Record<string, Resource> = {
         columns: [
             planNameColumn,
             ["show", "展示"],
-            ["credit_order_count", "统计", (plan) =>
-                plan.credit_remaining_user_count == null || plan.credit_order_count == null ? "—" : <>
-                    <div>有余量 {formatNumber(plan.credit_remaining_user_count)} 人</div>
-                    <small className="muted">累计开通 {formatNumber(plan.credit_order_count)} 单</small>
-                </>,
-            ],
+            remainingUsersColumn("credit_remaining_user_count"),
             ["transfer_enable", "流量额度 (GiB)", (plan) => formatNumber(plan.transfer_enable)],
             planPriceColumn("onetime_price", "人民币价格"),
             ["onetime_price_usd", "美元价格", (plan) => {
@@ -234,7 +231,7 @@ export const resources: Record<string, Resource> = {
             ["plan_name", "周期套餐", (r) => hasRecordedPeriodicPlan(r) ? adminPlanLabel(r) : "—"],
             ["expired_at", "周期到期", (r) => <AdminSubscriptionExpiry user={r} precision="minute" />],
             ["balance", "余额", (r) => money(r.balance, r.currency)],
-            ["total_recharge_amount", "累计充值", (r) => money(r.total_recharge_amount, r.currency || "CNY")],
+            ["total_paid_amount", "累计实付", (r) => money(r.total_paid_amount, r.currency || "CNY")],
             [
                 "commission_balance",
                 "佣金",

@@ -812,11 +812,11 @@ it("loads translations from subscription management and supports old links", asy
 
 it("lists periodic products and credit packs in their own tabs with all products still reachable", async () => {
     const products = [
-        { id: 1, name: "Monthly product", month_price: 1000, count: 14 },
-        { id: 2, name: "Mixed product", month_price: 1000, onetime_price: 2000, count: 25, credit_order_count: 8, credit_remaining_user_count: 3 },
+        { id: 1, name: "Monthly product", month_price: 1000, count: 14, periodic_remaining_user_count: 0 },
+        { id: 2, name: "Mixed product", month_price: 1000, onetime_price: 2000, count: 25, periodic_remaining_user_count: 11, credit_remaining_user_count: 3 },
         { id: 3, name: "Unpriced draft", month_price: null, onetime_price: null },
         { id: 4, name: "Reset-only product", reset_price: 500 },
-        { id: 5, name: "Zero-price credit pack", onetime_price: 0, credit_order_count: 0, credit_remaining_user_count: 0 },
+        { id: 5, name: "Zero-price credit pack", onetime_price: 0, credit_remaining_user_count: 0 },
         { id: 6, name: "USD credit pack", usd_prices: { onetime_price: 200 } },
         { id: 7, name: "USD periodic product", usd_prices: { month_price: 100 } },
     ];
@@ -825,12 +825,15 @@ it("lists periodic products and credit packs in their own tabs with all products
     }));
     const view = render(<AdminContent route="plans" />);
     await screen.findByText("Monthly product");
-    const statistics = (name: string) => screen.getByText(name, { exact: true }).closest("tr")?.querySelector('td[data-label="统计"]');
+    const statistics = (name: string) => screen.getByText(name, { exact: true }).closest("tr")?.querySelector('td[data-label="有余量人数"]');
     const requestedCreditStatistics = () => api.request.mock.calls.some(([path]) =>
         path.includes("plan/fetch?") && path.includes("include_credit_stats=1"),
     );
     expect(requestedCreditStatistics()).toBe(false);
-    expect(statistics("Mixed product")?.textContent).toBe("25");
+    expect(api.request.mock.calls.some(([path]) => path.includes("plan/fetch?") && path.includes("include_periodic_stats=1"))).toBe(true);
+    expect(statistics("Mixed product")?.textContent).toBe("11 人");
+    expect(statistics("Monthly product")?.textContent).toBe("0 人");
+    expect(statistics("USD periodic product")?.textContent).toBe("—");
     expect(screen.getByRole("button", { name: "新建周期套餐" })).toBeTruthy();
     for (const name of ["Mixed product", "Unpriced draft", "Reset-only product", "USD periodic product"])
         expect(screen.getByText(name)).toBeTruthy();
@@ -845,8 +848,8 @@ it("lists periodic products and credit packs in their own tabs with all products
     await screen.findByRole("tab", { name: "额度包", selected: true });
     await screen.findByText("Zero-price credit pack");
     expect(requestedCreditStatistics()).toBe(true);
-    expect(statistics("Mixed product")?.textContent).toBe("有余量 3 人累计开通 8 单");
-    expect(statistics("Zero-price credit pack")?.textContent).toBe("有余量 0 人累计开通 0 单");
+    expect(statistics("Mixed product")?.textContent).toBe("3 人");
+    expect(statistics("Zero-price credit pack")?.textContent).toBe("0 人");
     expect(statistics("USD credit pack")?.textContent).toBe("—");
     expect(screen.getByRole("button", { name: "新建额度包" })).toBeTruthy();
     expect(screen.getByText("Mixed product")).toBeTruthy();
@@ -1627,7 +1630,7 @@ it.each([0, 2, 3])("prioritizes account and subscription columns in the version 
         await screen.findByRole("button", { name: /ID: 7.*guest@example.com/ });
         const headers = screen.getAllByRole("columnheader");
         const priority = [
-            "邮箱", "周期套餐", "周期到期", "余额", "累计充值", "佣金", "基础流量（GiB）", "已用（GiB）", "可用独立额度", "状态",
+            "邮箱", "周期套餐", "周期到期", "余额", "累计实付", "佣金", "基础流量（GiB）", "已用（GiB）", "可用独立额度", "状态",
         ];
         expect(headers.slice(0, priority.length)).toEqual(
             priority.map(name => screen.getByRole("columnheader", { name })),
@@ -1680,15 +1683,35 @@ it("preserves custom user columns when upgrading the previous display version", 
         render(<UsersPage />);
         await screen.findByRole("button", { name: /ID: 7.*guest@example.com/ });
         expect(screen.getByRole("columnheader", { name: "余额" })).toBeTruthy();
-        expect(screen.queryByRole("columnheader", { name: "累计充值" })).toBeNull();
+        expect(screen.queryByRole("columnheader", { name: "累计实付" })).toBeNull();
         expect(screen.queryByRole("columnheader", { name: "佣金" })).toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
         const picker = within(screen.getByLabelText("可选显示列"));
-        const recharge = picker.getByRole("button", { name: "累计充值", pressed: false });
-        fireEvent.click(recharge);
+        fireEvent.click(picker.getByRole("button", { name: "累计实付", pressed: false }));
         fireEvent.click(screen.getByRole("button", { name: "完成" }));
-        expect(screen.getByRole("columnheader", { name: "累计充值" })).toBeTruthy();
+        expect(screen.getByRole("columnheader", { name: "累计实付" })).toBeTruthy();
         expect(screen.queryByRole("columnheader", { name: "佣金" })).toBeNull();
+    } finally {
+        if (previous === null) localStorage.removeItem(viewKey);
+        else localStorage.setItem(viewKey, previous);
+    }
+});
+
+it.each([true, false])("keeps the paid amount column's saved visibility (%s) when renaming it", async (visible) => {
+    const viewKey = "admin.users.view.v1";
+    const previous = localStorage.getItem(viewKey);
+    const columns = resources.users.columns.map(([key]) => key)
+        .filter(key => !["group_id", "device_limit", "total_paid_amount"].includes(key));
+    if (visible) columns.push("total_recharge_amount");
+    localStorage.setItem(viewKey, JSON.stringify({ columnsVersion: 4, columns }));
+    try {
+        render(<UsersPage />);
+        await screen.findByRole("button", { name: /ID: 7.*guest@example.com/ });
+        expect(Boolean(screen.queryByRole("columnheader", { name: "累计实付" }))).toBe(visible);
+        const saved = JSON.parse(localStorage.getItem(viewKey)!);
+        expect(saved.columnsVersion).toBe(5);
+        expect(saved.columns.includes("total_paid_amount")).toBe(visible);
+        expect(saved.columns).not.toContain("total_recharge_amount");
     } finally {
         if (previous === null) localStorage.removeItem(viewKey);
         else localStorage.setItem(viewKey, previous);

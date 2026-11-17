@@ -23,7 +23,7 @@ import {
 } from "./user-filters";
 
 const userViewKey = "admin.users.view.v1";
-const userColumnsVersion = 4;
+const userColumnsVersion = 5;
 function savedUserView(): Record<string, any> {
     try {
         const value = JSON.parse(localStorage.getItem(userViewKey) || "{}");
@@ -41,12 +41,15 @@ export function UsersPage() {
     const [optionalColumns, setOptionalColumns] = useState<string[]>(() => {
         const defaults = defaultUserColumns();
         if (!Array.isArray(saved.columns)) return defaults;
-        const columns = saved.columns.filter((key: string) => resources.users.columns.some(([id]) => id === key));
+        const columns = saved.columns
+            .map((key: string) => key === "total_recharge_amount" ? "total_paid_amount" : key)
+            .filter((key: string) => resources.users.columns.some(([id]) => id === key));
         const version = Number(saved.columnsVersion) || 0;
         if (version < 2 && !columns.includes("language")) columns.push("language");
-        if (version < userColumnsVersion) {
+        // Version 4 introduced this column. A missing key from then on is intentional.
+        if (version < 4) {
             const previousDefaults = defaults.filter(key =>
-                key !== "total_recharge_amount" && (version >= 3 || key !== "commission_balance"),
+                key !== "total_paid_amount" && (version >= 3 || key !== "commission_balance"),
             );
             if (columns.length === previousDefaults.length && previousDefaults.every(key => columns.includes(key))) {
                 return defaults;

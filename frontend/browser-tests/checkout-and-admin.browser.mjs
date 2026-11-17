@@ -289,8 +289,8 @@ test("mobile admin users prioritize account columns and distinguish subscription
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试周期套餐" }, { id: 2, name: "测试额度包" }];
         if (path === "/api/v1/test-admin/user/fetch") return [
-            { ...account, id: 1, email: "expired@example.test", expired_at: now - 3 * 86400, currency: "USD", total_recharge_amount: 1234 },
-            { ...account, id: 2, email: "active@example.test", expired_at: now + 27 * 86400, currency: "CNY", total_recharge_amount: 0, credit_balance: 2 * gib, total_used: gib },
+            { ...account, id: 1, email: "expired@example.test", expired_at: now - 3 * 86400, currency: "USD", total_paid_amount: 1234, total_recharge_amount: 0 },
+            { ...account, id: 2, email: "active@example.test", expired_at: now + 27 * 86400, currency: "CNY", total_paid_amount: 0, credit_balance: 2 * gib, total_used: gib },
             { id: 3, email: "unknown@example.test", transfer_enable: 0, expired_at: null, currency: "CNY", banned: 0 },
             { ...account, id: 4, email: "expiring@example.test", expired_at: now + 2 * 86400, credit_balance: 0 },
             { id: 5, email: "purchased@example.test", transfer_enable: 0, expired_at: 0, has_recurring_order_history: true, banned: 0 },
@@ -337,7 +337,7 @@ test("mobile admin users prioritize account columns and distinguish subscription
         await expect(cell.locator("time")).toHaveCount(0);
     }
     const priority = [
-        "邮箱", "周期套餐", "周期到期", "余额", "累计充值", "佣金", "基础流量（GiB）", "已用（GiB）", "可用独立额度", "状态",
+        "邮箱", "周期套餐", "周期到期", "余额", "累计实付", "佣金", "基础流量（GiB）", "已用（GiB）", "可用独立额度", "状态",
     ];
     const headers = page.getByRole("columnheader");
     for (const [index, name] of priority.entries()) {
@@ -345,7 +345,7 @@ test("mobile admin users prioritize account columns and distinguish subscription
     }
     for (const [email, amount] of [["expired@example.test", "USD 12.34"], ["active@example.test", "CNY 0.00"], ["unknown@example.test", "—"]]) {
         const row = page.getByRole("row").filter({ hasText: email });
-        await expect(row.locator('td[data-label="累计充值"]')).toHaveText(amount);
+        await expect(row.locator('td[data-label="累计实付"]')).toHaveText(amount);
     }
     for (const [email, plan, balance] of [
         ["active@example.test", "测试周期套餐", "2 GiB"],
@@ -793,23 +793,25 @@ test("mobile admin plan workspace opens a focused credit package editor", async 
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/server/group/fetch") return [{ id: 1, name: "测试权限组" }];
         if (path === "/api/v1/test-admin/plan/fetch") return [
-            { ...access, id: 1, name: "测试周期商品", month_price: 2000 },
-            { ...access, id: 2, name: "测试额度商品", onetime_price: 3500, credit_order_count: 0, credit_remaining_user_count: 0 },
-            { ...access, id: 3, name: "测试混合商品", month_price: 2000, onetime_price: 3500, credit_order_count: 8, credit_remaining_user_count: 3 },
+            { ...access, id: 1, name: "测试周期商品", month_price: 2000, periodic_remaining_user_count: 0 },
+            { ...access, id: 2, name: "测试额度商品", onetime_price: 3500, credit_remaining_user_count: 0 },
+            { ...access, id: 3, name: "测试混合商品", month_price: 2000, onetime_price: 3500, periodic_remaining_user_count: 11, credit_remaining_user_count: 3 },
         ];
     });
 
     await page.goto(`${consoleOrigin}/admin.html#/plans`);
     await expect(page.getByRole("tab", { name: "周期套餐" })).toHaveAttribute("aria-selected", "true");
-    await expect(page.getByRole("row").filter({ hasText: "测试周期商品" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "有余量人数", exact: true })).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: "测试周期商品" }).getByRole("cell", { name: "0 人", exact: true })).toBeVisible();
+    const mixedRow = page.getByRole("row").filter({ hasText: "测试混合商品" });
+    await expect(mixedRow.getByRole("cell", { name: "11 人", exact: true })).toBeVisible();
     await expect(page.getByRole("row").filter({ hasText: "测试额度商品" })).toHaveCount(0);
     await page.getByRole("tab", { name: "额度包", exact: true }).click();
     await expect(page).toHaveURL(`${consoleOrigin}/admin.html#/plans-credits`);
-    const mixedRow = page.getByRole("row").filter({ hasText: "测试混合商品" });
     await expect(mixedRow.getByText("混合商品", { exact: true })).toBeVisible();
-    await expect(mixedRow.getByRole("cell", { name: /有余量 3 人.*累计开通 8 单/ })).toBeVisible();
+    await expect(mixedRow.getByRole("cell", { name: "3 人", exact: true })).toBeVisible();
     const creditRow = page.getByRole("row").filter({ hasText: "测试额度商品" });
-    await expect(creditRow.getByRole("cell", { name: /有余量 0 人.*累计开通 0 单/ })).toBeVisible();
+    await expect(creditRow.getByRole("cell", { name: "0 人", exact: true })).toBeVisible();
     await creditRow.getByRole("button", { name: "编辑" }).click();
     const editor = page.getByRole("dialog", { name: "编辑 · 额度包" });
     await expect(editor.getByLabel("额度包名称")).toHaveValue("测试额度商品");

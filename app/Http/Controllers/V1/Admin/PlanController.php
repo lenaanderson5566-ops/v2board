@@ -24,10 +24,15 @@ class PlanController extends Controller
     {
         $counts = collect(PlanService::countActiveUsers())->keyBy('plan_id');
         $plans = Plan::orderBy('sort', 'ASC')->get();
+        $includePeriodicStats = $request->boolean('include_periodic_stats');
+        $periodicCounts = $includePeriodicStats ? $this->periodicRemainingCounts($plans->modelKeys()) : collect();
         $includeCreditStats = $request->boolean('include_credit_stats');
         $creditStats = $includeCreditStats ? $this->creditStats($plans->modelKeys()) : collect();
         foreach ($plans as $plan) {
             $plan->count = (int)($counts->get($plan->id)->count ?? 0);
+            if ($includePeriodicStats) {
+                $plan->periodic_remaining_user_count = (int)$periodicCounts->get($plan->id, 0);
+            }
             if ($includeCreditStats) {
                 $stats = $creditStats->get($plan->id);
                 $plan->credit_order_count = (int)($stats->credit_order_count ?? 0);
@@ -37,6 +42,17 @@ class PlanController extends Controller
         return response([
             'data' => $plans
         ]);
+    }
+
+    private function periodicRemainingCounts(array $planIds): Collection
+    {
+        return User::query()
+            ->whereIn('plan_id', $planIds)
+            ->where('expired_at', '>', time())
+            ->whereRaw('u + d < transfer_enable')
+            ->groupBy('plan_id')
+            ->selectRaw('plan_id, COUNT(*) AS user_count')
+            ->pluck('user_count', 'plan_id');
     }
 
     private function creditStats(array $planIds): Collection

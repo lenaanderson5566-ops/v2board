@@ -45,14 +45,17 @@ final class AdminOrderPurchaseStage
 
             $previousExpiry = (int) $order->previous_subscription_expires_at;
             $createdAt = (int) $order->getRawOriginal('created_at');
+            $priorPaidAt = (int) $purchase->prior_paid_at;
+            $order['purchase_stage'] = 'repeat_purchase';
+            $order['repurchase_expiry_status'] = 'unknown';
             // Both the earlier payment and the expiry must precede this checkout.
-            if ($previousExpiry > 0 && $previousExpiry <= $createdAt
-                && (int) $purchase->prior_paid_at <= $previousExpiry) {
+            if ($createdAt > 0 && $previousExpiry > 0 && $previousExpiry <= $createdAt
+                && $priorPaidAt <= $previousExpiry) {
                 $order['purchase_stage'] = 'expired_repurchase';
+                $order['repurchase_expiry_status'] = 'expired';
                 $order['repurchase_gap_days'] = intdiv($createdAt - $previousExpiry, 86400);
-            } else {
-                // Paid history proves a repeat, but cannot reconstruct the entitlement at checkout.
-                $order['purchase_stage'] = 'repeat_purchase';
+            } elseif ($createdAt > 0 && $previousExpiry > $createdAt && $priorPaidAt <= $createdAt) {
+                $order['repurchase_expiry_status'] = 'not_expired';
             }
         }
     }

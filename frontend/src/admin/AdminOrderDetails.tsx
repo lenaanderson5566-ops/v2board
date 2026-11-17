@@ -3,7 +3,7 @@ import { adminStatusCell } from "../shared/admin-status";
 import { admin, date, money, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
-import { adminOrderPeriod, adminOrderPlan, adminOrderType, adminOrderTypeDescription, adminRepurchaseGap } from "./admin-order-labels";
+import { adminOrderPeriod, adminOrderPlan, adminOrderType, adminOrderTypeDescription, adminOrderPurchaseRecord, adminRepurchaseContext, adminRepurchaseGap } from "./admin-order-labels";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
 import { AdminDetails } from "./admin-section";
 import { adminUserLabel } from "./admin-user-label";
@@ -25,6 +25,8 @@ export function AdminOrderDetails({
     const detail = useData<Row>(admin("order/detail"), { id });
     const order = detail.data;
     const repurchaseGap = order && adminRepurchaseGap(order);
+    const purchaseRecord = order && adminOrderPurchaseRecord(order);
+    const repurchaseContext = order && adminRepurchaseContext(order);
     const typeDescription = order && adminOrderTypeDescription(order);
     const [copyFeedback, setCopyFeedback] = useState("");
     async function copyOrderNumber(tradeNumber: string) {
@@ -54,6 +56,8 @@ export function AdminOrderDetails({
                                 { label: "订单状态", value: adminStatusCell("status", "订单状态", order.status) },
                                 { label: "用户（ID / 邮箱）", value: renderUser(order) },
                                 { label: "类型", value: adminOrderType(order) },
+                                ...(purchaseRecord ? [{ label: "购买记录", value: purchaseRecord }] : []),
+                                ...(repurchaseContext ? [{ label: "回购情况", value: repurchaseContext }] : []),
                                 ...(repurchaseGap ? [{ label: "回购间隔", value: repurchaseGap }] : []),
                                 { label: "套餐", value: adminOrderPlan(order, plans) },
                                 { label: "周期", value: adminOrderPeriod(order) },

@@ -141,13 +141,16 @@ try {
     (new OrderService($firstPaid))->paid('purchase-stage-first');
     $firstDetail = $orderDetail($firstPaid);
     $assert($firstDetail['purchase_stage']==='first_purchase' && $firstDetail['type']===2
+        && !isset($firstDetail['repurchase_expiry_status'])
         && !isset($orderDetail($free)['purchase_stage']) && !isset($orderDetail($credit)['purchase_stage']),
         'A confirmed wallet renewal after free and credit orders can be the first recurring purchase');
     $firstPaidAt = $firstPaid->fresh()->paid_at;
     $oldRepeat = $makeStageOrder($firstBuyer, ['paid_at'=>$firstPaidAt]);
     $assert($orderDetail($firstPaid)['purchase_stage']==='first_purchase'
         && $orderDetail($oldRepeat)['purchase_stage']==='repeat_purchase'
+        && $orderDetail($oldRepeat)['repurchase_expiry_status']==='unknown'
         && $orderPage($firstBuyer, 1)->get($oldRepeat->id)['purchase_stage']==='repeat_purchase'
+        && $orderPage($firstBuyer, 1)->get($oldRepeat->id)['repurchase_expiry_status']==='unknown'
         && !isset($orderDetail($oldRepeat)['repurchase_gap_days']),
         'A payment timestamp tie uses order IDs, and a legacy repeat is identified without inventing an expiry');
     $makeStageOrder($firstBuyer, ['paid_at'=>null, 'created_at'=>$firstPaidAt+60]);
@@ -163,28 +166,34 @@ try {
         'paid_at'=>$stageNow-86400, 'created_at'=>$stageNow-86400]);
     $assert(!isset($orderDetail($legacyQuota)['purchase_stage'])
         && $orderDetail($firstChange)['purchase_stage']==='first_purchase'
-        && $orderDetail($historicalRepeat)['purchase_stage']==='repeat_purchase',
+        && $orderDetail($historicalRepeat)['purchase_stage']==='repeat_purchase'
+        && $orderDetail($historicalRepeat)['repurchase_expiry_status']==='unknown',
         'A free legacy quota followed by a paid plan change and a later cycle purchase retains distinct meanings');
     $historicalBuyer->expired_at=$stageNow-1;$historicalBuyer->save();
     $assert($orderDetail($historicalRepeat)['purchase_stage']==='repeat_purchase'
+        && $orderDetail($historicalRepeat)['repurchase_expiry_status']==='unknown'
         && !isset($orderDetail($historicalRepeat)['repurchase_gap_days']),
         'Neither a year between orders nor the current user expiry proves a historical return after expiry');
 
     $boundaryBuyer = $makeStageBuyer($priorExpiry);
     $makeStageOrder($boundaryBuyer);
     foreach ([
-        [$stageNow, $stageNow, $stageNow+1, 'expired_repurchase', 0],
-        [$stageNow-86399, $stageNow, $stageNow+1, 'expired_repurchase', 0],
-        [$stageNow-86400, $stageNow, $stageNow+1, 'expired_repurchase', 1],
-        [$stageNow+60, $stageNow, $stageNow+120, 'repeat_purchase', null],
-        [$stageNow-90*86400, $stageNow, $stageNow+1, 'repeat_purchase', null],
-        [null, $stageNow, $stageNow+1, 'repeat_purchase', null],
-    ] as [$expiry, $checkout, $payment, $expectedStage, $expectedDays]) {
+        [$stageNow, $stageNow, $stageNow+1, 'expired_repurchase', 'expired', 0],
+        [$stageNow-86399, $stageNow, $stageNow+1, 'expired_repurchase', 'expired', 0],
+        [$stageNow-86400, $stageNow, $stageNow+1, 'expired_repurchase', 'expired', 1],
+        [$stageNow+60, $stageNow, $stageNow+120, 'repeat_purchase', 'not_expired', null],
+        [$stageNow-90*86400, $stageNow, $stageNow+1, 'repeat_purchase', 'unknown', null],
+        [null, $stageNow, $stageNow+1, 'repeat_purchase', 'unknown', null],
+        [$stageNow, 0, $stageNow+1, 'repeat_purchase', 'unknown', null],
+        [$stageNow, $stageNow-90*86400, $stageNow+1, 'repeat_purchase', 'unknown', null],
+    ] as [$expiry, $checkout, $payment, $expectedStage, $expectedExpiryStatus, $expectedDays]) {
         // Isolate each checkout from the other boundary fixtures' payment histories.
         $boundary = $makeStageOrder($boundaryBuyer, ['type'=>2, 'created_at'=>$checkout,
             'paid_at'=>$payment, 'previous_subscription_expires_at'=>$expiry]);
         $boundaryDetail = $orderDetail($boundary);
         $assert($boundaryDetail['purchase_stage']===$expectedStage
+            && $boundaryDetail['repurchase_expiry_status']===$expectedExpiryStatus
+            && $orderPage($boundaryBuyer, 1)->get($boundary->id)['repurchase_expiry_status']===$expectedExpiryStatus
             && ($boundaryDetail['repurchase_gap_days'] ?? null)===$expectedDays,
             'Return evidence uses checkout expiry and earlier payment order, including sub-day and late-payment boundaries');
         $boundary->delete();
@@ -204,6 +213,8 @@ try {
         $excludedOrder = $makeStageOrder($excludedBuyer, $excludedValues);
         $assert(!isset($orderDetail($excludedOrder)['purchase_stage']),
             'Credits, resets, deposits, pure offsets, free and unconfirmed orders have no recurring purchase stage');
+        $assert(!isset($orderDetail($excludedOrder)['repurchase_expiry_status']),
+            'Orders outside confirmed repeat cycle purchases do not have a returning expiry assessment');
     }
     $walletFirst = $makeStageOrder($excludedBuyer, ['total_amount'=>0, 'balance_amount'=>500,
         'paid_at'=>$stageNow, 'created_at'=>$stageNow]);
@@ -236,8 +247,10 @@ try {
     $repurchasePage = $orderPage($returningBuyer, 1)->get($repurchase->id);
     $assert($returningBuyer->fresh()->expired_at > $stageNow
         && $repurchaseDetail['purchase_stage']==='expired_repurchase'
+        && $repurchaseDetail['repurchase_expiry_status']==='expired'
         && $repurchaseDetail['repurchase_gap_days']===14
         && $repurchasePage['purchase_stage']===$repurchaseDetail['purchase_stage']
+        && $repurchasePage['repurchase_expiry_status']===$repurchaseDetail['repurchase_expiry_status']
         && $repurchasePage['repurchase_gap_days']===$repurchaseDetail['repurchase_gap_days']
         && $orderPage($returningBuyer, 2)->get($priorPaid->id)['purchase_stage']==='first_purchase'
         && !array_key_exists('previous_subscription_expires_at', $repurchaseDetail),
@@ -252,6 +265,18 @@ try {
             && $savedRepurchase->fresh()->previous_subscription_expires_at===$priorExpiry,
             'The order retains its original expiry snapshot after an attempted update');
     }
+
+    $activeBuyer = $makeStageBuyer($stageNow+86400);
+    $makeStageOrder($activeBuyer);
+    $activeRenewal = $save($activeBuyer);
+    (new OrderService($activeRenewal))->paid('purchase-stage-active');
+    (new OrderService($activeRenewal->fresh()))->open();
+    $activeBuyer->refresh();$activeBuyer->expired_at=$stageNow-1;$activeBuyer->save();
+    $activeDetail = $orderDetail($activeRenewal);
+    $assert($activeDetail['type']===2 && $activeDetail['purchase_stage']==='repeat_purchase'
+        && $activeDetail['repurchase_expiry_status']==='not_expired'
+        && !isset($activeDetail['repurchase_gap_days']),
+        'A real renewal preserves its active checkout snapshot after fulfillment and a later account expiry edit');
 
     $originalPhpZone = date_default_timezone_get();
     // Pick a business zone where the fixture is well away from local midnight.

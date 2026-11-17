@@ -38,7 +38,7 @@ import AdminContent from "./admin-entry";
 import { adminMenu } from "./admin-shell";
 import { resources } from "./admin-resources";
 import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
-import { adminOrderPeriod, adminOrderType, adminRepurchaseGap } from "./admin-order-labels";
+import { adminOrderPeriod, adminOrderType, adminOrderPurchaseRecord, adminRepurchaseContext, adminRepurchaseGap } from "./admin-order-labels";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
@@ -70,7 +70,7 @@ const order = {
     commission_status: 0,
     status: 3,
 };
-it("distinguishes confirmed purchase stages in the type column and shows a sub-day return in order details", async () => {
+it("keeps purchase types concise and separates first-payment and sub-day return evidence in details", async () => {
     const periodic = { ...order, type: 1, period: "month_price", plan_id: 1 };
     const returning = { ...periodic, id: 3, trade_no: "returned-order", purchase_stage: "expired_repurchase", repurchase_gap_days: 0 };
     const rows = [
@@ -84,22 +84,36 @@ it("distinguishes confirmed purchase stages in the type column and shows a sub-d
         { ...periodic, id: 8, type: 2, purchase_stage: "repeat_purchase" },
         { ...periodic, id: 9, type: 3, purchase_stage: "repeat_purchase" },
     ];
-    api.request.mockImplementation(async (path: string) => path.includes("order/fetch")
+    api.request.mockImplementation(async (path: string, params?: { id?: number }) => path.includes("order/fetch")
         ? { data: rows, total: rows.length }
-        : path.endsWith("order/detail") ? { data: returning } : { data: [] });
+        : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
 
     render(<OrdersPage />);
-    for (const label of ["首购", "续费 · 首购", "到期回购", "变更套餐 · 到期回购", "周期购买", "额度购买", "再次购买", "续费", "变更套餐"]) {
+    for (const label of ["首购", "周期购买", "额度购买"]) {
         expect(await screen.findByRole("cell", { name: label })).toBeTruthy();
     }
+    for (const label of ["再次购买", "续费", "变更套餐"]) expect(screen.getAllByRole("cell", { name: label })).toHaveLength(2);
+    expect(screen.queryByText("续费 · 首购")).toBeNull();
+    expect(screen.queryByText("变更套餐 · 到期回购")).toBeNull();
+    expect(screen.queryByText("到期回购", { exact: true })).toBeNull();
     expect(screen.queryByText("续费 · 再次购买")).toBeNull();
     expect(screen.queryByText("变更套餐 · 再次购买")).toBeNull();
-    const row = screen.getByRole("cell", { name: "到期回购" }).closest("tr")!;
+    const row = screen.getAllByRole("cell", { name: "再次购买" })[0].closest("tr")!;
     fireEvent.click(within(row).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
     expect(await detail.findByText("到期后不足 1 天回购")).toBeTruthy();
     expect(detail.getByText("到期回购", { exact: true })).toBeTruthy();
-    expect(detail.getByText("此前已有付费周期套餐，下单时原周期已到期。")).toBeTruthy();
+    expect(detail.getByText("再次购买", { exact: true })).toBeTruthy();
+    expect(detail.queryByText("购买记录")).toBeNull();
+    expect(detail.getByText("下单时原周期已到期，依据下单时保存的到期记录确认。")).toBeTruthy();
+    fireEvent.click(detail.getByRole("button", { name: "关闭" }));
+    fireEvent.click(within(screen.getAllByRole("cell", { name: "续费" })[0].closest("tr")!).getByRole("button", { name: "订单详情" }));
+    const firstRenewal = within(await screen.findByRole("dialog", { name: "订单详情" }));
+    expect(await firstRenewal.findByText("首购", { exact: true })).toBeTruthy();
+    expect(firstRenewal.getByText("续费", { exact: true })).toBeTruthy();
+    expect(firstRenewal.getByText("购买记录")).toBeTruthy();
+    expect(firstRenewal.getByText("首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。")).toBeTruthy();
+    expect(firstRenewal.queryByText("回购情况")).toBeNull();
 });
 
 it("distinguishes a historical returning customer from their first paid recurring plan and free quota order", async () => {
@@ -114,7 +128,7 @@ it("distinguishes a historical returning customer from their first paid recurrin
     render(<OrdersPage />);
     const again = await screen.findByRole("cell", { name: "再次购买" });
     expect(within(again.closest("tr")!).getByText("CNY 406.40")).toBeTruthy();
-    expect(within(screen.getByRole("cell", { name: "变更套餐 · 首购" }).closest("tr")!).getByText("Pro-A")).toBeTruthy();
+    expect(within(screen.getByRole("cell", { name: "变更套餐" }).closest("tr")!).getByText("Pro-A")).toBeTruthy();
     const quotaRow = screen.getByRole("cell", { name: "额度购买" }).closest("tr")!;
     expect(within(quotaRow).getByText("Pro Quota-A")).toBeTruthy();
     expect(within(quotaRow).getByText("CNY 0.00")).toBeTruthy();
@@ -122,8 +136,34 @@ it("distinguishes a historical returning customer from their first paid recurrin
     expect(screen.queryByText("到期回购", { exact: true })).toBeNull();
     fireEvent.click(within(again.closest("tr")!).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
-    expect(await detail.findByText("此前已有付费周期套餐订单，本笔未确认属于到期回购。")).toBeTruthy();
+    expect(await detail.findByText("缺少可核实的下单前到期记录，无法确认是否到期回购。")).toBeTruthy();
+    expect(detail.getByText("到期情况不详")).toBeTruthy();
     expect(detail.queryByText("回购间隔")).toBeNull();
+});
+
+it("distinguishes missing historical expiry from known active and expired terms behind the same repeat label", async () => {
+    const rows = [
+        { ...order, id: 1, type: 1, period: "month_price", plan_name: "历史再次购买", purchase_stage: "repeat_purchase", repurchase_expiry_status: "unknown" },
+        { ...order, id: 2, type: 1, period: "month_price", plan_name: "有效期内再次购买", purchase_stage: "repeat_purchase", repurchase_expiry_status: "not_expired" },
+        { ...order, id: 3, type: 1, period: "month_price", plan_name: "到期后再次购买", purchase_stage: "expired_repurchase", repurchase_expiry_status: "expired", repurchase_gap_days: 2 },
+    ];
+    api.request.mockImplementation(async (path: string, params?: { id?: number }) => path.includes("order/fetch")
+        ? { data: rows, total: rows.length }
+        : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
+    render(<OrdersPage />);
+    expect(await screen.findAllByRole("cell", { name: "再次购买" })).toHaveLength(3);
+    const labels = ["到期情况不详", "有效期内购买", "到期回购"];
+    for (const [index, row] of rows.entries()) {
+        fireEvent.click(within(screen.getByText(row.plan_name).closest("tr")!).getByRole("button", { name: "订单详情" }));
+        const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
+        expect(await detail.findByText(labels[index], { exact: true })).toBeTruthy();
+        expect(detail.getByText("再次购买", { exact: true })).toBeTruthy();
+        for (const other of labels.filter(label => label !== labels[index])) expect(detail.queryByText(other, { exact: true })).toBeNull();
+        if (index === 2) expect(detail.getByText("到期 2 天后回购")).toBeTruthy();
+        else expect(detail.queryByText("回购间隔")).toBeNull();
+        if (index === 1) expect(detail.getByText("下单时原周期仍在有效期内。")).toBeTruthy();
+        fireEvent.click(detail.getByRole("button", { name: "关闭" }));
+    }
 });
 
 it("uses purchased products before legacy types or incompatible purchase stages", () => {
@@ -140,12 +180,17 @@ it("uses purchased products before legacy types or incompatible purchase stages"
         const view = render(<>{adminOrderType(value)}</>);
         expect(view.getByText(label)).toBeTruthy();
         expect(adminOrderPeriod(value)).toBe(period);
+        expect(adminOrderPurchaseRecord(value)).toBeUndefined();
+        expect(adminRepurchaseContext(value)).toBeUndefined();
         expect(adminRepurchaseGap(value)).toBeUndefined();
         view.unmount();
     }
     // The server's confirmed stage includes wallet payments, even when external payment is zero.
     render(<>{adminOrderType({ type: 1, period: "month_price", total_amount: 0, balance_amount: 3000, purchase_stage: "first_purchase" })}</>);
     expect(screen.getByTitle("首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。").textContent).toBe("首购");
+    expect(adminRepurchaseContext({ type: 2, period: "month_price", purchase_stage: "first_purchase", repurchase_expiry_status: "expired" })).toBeUndefined();
+    expect(adminRepurchaseGap({ type: 1, period: "month_price", ...stage, repurchase_expiry_status: "unknown" })).toBeUndefined();
+    expect(adminRepurchaseGap({ type: 1, period: "month_price", ...stage, repurchase_expiry_status: "not_expired" })).toBeUndefined();
 });
 
 it("keeps creation time first in commission review and shows the payment timestamp with it", async () => {

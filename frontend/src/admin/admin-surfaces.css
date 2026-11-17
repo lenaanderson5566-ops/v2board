@@ -97,7 +97,7 @@ body[data-console="admin"] .admin-order-amount { color: var(--admin-heading); fo
 body[data-console="admin"] .status-badge.admin-order-type {
     max-width: 100%;
     padding: 1px 6px;
-    white-space: normal;
+    white-space: nowrap;
 }
 body[data-console="admin"] .admin-order-type.order-type-returning {
     color: #6b21a8;

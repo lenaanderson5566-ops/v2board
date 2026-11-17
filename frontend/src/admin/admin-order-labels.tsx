@@ -42,14 +42,34 @@ function purchaseStageLabel(order: Row): OrderTypeLabel | undefined {
         label: "首购", tone: "first",
         description: "首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。",
     };
-    if (order.purchase_stage === "expired_repurchase") return {
-        label: "到期回购", tone: "returning",
-        description: "此前已有付费周期套餐，下单时原周期已到期。",
-    };
-    if (order.purchase_stage === "repeat_purchase" && String(order.type) === "1") return {
+    if (["repeat_purchase", "expired_repurchase"].includes(String(order.purchase_stage))) return {
         label: "再次购买", tone: "plan",
-        description: "此前已有付费周期套餐订单，本笔未确认属于到期回购。",
+        description: "此前已有付费周期套餐订单。",
     };
+}
+
+function repurchaseExpiryStatus(order: Row): "expired" | "not_expired" | "unknown" | undefined {
+    if (!isRecurringOrder(order) || !["repeat_purchase", "expired_repurchase"].includes(String(order.purchase_stage))) return;
+    // Preserve older server responses while preferring the explicit evidence field.
+    const status = order.repurchase_expiry_status ?? (order.purchase_stage === "expired_repurchase" ? "expired" : "unknown");
+    return status === "expired" || status === "not_expired" ? status : "unknown";
+}
+
+function repurchaseExpiryLabel(order: Row): OrderTypeLabel | undefined {
+    switch (repurchaseExpiryStatus(order)) {
+        case "expired": return {
+            label: "到期回购", tone: "returning",
+            description: "下单时原周期已到期，依据下单时保存的到期记录确认。",
+        };
+        case "not_expired": return {
+            label: "有效期内购买", tone: "plan",
+            description: "下单时原周期仍在有效期内。",
+        };
+        case "unknown": return {
+            label: "到期情况不详", tone: "neutral",
+            description: "缺少可核实的下单前到期记录，无法确认是否到期回购。",
+        };
+    }
 }
 
 function orderTypeLabel(order: Row): OrderTypeLabel {
@@ -63,16 +83,15 @@ function orderTypeLabel(order: Row): OrderTypeLabel {
     const key = String(order.type ?? "");
     const type = Object.hasOwn(orderTypes, key) ? orderTypes[key] : { label: key || "—", tone: "neutral" } as const;
     const stage = purchaseStageLabel(order);
-    if (stage) return key === "1" ? stage : { ...stage, label: `${type.label} · ${stage.label}` };
+    if (stage && key === "1") return stage;
     if (key === "1" && isRecurringOrder(order)) return {
         label: "周期购买", tone: "neutral",
-        description: "周期套餐购买，现有记录不足以确认首购或到期回购。",
+        description: "周期套餐购买，现有记录不足以确认首次实付或再次购买。",
     };
     return type;
 }
 
-export function adminOrderType(order: Row) {
-    const { label, tone, description } = orderTypeLabel(order);
+function orderBadge({ label, tone, description }: OrderTypeLabel) {
     if (label === "—") return label;
     return <span title={description}><StatusBadge className={`admin-order-type order-type-${tone}`}
         tone={tone === "first" ? "success" : tone === "plan" ? "info" : "neutral"}>
@@ -80,12 +99,26 @@ export function adminOrderType(order: Row) {
     </StatusBadge></span>;
 }
 
+export function adminOrderType(order: Row) {
+    return orderBadge(orderTypeLabel(order));
+}
+
+export function adminOrderPurchaseRecord(order: Row) {
+    const stage = purchaseStageLabel(order);
+    return String(order.type) !== "1" && stage ? orderBadge(stage) : undefined;
+}
+
+export function adminRepurchaseContext(order: Row) {
+    const context = repurchaseExpiryLabel(order);
+    return context ? orderBadge(context) : undefined;
+}
+
 export function adminOrderTypeDescription(order: Row): string | undefined {
-    return orderTypeLabel(order).description;
+    return repurchaseExpiryLabel(order)?.description ?? purchaseStageLabel(order)?.description ?? orderTypeLabel(order).description;
 }
 
 export function adminRepurchaseGap(order: Row): string | undefined {
-    if (order.purchase_stage !== "expired_repurchase" || !purchaseStageLabel(order)) return;
+    if (repurchaseExpiryStatus(order) !== "expired") return;
     const days = order.repurchase_gap_days;
     if (!Number.isSafeInteger(days) || days < 0) return;
     return days === 0 ? "到期后不足 1 天回购" : `到期 ${formatNumber(days)} 天后回购`;

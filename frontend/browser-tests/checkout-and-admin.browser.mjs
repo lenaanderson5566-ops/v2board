@@ -666,10 +666,14 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
         total_amount: 5880, created_at: 1791849600, paid_at: 1791849640,
         purchase_stage: "expired_repurchase", repurchase_gap_days: 23,
     };
+    const firstPurchase = {
+        ...order, id: 2, trade_no: "first-purchase", user_id: 8, email: "first@example.test",
+        purchase_stage: "first_purchase", repurchase_gap_days: undefined,
+    };
     await consoleFixture(context, "admin", (path, request) => {
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
-        if (path === "/api/v1/test-admin/order/fetch") return [order];
+        if (path === "/api/v1/test-admin/order/fetch") return [order, firstPurchase];
         if (path === "/api/v1/test-ops/risk/user-activity/fetch") return {
             user: { id: 7, email, current_plan_name: "当前生效的测试套餐", transfer_enable: 1073741824, expired_at: 1950000000, credit_balance: 1073741824 },
             events: [],
@@ -693,14 +697,33 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
         }
     });
     await page.goto(`${consoleOrigin}/admin.html#/orders`);
-    await expect(page.getByRole("cell", { name: "到期回购", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "订单详情" }).click();
+    const returningCell = page.getByRole("cell", { name: "到期回购", exact: true });
+    const returningType = returningCell.locator(".admin-order-type");
+    const firstType = page.getByRole("cell", { name: "首购", exact: true }).locator(".admin-order-type");
+    const badgeColors = badge => badge.evaluate(element => {
+        const { color, backgroundColor } = getComputedStyle(element);
+        return { color, backgroundColor };
+    });
+    await expect(returningType).toBeVisible();
+    await expect(returningType).toHaveClass(/\border-type-returning\b/);
+    await expect(firstType).toHaveClass(/\border-type-first\b/);
+    const returningColors = await badgeColors(returningType);
+    expect(returningColors.backgroundColor).not.toBe((await badgeColors(firstType)).backgroundColor);
+
+    const detailButton = page.getByRole("row").filter({ has: returningCell }).getByRole("button", { name: "订单详情" });
+    await detailButton.click();
     const details = page.getByRole("dialog", { name: "订单详情" });
     for (const name of ["订单概况", "金额与渠道", "支付诊断"]) {
         await expect(details.getByRole("heading", { name })).toBeVisible();
     }
     await expect(details.getByText(tradeNo, { exact: true })).toBeVisible();
     await expect(details.getByText("到期 23 天后回购", { exact: true })).toBeVisible();
+    const detailType = details.locator(".admin-order-type.order-type-returning");
+    await expect(detailType).toHaveText("到期回购");
+    expect(await badgeColors(detailType)).toEqual(returningColors);
+    const completion = details.getByText("已完成", { exact: true });
+    await expect(completion).toHaveAttribute("data-tone", "success");
+    expect((await badgeColors(completion)).backgroundColor).not.toBe(returningColors.backgroundColor);
     const user = details.getByRole("button", { name: `ID: 7 · ${email}` });
     await expect(user).toBeVisible();
     expect(await user.evaluate(button => button.scrollWidth <= button.clientWidth)).toBe(true);
@@ -746,7 +769,7 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await expect(details).toHaveCount(0);
 
     await page.setViewportSize({ width: 1280, height: 900 });
-    await page.getByRole("button", { name: "订单详情" }).click();
+    await detailButton.click();
     const overview = await details.getByRole("heading", { name: "订单概况" }).boundingBox();
     const payment = await details.getByRole("heading", { name: "金额与渠道" }).boundingBox();
     expect(overview.y).toBe(payment.y);

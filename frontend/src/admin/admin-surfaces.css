@@ -94,6 +94,21 @@ body[data-console="admin"] .admin-order-number > button { min-height: 32px; padd
 body[data-console="admin"] .admin-order-number > [role="status"] { flex-basis: 100%; font-size: 12px; }
 body[data-console="admin"] .admin-order-number > [role="status"]:empty { position: absolute; }
 body[data-console="admin"] .admin-order-amount { color: var(--admin-heading); font-size: 18px; }
+body[data-console="admin"] .status-badge.admin-order-type {
+    max-width: 100%;
+    padding: 1px 6px;
+    white-space: normal;
+}
+body[data-console="admin"] .admin-order-type.order-type-returning {
+    color: #6b21a8;
+    background: #faf5ff;
+    border-color: #e9d5ff;
+}
+body[data-console="admin"] .admin-order-type.order-type-traffic {
+    color: #115e59;
+    background: #f0fdfa;
+    border-color: #99f6e4;
+}
 @media (max-width: 720px) {
     body[data-console="admin"] .admin-order-detail-overview { grid-template-columns: minmax(0, 1fr); }
 }

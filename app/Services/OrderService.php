@@ -240,6 +240,13 @@ class OrderService
         $order->payment_snapshot = $snapshot;
     }
 
+    public static function recordPreviousSubscriptionExpiry(Order $order, User $user): void
+    {
+        if (isset(self::STR_TO_TIME[$order->period]) && $user->expired_at > 0) {
+            $order->previous_subscription_expires_at = (int) $user->expired_at;
+        }
+    }
+
     private function surplusValue(User $user, int $at): array
     {
         $quota = (int) $user->transfer_enable;

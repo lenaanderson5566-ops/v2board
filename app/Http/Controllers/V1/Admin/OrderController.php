@@ -10,6 +10,7 @@ use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\AdminOrderPurchaseStage;
 use App\Services\BillingCurrency;
 use App\Services\OrderService;
 use App\Services\TrafficCreditService;
@@ -43,6 +44,7 @@ class OrderController extends Controller
         $order = Order::find($request->input('id'));
         if (!$order) abort(500, '订单不存在');
         \App\Services\AdminUserIdentity::append(collect([$order]));
+        AdminOrderPurchaseStage::append(collect([$order]));
         $order['payment_display'] = \App\Services\OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
         $order['payment_provider'] = $order->payment_snapshot['provider'] ?? null;
         $order['callback_history'] = \App\Services\PaymentCallbackHistory::forOrder($order);
@@ -75,6 +77,7 @@ class OrderController extends Controller
         $res = $orderModel->forPage($current, $pageSize)
             ->get();
         \App\Services\AdminUserIdentity::append($res);
+        AdminOrderPurchaseStage::append($res);
         $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
         $payments = \App\Models\Payment::whereIn('id', $res->pluck('payment_id')->filter())->get()->keyBy('id');
         for ($i = 0; $i < count($res); $i++) {
@@ -183,6 +186,7 @@ class OrderController extends Controller
             }
 
             (new OrderService($order))->setInvite($user);
+            OrderService::recordPreviousSubscriptionExpiry($order, $user);
             abort_unless($order->save(), 500, '订单创建失败');
             return $order->trade_no;
         }, 3);

@@ -6,6 +6,9 @@ use Illuminate\Support\Facades\{DB,Schema};
 set_exception_handler(function($e){fwrite(STDERR,$e->getMessage().PHP_EOL);exit(1);});
 if(DB::select('SHOW TABLES'))throw new RuntimeException('Requires empty database');
 DB::unprepared(file_get_contents(__DIR__.'/../database/install.sql'));
+if (!Schema::hasColumn('v2_order', 'previous_subscription_expires_at')) {
+    throw new RuntimeException('Fresh installations require the order subscription expiry snapshot');
+}
 // Reproduce the pre-upgrade schema only inside this verified empty disposable database.
 foreach(['v2_user'=>['currency'],'v2_plan'=>['usd_prices'],'v2_payment'=>['currency'],'v2_order'=>['fx_snapshot'],'v2_coupon'=>['public_claim'],'v2_commission_log'=>['currency','order_currency']] as $table=>$columns) Schema::table($table,fn($t)=>$t->dropColumn($columns));
 Schema::drop('v2_coupon_wallet');Schema::drop('v2_exchange_rate');
@@ -29,6 +32,27 @@ $callbackTable = 'v2_payment_callback_event';
 Schema::drop($attemptTable);
 Schema::table($callbackTable, fn($table) => $table->dropColumn('raw_diagnostic'));
 $orderId = DB::table('v2_order')->where('trade_no', 'legacy-pending-fixture')->value('id');
+$expiryMigration = require __DIR__.'/../database/migrations/2026_11_17_000001_add_order_subscription_expiry_snapshot.php';
+$expiryMigration->down();
+$legacyOrder = DB::table('v2_order')->where('id', $orderId);
+$beforeExpiryUpgrade = (array) $legacyOrder->first();
+foreach ([1, 2] as $pass) $expiryMigration->up();
+$afterExpiryUpgrade = (array) $legacyOrder->first();
+if (!array_key_exists('previous_subscription_expires_at', $afterExpiryUpgrade)
+    || $afterExpiryUpgrade['previous_subscription_expires_at'] !== null) {
+    throw new RuntimeException('Upgrade must leave prior expiry unknown for old orders');
+}
+unset($afterExpiryUpgrade['previous_subscription_expires_at']);
+if ($beforeExpiryUpgrade !== $afterExpiryUpgrade) {
+    throw new RuntimeException('Order expiry migration changed historical order data');
+}
+$capturedExpiry = time() - 86400;
+$legacyOrder->update(['previous_subscription_expires_at' => $capturedExpiry]);
+$expiryMigration->up();
+if ((int) $legacyOrder->value('previous_subscription_expires_at') !== $capturedExpiry) {
+    throw new RuntimeException('Repeating the migration replaced a captured snapshot');
+}
+echo "Order subscription expiry upgrade: old order preserved across retries.\n";
 $event = [
     'order_id' => $orderId,
     'provider' => 'EPayQrcode',

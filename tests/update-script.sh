@@ -300,6 +300,8 @@ awk '/migrate --path=database\/migrations\/2026_10_13_000001_create_payment_call
      /migrate --path=database\/migrations\/2026_11_09_000003_add_raw_payment_diagnostics.php --force --no-interaction/ { raw=NR }
      END { exit !(callbacks && attempts && summary > attempts && raw > summary && raw > callbacks) }' calls.log
 grep -q 'Missing raw payment diagnostic column' calls.log
+grep -q 'migrate --path=database/migrations/2026_11_17_000001_add_order_subscription_expiry_snapshot.php --force --no-interaction' calls.log
+grep -q 'Missing order subscription expiry column' calls.log
 grep -q 'Missing plan translation source column' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
 new_site dirty

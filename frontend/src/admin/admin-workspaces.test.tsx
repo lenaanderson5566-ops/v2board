@@ -69,6 +69,32 @@ const order = {
     commission_status: 0,
     status: 3,
 };
+it("distinguishes confirmed purchase stages in the type column and shows a sub-day return in order details", async () => {
+    const periodic = { ...order, type: 1, period: "month_price", plan_id: 1 };
+    const returning = { ...periodic, id: 3, trade_no: "returned-order", purchase_stage: "expired_repurchase", repurchase_gap_days: 0 };
+    const rows = [
+        { ...periodic, purchase_stage: "first_purchase" },
+        { ...periodic, id: 2, type: 2, purchase_stage: "first_purchase" },
+        returning,
+        { ...returning, id: 4, type: 3 },
+        { ...periodic, id: 5 },
+        { ...periodic, id: 6, type: 5, period: "onetime_price" },
+    ];
+    api.request.mockImplementation(async (path: string) => path.includes("order/fetch")
+        ? { data: rows, total: rows.length }
+        : path.endsWith("order/detail") ? { data: returning } : { data: [] });
+
+    render(<OrdersPage />);
+    for (const label of ["首购", "续费 · 首购", "到期回购", "变更套餐 · 到期回购", "新购", "额度购买"]) {
+        expect(await screen.findByRole("cell", { name: label })).toBeTruthy();
+    }
+    const row = screen.getByRole("cell", { name: "到期回购" }).closest("tr")!;
+    fireEvent.click(within(row).getByRole("button", { name: "订单详情" }));
+    const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
+    expect(await detail.findByText("到期后不足 1 天回购")).toBeTruthy();
+    expect(detail.getByText("到期回购", { exact: true })).toBeTruthy();
+});
+
 it("keeps creation time first in commission review and shows the payment timestamp with it", async () => {
     api.request.mockImplementation(async (path: string) => path.includes("order/fetch")
         ? { data: [{ ...order, created_at: 1700000000, paid_at: 1700000060 }], total: 1 }

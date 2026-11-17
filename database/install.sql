@@ -210,6 +210,7 @@ CREATE TABLE `v2_order` (
                             `commission_balance` int(11) NOT NULL DEFAULT '0',
                             `actual_commission_balance` int(11) DEFAULT NULL COMMENT '实际支付佣金',
                             `paid_at` int(11) DEFAULT NULL,
+                            `previous_subscription_expires_at` bigint unsigned DEFAULT NULL,
                             `created_at` int(11) NOT NULL,
                             `updated_at` int(11) NOT NULL,
                             PRIMARY KEY (`id`),

@@ -316,7 +316,7 @@ foreach (['database','beanstalkd','redis'] as $connection) {
 
 $files = [];
 foreach (glob(__DIR__.'/../database/migrations/*.php') as $file) $files[basename($file, '.php')] = $file;
-$modern = array_values(array_filter(array_keys($files), fn($name) => str_starts_with($name, '2026_10')));
+$modern = array_values(array_filter(array_keys($files), fn($name) => strcmp($name, '2026_10_01') >= 0));
 $assert(count(array_diff(array_keys($files), $modern)) === 20, 'Expected legacy upgrade reproduction');
 $assert(App\Services\MigrationHealthService::pending($files, $modern, true) === [], 'Completed upgrade must be healthy');
 $withoutBaseline = array_values(array_diff($modern, ['2026_10_11_000000_ensure_operations_schema']));

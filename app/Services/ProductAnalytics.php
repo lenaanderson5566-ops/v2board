@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Schema;
 
 final class ProductAnalytics {
     public const PAGES = ['landing','register','login','forget','dashboard','plan','confirmation','payment','order','order_detail','activities','coupons','subscribe','knowledge','profile','security','invite','traffic','notifications','ticket','browser_guide','browser_prompt'];
-    private const RECURRING_PERIODS = ['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price'];
 
     private function registrationCohort(int $days, int $now, \DateTimeZone $zone): array {
         // Measure elapsed seconds before rounding to a complete local date. A
@@ -24,28 +23,10 @@ final class ProductAnalytics {
         return DB::table('v2_order as '.$alias)->whereIn($alias.'.status',[1,3,4])->where($alias.'.paid_at','>',0);
     }
 
-    private function recurringOrders(string $alias = 'o') {
-        return $this->confirmedOrders($alias)->where($alias.'.plan_id','>',0)->where(function($q) use($alias) {
-            $q->whereNull($alias.'.credit_bytes')->orWhere($alias.'.credit_bytes',0);
-        })
-            ->whereIn($alias.'.period',self::RECURRING_PERIODS);
-    }
-
     private function firstPurchase($cohort, int $registered, int $from, int $to): array {
         // A trial may make the first purchase a renewal/switch. Order.type and the
         // current account entitlement cannot establish lifetime purchase history.
-        $valued = $this->recurringOrders()->where('o.total_amount','>=',0)->whereRaw('COALESCE(o.balance_amount,0) >= 0')
-            ->whereRaw('o.total_amount + COALESCE(o.balance_amount,0) > 0');
-        $first = (clone $valued)->whereNotExists(function($prior) {
-            $prior->selectRaw('1')->from('v2_order as p')->whereColumn('p.user_id','o.user_id')
-                ->whereIn('p.status',[1,3,4])->where('p.paid_at','>',0)->where('p.plan_id','>',0)
-                ->where(function($q) { $q->whereNull('p.credit_bytes')->orWhere('p.credit_bytes',0); })
-                ->whereIn('p.period',self::RECURRING_PERIODS)->where('p.total_amount','>=',0)->whereRaw('COALESCE(p.balance_amount,0) >= 0')
-                ->whereRaw('p.total_amount + COALESCE(p.balance_amount,0) > 0')
-                ->where(function($q) { $q->whereColumn('p.paid_at','<','o.paid_at')->orWhere(function($tie) {
-                    $tie->whereColumn('p.paid_at','o.paid_at')->whereColumn('p.id','<','o.id');
-                }); });
-        });
+        $first = RecurringOrderPurchase::valued()->whereNotExists(RecurringOrderPurchase::prior()->selectRaw('1'));
         $first->select('o.user_id','o.paid_at','o.total_amount','o.balance_amount','o.callback_no','o.payment_id');
         $inWindow = (clone $cohort)->joinSub($first,'p','p.user_id','=','u.id')
             ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');

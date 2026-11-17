@@ -11,14 +11,17 @@ class Order extends Model
     protected static function booted() {
         static::updating(function ($order) {
             if ($order->isDirty('currency')) throw new \InvalidArgumentException('Order currency cannot be changed');
+            if ($order->isDirty('previous_subscription_expires_at')) {
+                throw new \InvalidArgumentException('Order subscription expiry snapshot cannot be changed');
+            }
         });
         static::creating(function ($order) {
             if (!in_array($order->currency, ['CNY','USD'], true)) throw new \InvalidArgumentException('Unsupported order currency');
         });
     }
     protected $dateFormat = 'U';
-    protected $guarded = ['id'];
-    protected $hidden = ['payment_snapshot', 'fx_snapshot'];
+    protected $guarded = ['id', 'previous_subscription_expires_at'];
+    protected $hidden = ['payment_snapshot', 'fx_snapshot', 'previous_subscription_expires_at'];
     protected $casts = [
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
@@ -26,6 +29,7 @@ class Order extends Model
         'credit_snapshot' => 'array',
         'payment_snapshot' => 'array',
         'fx_snapshot' => 'array',
-        'credit_bytes' => 'integer'
+        'credit_bytes' => 'integer',
+        'previous_subscription_expires_at' => 'integer',
     ];
 }

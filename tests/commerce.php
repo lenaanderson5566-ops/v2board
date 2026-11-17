@@ -8,7 +8,10 @@ use App\Jobs\OrderHandleJob;
 use App\Models\{User,Plan,Order,Payment,Coupon};
 use App\Services\{BillingCurrency,ExchangeRate,CouponWallet,OrderService,PaymentQuote};
 use App\Services\Actions\User\OrderActions;
+use App\Http\Controllers\V1\Admin\OrderController as AdminOrderController;
+use App\Http\Requests\Admin\OrderFetch;
 use App\Http\Requests\User\OrderSave;
+use Illuminate\Http\Request;
 $checks=0;$assert = \Tests\Support\Assertions::counter($checks);
 if (($argv[1] ?? '')==='install') {
     if(DB::select('SHOW TABLES'))throw new RuntimeException('Requires empty database');
@@ -99,6 +102,92 @@ try {
     (new OrderService($renew))->paid('test-paid');(new OrderService($renew->fresh()))->open();
     $assert($renew->fresh()->status===3 && $user->fresh()->expired_at>time()+25*86400,'Legacy CNY renewal fulfillment');
     $before=$user->fresh()->balance;(new OrderService($renew->fresh()))->open();$assert($user->fresh()->balance===$before,'Duplicate fulfillment changed wallet');
+
+    $stageNow = time();
+    $priorExpiry = $stageNow - 14 * 86400 - 3600;
+    $makeStageBuyer = static fn (int $expiresAt) => User::create([
+        'email'=>'purchase-stage-'.uniqid().'@example.test', 'password'=>'test',
+        'token'=>bin2hex(random_bytes(16)), 'uuid'=>Illuminate\Support\Str::uuid(),
+        'balance'=>1000, 'plan_id'=>$plan->id, 'group_id'=>$plan->group_id,
+        'transfer_enable'=>1073741824, 'expired_at'=>$expiresAt,
+    ]);
+    $makeStageOrder = static fn (User $owner, array $values = []) => Order::create($values + [
+        'user_id'=>$owner->id, 'plan_id'=>$plan->id, 'currency'=>$owner->currency,
+        'trade_no'=>bin2hex(random_bytes(16)), 'type'=>1, 'period'=>'month_price',
+        'status'=>3, 'total_amount'=>500, 'paid_at'=>$stageNow-60*86400, 'created_at'=>$stageNow-60*86400,
+    ]);
+    $adminOrders = new AdminOrderController();
+    $orderDetail = static fn (Order $order) => json_decode($adminOrders->detail(
+        Request::create('/', 'GET', ['id'=>$order->id])
+    )->getContent(), true, flags: JSON_THROW_ON_ERROR)['data'];
+    $orderPage = static fn (User $owner, int $page) => collect(json_decode($adminOrders->fetch(
+        OrderFetch::create('/', 'GET', ['current'=>$page, 'pageSize'=>10,
+            'filter'=>[['key'=>'user_id', 'condition'=>'=', 'value'=>$owner->id]]])
+    )->getContent(), true, flags: JSON_THROW_ON_ERROR)['data'])->keyBy('id');
+
+    $firstBuyer = $makeStageBuyer($stageNow+86400);
+    $free = $makeStageOrder($firstBuyer, ['total_amount'=>0, 'paid_at'=>null]);
+    $credit = $makeStageOrder($firstBuyer, ['type'=>5, 'period'=>'onetime_price', 'credit_bytes'=>1024, 'paid_at'=>0]);
+    $firstPaid = $save($firstBuyer);
+    $assert($firstPaid->type===2 && !isset($orderDetail($firstPaid)['purchase_stage']),
+        'An unpaid renewal does not have a purchase stage');
+    (new OrderService($firstPaid))->paid('purchase-stage-first');
+    $firstDetail = $orderDetail($firstPaid);
+    $assert($firstDetail['purchase_stage']==='first_purchase' && $firstDetail['type']===2
+        && !isset($orderDetail($free)['purchase_stage']) && !isset($orderDetail($credit)['purchase_stage']),
+        'A confirmed wallet renewal after free and credit orders can be the first recurring purchase');
+    $firstPaidAt = $firstPaid->fresh()->paid_at;
+    $oldRepeat = $makeStageOrder($firstBuyer, ['paid_at'=>$firstPaidAt]);
+    $assert($orderDetail($firstPaid)['purchase_stage']==='first_purchase'
+        && !isset($orderDetail($oldRepeat)['purchase_stage']),
+        'A payment timestamp tie uses order IDs, and legacy repeat purchases need an expiry snapshot');
+    $makeStageOrder($firstBuyer, ['paid_at'=>null, 'created_at'=>$firstPaidAt+60]);
+    $assert($orderDetail($firstPaid)['purchase_stage']==='first_purchase',
+        'An undated order created after the payment cannot hide the earlier first purchase');
+
+    foreach ([3=>null, 4=>0] as $historicalStatus => $unknownPaidAt) {
+        $legacyBuyer = $makeStageBuyer($priorExpiry);
+        $makeStageOrder($legacyBuyer, ['status'=>$historicalStatus, 'paid_at'=>$unknownPaidAt]);
+        $legacyRepurchase = $save($legacyBuyer);
+        (new OrderService($legacyRepurchase))->paid('purchase-stage-legacy');
+        $assert(!isset($orderDetail($legacyRepurchase)['purchase_stage'])
+            && !isset($orderPage($legacyBuyer, 1)->get($legacyRepurchase->id)['purchase_stage']),
+            'A prior valued legacy order without a payment timestamp leaves the purchase stage unknown');
+    }
+
+    $returningBuyer = $makeStageBuyer($priorExpiry);
+    $priorPaid = $makeStageOrder($returningBuyer, ['status'=>4]);
+    for ($i = 0; $i < 10; $i++) {
+        $makeStageOrder($returningBuyer, ['type'=>5, 'period'=>'onetime_price', 'credit_bytes'=>1024,
+            'created_at'=>$stageNow-30*86400, 'paid_at'=>$stageNow-30*86400]);
+    }
+    $repurchase = $save($returningBuyer);
+    $assert((int)$repurchase->previous_subscription_expires_at===$priorExpiry
+        && !isset($orderPage($returningBuyer, 1)->get($repurchase->id)['purchase_stage']),
+        'Checkout captures expiry before an unpaid returning order is confirmed');
+    (new OrderService($repurchase))->paid('purchase-stage-return');
+    (new OrderService($repurchase->fresh()))->open();
+    $repurchaseDetail = $orderDetail($repurchase);
+    $repurchasePage = $orderPage($returningBuyer, 1)->get($repurchase->id);
+    $assert($returningBuyer->fresh()->expired_at > $stageNow
+        && $repurchaseDetail['purchase_stage']==='expired_repurchase'
+        && $repurchaseDetail['repurchase_gap_days']===14
+        && $repurchasePage['purchase_stage']===$repurchaseDetail['purchase_stage']
+        && $repurchasePage['repurchase_gap_days']===$repurchaseDetail['repurchase_gap_days']
+        && $orderPage($returningBuyer, 2)->get($priorPaid->id)['purchase_stage']==='first_purchase'
+        && !array_key_exists('previous_subscription_expires_at', $repurchaseDetail),
+        'The saved gap survives fulfillment and pagination, uses offset order history, and keeps the raw snapshot private');
+    $savedRepurchase = $repurchase->fresh();
+    $savedRepurchase->previous_subscription_expires_at = $priorExpiry + 86400;
+    try {
+        $savedRepurchase->save();
+        throw new RuntimeException('Changing the checkout expiry snapshot unexpectedly succeeded');
+    } catch (InvalidArgumentException $error) {
+        $assert($error->getMessage()==='Order subscription expiry snapshot cannot be changed'
+            && $savedRepurchase->fresh()->previous_subscription_expires_at===$priorExpiry,
+            'The order retains its original expiry snapshot after an attempted update');
+    }
+
     $originalPhpZone = date_default_timezone_get();
     // Pick a business zone where the fixture is well away from local midnight.
     date_default_timezone_set((int)gmdate('G') < 12 ? 'Asia/Shanghai' : 'America/New_York');

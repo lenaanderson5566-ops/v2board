@@ -3,7 +3,7 @@ import { adminStatusCell } from "../shared/admin-status";
 import { admin, date, money, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
-import { adminOrderPeriod, adminOrderPlan, adminOrderType } from "./admin-order-labels";
+import { adminOrderPeriod, adminOrderPlan, adminOrderType, adminRepurchaseGap } from "./admin-order-labels";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
 import { AdminDetails } from "./admin-section";
 import { adminUserLabel } from "./admin-user-label";
@@ -24,6 +24,7 @@ export function AdminOrderDetails({
 }) {
     const detail = useData<Row>(admin("order/detail"), { id });
     const order = detail.data;
+    const repurchaseGap = order && adminRepurchaseGap(order);
     const [copyFeedback, setCopyFeedback] = useState("");
     async function copyOrderNumber(tradeNumber: string) {
         try {
@@ -52,6 +53,7 @@ export function AdminOrderDetails({
                                 { label: "订单状态", value: adminStatusCell("status", "订单状态", order.status) },
                                 { label: "用户（ID / 邮箱）", value: renderUser(order) },
                                 { label: "类型", value: adminOrderType(order) },
+                                ...(repurchaseGap ? [{ label: "回购间隔", value: repurchaseGap }] : []),
                                 { label: "套餐", value: adminOrderPlan(order, plans) },
                                 { label: "周期", value: adminOrderPeriod(order) },
                                 { label: "更新时间", value: date(order.updated_at) },

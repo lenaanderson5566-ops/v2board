@@ -181,6 +181,7 @@ class OrderActions
         }
 
         $orderService->setInvite($user);
+        OrderService::recordPreviousSubscriptionExpiry($order, $user);
 
         if (!$order->save()) {
             abort(request()->is('api/v10/*') ? 409 : 500, __('Failed to create order'));

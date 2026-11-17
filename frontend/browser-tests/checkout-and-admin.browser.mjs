@@ -662,8 +662,9 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     const creditRequests = [];
     const order = {
         id: 1, trade_no: tradeNo, user_id: 7, email,
-        currency: "CNY", period: "month_price", type: 1, status: 0, plan_id: 1,
-        total_amount: 5880, created_at: 1791849600,
+        currency: "CNY", period: "month_price", type: 1, status: 3, plan_id: 1,
+        total_amount: 5880, created_at: 1791849600, paid_at: 1791849640,
+        purchase_stage: "expired_repurchase", repurchase_gap_days: 23,
     };
     await consoleFixture(context, "admin", (path, request) => {
         if (path === "/api/v1/test-admin/config/fetch") return {};
@@ -692,12 +693,14 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
         }
     });
     await page.goto(`${consoleOrigin}/admin.html#/orders`);
+    await expect(page.getByRole("cell", { name: "到期回购", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "订单详情" }).click();
     const details = page.getByRole("dialog", { name: "订单详情" });
     for (const name of ["订单概况", "金额与渠道", "支付诊断"]) {
         await expect(details.getByRole("heading", { name })).toBeVisible();
     }
     await expect(details.getByText(tradeNo, { exact: true })).toBeVisible();
+    await expect(details.getByText("到期 23 天后回购", { exact: true })).toBeVisible();
     const user = details.getByRole("button", { name: `ID: 7 · ${email}` });
     await expect(user).toBeVisible();
     expect(await user.evaluate(button => button.scrollWidth <= button.clientWidth)).toBe(true);

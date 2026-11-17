@@ -78,6 +78,7 @@ class CheckRenewal extends Command
 
         $start = (int) $user->expired_at;
         $expiry = OrderService::periodExpiry($period, $start);
+        OrderService::recordPreviousSubscriptionExpiry($order, $user);
         $user->balance -= $payable;
         $user->expired_at = $expiry;
         $order->balance_amount = $payable;

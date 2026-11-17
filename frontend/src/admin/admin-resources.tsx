@@ -9,7 +9,6 @@ import { AdminRiskReview } from "./AdminRiskReview";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { ClientUaStats } from "./ClientUaStats";
 import { field, nameColumn, resetOptions } from "./admin-fields";
-import { adminUserLabel } from "./admin-user-label";
 import { adminOrderPeriod, adminOrderType } from "./admin-order-labels";
 import { adminPlanLabel } from "./admin-plan-reference";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
@@ -339,7 +338,7 @@ export const resources: Record<string, Resource> = {
             created,
             ["status", "状态", (r) => ["待支付", "开通中", "已取消", "已完成", "已折抵"][r.status]],
             ["total_amount", "金额", (r) => money(r.total_amount, r.currency)],
-            ["user_id", "用户（ID / 邮箱）", (r) => adminUserLabel(r)],
+            ["user_id", "用户（ID / 邮箱）", (r) => <AdminUserActivityLink row={r} />],
             ["type", "类型", adminOrderType],
             ["plan_name", "套餐"],
             ["payment_display", "支付方式"],

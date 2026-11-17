@@ -81,9 +81,9 @@
       "startupFileCount": 27,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-DFOR_otV.js",
+          "file": "assets/AdminApp-pXdXXHGV.js",
           "bytes": 322647,
-          "gzipBytes": 92665
+          "gzipBytes": 92664
         },
         {
           "file": "assets/render-app-BUWuuQgj.js",
@@ -107,7 +107,7 @@
         }
       ],
       "budget": 460800,
-      "totalBytes": 5134836,
+      "totalBytes": 5134841,
       "fileCount": 135
     }
   ],

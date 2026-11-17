@@ -736,6 +736,18 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     expect(returningColors.backgroundColor).not.toBe((await badgeColors(firstType)).backgroundColor);
     expect(returningColors).toEqual(await badgeColors(repeatType));
 
+    const identity = returningRow.getByRole("button", { name: `ID: 7 · ${email}` });
+    await identity.focus();
+    await page.keyboard.press("Enter");
+    const identityDrawer = page.getByRole("dialog", { name: /^用户详情/ });
+    await expect(identityDrawer.getByText("当前生效的测试套餐", { exact: true })).toBeVisible();
+    await expect(identityDrawer.getByRole("tab", { name: "订单", exact: true })).toBeVisible();
+    await expect(identityDrawer.getByRole("tab", { name: "流量额度包", exact: true })).toBeVisible();
+    await expect(page).toHaveURL(`${consoleOrigin}/admin.html#/orders`);
+    await page.keyboard.press("Escape");
+    await expect(identityDrawer).toHaveCount(0);
+    await expect(identity).toBeFocused();
+
     await repeatRow.getByRole("button", { name: "订单详情" }).click();
     const repeatDetails = page.getByRole("dialog", { name: "订单详情" });
     await expect(repeatDetails.getByText("缺少可核实的下单前到期记录，无法确认是否到期回购。", { exact: true })).toBeVisible();

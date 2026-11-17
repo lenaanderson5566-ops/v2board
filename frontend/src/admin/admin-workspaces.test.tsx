@@ -413,6 +413,16 @@ it("keeps order details primary and moves secondary actions into more without en
         expect(within(actions as HTMLElement).getAllByRole("button").map(button => button.textContent)).toEqual(["订单详情", "更多操作"]);
         expect(screen.queryByRole("button", { name: "查看用户" })).toBeNull();
         expect(screen.queryByRole("button", { name: "标记已付款" })).toBeNull();
+        const identity = screen.getByRole("button", { name: "ID: 7 · guest@example.com" });
+        expect(api.request.mock.calls.some(([path]) => path.includes("user-activity/fetch"))).toBe(false);
+        fireEvent.click(identity);
+        const identityDrawer = await screen.findByRole("dialog", { name: /用户详情.*guest@example.com/ });
+        await waitFor(() => expect(api.request.mock.calls.some(([path]) => path.includes("user-activity/fetch?user_id=7"))).toBe(true));
+        expect(within(identityDrawer).getByRole("tab", { name: "订单" })).toBeTruthy();
+        expect(within(identityDrawer).getByRole("tab", { name: "流量额度包" })).toBeTruthy();
+        fireEvent.click(within(identityDrawer).getByRole("button", { name: "关闭" }));
+        expect(window.location.hash).toBe("#/orders?trade_no=order-1");
+        expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("order-1");
         fireEvent.click(within(actions as HTMLElement).getByRole("button", { name: "更多操作" }));
         const openUser = screen.getByRole("button", { name: "查看用户" });
         for (const name of ["标记已付款", "取消"]) {

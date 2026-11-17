@@ -523,7 +523,7 @@ export function ResourcePage({
                             .filter(([key]) => !hiddenColumns.includes(key) && (!ownDisplaySettings || selectedColumns.includes(key)))
                             .map(([key, label, render]) => {
                                 if (kind === "users" && key === "id" && onUserDetails)
-                                    return [key, label, (r: Row) => <button className="link" onClick={() => onUserDetails(r)}>{adminUserLabel({user_id:r.id,email:r.email})}</button>] as [string,string,(r:Row)=>ReactNode];
+                                    return [key, label, (r: Row) => <button type="button" className="admin-user-details-button" onClick={() => onUserDetails(r)}>{adminUserLabel({user_id:r.id,email:r.email})}</button>] as [string,string,(r:Row)=>ReactNode];
                                 if (!render && (key === "plan_id" || key === "plan_name"))
                                     return [key, label, (r: Row) => orderResource ? adminOrderPlan(r, plans) : adminPlanLabel(r, plans)] as [string, string, (r: Row) => ReactNode];
                                 if (key === "limit_plan_ids")

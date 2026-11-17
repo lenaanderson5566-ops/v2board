@@ -483,8 +483,18 @@ test.describe("desktop admin frontend", () => {
         expect((await userLink.boundingBox()).width).toBeGreaterThanOrEqual(160);
         expect((await userRow.boundingBox()).height).toBeLessThan(62);
         expect((await userRow.locator(".table-actions").boundingBox()).width).toBeLessThan(165);
-        await expect(userLink).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-        await expect(userLink).toHaveCSS("border-top-width", "0px");
+        await expect(userLink).toHaveCSS("background-color", "rgb(255, 255, 255)");
+        await expect(userLink).toHaveCSS("border-top-width", "1px");
+        expect((await userLink.boundingBox()).height).toBeGreaterThanOrEqual(32);
+        await userLink.hover();
+        await expect(userLink).toHaveCSS("background-color", "rgb(248, 250, 252)");
+        await expect(userLink).toHaveCSS("color", "rgb(65, 69, 82)");
+        await expect(userLink).toHaveCSS("text-decoration-line", "none");
+        await userLink.focus();
+        await page.keyboard.press("Tab");
+        await page.keyboard.press("Shift+Tab");
+        await expect(userLink).toBeFocused();
+        await expect(userLink).toHaveCSS("outline-style", "solid");
         const viewport = page.locator(".users-page .table-viewport");
         const identity = userRow.locator('td[data-label="邮箱"]');
         const plan = userRow.locator('td[data-label="周期套餐"]');
@@ -737,6 +747,8 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     expect(returningColors).toEqual(await badgeColors(repeatType));
 
     const identity = returningRow.getByRole("button", { name: `ID: 7 · ${email}` });
+    await expect(identity).toHaveCSS("border-top-width", "1px");
+    await expect(identity).toHaveCSS("color", "rgb(65, 69, 82)");
     await identity.focus();
     await page.keyboard.press("Enter");
     const identityDrawer = page.getByRole("dialog", { name: /^用户详情/ });
@@ -747,6 +759,7 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await page.keyboard.press("Escape");
     await expect(identityDrawer).toHaveCount(0);
     await expect(identity).toBeFocused();
+    await expect(identity).toHaveCSS("text-decoration-line", "none");
 
     await repeatRow.getByRole("button", { name: "订单详情" }).click();
     const repeatDetails = page.getByRole("dialog", { name: "订单详情" });
@@ -781,6 +794,8 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     expect((await badgeColors(completion)).backgroundColor).not.toBe(returningColors.backgroundColor);
     const user = details.getByRole("button", { name: `ID: 7 · ${email}` });
     await expect(user).toBeVisible();
+    await expect(user).toHaveCSS("border-top-width", "1px");
+    await expect(user).toHaveCSS("color", "rgb(65, 69, 82)");
     expect(await user.evaluate(button => button.scrollWidth <= button.clientWidth)).toBe(true);
     const diagnostics = details.getByRole("region", { name: "支付诊断" });
     await expect(diagnostics.getByRole("link", { name: requestId })).toHaveAttribute("href", `#/system-log?request_id=${requestId}`);
@@ -820,6 +835,7 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await expect.poll(() => creditRequests).toEqual(["7"]);
     await page.keyboard.press("Escape");
     await expect(user).toBeFocused();
+    await expect(user).toHaveCSS("text-decoration-line", "none");
     await page.keyboard.press("Escape");
     await expect(details).toHaveCount(0);
 

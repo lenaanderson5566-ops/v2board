@@ -249,29 +249,31 @@ body[data-console="admin"] .user-toolbar > form.actions input { flex: 1 1 220px;
 body[data-console="admin"] .user-toolbar-actions { margin-left: auto; flex: 0 0 auto; }
 body[data-console="admin"] .user-toolbar-summary { flex: 1 1 100%; min-width: 0; display: grid; gap: 8px; }
 body[data-console="admin"] .user-toolbar-summary > p { margin: 0; }
-body[data-console="admin"] :is(.admin-user-activity-link, .users-page .table-viewport td > button.link) {
+body[data-console="admin"] button.admin-user-details-button {
     min-height: var(--admin-row-control-height);
     max-width: 100%;
     justify-content: flex-start;
-    padding: 4px 0;
-    border: 0;
-    background: transparent;
+    padding: 4px 10px;
+    border: 1px solid #cbd5e1;
+    background: var(--surface);
     box-shadow: none;
-    color: var(--accent);
+    color: var(--admin-text);
     text-align: start;
+    text-decoration: none;
     white-space: normal;
     overflow-wrap: anywhere;
 }
-body[data-console="admin"] :is(.admin-user-activity-link, .users-page .table-viewport td > button.link):hover {
-    background: transparent;
-    text-decoration: underline;
-    text-underline-offset: 3px;
+body[data-console="admin"] button.admin-user-details-button:not(:disabled):hover {
+    color: var(--admin-text);
+    border-color: #94a3b8;
+    background: var(--admin-surface-soft);
+    text-decoration: none;
 }
-body[data-console="admin"] :is(.admin-user-activity-link, .users-page .table-viewport td > button.link):focus-visible {
+body[data-console="admin"] button.admin-user-details-button:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
-body[data-console="admin"] .table-viewport td > :is(.admin-user-activity-link, .users-page button.link) {
+body[data-console="admin"] .table-viewport td > .admin-user-details-button {
     inline-size: clamp(10rem, 24vw, 17rem);
     max-width: none;
 }

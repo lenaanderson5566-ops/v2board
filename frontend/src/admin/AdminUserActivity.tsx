@@ -5,7 +5,7 @@ import { AdminUserDetails } from "./AdminUserDetails";
 
 export function AdminUserActivityLink({ row }: { row: Row }) {
     const [open, setOpen] = useState(false);
-    return <>{row.user_id ? <button type="button" className="link admin-user-activity-link" onClick={() => setOpen(true)}>{adminUserLabel(row)}</button> : adminUserLabel(row)}
+    return <>{row.user_id ? <button type="button" className="admin-user-details-button" onClick={() => setOpen(true)}>{adminUserLabel(row)}</button> : adminUserLabel(row)}
         {open && <AdminUserDetails key={row.user_id} row={{id:row.user_id,email:row.email}} close={() => setOpen(false)} />}
     </>;
 }

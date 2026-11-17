@@ -3,7 +3,7 @@ import { adminStatusCell } from "../shared/admin-status";
 import { admin, date, money, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
-import { adminOrderPeriod, adminOrderPlan, adminOrderType, adminRepurchaseGap } from "./admin-order-labels";
+import { adminOrderPeriod, adminOrderPlan, adminOrderType, adminOrderTypeDescription, adminRepurchaseGap } from "./admin-order-labels";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
 import { AdminDetails } from "./admin-section";
 import { adminUserLabel } from "./admin-user-label";
@@ -25,6 +25,7 @@ export function AdminOrderDetails({
     const detail = useData<Row>(admin("order/detail"), { id });
     const order = detail.data;
     const repurchaseGap = order && adminRepurchaseGap(order);
+    const typeDescription = order && adminOrderTypeDescription(order);
     const [copyFeedback, setCopyFeedback] = useState("");
     async function copyOrderNumber(tradeNumber: string) {
         try {
@@ -58,6 +59,7 @@ export function AdminOrderDetails({
                                 { label: "周期", value: adminOrderPeriod(order) },
                                 { label: "更新时间", value: date(order.updated_at) },
                             ]} />
+                            {typeDescription && <p className="muted">{typeDescription}</p>}
                         </section>
                         <section className="admin-detail-section">
                             <h3 className="admin-detail-section-head">金额与渠道</h3>

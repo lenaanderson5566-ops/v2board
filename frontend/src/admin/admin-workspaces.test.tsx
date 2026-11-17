@@ -38,6 +38,7 @@ import AdminContent from "./admin-entry";
 import { adminMenu } from "./admin-shell";
 import { resources } from "./admin-resources";
 import { AdminPlanTranslationWorkspace } from "./AdminPlanTranslationWorkspace";
+import { adminOrderPeriod, adminOrderType, adminRepurchaseGap } from "./admin-order-labels";
 it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
@@ -79,20 +80,72 @@ it("distinguishes confirmed purchase stages in the type column and shows a sub-d
         { ...returning, id: 4, type: 3 },
         { ...periodic, id: 5 },
         { ...periodic, id: 6, type: 5, period: "onetime_price" },
+        { ...periodic, id: 7, purchase_stage: "repeat_purchase" },
+        { ...periodic, id: 8, type: 2, purchase_stage: "repeat_purchase" },
+        { ...periodic, id: 9, type: 3, purchase_stage: "repeat_purchase" },
     ];
     api.request.mockImplementation(async (path: string) => path.includes("order/fetch")
         ? { data: rows, total: rows.length }
         : path.endsWith("order/detail") ? { data: returning } : { data: [] });
 
     render(<OrdersPage />);
-    for (const label of ["首购", "续费 · 首购", "到期回购", "变更套餐 · 到期回购", "新购", "额度购买"]) {
+    for (const label of ["首购", "续费 · 首购", "到期回购", "变更套餐 · 到期回购", "周期购买", "额度购买", "再次购买", "续费", "变更套餐"]) {
         expect(await screen.findByRole("cell", { name: label })).toBeTruthy();
     }
+    expect(screen.queryByText("续费 · 再次购买")).toBeNull();
+    expect(screen.queryByText("变更套餐 · 再次购买")).toBeNull();
     const row = screen.getByRole("cell", { name: "到期回购" }).closest("tr")!;
     fireEvent.click(within(row).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
     expect(await detail.findByText("到期后不足 1 天回购")).toBeTruthy();
     expect(detail.getByText("到期回购", { exact: true })).toBeTruthy();
+    expect(detail.getByText("此前已有付费周期套餐，下单时原周期已到期。")).toBeTruthy();
+});
+
+it("distinguishes a historical returning customer from their first paid recurring plan and free quota order", async () => {
+    const rows = [
+        { ...order, id: 3, type: 1, period: "year_price", plan_name: "Pro", total_amount: 40640, purchase_stage: "repeat_purchase" },
+        { ...order, id: 2, type: 3, period: "year_price", plan_name: "Pro-A", total_amount: 32340, purchase_stage: "first_purchase" },
+        { ...order, id: 1, type: 1, period: "onetime_price", plan_name: "Pro Quota-A", total_amount: 0 },
+    ];
+    api.request.mockImplementation(async (path: string, params?: { id?: number }) => path.includes("order/fetch")
+        ? { data: rows, total: rows.length }
+        : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
+    render(<OrdersPage />);
+    const again = await screen.findByRole("cell", { name: "再次购买" });
+    expect(within(again.closest("tr")!).getByText("CNY 406.40")).toBeTruthy();
+    expect(within(screen.getByRole("cell", { name: "变更套餐 · 首购" }).closest("tr")!).getByText("Pro-A")).toBeTruthy();
+    const quotaRow = screen.getByRole("cell", { name: "额度购买" }).closest("tr")!;
+    expect(within(quotaRow).getByText("Pro Quota-A")).toBeTruthy();
+    expect(within(quotaRow).getByText("CNY 0.00")).toBeTruthy();
+    expect(screen.queryByText("新购", { exact: true })).toBeNull();
+    expect(screen.queryByText("到期回购", { exact: true })).toBeNull();
+    fireEvent.click(within(again.closest("tr")!).getByRole("button", { name: "订单详情" }));
+    const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
+    expect(await detail.findByText("此前已有付费周期套餐订单，本笔未确认属于到期回购。")).toBeTruthy();
+    expect(detail.queryByText("回购间隔")).toBeNull();
+});
+
+it("uses purchased products before legacy types or incompatible purchase stages", () => {
+    const stage = { purchase_stage: "expired_repurchase", repurchase_gap_days: 3 };
+    const rows = [
+        { value: { type: 1, period: "onetime_price", ...stage }, label: "额度购买", period: "额度包" },
+        { value: { type: 3, period: "month_price", credit_bytes: 1024, ...stage }, label: "额度购买", period: "额度包" },
+        { value: { type: 1, period: "reset_price", ...stage }, label: "流量重置", period: "重置包" },
+        { value: { type: 1, period: "deposit", credit_bytes: 1024, ...stage }, label: "余额充值", period: "不适用" },
+        { value: { type: 9, period: "month_price", ...stage }, label: "余额充值", period: "不适用" },
+        { value: { type: 1, period: "unknown_period", ...stage }, label: "新购", period: "unknown_period" },
+    ];
+    for (const { value, label, period } of rows) {
+        const view = render(<>{adminOrderType(value)}</>);
+        expect(view.getByText(label)).toBeTruthy();
+        expect(adminOrderPeriod(value)).toBe(period);
+        expect(adminRepurchaseGap(value)).toBeUndefined();
+        view.unmount();
+    }
+    // The server's confirmed stage includes wallet payments, even when external payment is zero.
+    render(<>{adminOrderType({ type: 1, period: "month_price", total_amount: 0, balance_amount: 3000, purchase_stage: "first_purchase" })}</>);
+    expect(screen.getByTitle("首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。").textContent).toBe("首购");
 });
 
 it("keeps creation time first in commission review and shows the payment timestamp with it", async () => {

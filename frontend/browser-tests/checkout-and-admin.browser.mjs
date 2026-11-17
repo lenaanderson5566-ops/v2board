@@ -670,10 +670,18 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
         ...order, id: 2, trade_no: "first-purchase", user_id: 8, email: "first@example.test",
         purchase_stage: "first_purchase", repurchase_gap_days: undefined,
     };
+    const repeatPurchase = {
+        ...order, id: 3, trade_no: "historical-repeat-purchase",
+        purchase_stage: "repeat_purchase", repurchase_gap_days: undefined,
+    };
+    const legacyCredit = {
+        ...order, id: 4, trade_no: "historical-credit-purchase", period: "onetime_price",
+        purchase_stage: undefined, repurchase_gap_days: undefined,
+    };
     await consoleFixture(context, "admin", (path, request) => {
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
-        if (path === "/api/v1/test-admin/order/fetch") return [order, firstPurchase];
+        if (path === "/api/v1/test-admin/order/fetch") return [order, firstPurchase, repeatPurchase, legacyCredit];
         if (path === "/api/v1/test-ops/risk/user-activity/fetch") return {
             user: { id: 7, email, current_plan_name: "当前生效的测试套餐", transfer_enable: 1073741824, expired_at: 1950000000, credit_balance: 1073741824 },
             events: [],
@@ -682,6 +690,7 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
             creditRequests.push(new URL(request.url()).searchParams.get("user_id"));
             return [];
         }
+        if (path === "/api/v1/test-admin/order/detail" && request.postDataJSON()?.id === 3) return repeatPurchase;
         if (path === "/api/v1/test-admin/order/detail") return {
             ...order,
             payment_attempt_history: { available: true, events: [{
@@ -707,8 +716,23 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await expect(returningType).toBeVisible();
     await expect(returningType).toHaveClass(/\border-type-returning\b/);
     await expect(firstType).toHaveClass(/\border-type-first\b/);
+    const repeatCell = page.getByRole("cell", { name: "再次购买", exact: true });
+    const repeatType = repeatCell.locator(".admin-order-type");
+    await expect(repeatType).toHaveClass(/\border-type-plan\b/);
+    await expect(repeatType).toHaveAttribute("data-tone", "info");
+    await expect(page.getByRole("cell", { name: "额度购买", exact: true }).locator(".admin-order-type"))
+        .toHaveClass(/\border-type-traffic\b/);
+    await expect(page.getByRole("cell", { name: "新购", exact: true })).toHaveCount(0);
     const returningColors = await badgeColors(returningType);
     expect(returningColors.backgroundColor).not.toBe((await badgeColors(firstType)).backgroundColor);
+    expect(returningColors.backgroundColor).not.toBe((await badgeColors(repeatType)).backgroundColor);
+
+    await page.getByRole("row").filter({ has: repeatCell }).getByRole("button", { name: "订单详情" }).click();
+    const repeatDetails = page.getByRole("dialog", { name: "订单详情" });
+    await expect(repeatDetails.getByText("此前已有付费周期套餐订单，本笔未确认属于到期回购。", { exact: true })).toBeVisible();
+    await expect(repeatDetails.getByText("回购间隔", { exact: true })).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(repeatDetails).toHaveCount(0);
 
     const detailButton = page.getByRole("row").filter({ has: returningCell }).getByRole("button", { name: "订单详情" });
     await detailButton.click();

@@ -111,11 +111,18 @@ try {
         'balance'=>1000, 'plan_id'=>$plan->id, 'group_id'=>$plan->group_id,
         'transfer_enable'=>1073741824, 'expired_at'=>$expiresAt,
     ]);
-    $makeStageOrder = static fn (User $owner, array $values = []) => Order::create($values + [
-        'user_id'=>$owner->id, 'plan_id'=>$plan->id, 'currency'=>$owner->currency,
-        'trade_no'=>bin2hex(random_bytes(16)), 'type'=>1, 'period'=>'month_price',
-        'status'=>3, 'total_amount'=>500, 'paid_at'=>$stageNow-60*86400, 'created_at'=>$stageNow-60*86400,
-    ]);
+    $makeStageOrder = static function (User $owner, array $values = []) use ($plan, $stageNow): Order {
+        $previousExpiry = $values['previous_subscription_expires_at'] ?? null;
+        unset($values['previous_subscription_expires_at']);
+        $order = new Order($values + [
+            'user_id'=>$owner->id, 'plan_id'=>$plan->id, 'currency'=>$owner->currency,
+            'trade_no'=>bin2hex(random_bytes(16)), 'type'=>1, 'period'=>'month_price',
+            'status'=>3, 'total_amount'=>500, 'paid_at'=>$stageNow-60*86400, 'created_at'=>$stageNow-60*86400,
+        ]);
+        $order->previous_subscription_expires_at = $previousExpiry;
+        $order->save();
+        return $order;
+    };
     $adminOrders = new AdminOrderController();
     $orderDetail = static fn (Order $order) => json_decode($adminOrders->detail(
         Request::create('/', 'GET', ['id'=>$order->id])
@@ -139,11 +146,69 @@ try {
     $firstPaidAt = $firstPaid->fresh()->paid_at;
     $oldRepeat = $makeStageOrder($firstBuyer, ['paid_at'=>$firstPaidAt]);
     $assert($orderDetail($firstPaid)['purchase_stage']==='first_purchase'
-        && !isset($orderDetail($oldRepeat)['purchase_stage']),
-        'A payment timestamp tie uses order IDs, and legacy repeat purchases need an expiry snapshot');
+        && $orderDetail($oldRepeat)['purchase_stage']==='repeat_purchase'
+        && $orderPage($firstBuyer, 1)->get($oldRepeat->id)['purchase_stage']==='repeat_purchase'
+        && !isset($orderDetail($oldRepeat)['repurchase_gap_days']),
+        'A payment timestamp tie uses order IDs, and a legacy repeat is identified without inventing an expiry');
     $makeStageOrder($firstBuyer, ['paid_at'=>null, 'created_at'=>$firstPaidAt+60]);
     $assert($orderDetail($firstPaid)['purchase_stage']==='first_purchase',
         'An undated order created after the payment cannot hide the earlier first purchase');
+
+    $historicalBuyer = $makeStageBuyer($stageNow+86400);
+    $legacyQuota = $makeStageOrder($historicalBuyer, ['period'=>'onetime_price', 'total_amount'=>0,
+        'paid_at'=>null, 'created_at'=>$stageNow-480*86400]);
+    $firstChange = $makeStageOrder($historicalBuyer, ['type'=>3, 'period'=>'year_price',
+        'total_amount'=>32340, 'paid_at'=>$stageNow-366*86400, 'created_at'=>$stageNow-366*86400]);
+    $historicalRepeat = $makeStageOrder($historicalBuyer, ['period'=>'year_price', 'total_amount'=>40640,
+        'paid_at'=>$stageNow-86400, 'created_at'=>$stageNow-86400]);
+    $assert(!isset($orderDetail($legacyQuota)['purchase_stage'])
+        && $orderDetail($firstChange)['purchase_stage']==='first_purchase'
+        && $orderDetail($historicalRepeat)['purchase_stage']==='repeat_purchase',
+        'A free legacy quota followed by a paid plan change and a later cycle purchase retains distinct meanings');
+    $historicalBuyer->expired_at=$stageNow-1;$historicalBuyer->save();
+    $assert($orderDetail($historicalRepeat)['purchase_stage']==='repeat_purchase'
+        && !isset($orderDetail($historicalRepeat)['repurchase_gap_days']),
+        'Neither a year between orders nor the current user expiry proves a historical return after expiry');
+
+    $boundaryBuyer = $makeStageBuyer($priorExpiry);
+    $makeStageOrder($boundaryBuyer);
+    foreach ([
+        [$stageNow, $stageNow, $stageNow+1, 'expired_repurchase', 0],
+        [$stageNow-86399, $stageNow, $stageNow+1, 'expired_repurchase', 0],
+        [$stageNow-86400, $stageNow, $stageNow+1, 'expired_repurchase', 1],
+        [$stageNow+60, $stageNow, $stageNow+120, 'repeat_purchase', null],
+        [$stageNow-90*86400, $stageNow, $stageNow+1, 'repeat_purchase', null],
+        [null, $stageNow, $stageNow+1, 'repeat_purchase', null],
+    ] as [$expiry, $checkout, $payment, $expectedStage, $expectedDays]) {
+        // Isolate each checkout from the other boundary fixtures' payment histories.
+        $boundary = $makeStageOrder($boundaryBuyer, ['type'=>2, 'created_at'=>$checkout,
+            'paid_at'=>$payment, 'previous_subscription_expires_at'=>$expiry]);
+        $boundaryDetail = $orderDetail($boundary);
+        $assert($boundaryDetail['purchase_stage']===$expectedStage
+            && ($boundaryDetail['repurchase_gap_days'] ?? null)===$expectedDays,
+            'Return evidence uses checkout expiry and earlier payment order, including sub-day and late-payment boundaries');
+        $boundary->delete();
+    }
+
+    $excludedBuyer = $makeStageBuyer($priorExpiry);
+    foreach ([
+        ['period'=>'onetime_price'],
+        ['period'=>'reset_price'],
+        ['period'=>'deposit', 'type'=>9, 'plan_id'=>0],
+        ['type'=>5, 'credit_bytes'=>1024],
+        ['total_amount'=>0, 'balance_amount'=>0, 'surplus_amount'=>500],
+        ['total_amount'=>0, 'balance_amount'=>0],
+        ['status'=>0],
+        ['status'=>2],
+    ] as $excludedValues) {
+        $excludedOrder = $makeStageOrder($excludedBuyer, $excludedValues);
+        $assert(!isset($orderDetail($excludedOrder)['purchase_stage']),
+            'Credits, resets, deposits, pure offsets, free and unconfirmed orders have no recurring purchase stage');
+    }
+    $walletFirst = $makeStageOrder($excludedBuyer, ['total_amount'=>0, 'balance_amount'=>500,
+        'paid_at'=>$stageNow, 'created_at'=>$stageNow]);
+    $assert($orderDetail($walletFirst)['purchase_stage']==='first_purchase',
+        'Balance-funded cycle purchases qualify even when the external payment column is zero');
 
     foreach ([3=>null, 4=>0] as $historicalStatus => $unknownPaidAt) {
         $legacyBuyer = $makeStageBuyer($priorExpiry);

@@ -50,6 +50,9 @@ final class AdminOrderPurchaseStage
                 && (int) $purchase->prior_paid_at <= $previousExpiry) {
                 $order['purchase_stage'] = 'expired_repurchase';
                 $order['repurchase_gap_days'] = intdiv($createdAt - $previousExpiry, 86400);
+            } else {
+                // Paid history proves a repeat, but cannot reconstruct the entitlement at checkout.
+                $order['purchase_stage'] = 'repeat_purchase';
             }
         }
     }

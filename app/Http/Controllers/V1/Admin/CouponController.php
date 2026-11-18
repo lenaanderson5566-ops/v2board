@@ -128,15 +128,4 @@ class CouponController extends Controller
             'data' => true
         ]);
     }
-    public function issue(Request $request)
-    {
-        $values = $request->validate(['coupon_id'=>'required|integer|min:1','user_ids'=>'required|array|min:1|max:100','user_ids.*'=>'required|integer|min:1|distinct|exists:v2_user,id']);
-        $ids = DB::transaction(function() use ($values, $request) {
-            $result = [];
-            $users = $values['user_ids']; sort($users, SORT_NUMERIC);
-            foreach ($users as $id) $result[] = \App\Services\CouponWallet::issue((int)$id, (int)$values['coupon_id'], (int)$request->user['id']);
-            return $result;
-        }, 3);
-        return response(['data'=>['issued'=>count($ids)]]);
-    }
 }

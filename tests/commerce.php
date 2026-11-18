@@ -433,8 +433,8 @@ try {
     $assert($discount->discount_amount===300 && DB::table('v2_coupon_wallet')->where('id',$wallet)->value('order_id')===$discount->id,'Issued terms were not frozen');
     (new OrderService($discount))->cancel();$assert(DB::table('v2_coupon_wallet')->where('id',$wallet)->value('order_id')===null,'Cancellation did not release coupon');
     try{$save($usd,['wallet_coupon_id'=>$wallet]);throw new RuntimeException('Foreign coupon accepted');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Coupon ownership error');}
-    $issued=CouponWallet::issue($usd->id,$coupon->id,1);$assert($coupon->fresh()->limit_use===0 && $issued!==$wallet,'Admin issue reserves stock');
-    $coupon->public_claim=0;$coupon->save();$assert(CouponWallet::issue($usd->id,$coupon->id,1)===$issued,'Admin issue idempotency');
+    $issued=CouponWallet::issue($usd->id,$coupon->id);$assert($coupon->fresh()->limit_use===0 && $issued!==$wallet,'A second user claims the remaining stock');
+    $coupon->public_claim=0;$coupon->save();$assert(CouponWallet::issue($usd->id,$coupon->id)===$issued,'A repeat claim returns the issued wallet after public claims close');
     Http::fake(['open.er-api.com/*'=>Http::response(['result'=>'success','base_code'=>'USD','rates'=>['CNY'=>7.25],'time_last_update_unix'=>time()])]);
     DB::table('v2_exchange_rate')->where('id',1)->update(['automatic_day'=>null,'attempted_at'=>null]);
     $assert(ExchangeRate::refresh(),'Initial rate fetch');$assert(!ExchangeRate::refresh(),'Automatic fetch repeated');Http::assertSentCount(1);

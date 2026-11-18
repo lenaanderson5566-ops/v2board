@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Models\CommissionLog;
 use App\Models\Order;
 use App\Models\ServerV2box;
-use App\Models\Stat;
 use App\Models\StatServer;
 use App\Models\StatUser;
 use App\Models\Ticket;
@@ -50,61 +49,10 @@ class StatController extends Controller
         return $overview;
     }
 
-    public function getOrder(Request $request)
-    {
-        $statistics = Stat::where('record_type', 'd')
-            ->limit(31)
-            ->orderBy('record_at', 'DESC')
-            ->get()
-            ->toArray();
-        $result = [];
-        foreach ($statistics as $statistic) {
-            $date = date('m-d', $statistic['record_at']);
-            $result[] = [
-                'type' => '注册人数',
-                'date' => $date,
-                'value' => $statistic['register_count']
-            ];
-            $result[] = [
-                'type' => '收款金额 (CNY)',
-                'date' => $date,
-                'value' => $statistic['paid_total'] / 100
-            ];
-            $result[] = [
-                'type' => '收款笔数',
-                'date' => $date,
-                'value' => $statistic['paid_count']
-            ];
-            $result[] = [
-                'type' => '佣金金额(已发放，CNY)',
-                'date' => $date,
-                'value' => $statistic['commission_total'] / 100
-            ];
-            $result[] = [
-                'type' => '佣金笔数(已发放)',
-                'date' => $date,
-                'value' => $statistic['commission_count']
-            ];
-        }
-        $result = array_reverse($result);
-        return [
-            'data' => $result
-        ];
-    }
-
-    public function getServerLastRank()
-    {
-        $endAt = strtotime(date('Y-m-d'));
-        return $this->serverRank(strtotime('-1 day', $endAt), $endAt);
-    }
-
     public function getServerTodayRank()
     {
-        return $this->serverRank(strtotime(date('Y-m-d')), time());
-    }
-
-    private function serverRank(int $startAt, int $endAt): array
-    {
+        $startAt = strtotime(date('Y-m-d'));
+        $endAt = time();
         $statistics = StatServer::where('server_type', 'v2box')->select([
             'server_id', 'server_type',
             DB::raw('SUM(u) as u'), DB::raw('SUM(d) as d'),
@@ -133,17 +81,8 @@ class StatController extends Controller
 
     public function getUserTodayRank()
     {
-        return $this->userRank(strtotime(date('Y-m-d')), time());
-    }
-
-    public function getUserLastRank()
-    {
-        $endAt = strtotime(date('Y-m-d'));
-        return $this->userRank(strtotime('-1 day', $endAt), $endAt);
-    }
-
-    private function userRank(int $startAt, int $endAt): array
-    {
+        $startAt = strtotime(date('Y-m-d'));
+        $endAt = time();
         // Aggregate all rate buckets before limiting; a busy user can have many rows.
         $statistics = StatUser::select([
             'user_id',

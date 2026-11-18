@@ -7,8 +7,8 @@ $kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
 $configPath = base_path('config/fastai.php');
 $originalFile = is_file($configPath) ? file_get_contents($configPath) : null;
 $originalConfig = config('fastai');
-$securePath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
-$opsPath = config('fastai.ops_api_path', 'ops');
+$securePath = App\Http\Routes\V1\AdminRoute::prefix();
+$opsPath = $securePath . '/ops';
 $checks = 0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $call = function (string $path, ?array $body = null, ?string $token = null, ?string $language = null, string $accept = 'application/json', ?string $method = null) use ($kernel) {
@@ -85,7 +85,8 @@ try {
         $dashboardReportUrl.'?days=7&device=mobile&view=traffic'=>'sourceCoverage',
         $dashboardReportUrl.'?days=7&device=mobile&view=conversion'=>'firstPurchase',
         '/api/v1/'.$securePath.'/analytics/journey?days=7&device=mobile&view=experience'=>'experience',
-        $dashboardRiskUrl.'?window=7d&view=dashboard'=>'blacklist',
+        $dashboardRiskUrl.'?window=7d'=>'blacklist',
+        $dashboardRiskUrl.'?window=7d&view=dashboard'=>'review_queue',
     ] as $dashboardUrl => $metric) {
         $dashboardResponse = $call($dashboardUrl, null, $token);
         $assert($dashboardResponse->getStatusCode()===200 && isset(json_decode($dashboardResponse->getContent(), true)['data'][$metric])
@@ -309,16 +310,29 @@ try {
     }
     $response = $call('/api/v1/' . $securePath . '/config/fetch', null, $token);
     $config = json_decode($response->getContent(), true)['data'];
-    foreach ([$securePath . '/config/getEmailTemplate', $opsPath . '/risk/user-usage/fetch'] as $retiredPath) {
-        foreach ([$token, null] as $credential) {
+    $oldStrategy = App\Models\ClientStrategy::create(['client_type'=>'retired-smoke', 'client_name'=>'Retired client', 'is_enabled'=>0]);
+    foreach ([$token, null] as $credential) {
+        foreach ([$securePath . '/config/getEmailTemplate', $opsPath . '/risk/user-usage/fetch', 'ops/risk/summary/fetch'] as $retiredPath) {
             $assert($call('/api/v1/' . $retiredPath, null, $credential)->getStatusCode() === 404,
                 'Retired administrative listing is still routed: ' . $retiredPath);
         }
-    }
-    $oldStrategy = App\Models\ClientStrategy::create(['client_type'=>'retired-smoke', 'client_name'=>'Retired client', 'is_enabled'=>0]);
-    foreach ([$token, null] as $credential) {
         $assert($call('/api/v1/' . $opsPath . '/client/strategy/delete', ['client_type'=>$oldStrategy->client_type], $credential)->getStatusCode() === 404,
             'Retired strategy deletion is still routed');
+        $assert($call('/api/v1/ops/log/rule-hit/review', [], $credential)->getStatusCode() === 404,
+            'Retired operations write endpoint is still routed');
+        foreach ([
+            'ops/risk/settings/fetch' => null,
+            'ops/risk/settings/update' => [],
+            'ops/risk/overview/fetch' => null,
+            'stat/getOrder' => null,
+            'stat/getServerLastRank' => null,
+            'stat/getUserLastRank' => null,
+            'coupon/issue' => [],
+            'system/getQueueStats' => null,
+        ] as $retiredPath => $body) {
+            $assert($call('/api/v1/'.$securePath.'/'.$retiredPath, $body, $credential)->getStatusCode() === 404,
+                'Retired management endpoint is still routed: '.$retiredPath);
+        }
     }
     $assert($oldStrategy->fresh() !== null, 'Removing the old strategy endpoint must preserve historical records');
     $assert(!array_key_exists('email_template', $config['email']), 'Retired mail theme selector is still exposed');
@@ -866,11 +880,11 @@ try {
     $assert($response->getStatusCode() === 200 && $ticket->refresh()->status === 1, 'Ticket close failed');
     $overviewAfterClose = $call($overviewPath, null, $token);
     $assert($overviewAfterClose->getStatusCode() === 200 && json_decode($overviewAfterClose->getContent(), true)['data']['ticket_pending_total'] === $pendingTickets - 1, 'Dashboard retained the closed ticket after a cached overview was loaded');
-    foreach (['stat/getServerTodayRank', 'stat/getServerLastRank', 'stat/getUserTodayRank', 'stat/getUserLastRank', 'stat/getOrder', 'system/getQueueWorkload', 'system/getQueueMasters'] as $endpoint) {
+    foreach (['stat/getServerTodayRank', 'stat/getUserTodayRank', 'system/logRetention', 'system/getQueueWorkload', 'system/getQueueMasters'] as $endpoint) {
         $assert($call('/api/v1/' . $securePath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Legacy read control failed: ' . $endpoint);
         $assert($call('/api/v1/' . $securePath . '/' . $endpoint)->getStatusCode() === 403, 'Legacy control lacks admin authentication: ' . $endpoint);
     }
-    foreach (['risk/overview/fetch', 'risk/rule/fetch', 'risk/settings/fetch', 'client/strategy/fetch', 'log/login/fetch',
+    foreach (['risk/summary/fetch?view=dashboard', 'risk/rule/fetch', 'client/strategy/fetch', 'log/login/fetch',
         'risk/online-user/fetch', 'risk/user-activity/fetch?user_id=' . $subject->id] as $endpoint) {
         $assert($call('/api/v1/' . $opsPath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Unified operations endpoint failed: ' . $endpoint);
         $assert($call('/api/v1/' . $opsPath . '/' . $endpoint)->getStatusCode() === 403, 'Operations endpoint requires administrator authentication: ' . $endpoint);
@@ -985,7 +999,7 @@ PHP;
     $customBase=[
         'app_name'=>'Custom owner brand','app_description'=>'Original custom description',
         'app_url'=>'https://owner.example.test','subscribe_url'=>'https://subscriptions.owner.example.test','subscribe_path'=>'/owner-subscription',
-        'server_api_url'=>'https://nodes.owner.example.test','secure_path'=>$securePath,'ops_api_path'=>$opsPath,
+        'server_api_url'=>'https://nodes.owner.example.test','secure_path'=>$securePath,
         'custom_footer_html'=>'<p>Owner footer &amp; custom content</p>',
         'email_provider'=>'smtp','email_host'=>'smtp.owner.example.test','email_port'=>587,'email_username'=>'synthetic-mail-user',
         'email_password'=>$customSecret,'email_password_encrypted'=>true,'email_encryption'=>'tls','email_from_address'=>'owner@example.test',

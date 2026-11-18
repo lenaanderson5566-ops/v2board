@@ -70,15 +70,11 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
     const apiBaseUrl = normalizeApiOrigin(
         supplied.apiBaseUrl || import.meta.env.VITE_API_BASE_URL || "",
     );
-    if (
-        mode === "admin" &&
-        (!supplied.adminPath || !/^[a-zA-Z0-9_-]+$/.test(supplied.adminPath))
-    )
+    const adminPath = mode === "admin" ? supplied.adminPath || "" : "";
+    if (mode === "admin" && !/^[a-zA-Z0-9_-]+$/.test(adminPath))
         throw new Error("Configure the administrative API path");
     window.FASTAI = {
         description: "",
-        adminPath: "",
-        opsPath: "",
         emailVerify: false,
         registerClosed: false,
         passkeyEnabled: false,
@@ -86,6 +82,8 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
         currency: "CNY",
         currencySymbol: "CNY",
         ...supplied,
+        adminPath,
+        opsPath: adminPath ? `${adminPath}/ops` : "",
         title: typeof supplied.title === "string" && supplied.title.trim() && !/^(?:v2board|v2boad)$/i.test(supplied.title.trim())
             ? supplied.title.trim() : "FastAI",
         mode,
@@ -95,10 +93,6 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
             (supplied.landing ??
                 !location.pathname.replace(/\/$/, "").endsWith("/app")),
     };
-    if (mode === "user") {
-        window.FASTAI.adminPath = "";
-        window.FASTAI.opsPath = "";
-    }
     window.V2BOARD = window.FASTAI;
     document.body.dataset.console = mode;
     if (mode === "user") document.title = window.FASTAI.title;

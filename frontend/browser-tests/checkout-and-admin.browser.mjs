@@ -15,7 +15,7 @@ async function consoleFixture(context, mode, api, { authenticated = true, emailD
     await context.addInitScript(({ origin, mode, emailDomains, title }) => {
         if (location.origin !== origin) return;
         window.FASTAI = {
-            mode, title, adminPath: "test-admin", opsPath: "test-ops", landing: false,
+            mode, title, adminPath: "test-admin", landing: false,
             emailWhitelistEnabled: emailDomains.length > 0, emailWhitelistSuffixes: emailDomains,
         };
         localStorage.setItem("fastai.language", "zh-CN");
@@ -819,7 +819,7 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
         if (path === "/api/v1/test-admin/order/fetch") return [order, firstPurchase, repeatPurchase, legacyCredit, activeRepeat];
-        if (path === "/api/v1/test-ops/risk/user-activity/fetch") return {
+        if (path === "/api/v1/test-admin/ops/risk/user-activity/fetch") return {
             user: { id: 7, email, current_plan_name: "当前生效的测试套餐", transfer_enable: 1073741824, expired_at: 1950000000, credit_balance: 1073741824 },
             events: [],
         };

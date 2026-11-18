@@ -28,15 +28,7 @@ class LogController extends Controller
     public function getSummary(Request $request)
     {
         $params = $request->validate(['window' => 'nullable|in:today,7d,30d', 'view' => 'sometimes|in:dashboard']);
-        $statistics = app(RiskStatisticsService::class);
-        $window = $params['window'] ?? 'today';
-
-        return response(['data' => isset($params['view']) ? $statistics->dashboard($window) : $statistics->summary($window)]);
-    }
-
-    public function getOverview(Request $request)
-    {
-        return response(['data' => app(RiskStatisticsService::class)->overview()]);
+        return response(['data' => app(RiskStatisticsService::class)->dashboard($params['window'] ?? 'today')]);
     }
 
     public function getRules(Request $request)
@@ -638,55 +630,6 @@ class LogController extends Controller
         }
         return response(['data' => ['user' => $user, 'events' => $events->sortByDesc('at')->values(), 'limit_per_type' => 50]]);
     }
-
-    public function getRiskSettings(Request $request)
-    {
-        $rows = RiskSetting::query()->whereIn('key', ['connection_log_interval', 'connection_log_retention_days'])->get()->keyBy('key');
-        return response([
-            'data' => [
-                'connection_log_interval' => (int) ($rows['connection_log_interval']->value ?? 3600),
-                'connection_log_retention_days' => (int) ($rows['connection_log_retention_days']->value ?? 30),
-            ]
-        ]);
-    }
-
-    public function updateRiskSettings(Request $request)
-    {
-        $params = $request->validate([
-            'connection_log_interval' => 'required|integer|between:60,86400',
-            'connection_log_retention_days' => 'required|integer|between:1,365',
-        ]);
-        $interval = (int) $params['connection_log_interval'];
-        if ($interval < 60 || $interval > 86400) {
-            abort(422, 'connection_log_interval must be between 60 and 86400 seconds');
-        }
-
-        $retentionDays = (int) $params['connection_log_retention_days'];
-        if ($retentionDays < 1 || $retentionDays > 365) {
-            abort(422, 'connection_log_retention_days must be between 1 and 365 days');
-        }
-
-        DB::transaction(function () use ($interval, $retentionDays) {
-            RiskSetting::query()->updateOrCreate(
-                ['key' => 'connection_log_interval'],
-                ['value' => (string) $interval]
-            );
-            RiskSetting::query()->updateOrCreate(
-                ['key' => 'connection_log_retention_days'],
-                ['value' => (string) $retentionDays]
-            );
-        });
-        Cache::forget('RISK_CONNECTION_LOG_INTERVAL');
-        Cache::forget('RISK_CONNECTION_LOG_RETENTION_DAYS');
-
-        return response([
-            'data' => [
-                'connection_log_interval' => $interval,
-                'connection_log_retention_days' => $retentionDays,
-            ]
-        ]);
-    }
-
 
     private function normalizeRuleThresholds(array $defaultThresholds, array $thresholds): array
     {

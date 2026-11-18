@@ -29,8 +29,8 @@ foreach (['Http/Routes/V1/StaffRoute.php','Http/Middleware/Staff.php','Http/Requ
 $seen=[];
 foreach ($entries as $entry) {
     // Native V10 resources have no legacy action to map.
-    if (!isset($entry['action'])) continue;
-    $mapping[$entry['action']][]=(str_starts_with($entry['path'],'webhooks/payments/') ? 'GET/POST' : $entry['method']).' /api/v10/'.$entry['path'];
+    if (!isset($entry['legacy'])) continue;
+    $mapping['api/v1/'.$entry['legacy']][]=(str_starts_with($entry['path'],'webhooks/payments/') ? 'GET/POST' : $entry['method']).' /api/v10/'.$entry['path'];
 }
 foreach (app('router')->getRoutes() as $route) {
     $routeCount++; $uri=$route->uri(); $action=$route->getActionName(); $middleware=preg_match('#^api/v[12]/server/#',$uri) ? $route->middleware() : $route->gatherMiddleware();
@@ -60,16 +60,15 @@ foreach (app('router')->getRoutes() as $route) {
                 $assert(in_array('admin', $middleware, true),'Unprotected management route '.$uri);
             }
         }
-        if (str_contains($class,'\\V1\\User\\')) $assert(in_array('user',$middleware,true),'Unprotected legacy user route '.$uri);
     }
-    // Probe every retained protected legacy route, including configured admin/ops/custom paths.
+    // Probe every retained protected legacy route, including configured administration and subscription paths.
     // Rejection must happen before a controller can execute any business mutation.
-    if (count(array_intersect(['admin','user','client'], $middleware))>0 && !str_starts_with($uri,'api/v10/')) {
+    if (count(array_intersect(['admin','client'], $middleware))>0 && !str_starts_with($uri,'api/v10/')) {
         $legacyProtectedCount++;
         foreach (array_diff($route->methods(), ['HEAD','OPTIONS']) as $httpMethod) {
             foreach (['missing','array-query','array-body','forged-header'] as $variant) {
                 if ($variant==='array-body' && $httpMethod==='GET') continue;
-                $path='/'.preg_replace('/\{[^}]+\}/','1',$uri);
+                $path='/'.preg_replace('/\{[^}]+\}/','1',str_replace('{kind}', 'attempt', $uri));
                 $forged=['auth_data'=>['is_admin'=>'1','is_staff'=>'1','id'=>1], 'token'=>['is_admin'=>'1'], 'user'=>['id'=>1,'is_admin'=>1,'is_staff'=>1]];
                 if ($variant==='array-query') $path.='?'.http_build_query($forged);
                 $server=['REMOTE_ADDR'=>'198.19.'.(intdiv(++$legacyProbe,250)%250).'.'.($legacyProbe%250+1), 'HTTP_ACCEPT'=>'application/json'];
@@ -94,10 +93,52 @@ foreach (app('router')->getRoutes() as $route) {
     if (preg_match('#^api/v1/(user|passport|guest|client)/#',$uri,$match)) {
         $assert(in_array($uri,$allowlist,true),'Retired route was reintroduced: '.$uri);
         $seen[]=$uri;
-        $retained[$match[1]][]=['method'=>implode('/',array_diff($route->methods(),['HEAD'])),'path'=>'/'.$uri,'new'=>implode('<br>',array_unique($mapping[$action] ?? []))];
+        $retained[$match[1]][]=['method'=>implode('/',array_diff($route->methods(),['HEAD'])),'path'=>'/'.$uri,'new'=>implode('<br>',array_unique($mapping[$uri] ?? []))];
     }
 }
 $assert(!array_diff($allowlist,$seen),'A required compatibility route is missing');
+// Rebuild the actual route table with settings carried forward from older installs.
+$originalFastai = config('fastai');
+$router = app('router');
+$originalRoutes = $router->getRoutes();
+try {
+    foreach ([['audit-admin', 'custom-operations', ''], ['ops', 'ops', '/api/v1/client/subscribe'], ['audit-admin', '/audit-admin/ops/', '/custom-subscription']] as [$adminPath, $oldPath, $subscriptionPath]) {
+        config(['fastai.secure_path'=>$adminPath, 'fastai.ops_api_path'=>$oldPath, 'fastai.subscribe_path'=>$subscriptionPath]);
+        $routes = new Illuminate\Routing\RouteCollection();
+        $router->setRoutes($routes);
+        (new App\Providers\RouteServiceProvider($app))->map();
+        $opsPrefix = 'api/v1/'.$adminPath.'/ops/';
+        $operations = array_filter($routes->getRoutes(), fn($route) => str_contains($route->getActionName(), '\\V1\\Risk\\'));
+        $assert(count($operations) === 24, 'Unexpected operations route inventory');
+        foreach ($operations as $route) {
+            $assert(str_starts_with($route->uri(), $opsPrefix), 'Unexpected operations prefix: '.$route->uri());
+            $assert(in_array('admin', $route->middleware(), true) && in_array('log', $route->middleware(), true), 'Unprotected operations route: '.$route->uri());
+        }
+        foreach (array_unique(['ops', trim($oldPath, '/')]) as $oldPrefix) {
+            if ($oldPrefix === $adminPath.'/ops') continue;
+            foreach ($operations as $route) {
+                $uri = '/api/v1/'.$oldPrefix.'/'.substr($route->uri(), strlen($opsPrefix));
+                try {
+                    $routes->match(Illuminate\Http\Request::create($uri, $route->methods()[0]));
+                    $assert(false, 'Retired operations endpoint is still routed: '.$uri);
+                } catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e) {
+                    $assert(true, 'Retired operations endpoint is absent');
+                }
+            }
+        }
+        try {
+            $routes->match(Illuminate\Http\Request::create('/api/v1/client/subscribe', 'GET'));
+            $assert(false, 'Old default subscription was reintroduced');
+        } catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e) { $assert(true, 'Old subscription is retired'); }
+        if ($subscriptionPath === '/custom-subscription') {
+            $route = $routes->match(Illuminate\Http\Request::create($subscriptionPath, 'GET'));
+            $assert(in_array('client', $route->gatherMiddleware(), true), 'Custom subscriptions must retain client authentication');
+        }
+    }
+} finally {
+    $router->setRoutes($originalRoutes);
+    config(['fastai'=>$originalFastai]);
+}
 // Exercise every V10 account route through the HTTP kernel without credentials.
 // This cannot invoke business mutations: authorization must reject first.
 foreach ($entries as $entry) {
@@ -127,22 +168,9 @@ foreach ($entries as $entry) {
     }
     $protectedCount++;
 }
-// Rebuild legacy client routes under each configured subscription path.
-$original=config('fastai.subscribe_path');
-foreach (['','/api/v1/client/subscribe','/custom-subscription'] as $custom) {
-    config(['fastai.subscribe_path'=>$custom]);
-    $router=new Illuminate\Routing\Router(app('events'),app());
-    $router->group(['prefix'=>'api/v1','namespace'=>'App\\Http\\Controllers'],function($router) { (new App\Http\Routes\V1\ClientRoute())->map($router); });
-    $assert(in_array('client',$router->getRoutes()->match(Illuminate\Http\Request::create('/api/v1/client/app/getConfig','GET'))->gatherMiddleware(),true),'Client config remains protected');
-    try {
-        $router->getRoutes()->match(Illuminate\Http\Request::create('/api/v1/client/subscribe','GET'));
-        $assert(false,'Old default subscription was reintroduced');
-    } catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e) { $assert(true,'Old subscription is retired'); }
-}
-config(['fastai.subscribe_path'=>$original]);
 if (in_array('--write-inventory',$argv,true)) {
     $doc="# 后台之外的保留接口\n\n此清单由实际注册路由生成：`php tests/api-route-audit.php --write-inventory`。不包含 V10 新接口、管理/风控/客服后台接口。GET 路由同时支持 HEAD，表中省略 HEAD。仅表中入口继续保留；其余旧用户业务与公共内容 API 已移除。认证入口供现有后台使用。\n\n";
-    $titles=['passport'=>'后台依赖的认证接口','user'=>'后台依赖的账户接口','guest'=>'旧公共接口与回调','client'=>'旧订阅与客户端接口'];
+    $titles=['passport'=>'后台依赖的认证接口','guest'=>'旧公共接口与回调'];
     $count=0;
     foreach ($titles as $group=>$title) {
         $rows=$retained[$group] ?? []; $count+=count($rows);
@@ -155,7 +183,7 @@ if (in_array('--write-inventory',$argv,true)) {
         if (!preg_match('#^api/v[12]/server/#', $route->uri())) continue;
         $doc.='| '.implode('/', array_diff($route->methods(), ['HEAD'])).' | `/'.$route->uri()."` |\n";
     }
-    $doc.="\nV2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径和运营路径不在本清单范围内；未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。\n\n## 兼容说明\n\n- 上表旧用户/登录/公共/客户端路由共 {$count} 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。\n";
+    $doc.="\nV2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。\n\n## 其他保留入口\n\n| 方法 | 路径 | 用途与条件 |\n|---|---|---|\n| GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |\n| GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |\n\n`/` 与 `/app` 是网页入口而非 API，也继续保留。后台运营接口统一使用 `/api/v1/{后台入口}/ops/*`。旧独立运营接口和未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。\n\n## 兼容说明\n\n- 上表共 {$count} 条后台认证及历史回调路由。注册、个人资料、退出登录和客户端配置及版本查询使用 V10。\n- 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。\n- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。\n- 不再注册旧用户业务中的 GET 写操作。\n- 节点管理、订阅、排序及当前节点排行仅使用 V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。\n";
     file_put_contents(base_path('docs/api-v10/retained-endpoints.md'),$doc);
 }
 echo "Route audit: {$routeCount} registered routes, {$protectedCount} V10 authentication checks, {$legacyProtectedCount} legacy protected routes / {$legacyProbe} rejection probes, {$checks} checks passed\n";

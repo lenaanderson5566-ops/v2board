@@ -4,7 +4,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import { RiskOverview } from "./AdminRisk";
 
 const { readRequest, request } = vi.hoisted(() => {
-    window.FASTAI = { mode: "admin", opsPath: "test-ops" } as typeof window.FASTAI;
+    window.FASTAI = { mode: "admin", adminPath: "test-admin" } as typeof window.FASTAI;
     return { readRequest: vi.fn(), request: vi.fn() };
 });
 vi.mock("../shared/api", async (original) => ({
@@ -36,10 +36,10 @@ it("keeps the pending queue across reporting windows and refreshes both views af
     fireEvent.click(screen.getByRole("button", { name: "打开待复核队列" }));
     const review = await screen.findByRole("button", { name: "查看证据" });
     expect(within(review.closest("td")!).getByText("待处理")).toBeTruthy();
-    expect(readRequest).toHaveBeenCalledWith("test-ops/log/rule-hit/fetch?review_queue=1&current=1&page_size=10", undefined, false);
+    expect(readRequest).toHaveBeenCalledWith("test-admin/ops/log/rule-hit/fetch?review_queue=1&current=1&page_size=10", undefined, false);
 
     fireEvent.click(screen.getByRole("button", { name: "近 7 天" }));
-    await waitFor(() => expect(readRequest).toHaveBeenCalledWith("test-ops/risk/summary/fetch?window=7d&view=dashboard", undefined, false));
+    await waitFor(() => expect(readRequest).toHaveBeenCalledWith("test-admin/ops/risk/summary/fetch?window=7d", undefined, false));
     expect(screen.getByRole("button", { name: "查看证据" })).toBe(review);
     fireEvent.click(review);
     const dialog = await screen.findByRole("dialog", { name: "命中证据与人工复核" });
@@ -48,7 +48,7 @@ it("keeps the pending queue across reporting windows and refreshes both views af
     fireEvent.click(within(dialog).getByRole("button", { name: "保存复核" }));
     expect(await screen.findByText("0 条待复核")).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("button", { name: "查看证据" })).toBeNull());
-    expect(request).toHaveBeenCalledWith("test-ops/log/rule-hit/review", { id: 7, state: "confirmed", note: "" });
+    expect(request).toHaveBeenCalledWith("test-admin/ops/log/rule-hit/review", { id: 7, state: "confirmed", note: "" });
 });
 
 it("distinguishes actual blacklist requests from rules and explains the review sample", async () => {

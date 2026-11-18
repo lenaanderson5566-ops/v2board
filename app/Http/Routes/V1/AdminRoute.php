@@ -5,12 +5,45 @@ use Illuminate\Contracts\Routing\Registrar;
 
 class AdminRoute
 {
+    public static function prefix(): string
+    {
+        return config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+    }
+
     public function map(Registrar $router)
     {
         $router->group([
-            'prefix' => config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key')))),
+            'prefix' => self::prefix(),
             'middleware' => ['admin', 'log'],
         ], function ($router) {
+            $router->group(['prefix' => 'ops'], function ($router) {
+                $router->get('/risk/summary/fetch', 'V1\Risk\LogController@getSummary');
+                $router->get('/client/mirrors/fetch', 'V1\Risk\ClientReleaseController@mirrors');
+                $router->post('/client/mirrors/download', 'V1\Risk\ClientReleaseController@download')->middleware('throttle:30,1');
+                $router->post('/client/mirrors/action', 'V1\Risk\ClientReleaseController@mirrorAction')->middleware('throttle:30,1');
+                $router->get('/client/releases/fetch', 'V1\Risk\ClientReleaseController@fetch');
+                $router->post('/client/releases/check', 'V1\Risk\ClientReleaseController@check')->middleware('throttle:30,1');
+                $router->get('/risk/rule/fetch', 'V1\Risk\LogController@getRules');
+                $router->post('/risk/rule/update', 'V1\Risk\LogController@updateRule');
+                $router->post('/risk/rule/reset', 'V1\Risk\LogController@resetRule');
+                $router->get('/risk/blacklist/ip/fetch', 'V1\Risk\LogController@getIpBlacklists');
+                $router->post('/risk/blacklist/ip/update', 'V1\Risk\LogController@updateIpBlacklist');
+                $router->post('/risk/blacklist/ip/delete', 'V1\Risk\LogController@deleteIpBlacklist');
+                $router->get('/risk/blacklist/ua/fetch', 'V1\Risk\LogController@getUaBlacklists');
+                $router->post('/risk/blacklist/ua/update', 'V1\Risk\LogController@updateUaBlacklist');
+                $router->post('/risk/blacklist/ua/delete', 'V1\Risk\LogController@deleteUaBlacklist');
+                $router->get('/risk/online-user/fetch', 'V1\Risk\LogController@getOnlineUsers');
+                $router->get('/risk/user-activity/fetch', 'V1\Risk\LogController@getUserActivity');
+
+                $router->get('/client/strategy/fetch', 'V1\Risk\LogController@getClientStrategies');
+                $router->post('/client/strategy/update', 'V1\Risk\LogController@updateClientStrategy');
+
+                $router->post('/log/rule-hit/review', 'V1\Risk\LogController@reviewRuleHit');
+                $router->get('/log/rule-hit/fetch', 'V1\Risk\LogController@getRuleHits');
+                $router->get('/log/user-connection/fetch', 'V1\Risk\LogController@getUserConnectionLogs');
+                $router->get('/log/login/fetch', 'V1\Risk\LogController@getLoginLogs');
+                $router->get('/log/subscribe/fetch', 'V1\Risk\LogController@getSubscribeLogs');
+            });
             $router->get('/server/credentials', 'V1\\Admin\\NodeCredentialController@index');
             $router->post('/server/credentials/deployment', 'V1\\Admin\\NodeCredentialController@deployment')->middleware('throttle:5,1,node-deployment:');
             $router->post('/server/credentials/issue', 'V1\\Admin\\NodeCredentialController@issue')->middleware('throttle:5,1,node-credentials:');
@@ -161,11 +194,8 @@ class AdminRoute
             $router->post('/user/allDel', 'V1\\Admin\\UserController@allDel');
             // Stat
             $router->get ('/stat/getOverride', 'V1\\Admin\\StatController@getOverride');
-            $router->get ('/stat/getServerLastRank', 'V1\\Admin\\StatController@getServerLastRank');
             $router->get ('/stat/getServerTodayRank', 'V1\\Admin\\StatController@getServerTodayRank');
-            $router->get ('/stat/getUserLastRank', 'V1\\Admin\\StatController@getUserLastRank');
             $router->get ('/stat/getUserTodayRank', 'V1\\Admin\\StatController@getUserTodayRank');
-            $router->get ('/stat/getOrder', 'V1\\Admin\\StatController@getOrder');
             $router->get ('/stat/getStatUser', 'V1\\Admin\\StatController@getStatUser');
             // Banners
             $router->get('/banner/fetch', 'V1\\Admin\\BannerController@fetch');
@@ -193,7 +223,6 @@ class AdminRoute
             $router->post('/coupon-campaign/cancel', 'V1\\Admin\\CouponCampaignController@cancel')->middleware('throttle:5,1');
             $router->get('/coupon-campaign/fetch', 'V1\\Admin\\CouponCampaignController@fetch');
             $router->get('/coupon-campaign/recipients', 'V1\\Admin\\CouponCampaignController@recipients');
-            $router->post('/coupon/issue', 'V1\\Admin\\CouponController@issue')->middleware('throttle:20,1');
             $router->get ('/coupon/fetch', 'V1\\Admin\\CouponController@fetch');
             $router->post('/coupon/generate', 'V1\\Admin\\CouponController@generate');
             $router->post('/coupon/drop', 'V1\\Admin\\CouponController@drop');
@@ -225,7 +254,6 @@ class AdminRoute
             $router->post('/system/observability/settings', 'V1\\Admin\\SystemController@saveObservability')->middleware('throttle:10,1');
             $router->get('/system/health', 'V1\\Admin\\SystemController@health')->middleware('throttle:20,1');
             $router->get ('/system/getSystemStatus', 'V1\\Admin\\SystemController@getSystemStatus');
-            $router->get ('/system/getQueueStats', 'V1\\Admin\\SystemController@getQueueStats');
             $router->get ('/system/getQueueWorkload', 'V1\\Admin\\SystemController@getQueueWorkload');
             $router->get ('/system/getQueueMasters', 'V1\\Admin\\SystemController@getQueueMasters');
             $router->get ('/system/getSystemLog', 'V1\\Admin\\SystemController@getSystemLog');

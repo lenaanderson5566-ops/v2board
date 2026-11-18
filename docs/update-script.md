@@ -199,6 +199,25 @@ Lightsail IP 管理新增 `2026_10_11_000010_create_lightsail_servers.php` 定�
 
 更新白名单已接入 `2026_10_17_000002_add_analytics_sources.php`，在访问统计基础表迁移后执行，并检查两个来源字段。历史数据保持“未采集”，不会补写来源。未执行此迁移时现有统计继续工作，后台提示安装来源字段。此次前端将访问统计用途版本升级为 3，已有允许选择需重新确认，有效的拒绝选择继续生效。
 
+## 运营接口地址变更
+
+后台、外部管理脚本和反向代理统一使用 `/api/v1/{后台入口}/ops/*`。例如，原 `/api/v1/ops/risk/summary/fetch` 应改为 `/api/v1/{后台入口}/ops/risk/summary/fetch`。使用过自定义运营前缀的站点也按此规则替换。仍提供的运营接口沿用原 HTTP 方法、参数和管理员凭据。
+
+以下 14 个旧接口在升级后返回 404。表中后台接口相对于 `/api/v1/{后台入口}/`，用户和客户端的旧接口相对于 `/api/v1/`。
+
+| 用途 | 已退役接口 | 外部调用方迁移方式 |
+|---|---|---|
+| 用户注册及账户 | `passport/auth/register`、`user/info`、`user/update`、`user/logout` | 注册使用 `POST /api/v10/auth/registrations`。读取及修改本人资料使用 `GET`、`PATCH /api/v10/me`。浏览器退出使用 `DELETE /api/v10/auth/browser-session`，Bearer 客户端使用 `DELETE /api/v10/me/session`。按 V10 契约更新请求和响应字段。 |
+| 客户端配置及版本 | `client/app/getConfig`、`client/app/getVersion` | 使用 `GET /api/v10/subscriptions/{subscriptionToken}/application-config` 和同前缀的 `application-version`。 |
+| 后台风控设置和概览 | `ops/risk/settings/fetch`、`ops/risk/settings/update`、`ops/risk/overview/fetch` | 连接日志设置使用 `GET/POST system/logRetention`。风控面板使用 `GET ops/risk/summary/fetch`。依赖旧报表原始 UA 明细的集成需调整取数方式。 |
+| 后台订单统计和昨日榜 | `stat/getOrder`、`stat/getServerLastRank`、`stat/getUserLastRank` | 财务趋势从 `stat/getOverride` 的 `financial.currencies[].daily` 获取。昨日节点榜、昨日用户榜及旧报表特有的字段随接口退役。 |
+| 后台发券 | `coupon/issue` | 先调用 `POST coupon-campaign/preview`，再用返回的预览凭据调用 `POST coupon-campaign/confirm`。确认返回 202 后按批次查询实际发放结果。 |
+| 后台队列统计 | `system/getQueueStats` | 监控快照使用 `GET system/observability`，队列负载及进程详情使用 `GET system/getQueueWorkload`、`GET system/getQueueMasters`。自建监控需核对所采集的指标。 |
+
+`GET ops/risk/summary/fetch` 统一返回 `review_queue`、`blacklist`、`rules`。旧后台传入 `view=dashboard` 时也收到相同结构。原来省略 `view` 并读取旧趋势、排行或最近命中记录的脚本需要更新。窗口参数 `window` 支持 `today`、`7d` 和 `30d`，默认取最近 24 小时。待复核队列跨窗口汇总。
+
+旧摘要直接查询风控命中日志，没有独立的历史快照或摘要缓存。新版复核队列继续使用这些事件。已处理事件按系统设置中的风控日志保留天数清理，待复核事件继续保留。
+
 ## 旧员工角色字段清理
 
 `2026_10_18_000001_drop_retired_staff_role.php` 已加入升级脚本的显式迁移清单、目标预检和完成验证。新版本不再读取/写入 `is_staff`，新安装 SQL 不创建该列；旧库升级仅删除该角色标记，不删除账户、不提升管理员权限，也不修改密码或订阅凭据。迁移可重复执行；删除后的旧标记值不能通过 down() 恢复，回滚需数据库备份。执行升级前按现有流程准备数据库备份。本轮仅在隔离测试库验证，未执行生产迁移。

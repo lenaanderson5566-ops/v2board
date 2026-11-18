@@ -16,7 +16,8 @@ final class FrontendRuntime
             'title' => Branding::name(config('fastai.app_name', config('app.name', 'FastAI'))),
             'description' => $landing ? '提供 AI 应用配置、设备使用指引与技术支持。' : config('fastai.app_description', '查看订阅状态、管理账户与设备连接。'),
             'adminPath' => $mode === 'admin' ? $securePath : '',
-            'opsPath' => $mode === 'admin' ? config('fastai.ops_api_path', 'ops') : '',
+            // Older console bundles read this field when building operations URLs.
+            'opsPath' => $mode === 'admin' ? trim($securePath, '/') . '/ops' : '',
             'clientRecommendations' => collect(['android','windows','macos','linux','ios'])->mapWithKeys(fn($os) => [$os => [config('fastai.client_primary_'.$os), config('fastai.client_secondary_'.$os)]])->all(),
             'clientPolicies' => $landing ? [] : (new \App\Services\ClientStrategyService())->frontendPolicies(),
             'clientMirrors' => (new \App\Services\ClientMirrorService())->urls(),

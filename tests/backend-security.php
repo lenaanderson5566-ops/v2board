@@ -71,37 +71,39 @@ try {
         } finally {$auth->removeAllSession();}
         $u->{'is_'.$role}=0; $u->save();
     }
-    $legacyAuth=new App\Services\AuthService($u);
-    $legacyToken=$legacyAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $accountAuth=new App\Services\AuthService($u);
+    $accountToken=$accountAuth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
+    $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
     try {
-        foreach (['GET','POST'] as $method) {
-            $request=Illuminate\Http\Request::create('/api/v1/user/info?auth_data='.urlencode($legacyToken),$method);
-            $assert($status(fn()=>(new App\Http\Middleware\User())->handle($request,fn()=>response('ok')))===403,'Legacy user authentication rejects URL credentials: '.$method);
+        foreach (['GET','PATCH'] as $method) {
+            $request=Illuminate\Http\Request::create('/api/v10/me?auth_data='.urlencode($accountToken),$method);
+            $assert($kernel->handle($request)->getStatusCode()===401,'Account authentication rejects URL credentials: '.$method);
         }
         foreach ([false,true] as $json) {
             $request=$json
-                ? Illuminate\Http\Request::create('/api/v1/user/logout','POST',[],[],[],['CONTENT_TYPE'=>'application/json'],json_encode(['auth_data'=>['id'=>$u->id,'is_admin'=>1]]))
-                : Illuminate\Http\Request::create('/api/v1/user/logout','POST',['auth_data'=>['id'=>$u->id,'is_admin'=>1]]);
-            $assert($status(fn()=>(new App\Http\Middleware\User())->handle($request,fn()=>response('ok')))===403,'Legacy user authentication rejects body arrays');
+                ? Illuminate\Http\Request::create('/api/v10/me/session','DELETE',[],[],[],['CONTENT_TYPE'=>'application/json'],json_encode(['auth_data'=>['id'=>$u->id,'is_admin'=>1]]))
+                : Illuminate\Http\Request::create('/api/v10/me/session','DELETE',['auth_data'=>['id'=>$u->id,'is_admin'=>1]]);
+            $assert($kernel->handle($request)->getStatusCode()===401,'Account authentication rejects body arrays');
         }
-        $request=Illuminate\Http\Request::create('/api/v1/user/info?auth_data[is_admin]=1','GET',[],[],[],['HTTP_AUTHORIZATION'=>$legacyToken]);
-        $assert((new App\Http\Middleware\User())->handle($request,fn()=>response('ok'))->getStatusCode()===200,'Header credential takes priority over malicious query input');
+        $headers=['HTTP_AUTHORIZATION'=>'Bearer '.$accountToken,'HTTP_ACCEPT'=>'application/json'];
+        $request=Illuminate\Http\Request::create('/api/v10/me?auth_data[is_admin]=1','GET',[],[],[],$headers);
+        $response=$kernel->handle($request);
+        $assert($response->getStatusCode()===200 && (json_decode($response->getContent(),true)['data']['id'] ?? null)===$u->id,'Verified bearer identifies the account despite forged query input');
+        $assert(str_contains($response->headers->get('Cache-Control'),'no-store'),'Account data is not cached');
         $subscriptionMethod=config('fastai.show_subscribe_method');
         foreach ([0,1,2] as $mode) {
             config(['fastai.show_subscribe_method'=>$mode]);
             foreach ([['token'=>$u->token],['is_admin'=>1],1,true] as $credential) {
-                $request=Illuminate\Http\Request::create('/api/v1/client/app/getVersion','GET',['token'=>$credential],[],[],['REMOTE_ADDR'=>'198.18.0.'.random_int(1,254)]);
+                $request=Illuminate\Http\Request::create('/custom-subscription','GET',['token'=>$credential],[],[],['REMOTE_ADDR'=>'198.18.0.'.random_int(1,254)]);
                 $assert($status(fn()=>(new App\Http\Middleware\Client())->handle($request,fn()=>response('ok')))===403,'Subscription credentials must be strings in every legacy token mode');
             }
         }
         config(['fastai.show_subscribe_method'=>$subscriptionMethod]);
-        $request=Illuminate\Http\Request::create('/api/v1/user/info','GET',[],[],[],['HTTP_AUTHORIZATION'=>$legacyToken]);
-        $middleware=new App\Http\Middleware\User();
-        $assert(str_contains($middleware->handle($request,fn()=>response('ok'))->headers->get('Cache-Control'),'no-store'),'Legacy user data is not cached');
         $u->banned=1;$u->save();
-        $assert($status(fn()=>$middleware->handle($request,fn()=>response('ok')))===403,'Legacy route rejects a newly banned user');
+        $request=Illuminate\Http\Request::create('/api/v10/me','GET',[],[],[],$headers);
+        $assert($kernel->handle($request)->getStatusCode()===403,'Account route rejects a newly banned user');
         $u->banned=0;$u->save();
-    } finally {$legacyAuth->removeAllSession();}
+    } finally {$accountAuth->removeAllSession();}
     require __DIR__.'/fixtures/V10TestPayment.php';
     config(['fastai.app_url'=>'https://panel.example','cors.allowed_origins'=>['https://frontend.example']]);
     $channel=App\Models\Payment::create(['name'=>'URL fixture','payment'=>'V10TestPayment','uuid'=>'url-fixture','enable'=>1,'config'=>[]]);

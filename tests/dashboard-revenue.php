@@ -74,18 +74,16 @@ foreach ([$today, $yesterday] as $day) {
     DB::table('v2_stat_user')->insert(['user_id'=>31,'server_rate'=>2,'u'=>50,'d'=>49,'record_at'=>$day,'record_type'=>'d']);
 }
 $controller = new App\Http\Controllers\V1\Admin\StatController();
-foreach (['getUserTodayRank', 'getUserLastRank'] as $method) {
-    DB::flushQueryLog();
-    $rank = $controller->$method()['data'];
-    $assert(count($rank), 15);
-    $assert($rank[0]['user_id'], 32);
-    $assert($rank[0]['u'], 101);
-    $assert($rank[0]['d'], 99);
-    $assert($rank[0]['total'], 10100 / 1073741824);
-    $assert($rank[1]['user_id'], 31);
-    $assert($rank[2]['user_id'], 1);
-    $assert(count(DB::getQueryLog()), 2);
-}
+DB::flushQueryLog();
+$rank = $controller->getUserTodayRank()['data'];
+$assert(count($rank), 15);
+$assert($rank[0]['user_id'], 32);
+$assert($rank[0]['u'], 101);
+$assert($rank[0]['d'], 99);
+$assert($rank[0]['total'], 10100 / 1073741824);
+$assert($rank[1]['user_id'], 31);
+$assert($rank[2]['user_id'], 1);
+$assert(count(DB::getQueryLog()), 2);
 echo "Dashboard user ranks: aggregation, rate weighting, ties, dates and batched emails passed\n";
 
 Schema::create('v2_server_v2box', function (Blueprint $table) {
@@ -106,22 +104,20 @@ foreach ([$today, $yesterday] as $day) {
     DB::table('v2_stat_server')->insert(['server_id'=>33,'server_type'=>'v2box','u'=>200,'d'=>0,'record_at'=>$day,'record_type'=>'d']);
     DB::table('v2_stat_server')->insert(['server_id'=>1,'server_type'=>'v2box','u'=>9999,'d'=>0,'record_at'=>$day,'record_type'=>'h']);
 }
-foreach (['getServerTodayRank', 'getServerLastRank'] as $method) {
-    DB::flushQueryLog();
-    $rank = $controller->$method()['data'];
-    $assert(count($rank), 15);
-    $assert($rank[0]['server_id'], 32);
-    $assert($rank[0]['u'], 150);
-    $assert($rank[0]['d'], 150);
-    $assert($rank[0]['total'], 300 / 1073741824);
-    $assert($rank[0]['server_name'], 'Node 32');
-    $assert($rank[1]['server_id'], 33);
-    $assert($rank[1]['server_name'], null);
-    $assert($rank[2]['server_id'], 1);
-    $queries = DB::getQueryLog();
-    $assert(count($queries), 2);
-    $assert(count($queries[1]['bindings']), 15);
-}
+DB::flushQueryLog();
+$rank = $controller->getServerTodayRank()['data'];
+$assert(count($rank), 15);
+$assert($rank[0]['server_id'], 32);
+$assert($rank[0]['u'], 150);
+$assert($rank[0]['d'], 150);
+$assert($rank[0]['total'], 300 / 1073741824);
+$assert($rank[0]['server_name'], 'Node 32');
+$assert($rank[1]['server_id'], 33);
+$assert($rank[1]['server_name'], null);
+$assert($rank[2]['server_id'], 1);
+$queries = DB::getQueryLog();
+$assert(count($queries), 2);
+$assert(count($queries[1]['bindings']), 15);
 echo "Dashboard server ranks: aggregate before limit, stable ties, missing names and bounded name lookup passed\n";
 
 Schema::table('v2_order',function(Blueprint $t){$t->string('period')->default('month_price');$t->integer('commission_status')->default(0);$t->integer('commission_balance')->default(0);$t->integer('invite_user_id')->nullable();});

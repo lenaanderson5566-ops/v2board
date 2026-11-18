@@ -101,7 +101,7 @@ try {
     }
     $user->language=$originalLanguage; $user->save();
     [$r,$j]=$call('GET','/api/v1/user/info',[],$credentials['auth_data']);
-    $assert($r->getStatusCode()===200 && $j['data']['email']===$user->email,'Legacy account interoperability');
+    $assert($r->getStatusCode()===404 && !isset($j['data']),'Retired account route is unavailable even with a valid token');
     [$r,$j]=$call('GET','/api/v10/plans',[],$bearer);
     $row=collect($j['data'])->firstWhere('id',$plan->id);
     $assert($r->getStatusCode()===200 && $row['quotaBytes']===50*1073741824 && $row['monthlyPrice']===1000,'Plan schema and byte units');

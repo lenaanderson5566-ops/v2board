@@ -13,7 +13,6 @@ const api = vi.hoisted(() => {
     window.FASTAI = {
         mode: "admin",
         adminPath: "test-admin",
-        opsPath: "test-ops",
     } as any;
     return { request: vi.fn() };
 });
@@ -282,11 +281,7 @@ it("shows core income and lazily switches to risk without removed dashboard bloc
     expect(window.location.hash).toBe("#/overview-risk");
     await waitFor(() =>
         expect(
-            api.request.mock.calls.some(([path]) => {
-                const [route, search] = path.split("?");
-                const params = new URLSearchParams(search);
-                return route.endsWith("/risk/summary/fetch") && params.get("window") === "today" && params.get("view") === "dashboard";
-            }),
+            api.request.mock.calls.some(([path]) => path.endsWith("/risk/summary/fetch?window=today")),
         ).toBe(true),
     );
     expect(api.request.mock.calls.some(([path]) => path.includes("analytics/operations"))).toBe(false);

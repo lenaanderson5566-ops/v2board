@@ -1,6 +1,7 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
 if(!app()->environment('local'))throw new RuntimeException('Local test only');
+use App\Http\Routes\V1\AdminRoute;
 use App\Services\ClientMirrorService;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Queue;
@@ -49,7 +50,7 @@ try {
  foreach(['http://github.com/a','https://github.com.evil.test/a','https://127.0.0.1/a','https://github.com:8443/a'] as $url)$assert(!ClientMirrorService::allowedDownloadUrl($url));
  $assert(ClientMirrorService::allowedDownloadUrl('https://release-assets.githubusercontent.com/test'));
  foreach(['client/mirrors/fetch','client/mirrors/download','client/mirrors/action'] as $path){
-  $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/'.$path,str_ends_with($path,'fetch')?'GET':'POST');$r->headers->set('Accept','application/json');
+  $r=Request::create('/api/v1/'.AdminRoute::prefix().'/ops/'.$path,str_ends_with($path,'fetch')?'GET':'POST');$r->headers->set('Accept','application/json');
   $assert(app(Illuminate\Contracts\Http\Kernel::class)->handle($r)->getStatusCode()===403);
  }
  $assert(config('queue.connections.redis-mirror.retry_after')>config('horizon.environments.*.client-download.timeout'));

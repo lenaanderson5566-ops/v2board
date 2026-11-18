@@ -9,9 +9,9 @@ use Illuminate\Support\Facades\DB;
 final class CouponWallet
 {
     // Claiming reserves stock; the issued terms remain unchanged by later template edits.
-    public static function issue(int $userId, int $couponId, ?int $administratorId = null): int
+    public static function issue(int $userId, int $couponId): int
     {
-        return DB::transaction(function () use ($userId, $couponId, $administratorId) {
+        return DB::transaction(function () use ($userId, $couponId) {
             User::whereKey($userId)->lockForUpdate()->firstOrFail();
             $coupon = Coupon::whereKey($couponId)->lockForUpdate()->firstOrFail();
             $existing = DB::table('v2_coupon_wallet')->where('user_id', $userId)->where('coupon_id', $couponId)->first();
@@ -19,13 +19,13 @@ final class CouponWallet
             abort_if(Order::where('user_id',$userId)->where('coupon_id',$couponId)->whereNotIn('status',[2])->exists(),409,__('This coupon has already been claimed or used.'));
             abort_unless($coupon->show && (int)$coupon->type === 2 && $coupon->value > 0 && $coupon->value <= 100
                 && $coupon->started_at <= time() && $coupon->ended_at > time()
-                && ($administratorId !== null || $coupon->public_claim), 409, __('Coupon is not available.'));
+                && $coupon->public_claim, 409, __('Coupon is not available.'));
             abort_if($coupon->limit_use !== null && $coupon->limit_use <= 0, 409, __('Coupon is sold out.'));
             if ($coupon->limit_use !== null) { $coupon->limit_use--; $coupon->save(); }
             return DB::table('v2_coupon_wallet')->insertGetId([
                 'user_id'=>$userId, 'coupon_id'=>$couponId,
                 'snapshot'=>json_encode($coupon->only(['name','value','started_at','ended_at','limit_plan_ids','limit_period','translations','activity_title','activity_description']), JSON_THROW_ON_ERROR),
-                'order_id'=>null, 'administrator_id'=>$administratorId, 'created_at'=>time(),
+                'order_id'=>null, 'administrator_id'=>null, 'created_at'=>time(),
             ]);
         }, 3);
     }

@@ -85,7 +85,7 @@ try {
     $adminResponse=json_decode((new App\Http\Controllers\V1\Admin\CouponController())->fetch(Request::create('/', 'GET'))->getContent(),true);
     foreach ($adminResponse['data'] as $row) $assert(!array_key_exists('code',$row) && !array_key_exists('limit_use_with_user',$row), 'Admin response exposed retired code data');
     $a=$user('a@example.test');$b=$user('b@example.test');$disabled=$user('disabled@example.test',1);
-    $c=$coupon(3);CouponWallet::issue($a->id,$c->id,1);
+    $c=$coupon(3);CouponWallet::issue($a->id,$c->id);
     $batch=$preview($c);
     $assert($batch['matched']===3 && $batch['pending']===1 && $batch['skipped']===2,'Preview eligibility');
     $assert((int)$c->fresh()->limit_use===2,'Preview reserved stock early');
@@ -134,7 +134,7 @@ try {
     $summary=CouponCampaign::present($cancelBatch['id']);
     $assert($summary['issued']===1 && $summary['cancelled']===1 && (int)$cancel->fresh()->limit_use===3,'Cancellation did not refund only remaining stock once');
 
-    $race=$coupon(3);$raceBatch=$preview($race,'ids',[],[$a->id]);CouponWallet::issue($a->id,$race->id,1);CouponCampaign::confirm($raceBatch['previewKey'],1);CouponCampaign::process();
+    $race=$coupon(3);$raceBatch=$preview($race,'ids',[],[$a->id]);CouponWallet::issue($a->id,$race->id);CouponCampaign::confirm($raceBatch['previewKey'],1);CouponCampaign::process();
     $assert((int)$race->fresh()->limit_use===2 && CouponCampaign::present($raceBatch['id'])['skipped']===1,'Claim between preview and confirm lost reserved stock');
 
     $changed=$coupon();$changedBatch=$preview($changed,'ids',[],[$a->id]);$changed->value=20;$changed->save();
@@ -145,8 +145,13 @@ try {
 
     $gone=$coupon(1);$goneBatch=$preview($gone,'ids',[],[$later->id]);CouponCampaign::confirm($goneBatch['previewKey'],1);$later->delete();CouponCampaign::process();
     $assert((int)$gone->fresh()->limit_use===1 && CouponCampaign::present($goneBatch['id'])['skipped']===1,'Deleted user reservation not refunded');
-    $unlimited=$coupon(null);$unlimitedBatch=$preview($unlimited,'ids',[],[$b->id]);CouponCampaign::confirm($unlimitedBatch['previewKey'],1);CouponCampaign::process();
+    $unlimited=$coupon(null);
+    $unlimited->public_claim=0;
+    $unlimited->save();
+    $fails(fn()=>CouponWallet::issue($b->id,$unlimited->id),'A private coupon was available for self-claim');
+    $unlimitedBatch=$preview($unlimited,'ids',[],[$b->id]);CouponCampaign::confirm($unlimitedBatch['previewKey'],1);CouponCampaign::process();
     $assert($unlimited->fresh()->limit_use===null && CouponCampaign::present($unlimitedBatch['id'])['issued']===1,'Unlimited stock broken');
+    $assert((int)DB::table('v2_coupon_wallet')->where('coupon_id',$unlimited->id)->where('user_id',$b->id)->value('administrator_id')===1,'Private campaign delivery records the issuing administrator');
     $retry=$coupon(1);$retryBatch=$preview($retry,'ids',[],[$a->id]);CouponCampaign::confirm($retryBatch['previewKey'],1);
     $failWallet=true;
     DB::listen(function($query)use(&$failWallet){if($failWallet && str_starts_with($query->sql,'insert into `v2_coupon_wallet`'))throw new RuntimeException('fixture failure after insert');});

@@ -29,12 +29,12 @@ foreach (['dumpCSV', 'generate'] as $action) {
 }
 $assert(!file_exists(app_path('Http/Requests/Admin/UserGenerate.php')),'Unused user generation validator remains');
 // Retired wrappers must not return as unregistered dead code.
-foreach (['User'=>['UserController.php'], 'Passport'=>['AuthController.php','CommController.php'], 'Guest'=>['PaymentController.php','TelegramController.php']] as $area=>$keep) {
+foreach (['User'=>[], 'Client'=>[], 'Passport'=>['AuthController.php','CommController.php'], 'Guest'=>['PaymentController.php','TelegramController.php']] as $area=>$keep) {
     foreach (glob(app_path('Http/Controllers/V1/'.$area.'/*Controller.php')) as $file) {
         $assert(in_array(basename($file),$keep,true),'Unused legacy controller: '.basename($file));
     }
 }
-foreach ([App\Http\Controllers\V1\User\UserController::class=>['info','update','logout'], App\Http\Controllers\V1\Passport\AuthController::class=>['login','register','forget'], App\Http\Controllers\V1\Passport\CommController::class=>['sendEmailVerify']] as $class=>$keep) {
+foreach ([App\Http\Controllers\V1\Passport\AuthController::class=>['login','forget'], App\Http\Controllers\V1\Passport\CommController::class=>['sendEmailVerify']] as $class=>$keep) {
     foreach ((new ReflectionClass($class))->getMethods(ReflectionMethod::IS_PUBLIC) as $method) {
         if ($method->getDeclaringClass()->getName()===$class) $assert(in_array($method->getName(),$keep,true),'Unused legacy wrapper: '.$method->getName());
     }

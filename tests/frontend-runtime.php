@@ -8,7 +8,7 @@ $original = config('fastai');
 $directory = sys_get_temp_dir() . '/frontend-runtime-' . bin2hex(random_bytes(8));
 mkdir($directory, 0700);
 try {
-    config(['fastai.secure_path' => 'test-admin', 'fastai.smtp_password' => 'must-not-be-exported']);
+    config(['fastai.secure_path' => 'test-admin', 'fastai.ops_api_path' => 'old-ops', 'fastai.smtp_password' => 'must-not-be-exported']);
     $assert(App\Services\BrowserAccess::policies() === App\Services\BrowserAccess::DEFAULTS, 'Conservative defaults, unknown apps allowed');
     foreach (['wechat','qq','weibo','wecom'] as $browser) $assert(App\Services\BrowserAccess::policies()[$browser]==='guide', 'Primary application defaults to guidance: '.$browser);
     foreach (['wechat','wecom'] as $browser) foreach (['allow','prompt','guide','invalid'] as $policy) {
@@ -48,7 +48,7 @@ try {
     config(['fastai.browser_policy_wecom'=>'allow']);
     $assert(App\Support\FrontendRuntime::config('user', false)['browserPolicies']['wecom']==='allow','Existing explicit WeCom allow setting is not overwritten');
     $assert($user['adminPath'] === '' && $user['opsPath'] === '', 'User configuration hides administrative paths');
-    $assert($admin['adminPath'] === 'test-admin', 'Admin path preserved');
+    $assert($admin['adminPath'] === 'test-admin' && $admin['opsPath'] === 'test-admin/ops', 'Admin runtime supplies the unified path to older console bundles');
     $assert($user['landing'] === false && !array_key_exists('landing', $admin), 'Server and standalone landing selection');
     $assert(array_key_exists('passkeyEnabled',$user) && !array_key_exists('recaptchaSiteKey',$user) && !array_key_exists('recaptchaSiteKey',$admin), 'Runtime exports Passkey feature flag without retired CAPTCHA settings');
     $assert(!str_contains(json_encode($user), 'must-not-be-exported') && !str_contains(json_encode($admin), 'must-not-be-exported'), 'No backend secrets exported');

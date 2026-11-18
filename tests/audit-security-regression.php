@@ -43,9 +43,9 @@ try {
          $assert($as($adminPath.'/'.$endpoint,$credential,['id'=>$admin->id])->getStatusCode()===403,'Non-administrator sessions cannot read administrator account resources');
      }
  }
- $r=$as('/api/v1/user/info',$ordinaryToken,['id'=>$admin->id,'user'=>['id'=>$admin->id,'is_admin'=>1]]);
+ $r=$as('/api/v10/me','Bearer '.$ordinaryToken,['id'=>$admin->id,'user'=>['id'=>$admin->id,'is_admin'=>1]]);
  $me=json_decode($r->getContent(),true)['data']??[];
- $assert($r->getStatusCode()===200 && ($me['id']??null)===$user->id && !array_intersect(['password','password_algo','password_salt','token'],array_keys($me)),'Legacy account info ignores forged user context and exposes no password or subscription token');
+ $assert($r->getStatusCode()===200 && ($me['id']??null)===$user->id && !array_intersect(['password','password_algo','password_salt','token'],array_keys($me)),'Account info ignores forged user context and exposes no password or subscription token');
  $filter=[['key'=>'id','condition'=>'=','value'=>$user->id]];
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>$filter]);
  $assert($r->getStatusCode()===404 && $user->fresh()->banned===0,'Retired staff ban cannot mutate an ordinary user');

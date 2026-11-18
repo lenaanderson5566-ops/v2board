@@ -20,7 +20,7 @@
 - [注册、登录和快捷登录](../app/Services/Actions/Passport/AuthActions.php)：试用赋额、密码验证后封禁拒绝。
 - [可用性与设备下发查询](../app/Services/UserService.php)：有效期、封禁、总额及已用量规则。
 - [账户与订阅信息](../app/Services/Actions/User/UserActions.php)：套餐字段、订阅 URL 和重置天数。
-- [会话解密](../app/Services/AuthService.php)与[用户中间件](../app/Http/Middleware/User.php)：现有会话验证并不重新拒绝 banned，因此前端增加限制界面，同时保留现有工单访问能力。
+- V10 的账户接口验证当前会话凭据并检查封禁状态。凭据无效返回 401，已认证的封禁账户返回 403。[会话解密](../app/Services/AuthService.php) · [V10 账户鉴权](../app/Http/Controllers/V10/ResourceController.php)
 
 登录／注册后原有跳转总览行为保留，由账户状态选择入口；未封禁用户仍可直接访问账户、订单、文档等已有路由。已有会话每 60 秒在可见页面复查状态，窗口重新聚焦、数据提交及到期计时触发刷新。此展示限制不能替代 Laravel 接口授权，也没有放宽封禁登录或服务可用性规则。
 

@@ -98,7 +98,7 @@ try {
     $call('v10/auth/browser-session',[],'admin');
     $admin=$call('v1/passport/auth/login',$body,'admin','POST');
     $assert($admin->getStatusCode()===200 && $data($admin)['authenticated'] && !isset($data($admin)['auth_data']),'Admin login uses Cookie');
-    $assert($call('v1/user/info',[],'admin')->getStatusCode()===200,'Retained admin account reads use scoped Cookie');
+    $assert($call('v10/me',[],'admin')->getStatusCode()===200,'Admin account reads use scoped Cookie');
     $assert($jar['admin']!==$jar['user'],'Admin/user Cookies isolated');
     $path=config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
     $assert($call('v1/'.$path.'/config/fetch',[],'user')->getStatusCode()===403,'User-scoped Cookie cannot authorize administrative routes');
@@ -155,7 +155,7 @@ try {
     $assert($call('v10/me')->getStatusCode()===401,'Cookie logout revokes user session');
     $assert($call('v10/me',[],'user','GET',null,null,$token)->getStatusCode()===401,'Anonymous browser cannot authenticate using a supplied native Bearer');
     $assert($call('v10/me',[],null,'GET',null,null,$token)->getStatusCode()===200,'Cookie logout preserves App');
-    $assert($call('v1/user/info',[],'admin')->getStatusCode()===200,'Cookie logout preserves admin scope');
+    $assert($call('v10/me',[],'admin')->getStatusCode()===200,'Cookie logout preserves admin scope');
     $legacy=$auth->generateAuthData(Illuminate\Http\Request::create('/'))['auth_data'];
     $before=$jar['user'];
     $upgrade=$call('v10/auth/browser-session',['legacyToken'=>$legacy],'user','POST');
@@ -165,7 +165,7 @@ try {
     $evil=$call('v10/auth/browser-session',[],'user','GET',null,'https://evil.example');
     $assert(!$evil->headers->has('Access-Control-Allow-Origin') && !$evil->headers->has('Access-Control-Allow-Credentials'),'CORS denies arbitrary credentialed origins');
     $auth->removeAllSession();
-    $assert($call('v1/user/info',[],'admin')->getStatusCode()===403,'Account-wide revocation affects Cookies');
+    $assert($call('v10/me',[],'admin')->getStatusCode()===401,'Account-wide revocation affects Cookies');
     $assert($call('v10/me',[],null,'GET',null,null,$token)->getStatusCode()===401,'Account-wide revocation affects App');
     $secure=config('browser.secure');
     try {

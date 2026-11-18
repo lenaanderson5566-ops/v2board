@@ -4,6 +4,7 @@ The new user API is `/api/v10`. Administration, operations/risk and node communi
 
 ## Contracts and compatibility
 
+- The admin console and integrations use `/api/v1/{adminPath}/ops/*` for operations and risk features. When upgrading, update any scripts, reverse proxy rules or standalone consoles that still use the old independent prefix (formerly `/api/v1/ops/*` by default). Keep the existing method and endpoint suffix. The `ops_api_path` setting no longer registers routes.
 - [OpenAPI](openapi.json) describes all explicitly registered resources, inputs, outputs, permissions and native responses. [Mapping](mapping.md) lists every migrated legacy function. `endpoints.json` is the routing inventory; `contracts.json` declares field projections.
 - [Retained endpoints](retained-endpoints.md) lists legacy non-management routes and their V10 equivalents; [route audit](audit.md) records checks, findings and verification limits.
 - Legacy user business and public-content routes have been retired with explicit authorization. Only the routes in `retained-legacy.json`, administrative/risk APIs, node communication, configured subscription paths and historical webhook URLs remain available. Staff routes are retired. Both controller sets invoke shared business actions in `app/Services/Actions`; no HTTP forwarding or dynamic controller dispatch is used.

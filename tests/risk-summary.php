@@ -1,6 +1,7 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
+use App\Http\Routes\V1\AdminRoute;
 use Illuminate\Support\Facades\DB;
 use App\Models\RiskRuleHit;
 use App\Services\RiskLogService;
@@ -14,47 +15,15 @@ DB::beginTransaction();
 try {
     // All changes are rolled back; existing local fixture records are excluded temporarily.
     RiskRuleHit::query()->delete();
-    foreach ([[time(), 'high',1], [time()-90000,'low',1], [time()-86400*40,'high',2]] as [$at,$level,$user]) {
-        RiskRuleHit::create(['scene'=>'subscribe','rule_key'=>'subscribe_high_frequency_by_user_10m','risk_level'=>$level,'user_id'=>$user,'email'=>'risk-test@example.com','ip'=>'127.0.0.1','hit_at'=>$at]);
-    }
-    $data=json_decode($controller->getSummary(Request::create('/?window=today'))->getContent(), true)['data'];
-    $assert($data['recent'][0]['email']==='risk-test@example.com' && $data['recent'][0]['user_id']===1);
-    $assert($data['total']===1 && $data['high']===1 && $data['users']===1);
-    $assert(array_sum(array_column($data['trend'],'hits'))===1);
-    $assert($data['ranking'][0]['hits']===1 && count($data['recent'])===1);
-    $data=json_decode($controller->getSummary(Request::create('/?window=7d'))->getContent(), true)['data'];
-    $assert($data['total']===2 && $data['users']===1);
-    $assert(!isset($data['traffic']) && !isset($data['income']));
-    foreach (['blocked','block','deny','rejected','observed'] as $status) {
-        RiskRuleHit::create(['scene'=>'subscribe','rule_key'=>'subscribe_high_frequency_by_user_10m','risk_level'=>'low','user_id'=>$status==='observed'?2:1,'status'=>$status,'hit_at'=>time()-60]);
-    }
-    $data=json_decode($controller->getSummary(Request::create('/?window=today'))->getContent(),true)['data'];
-    $assert($data['total']===6 && $data['blocked']===4 && $data['users']===2);
-    // Dashboard totals retain rolling windows, daily traffic selection and empty-UA handling.
     App\Models\SubscribeLog::query()->delete();
-    App\Models\StatServer::query()->delete();
     $now=time();
     foreach([[-300,1,'mihomo','ClashMeta/1.19.0'],[-400,2,'mihomo',null],[-2*86400,1,'flclash','FlClash/0.8.0'],[-10*86400,3,'mihomo',''],[-40*86400,4,'old','Old/1.0']] as [$offset,$uid,$client,$ua]) {
         App\Models\SubscribeLog::create(['user_id'=>$uid,'client_type'=>$client,'user_agent'=>$ua,'status'=>'success','created_at'=>$now+$offset,'updated_at'=>$now+$offset]);
     }
-    foreach([[0,100,200,'d'],[-2,500,600,'d'],[-10,1000,2000,'d'],[-40,9000,9000,'d'],[0,999,999,'m']] as $index=>[$days,$up,$down,$recordType]) {
-        App\Models\StatServer::create(['server_id'=>$index+1,'server_type'=>'v2box','u'=>$up,'d'=>$down,'record_type'=>$recordType,'record_at'=>strtotime(date('Y-m-d',$now+$days*86400))]);
-    }
-    $overview=json_decode($controller->getOverview(Request::create('/'))->getContent(),true)['data'];
-    foreach(['today'=>[2,2,100,200],'7d'=>[2,3,600,800],'30d'=>[3,4,1600,2800]] as $window=>[$users,$hits,$up,$down]) {
-        $row=$overview['windows'][$window];
-        $assert($row['active_users']===['users'=>$users,'hits'=>$hits]);
-        $assert($row['traffic']===['up_bytes'=>$up,'down_bytes'=>$down,'total_bytes'=>$up+$down]);
-        $assert($overview['metrics']['active_users'][$window]===$row['active_users'] && $overview['metrics']['traffic'][$window]===$row['traffic']);
-    }
-    $assert($overview['windows']['today']['risk_result']===['blocked_hits'=>4,'blocked_users'=>1,'pass_hits'=>2,'pass_users'=>1,'blocked_rate'=>'66.67%']);
-    $ranking=collect($overview['flag_client_ranking'])->keyBy('client_type');
-    $assert($ranking['mihomo']['hits_24h']===2 && $ranking['mihomo']['hits_30d']===3);
-    $uaDetails=collect($overview['ua_raw_details_30d'])->keyBy('client_type');
-    $assert(count($uaDetails['mihomo']['ua_rows'])===1 && $uaDetails['mihomo']['ua_rows'][0]['hits_24h']===1);
+    $clientStats = app(App\Services\RiskStatisticsService::class)->clientSubscriptionStats([['client_type'=>'mihomo']])->first();
+    $assert($clientStats['subscribe_flag_count_24h']===2 && $clientStats['subscribe_flag_count_30d']===3);
+    $assert(count($clientStats['raw_ua_stats'])===1 && $clientStats['raw_ua_stats'][0]['count_24h']===1);
 
-    // Dashboard data is independent of the legacy chart payload and raw grouped logs.
-    RiskRuleHit::query()->delete();
     config(['fastai.system_timezone'=>'Asia/Kathmandu']);
     $boundary = (new DateTimeImmutable('2 days ago midnight', new DateTimeZone('Asia/Kathmandu')))->getTimestamp();
     $person = App\Models\User::create(['email'=>uniqid('risk-dash-').'@example.test','password'=>'test',
@@ -74,9 +43,16 @@ try {
         [$now-3,'client_disabled','failed'], [$now+3600,RiskLogService::IP_BLACKLIST_REASON,'failed']] as [$at,$reason,$status]) {
         App\Models\SubscribeLog::create(['reason'=>$reason,'status'=>$status,'created_at'=>$at,'updated_at'=>$at]);
     }
-    $dashboard = fn ($window) => json_decode($controller->getSummary(Request::create('/?view=dashboard&window='.$window))->getContent(), true)['data'];
+    $dashboard = fn ($window) => json_decode($controller->getSummary(Request::create('/?window='.$window))->getContent(), true)['data'];
     $dayReport = $dashboard('today');
     $weekReport = $dashboard('7d');
+    $defaultReport = json_decode($controller->getSummary(Request::create('/'))->getContent(), true)['data'];
+    $assert(array_keys($defaultReport) === ['review_queue', 'blacklist', 'rules']);
+    $assert($defaultReport['review_queue'] === $dayReport['review_queue'] && $defaultReport['blacklist']['ip'] === $dayReport['blacklist']['ip']);
+    $cacheClientReport = json_decode($controller->getSummary(Request::create('/?view=dashboard&window=7d'))->getContent(), true)['data'];
+    $assert($cacheClientReport['review_queue'] === $weekReport['review_queue'] && $cacheClientReport['rules'] === $weekReport['rules']);
+    try { $dashboard('90d'); $assert(false); }
+    catch (Illuminate\Validation\ValidationException $e) { $assert(isset($e->errors()['window'])); }
     $assert($dayReport['review_queue'] === ['total'=>2,'accounts'=>1,'oldest_at'=>$now-40*86400]
         && $dayReport['review_queue'] === $weekReport['review_queue']);
     $assert($dayReport['blacklist']['ip']===1 && $dayReport['blacklist']['ua']===0
@@ -113,24 +89,18 @@ try {
         try { $controller->updateRule(Request::create('/', 'POST', ['rule_key'=>$rule, 'thresholds'=>$thresholds])); $assert(false); }
         catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode()===422); }
     }
-    try { $controller->updateRiskSettings(Request::create('/', 'POST', ['connection_log_interval'=>'bad'])); $assert(false); }
+    try { app(App\Services\LogRetentionService::class)->save(['connection_log_interval'=>'bad']); $assert(false); }
     catch (Illuminate\Validation\ValidationException $e) { $assert(true); }
     $kernel=app(Illuminate\Contracts\Http\Kernel::class);
     foreach (['risk/summary/fetch','client/releases/fetch','client/releases/check'] as $path) {
-        $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/'.$path, str_ends_with($path,'check') ? 'POST':'GET');
+        $r=Request::create('/api/v1/'.AdminRoute::prefix().'/ops/'.$path, str_ends_with($path,'check') ? 'POST':'GET');
         $r->headers->set('Accept','application/json');
         $assert($kernel->handle($r)->getStatusCode()===403);
     }
     RiskRuleHit::query()->delete();
     App\Models\SubscribeLog::query()->delete();
-    App\Models\StatServer::query()->delete();
-    $data=json_decode($controller->getSummary(Request::create('/?window=today'))->getContent(),true)['data'];
-    $assert($data['total']===0 && $data['blocked']===0 && $data['users']===0 && $data['ranking']===[] && $data['recent']===[] && array_sum(array_column($data['trend'],'hits'))===0);
-    $empty=json_decode($controller->getOverview(Request::create('/'))->getContent(),true)['data'];
-    foreach ($empty['windows'] as $window) {
-        $assert($window['active_users']===['users'=>0,'hits'=>0] && $window['traffic']['total_bytes']===0 && $window['risk_result']['blocked_rate']==='0%');
-    }
-    $assert($empty['flag_client_ranking']===[] && $empty['ua_raw_details_30d']===[]);
+    $empty=$dashboard('today');
+    $assert($empty['review_queue']['total']===0 && $empty['rules']===[] && $empty['blacklist']['ip']===0 && $empty['blacklist']['ua']===0);
     $assert($blacklistReads<=1);
 } finally { DB::rollBack(); RiskLogService::clearRuleCache(); config(['fastai.system_timezone'=>$originalZone]); }
 echo "PASS: {$checks} risk summary / validation / authorization checks\n";

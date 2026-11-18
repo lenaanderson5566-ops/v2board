@@ -2,24 +2,15 @@
 
 此清单由实际注册路由生成：`php tests/api-route-audit.php --write-inventory`。不包含 V10 新接口、管理/风控/客服后台接口。GET 路由同时支持 HEAD，表中省略 HEAD。仅表中入口继续保留；其余旧用户业务与公共内容 API 已移除。认证入口供现有后台使用。
 
-## 后台依赖的认证接口（6 条路由）
+## 后台依赖的认证接口（5 条路由）
 
 | 方法 | 保留路径 | V10 对应入口 |
 |---|---|---|
-| POST | `/api/v1/passport/auth/register` | POST /api/v10/auth/registrations |
 | POST | `/api/v1/passport/auth/login` | POST /api/v10/auth/sessions |
 | POST | `/api/v1/passport/auth/forget` | POST /api/v10/auth/password-resets |
+| POST | `/api/v1/passport/mfa/emails` | POST /api/v10/auth/mfa/emails |
+| POST | `/api/v1/passport/mfa/verifications` | POST /api/v10/auth/mfa/verifications |
 | POST | `/api/v1/passport/comm/sendEmailVerify` | POST /api/v10/auth/email-verifications |
-| POST | `/api/v1/passport/mfa/emails` | 后台 MFA 挑战邮件；用户使用 POST /api/v10/auth/mfa/emails |
-| POST | `/api/v1/passport/mfa/verifications` | 后台 MFA 挑战验证；用户使用 POST /api/v10/auth/mfa/verifications |
-
-## 后台依赖的账户接口（3 条路由）
-
-| 方法 | 保留路径 | V10 对应入口 |
-|---|---|---|
-| GET | `/api/v1/user/info` | GET /api/v10/me |
-| POST | `/api/v1/user/update` | PATCH /api/v10/me |
-| POST | `/api/v1/user/logout` | DELETE /api/v10/me/session |
 
 ## 旧公共接口与回调（2 条路由）
 
@@ -27,13 +18,6 @@
 |---|---|---|
 | POST | `/api/v1/guest/telegram/webhook` | POST /api/v10/webhooks/telegram |
 | GET/POST | `/api/v1/guest/payment/notify/{method}/{uuid}` | GET/POST /api/v10/webhooks/payments/{provider}/{endpointId} |
-
-## 旧订阅与客户端接口（2 条路由）
-
-| 方法 | 保留路径 | V10 对应入口 |
-|---|---|---|
-| GET | `/api/v1/client/app/getConfig` | GET /api/v10/subscriptions/{subscriptionToken}/application-config |
-| GET | `/api/v1/client/app/getVersion` | GET /api/v10/subscriptions/{subscriptionToken}/application-version |
 
 ## 节点通信
 
@@ -56,11 +40,11 @@ V2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、U
 | GET/HEAD | 管理员配置的 `subscribe_path` | 自定义订阅路径，使用原 token 规则；与 V10 同时可用；旧默认路径已移除 |
 | GET/HEAD | `/api/v10/public/client-installers/{installerId}/content` | 镜像下载新版入口；原 `/client-mirrors/{id}` 已移除 |
 
-`/` 与 `/app` 是网页入口而非 API，也继续保留。后台安全路径和运营路径不在本清单范围内；未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。
+`/` 与 `/app` 是网页入口而非 API，也继续保留。后台运营接口统一使用 `/api/v1/{后台入口}/ops/*`。旧独立运营接口和未完成的 `/api/v1/staff/*` 接口已全部退役，返回 404。
 
 ## 兼容说明
 
-- 上表旧用户/登录/公共/客户端路由共 13 条；前端用户业务已通过集中传输层使用 V10，仅保留后台依赖、历史回调及订阅入口。
+- 上表共 7 条后台认证及历史回调路由。注册、个人资料、退出登录和客户端配置及版本查询使用 V10。
 - 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。
 - 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。
 - 不再注册旧用户业务中的 GET 写操作。

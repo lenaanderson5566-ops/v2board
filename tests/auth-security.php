@@ -77,9 +77,9 @@ try {
         $assert($error->getStatusCode()===403,'Role downgrade takes effect for an existing session');
     }
     $logoutToken = $issue();
-    $logoutRequest = Illuminate\Http\Request::create('/api/v1/user/logout?auth_data[is_admin]=1','POST',[],[],[],['HTTP_AUTHORIZATION'=>$logoutToken,'HTTP_ACCEPT'=>'application/json']);
+    $logoutRequest = Illuminate\Http\Request::create('/api/v10/me/session?auth_data[is_admin]=1','DELETE',[],[],[],['HTTP_AUTHORIZATION'=>'Bearer '.$logoutToken,'HTTP_ACCEPT'=>'application/json']);
     $logoutResponse = $kernel->handle($logoutRequest);
-    $assert($logoutResponse->getStatusCode()===200 && (json_decode($logoutResponse->getContent(),true)['data']??null)===true && App\Services\AuthService::decryptAuthData($logoutToken)===false, 'Legacy logout revokes the verified header session despite forged query input');
+    $assert($logoutResponse->getStatusCode()===204 && App\Services\AuthService::decryptAuthData($logoutToken)===false, 'Logout revokes the verified bearer session despite forged query input');
     $call = function ($path,$token,$method='GET') use ($kernel) {
         $request = Illuminate\Http\Request::create('/api/v10/'.$path,$method);
         $request->headers->set('Authorization','Bearer '.$token); $request->headers->set('Accept','application/json');

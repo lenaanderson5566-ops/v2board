@@ -24,8 +24,8 @@ try {
     $assert($retention->configuration()['connection_log_interval']===1800 && Cache::get('RISK_CONNECTION_LOG_INTERVAL')===null,'sampling settings and cache invalidation');
     $retention->save(['connection_log_retention_days'=>45]);
     $assert($retention->settings()['system_log_retention_days']===30,'partial update preserves other categories');
-    $r=(new App\Http\Controllers\V1\Risk\LogController())->getRiskSettings(Request::create('/'));
-    $assert(json_decode($r->getContent(),true)['data']['connection_log_retention_days']===45,'shared connection policy');
+    $settings=$admin->getLogRetention($retention)['data']['settings'];
+    $assert($settings['connection_log_retention_days']===45 && $settings['connection_log_interval']===1800,'System settings expose both connection policies');
     $retention->save(['connection_log_retention_days'=>30]);
     $login=DB::table('v2_login_log')->insertGetId(['email'=>'log-test@example.test','created_at'=>1]);
     $subscription=DB::table('v2_subscribe_log')->insertGetId(['user_id'=>999999,'created_at'=>1]);

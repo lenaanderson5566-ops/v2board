@@ -34,7 +34,7 @@
 
 ## 本次治理结果
 
-- 系统监控移除重复的状态、队列原始字段卡片，统一读取定时监控快照；详细队列进程按需加载。兼容 API 暂保留，避免破坏现有外部使用。
+- 系统监控读取 `system/observability` 定时快照，队列详情按需从 `system/getQueueWorkload` 和 `system/getQueueMasters` 加载。原始 Horizon 指标接口 `system/getQueueStats` 已退役。
 - 删除 DashboardUsage 无消费方的 `mixed_timezone` 历史提示字段及其额外查询，并切换汇总缓存版本。保留真实流量汇总。
 - 客户端策略接口拒绝修改 `client_name`，提示转到字典维护，避免两个后台入口相互覆盖。兼容存储字段与已有名称不删除。
 - 文档分为当前维护入口与历史验证记录；历史框架升级和安全检查记录保留为审计依据，不用作当前部署指令。未因名称相似删除仍有独立统计口径的报表。

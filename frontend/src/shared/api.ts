@@ -48,7 +48,8 @@ export interface Boot {
     title: string;
     description: string;
     adminPath: string;
-    opsPath: string;
+    /** Compatibility field for older admin bundles. */
+    opsPath?: string;
     emailVerify: boolean;
     registerClosed: boolean;
     inviteRequired?: boolean;
@@ -76,7 +77,7 @@ configureTimeZone(
 );
 export const storageKey = `fastai.${boot.mode}${boot.apiBaseUrl ? "." + encodeURIComponent(boot.apiBaseUrl) : ""}.auth`;
 export const admin = (path: string) => `${boot.adminPath}/${path}`;
-export const ops = (path: string) => `${boot.opsPath}/${path}`;
+export const ops = (path: string) => admin(`ops/${path}`);
 const readCache = createReadCache();
 let accountSettingsGeneration = 0;
 let accountReadSequence = 0;

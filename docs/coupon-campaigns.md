@@ -32,7 +32,7 @@
 | GET coupon-campaign/fetch | current, pageSize（最大100） | 批次列表及 total |
 | GET coupon-campaign/recipients | id, current, status（可选） | 用户 ID、状态、安全原因、券包 ID、尝试次数及 total |
 
-旧 `coupon/issue` 最多100人的同步接口保留兼容。新页面使用批次接口。
+原同步发券接口 `coupon/issue` 已退役。脚本按指定用户发券时，使用 `scope=ids` 预览并确认批次，通过收件人列表查询每位用户的发放结果。
 
 ## 邮件名单入口
 

@@ -47,13 +47,13 @@ it.each(["FASTAI", "V2BOARD"] as const)("keeps custom runtime settings and the f
     expect(document.title).toBe(supplied.title);
 });
 
-it("shares normalized custom administrative paths through both bootstrap names", async () => {
-    window.FASTAI = { mode: "admin", title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-ops" } as any;
+it.each([{}, { opsPath: "custom-ops" }])("derives the operations path from the admin path with bootstrap options %j", async (options) => {
+    window.FASTAI = { mode: "admin", title: "Custom administration", adminPath: "custom-admin", ...options } as typeof window.FASTAI;
     document.documentElement.lang = "zh-CN";
     document.documentElement.dir = "rtl";
     await initializeRuntime("admin");
     expect(window.V2BOARD).toBe(window.FASTAI);
-    expect(window.V2BOARD).toMatchObject({ title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-ops" });
+    expect(window.V2BOARD).toMatchObject({ title: "Custom administration", adminPath: "custom-admin", opsPath: "custom-admin/ops" });
     expect(document.title).toBe("Workspace access");
     expect(document.documentElement.lang).toBe("en-US");
     expect(document.documentElement.dir).toBe("ltr");

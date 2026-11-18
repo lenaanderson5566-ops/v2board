@@ -6,7 +6,7 @@ import { logTime } from "./admin-log-time";
 import { configureTimeZone, setAdminDisplayTimeZone } from "../shared/timezone";
 
 const readRequest = vi.hoisted(() => {
-    window.FASTAI = { mode: "admin", adminPath: "test-admin", opsPath: "test-ops" } as typeof window.FASTAI;
+    window.FASTAI = { mode: "admin", adminPath: "test-admin" } as typeof window.FASTAI;
     return vi.fn();
 });
 vi.mock("../shared/api", async (original) => ({

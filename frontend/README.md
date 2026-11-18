@@ -58,6 +58,7 @@ Admin: overview, users, plans, nodes and routing, payments, coupons, gift cards,
 notices, knowledge, ticket conversations, translations, client strategies, risk
 rules and settings, IP/UA blacklists, online users, usage and logs, system settings.
 Open the admin console at the configured path and use its sidebar to reach operations pages.
+These pages send API requests to `/api/v1/{adminPath}/ops/*` using the same `adminPath` as the rest of the console.
 
 Theme discovery, selection and theme configuration routes have been removed.
 Custom footer HTML is available in System Settings → 页脚 HTML, persisted as

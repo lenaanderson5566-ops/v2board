@@ -1,6 +1,7 @@
 <?php
 $app = require __DIR__.'/support/bootstrap.php';
 if (!app()->environment('local')) throw new RuntimeException('Local test only');
+use App\Http\Routes\V1\AdminRoute;
 use App\Models\User;
 use App\Models\Plan;
 use App\Models\Order;
@@ -90,7 +91,7 @@ try {
  $assert($activityUser()['has_recurring_order_history'] === true);
  $order->update(['status'=>4]);
  $assert($activityUser()['has_recurring_order_history'] === true);
- $r=Request::create('/api/v1/'.config('fastai.ops_api_path','ops').'/risk/user-activity/fetch?user_id='.$u->id);
+ $r=Request::create('/api/v1/'.AdminRoute::prefix().'/ops/risk/user-activity/fetch?user_id='.$u->id);
  $r->headers->set('Accept','application/json');
  $assert(app(Illuminate\Contracts\Http\Kernel::class)->handle($r)->getStatusCode()===403);
 } finally {

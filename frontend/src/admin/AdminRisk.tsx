@@ -34,7 +34,7 @@ const thresholdLabels: Record<string, string> = {
 
 export function RiskOverview() {
     const [window, setWindow] = useState("today"), [reviewOpen, setReviewOpen] = useState(false);
-    const d = useData(ops(`risk/summary/fetch?window=${window}&view=dashboard`));
+    const d = useData(ops(`risk/summary/fetch?window=${window}`));
     const backlog = d.data?.review_queue;
     const blacklist = d.data?.blacklist;
     const trend = rows(blacklist?.trend);

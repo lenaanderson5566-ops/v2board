@@ -1,5 +1,4 @@
 import type { Row } from "../shared/api";
-const quote = (value: string) => "'" + value.replace(/'/g, "'\\''") + "'";
 export const nodeUpgradeCommand = (node: Row): string =>
     String(node.upgrade_command || "");
 
@@ -19,19 +18,4 @@ const taskPhases: Record<string, { label: string; hint: string; polling?: boolea
 export function deploymentTaskState(task?: Row | null) {
     if (!task) return { label: "暂无部署任务", hint: "", polling: false };
     return taskPhases[task.phase] || { label: "等待更新任务状态", hint: "", polling: true };
-}
-export function nodeDeploymentCommand(node: Row): string {
-    const base = String(node.install_command || "");
-    if (!node.ddns) return base;
-    const domain = String(node.ddns_domain || "").trim();
-    const family = ["ipv4", "ipv6", "dual"].includes(node.ddns_family)
-        ? node.ddns_family
-        : "ipv4";
-        return (
-            base +
-            " --ddns" +
-            (domain ? " --ddns-domain " + quote(domain) : "") +
-            " --ddns-family " +
-            family
-        );
 }

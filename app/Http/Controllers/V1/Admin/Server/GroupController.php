@@ -19,18 +19,17 @@ class GroupController extends Controller
                 'data' => [ServerGroup::findOrFail($request->input('group_id'))]
             ]);
         }
-        $serverGroups = ServerGroup::get();
+        $plans = Plan::select('group_id')->selectRaw('COUNT(*) AS total')->groupBy('group_id');
+        $serverGroups = ServerGroup::leftJoinSub($plans, 'plans', 'plans.group_id', '=', 'v2_server_group.id')
+            ->select('v2_server_group.*')->selectRaw('COALESCE(plans.total, 0) AS plan_count')
+            ->withCasts(['plan_count' => 'integer'])->get();
         $users = User::select('group_id')->selectRaw('COUNT(*) AS total')->groupBy('group_id')->pluck('total', 'group_id');
-        $plans = Plan::select('group_id')->selectRaw('COUNT(*) AS total')->groupBy('group_id')->pluck('total', 'group_id');
         $counts = [];
-        foreach ([ServerV2box::class] as $model) {
-            foreach ($model::select('group_id')->get() as $node) {
-                foreach (array_unique((array)$node->group_id) as $id) $counts[$id] = ($counts[$id] ?? 0) + 1;
-            }
+        foreach (ServerV2box::select('group_id')->get() as $node) {
+            foreach (array_unique((array)$node->group_id) as $id) $counts[$id] = ($counts[$id] ?? 0) + 1;
         }
         foreach ($serverGroups as $group) {
             $group['user_count'] = (int)$users->get($group->id, 0);
-            $group['plan_count'] = (int)$plans->get($group->id, 0);
             $group['server_count'] = $counts[$group->id] ?? 0;
         }
         return response([
@@ -53,10 +52,8 @@ class GroupController extends Controller
         $request->validate(['id'=>'required|integer|min:1']);
         $serverGroup = ServerGroup::findOrFail($request->input('id'));
         if ((int)$serverGroup->id === \App\Services\TrafficCreditService::baseGroupId()) abort(422, '该组被设为额度基础权限组，请先更换配置');
-        foreach ([ServerV2box::class] as $model) {
-            foreach ($model::select('group_id')->cursor() as $node) {
-                if (in_array($serverGroup->id, (array)$node->group_id)) abort(422, '该组已被节点所使用，无法删除');
-            }
+        foreach (ServerV2box::select('group_id')->cursor() as $node) {
+            if (in_array($serverGroup->id, (array)$node->group_id)) abort(422, '该组已被节点所使用，无法删除');
         }
 
         if (Plan::where('group_id', $serverGroup->id)->exists()) {

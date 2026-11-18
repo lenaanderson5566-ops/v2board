@@ -155,7 +155,10 @@ export function consent() {
     return privacyChoice()?.choice ?? null;
 }
 export function setCollection(value: boolean) {
-    enabled = value && !privacySignal() && consent() === "allow";
+    const permitted = value && !privacySignal() && consent() === "allow";
+    // A settings refresh is not a page visit and must not extend an idle session.
+    if (enabled && permitted) return;
+    enabled = permitted;
     generation++;
     lastEvent = "";
     if (!enabled) {

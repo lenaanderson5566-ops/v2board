@@ -385,7 +385,7 @@ test.describe("desktop admin frontend", () => {
             const days = Number(new URL(request.url()).searchParams.get("days"));
             const daily = history.slice(-days);
             return {
-                ready: true, settings: { enabled: true, retentionDays: 180 }, timeZone: "UTC",
+                ready: true, settings: { enabled: true, retentionDays: 90 }, timeZone: "UTC",
                 from: daily[0].date + "T00:00:00Z", to: dateAt(89) + "T12:00:00Z",
                 collectionStartedAt: dateAt(10) + "T00:00:00Z", effectiveFrom: dateAt(Math.max(10, 90 - days)) + "T00:00:00Z",
                 sessions: total(daily), daily,
@@ -401,7 +401,9 @@ test.describe("desktop admin frontend", () => {
         await expect(chart.locator(":scope > div")).toHaveCount(90);
         await expect(chart.locator('[data-available="false"]')).toHaveCount(10);
         await expect(metrics.getByText(String(total(history)), { exact: true })).toBeVisible();
-        await expect(metrics.getByText("10", { exact: true })).toBeVisible();
+        await expect(metrics.getByText("80 / 90 天", { exact: true })).toBeVisible();
+        await expect(page.locator(".analytics-trend figcaption")).toContainText("单日最高会话 10");
+        await expect(chart.locator('[data-available="true"] > span')).toHaveCount(50);
         await expect(metrics.getByText("—", { exact: true })).toBeVisible();
         expect(await chart.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
         await expectPageWidth(page, 1280);
@@ -410,6 +412,77 @@ test.describe("desktop admin frontend", () => {
         const newest = page.locator("details[open] tbody tr").first();
         await expect(newest.getByRole("cell").first()).toHaveText(dateAt(89));
         await expect(newest.getByRole("cell").last()).toHaveText("0");
+    });
+
+    test("desktop conversion and experience distinguish sessions, accounts and zero denominators", async ({ page, context }) => {
+        const bounds = {
+            from: "2026-10-01T00:00:00Z", to: "2026-10-30T02:00:00Z", timeZone: "Asia/Shanghai",
+            effectiveFrom: "2026-10-01T00:00:00Z", collectionStartedAt: "2026-10-01T00:00:00Z",
+        };
+        const requests = [];
+        await consoleFixture(context, "admin", (path, request) => {
+            if (path === "/api/v1/test-admin/config/fetch") return {};
+            if (!path.startsWith("/api/v1/test-admin/analytics/")) return;
+            const query = new URL(request.url()).searchParams;
+            const view = query.get("view");
+            const device = query.get("device");
+            const mobile = device === "mobile";
+            requests.push({ view, device });
+            const common = { ...bounds, ready: true, settings: { enabled: true, retentionDays: 30 } };
+            if (view === "traffic") return {
+                ...common, sessions: 20, previous: null, daily: [{ date: "2026-10-30", sessions: 20, available: true }],
+                sourceCoverage: { known: 12, unknown: 8, historical: 0 }, sources: [{ domain: "partner.example.test", sessions: 12, paymentEntries: 3 }],
+            };
+            if (view === "conversion") return {
+                ...common, visitedSessions: mobile ? 2 : 20,
+                funnel: [
+                    { step: "plan", sessions: mobile ? 0 : 10 }, { step: "confirmation", sessions: mobile ? 0 : 4 },
+                    { step: "payment", sessions: mobile ? 0 : 3 },
+                ],
+                firstPurchase: {
+                    ...bounds, available: true, windowDays: 7, registered: 10, verifiedPayingAccounts: 5,
+                    verifiedRecurringAccounts: 4, verifiedCreditAccounts: 2,
+                    funding: { externalOnly: 4, mixed: 0, walletOnly: 0, manual: 0, unclassified: 0 },
+                },
+            };
+            if (view === "experience") return { experience: {
+                ...bounds, available: true, enabled: true, retentionDays: 30, observedSessions: 20, affectedSessions: 3,
+                rows: [
+                    { page: "plan", event: "api_error", sessions: 3, samples: 6, average: null, p75Upper: null, p95Upper: null },
+                    { page: "payment", event: "js_error", sessions: 2, samples: 2, average: null, p75Upper: null, p95Upper: null },
+                ],
+            } };
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/overview-analytics`);
+        await expect(page.getByRole("row", { name: "partner.example.test 12 3 25%" })).toBeVisible();
+        await expectPageWidth(page, 1280);
+        await page.getByRole("tab", { name: "购买转化" }).click();
+        const metrics = page.locator("section.panel").filter({ has: page.getByRole("heading", { name: /新用户付费转化/ }) }).locator(".analytics-metrics > div");
+        await expect(metrics.filter({ hasText: "整体付费转化率" })).toContainText("50%5 / 10");
+        await expect(metrics.filter({ hasText: "周期套餐首购" })).toContainText("40%4 / 10");
+        await expect(metrics.filter({ hasText: "独立额度包购买" })).toContainText("20%2 / 10");
+        await expect(page.getByRole("row", { name: "全部采集会话 → 浏览套餐 20 10 50% 10" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "浏览套餐 → 确认订单 10 4 40% 6" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "确认订单 → 进入付款 4 3 75% 1" })).toBeVisible();
+        await expect(page.locator(".analytics-path-summary")).toContainText("15%");
+        await expectPageWidth(page, 1280);
+        await page.screenshot({ path: test.info().outputPath("admin-purchase-conversion-desktop.png"), fullPage: true });
+        await page.getByLabel("访问设备").selectOption("mobile");
+        await expect(page.getByRole("row", { name: "全部采集会话 → 浏览套餐 2 0 0% 2" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "浏览套餐 → 确认订单 0 0 — 0" })).toBeVisible();
+        await expect(metrics.filter({ hasText: "整体付费转化率" })).toContainText("50%5 / 10");
+        await page.getByLabel("访问设备").selectOption("all");
+        await page.getByRole("tab", { name: "体验问题" }).click();
+        await expect(page.getByText(/个已采集会话上报过异常/)).toContainText("3 / 20 个已采集会话上报过异常（15%）");
+        await expect(page.getByRole("row", { name: "浏览套餐 接口错误 3" })).toBeVisible();
+        await expect(page.getByRole("row", { name: "进入付款 脚本异常 2" })).toBeVisible();
+        await expect(page.getByText(/查询范围/)).toContainText("业务时区 Asia/Shanghai");
+        const beforeRefresh = requests.length;
+        await page.getByRole("button", { name: "刷新体验报表" }).click();
+        await expect.poll(() => requests.length).toBe(beforeRefresh + 1);
+        expect(requests.at(-1)).toEqual({ view: "experience", device: "all" });
+        await expectPageWidth(page, 1280);
+        await page.screenshot({ path: test.info().outputPath("admin-experience-summary-desktop.png"), fullPage: true });
     });
 
     test("a signed-in refresh waits without displaying the sign-in layout", async ({ page, context }) => {

@@ -37,14 +37,22 @@ final class ExperienceMeasurements
     {
         if (!$this->ready()) return ['available'=>false,'rows'=>[]];
         $settings=app(ProductAnalytics::class)->settings(); $now=time();
-        $from=(new \DateTimeImmutable('tomorrow',new \DateTimeZone(TimeZones::system())))->modify('-'.$days.' days')->getTimestamp();
-        $sessions=DB::table('v2_analytics_session')->where('created_at','>=',max($from,$now-$settings['retentionDays']*86400))->where('created_at','<=',$now);
+        $zone=TimeZones::system();
+        $from=(new \DateTimeImmutable('tomorrow',new \DateTimeZone($zone)))->modify('-'.$days.' days')->getTimestamp();
+        $effectiveFrom=max($from,$now-$settings['retentionDays']*86400);
+        $sessions=DB::table('v2_analytics_session')->whereBetween('created_at',[$effectiveFrom,$now]);
         if ($device!=='all') $sessions->where('device',$device);
+        $coverage=DB::query()->fromSub((clone $sessions)->select('id'),'s')
+            ->leftJoin('v2_analytics_measurement as issue',function($join) {
+                $join->on('issue.session_id','=','s.id')->whereIn('issue.event',self::ISSUES);
+            })->selectRaw('COUNT(DISTINCT s.id) AS observed, COUNT(DISTINCT issue.session_id) AS affected')->first();
         $q=DB::table('v2_analytics_measurement as m')->joinSub($sessions->select('id'),'s','s.id','=','m.session_id')
             ->whereIn('m.event',self::STORED_EVENTS);
         $counts=(clone $q)->select('m.page','m.event')->selectRaw('SUM(m.samples) AS samples, SUM(m.value_sum) AS value_sum, COUNT(DISTINCT m.session_id) AS sessions')->groupBy('m.page','m.event')->orderBy('m.page')->orderBy('m.event')->get();
         $buckets=(clone $q)->select('m.page','m.event','m.bucket')->selectRaw('SUM(m.samples) AS samples')->groupBy('m.page','m.event','m.bucket')->orderBy('m.bucket')->get()->groupBy(fn($r)=>$r->page.':'.$r->event);
-        return ['available'=>true,'effectiveFrom'=>gmdate('c',max($from,$now-$settings['retentionDays']*86400)),'retentionDays'=>$settings['retentionDays'],'enabled'=>$settings['enabled'],
+        return ['available'=>true,'effectiveFrom'=>gmdate('c',$effectiveFrom),'to'=>gmdate('c',$now),'timeZone'=>$zone,
+            'observedSessions'=>(int)$coverage->observed,'affectedSessions'=>(int)$coverage->affected,
+            'retentionDays'=>$settings['retentionDays'],'enabled'=>$settings['enabled'],
             'rows'=>$counts->map(function($r) use($buckets) {
                 $percentile=function(float $fraction) use($r,$buckets) {
                     $target=(int)ceil((int)$r->samples*$fraction); $count=0;

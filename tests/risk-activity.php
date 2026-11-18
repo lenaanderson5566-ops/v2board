@@ -42,12 +42,10 @@ try {
  config(['fastai.device_limit_mode'=>0]);
  Cache::put($key,['expired-node'=>['aliveips'=>['192.0.2.3'],'lastupdateAt'=>time()-101]],120);
  $assert($decode($c->getOnlineUsers(Request::create('/','GET',['email'=>$u->email])))['total']===0);
- UserOnlineSnapshot::where('user_id',$u->id)->delete();
- foreach ([['192.0.2.1','test-a',time()],['192.0.2.2','test-b',time()-100]] as [$ip,$source,$at])
-  UserOnlineSnapshot::create(['user_id'=>$u->id,'ip'=>$ip,'node'=>'test','source'=>$source,'online_at'=>$at]);
- $usage=$decode($c->getUserUsage(Request::create('/','GET',['email'=>$u->email])))['data'][0];
- $assert($usage['last_online_ip']==='192.0.2.1');
- $assert($usage['balance_cents']===12345);
+ $request=App\Http\Requests\Admin\UserFetch::create('/','GET',['filter'=>[['key'=>'id','condition'=>'=','value'=>$u->id]]]);
+ $userRow=$decode((new App\Http\Controllers\V1\Admin\UserController)->fetch($request))['data'][0];
+ $assert($userRow['id']===$u->id && $userRow['last_connected_at']===$reportedAt);
+ $assert($userRow['balance']===12345);
  $at=(int)(floor(time()/600)*600);
  foreach ([0,1] as $i) RiskRuleHit::create(['user_id'=>$u->id,'email'=>'activity-test@example.com','scene'=>'subscribe','rule_key'=>'test_activity','risk_level'=>'low','ip'=>'192.0.2.1','status'=>'recorded','hit_at'=>$at+$i]);
  $group=$decode($c->getRuleHits(Request::create('/','GET',['grouped'=>1,'email'=>'activity-test@example.com'])));

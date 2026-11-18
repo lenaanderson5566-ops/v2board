@@ -32,11 +32,9 @@ class RiskRoute
             $router->post('/risk/blacklist/ua/delete', 'V1\Risk\LogController@deleteUaBlacklist');
             $router->get('/risk/online-user/fetch', 'V1\Risk\LogController@getOnlineUsers');
             $router->get('/risk/user-activity/fetch', 'V1\Risk\LogController@getUserActivity');
-            $router->get('/risk/user-usage/fetch', 'V1\Risk\LogController@getUserUsage');
 
             $router->get('/client/strategy/fetch', 'V1\Risk\LogController@getClientStrategies');
             $router->post('/client/strategy/update', 'V1\Risk\LogController@updateClientStrategy');
-            $router->post('/client/strategy/delete', 'V1\Risk\LogController@deleteClientStrategy');
 
             $router->post('/log/rule-hit/review', 'V1\Risk\LogController@reviewRuleHit');
             $router->get('/log/rule-hit/fetch', 'V1\Risk\LogController@getRuleHits');

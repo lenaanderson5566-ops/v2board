@@ -36,4 +36,14 @@ final class RecurringOrderPurchase
                     });
             });
     }
+
+    public static function potentiallyPriorUndated(): Builder
+    {
+        return self::valuedWithConfirmedStatus('h')
+            ->whereColumn('h.user_id', 'o.user_id')
+            ->whereColumn('h.created_at', '<=', 'o.paid_at')
+            ->where(function (Builder $query) {
+                $query->whereNull('h.paid_at')->orWhere('h.paid_at', '<=', 0);
+            });
+    }
 }

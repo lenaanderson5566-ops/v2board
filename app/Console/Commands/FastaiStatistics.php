@@ -2,144 +2,52 @@
 
 namespace App\Console\Commands;
 
-use App\Models\StatServer;
-use App\Models\StatUser;
-use App\Services\StatisticalService;
-use Illuminate\Console\Command;
+use App\Models\CommissionLog;
+use App\Models\Order;
 use App\Models\Stat;
-use Illuminate\Support\Facades\DB;
+use App\Models\StatServer;
+use App\Models\User;
+use Illuminate\Console\Command;
 
 class FastaiStatistics extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'fastai:statistics';
     protected $aliases = ['v2board:statistics'];
+    protected $description = '归档前一业务日的订单、佣金、注册与流量统计';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = '统计任务';
-
-    /**
-     * Create a new command instance.
-     *
-     * @return void
-     */
-    public function __construct()
+    public function handle(): int
     {
-        parent::__construct();
-    }
+        $started = microtime(true);
+        $end = strtotime('today');
+        $start = strtotime('-1 day', $end);
 
-    /**
-     * Execute the console command.
-     *
-     * @return mixed
-     */
-    public function handle()
-    {
-        $startAt = microtime(true);
-        ini_set('memory_limit', -1);
-        //$this->statUser();
-        //$this->statServer();
-        $this->stat();
-        info('统计任务执行完毕。耗时:' . (microtime(true) - $startAt) / 1000);
-    }
+        // Archived amounts are denominated in CNY. Counts cover all currencies.
+        $orders = Order::where('created_at', '>=', $start)->where('created_at', '<', $end)
+            ->selectRaw("COUNT(*) AS orders, SUM(CASE WHEN currency='CNY' THEN total_amount ELSE 0 END) AS amount")
+            ->first();
+        $paid = Order::where('paid_at', '>=', $start)->where('paid_at', '<', $end)->whereNotIn('status', [0, 2])
+            ->selectRaw("COUNT(*) AS orders, SUM(CASE WHEN currency='CNY' THEN total_amount ELSE 0 END) AS amount")
+            ->first();
+        $commission = CommissionLog::where('created_at', '>=', $start)->where('created_at', '<', $end)
+            ->selectRaw("COUNT(*) AS payouts, SUM(CASE WHEN currency='CNY' THEN get_amount ELSE 0 END) AS amount")
+            ->first();
+        $users = User::where('created_at', '>=', $start)->where('created_at', '<', $end)
+            ->selectRaw('COUNT(*) AS registrations, COUNT(invite_user_id) AS invited')->first();
+        $traffic = StatServer::where('created_at', '>=', $start)->where('created_at', '<', $end)
+            ->selectRaw('SUM(u) + SUM(d) AS total')->value('total');
 
-    private function statServer()
-    {
-        try {
-            DB::beginTransaction();
-            $createdAt = time();
-            $recordAt = strtotime('-1 day', strtotime(date('Y-m-d')));
-            $statService = new StatisticalService();
-            $statService->setStartAt($recordAt);
-            $statService->setServerStats();
-            $stats = $statService->getStatServer();
-            foreach ($stats as $stat) {
-                if (!StatServer::insert([
-                    'server_id' => $stat['server_id'],
-                    'server_type' => $stat['server_type'],
-                    'u' => $stat['u'],
-                    'd' => $stat['d'],
-                    'created_at' => $createdAt,
-                    'updated_at' => $createdAt,
-                    'record_type' => 'd',
-                    'record_at' => $recordAt
-                ])) {
-                    throw new \Exception('stat server fail');
-                }
-            }
-            DB::commit();
-            $statService->clearStatServer();
-        } catch (\Exception $e) {
-            DB::rollback();
-            \Log::error($e->getMessage(), ['exception' => $e]);
-            throw $e;
-        }
-    }
-
-    private function statUser()
-    {
-        try {
-            DB::beginTransaction();
-            $createdAt = time();
-            $recordAt = strtotime('-1 day', strtotime(date('Y-m-d')));
-            $statService = new StatisticalService();
-            $statService->setStartAt($recordAt);
-            $statService->setUserStats();
-            $stats = $statService->getStatUser();
-            foreach ($stats as $stat) {
-                if (!StatUser::insert([
-                    'record_timezone' => \App\Services\TimeZones::system(),
-                    'user_id' => $stat['user_id'],
-                    'u' => $stat['u'],
-                    'd' => $stat['d'],
-                    'server_rate' => $stat['server_rate'],
-                    'created_at' => $createdAt,
-                    'updated_at' => $createdAt,
-                    'record_type' => 'd',
-                    'record_at' => $recordAt
-                ])) {
-                    throw new \Exception('stat user fail');
-                }
-            }
-            DB::commit();
-            $statService->clearStatUser();
-        } catch (\Exception $e) {
-            DB::rollback();
-            \Log::error($e->getMessage(), ['exception' => $e]);
-            throw $e;
-        }
-    }
-
-    private function stat()
-    {
-        try {
-            $endAt = strtotime(date('Y-m-d'));
-            $startAt = strtotime('-1 day', $endAt);
-            $statisticalService = new StatisticalService();
-            $statisticalService->setStartAt($startAt);
-            $statisticalService->setEndAt($endAt);
-            $data = $statisticalService->generateStatData();
-            $data['record_at'] = $startAt;
-            $data['record_type'] = 'd';
-            $statistic = Stat::where('record_at', $startAt)
-                ->where('record_type', 'd')
-                ->first();
-            if ($statistic) {
-                $statistic->update($data);
-                return;
-            }
-            Stat::create($data);
-        } catch (\Exception $e) {
-            \Log::error($e->getMessage(), ['exception' => $e]);
-            throw $e;
-        }
+        Stat::updateOrCreate(['record_at' => $start, 'record_type' => 'd'], [
+            'order_count' => $orders->orders,
+            'order_total' => $orders->amount ?? 0,
+            'paid_count' => $paid->orders,
+            'paid_total' => $paid->amount ?? 0,
+            'commission_count' => $commission->payouts,
+            'commission_total' => $commission->amount ?? 0,
+            'register_count' => $users->registrations,
+            'invite_count' => $users->invited,
+            'transfer_used_total' => $traffic ?? 0,
+        ]);
+        info('每日统计归档完成', ['elapsed_seconds' => round(microtime(true) - $started, 3)]);
+        return self::SUCCESS;
     }
 }

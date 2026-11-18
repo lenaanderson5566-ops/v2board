@@ -13,8 +13,6 @@ use Illuminate\Support\Facades\DB;
 class StatServerJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-    //protected $u;
-    //protected $d;
     protected $data;
     protected $server;
     protected $protocol;
@@ -31,8 +29,6 @@ class StatServerJob implements ShouldQueue
     public function __construct(array $data,array $server, $protocol, $recordType = 'd')
     {
         $this->onQueue('stat');
-        //$this->u = $u;
-        //$this->d = $d;
         $this->data = $data;
         $this->server = $server;
         $this->protocol = $protocol;
@@ -47,9 +43,6 @@ class StatServerJob implements ShouldQueue
     public function handle()
     {
         $recordAt = strtotime(date('Y-m-d'));
-        if ($this->recordType === 'm') {
-            //
-        }
         try {
             DB::beginTransaction();
             $u = 0;
@@ -58,8 +51,7 @@ class StatServerJob implements ShouldQueue
                 $u += $this->data[$userId][0];
                 $d += $this->data[$userId][1];
             }
-            $serverdata = StatServer::lockForUpdate()
-                ->where('record_at', $recordAt)
+            $serverdata = StatServer::where('record_at', $recordAt)
                 ->where('server_id', $this->server['id'])
                 ->where('server_type', $this->protocol)
                 ->lockForUpdate()->first();

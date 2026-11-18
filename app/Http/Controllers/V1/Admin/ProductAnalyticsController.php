@@ -9,7 +9,7 @@ final class ProductAnalyticsController extends \App\Http\Controllers\Controller 
     public function journey(Request $request, \App\Services\JourneyAnalytics $service, \App\Services\ExperienceMeasurements $measurements) {
         $input=$request->validate(['days'=>'sometimes|integer|in:7,30,90','device'=>'sometimes|in:all,desktop,mobile,tablet','view'=>'sometimes|in:experience']);
         $days=(int)($input['days'] ?? 30); $device=$input['device'] ?? 'all';
-        $key='JOURNEY_ANALYTICS_REPORT:v2:'.$days.':'.\App\Services\TimeZones::system();
+        $key='JOURNEY_ANALYTICS_REPORT:v3:'.$days.':'.\App\Services\TimeZones::system();
         $data=['experience'=>Cache::remember($key.':experience:'.$device,60,fn()=>$measurements->report($days,$device))];
         if (($input['view'] ?? null)!=='experience') {
             $data['business']=Cache::remember($key.':business',60,fn()=>$service->report($days));
@@ -27,7 +27,7 @@ final class ProductAnalyticsController extends \App\Http\Controllers\Controller 
         $days=(int)($input['days'] ?? 30); $device=$input['device'] ?? 'all';
         $view=$input['view'] ?? null;
         $settings=$service->settings();
-        $key='PRODUCT_ANALYTICS_REPORT:v6:'.($view ?? 'full').':'.$days.':'.$device.':'.\App\Services\TimeZones::system().':'.$settings['retentionDays'].':'.(int)$settings['enabled'];
+        $key='PRODUCT_ANALYTICS_REPORT:v7:'.($view ?? 'full').':'.$days.':'.$device.':'.\App\Services\TimeZones::system().':'.$settings['retentionDays'].':'.(int)$settings['enabled'];
         $data=Cache::remember($key,60,fn()=>$service->report($days,$device,$view));
         $data['settings']=$service->settings();
         return response()->json(['data'=>$data])->header('Cache-Control','private, no-store');

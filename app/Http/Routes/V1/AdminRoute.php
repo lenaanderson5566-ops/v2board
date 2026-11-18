@@ -53,7 +53,6 @@ class AdminRoute
             // Config
             $router->get ('/config/fetch', 'V1\\Admin\\ConfigController@fetch');
             $router->post('/config/save', 'V1\\Admin\\ConfigController@save');
-            $router->get ('/config/getEmailTemplate', 'V1\\Admin\\ConfigController@getEmailTemplate');
             $router->get ('/console/nodeSchema', 'V1\\Admin\\ConsoleController@nodeSchema');
             $router->get ('/console/configSchema', 'V1\\Admin\\ConsoleController@configSchema');
             $router->get('/telegram/status', 'V1\\Admin\\TelegramController@status');

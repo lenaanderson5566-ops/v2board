@@ -26,7 +26,9 @@ final class ProductAnalytics {
     private function firstPurchase($cohort, int $registered, int $from, int $to): array {
         // A trial may make the first purchase a renewal/switch. Order.type and the
         // current account entitlement cannot establish lifetime purchase history.
-        $first = RecurringOrderPurchase::valued()->whereNotExists(RecurringOrderPurchase::prior()->selectRaw('1'));
+        $first = RecurringOrderPurchase::valued()
+            ->whereNotExists(RecurringOrderPurchase::prior()->selectRaw('1'))
+            ->whereNotExists(RecurringOrderPurchase::potentiallyPriorUndated()->selectRaw('1'));
         $first->select('o.user_id','o.paid_at','o.total_amount','o.balance_amount','o.callback_no','o.payment_id');
         $inWindow = (clone $cohort)->joinSub($first,'p','p.user_id','=','u.id')
             ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');
@@ -35,10 +37,7 @@ final class ProductAnalytics {
             WHEN p.total_amount>0 AND p.payment_id>0 AND COALESCE(TRIM(p.callback_no),'')<>''
                 THEN CASE WHEN COALESCE(p.balance_amount,0)>0 THEN 'mixed' ELSE 'externalOnly' END
             ELSE 'unclassified' END";
-        $funding = array_fill_keys(['externalOnly','mixed','walletOnly','manual','unclassified'],0);
-        foreach ((clone $inWindow)->selectRaw($method.' AS funding, COUNT(*) AS accounts')->groupBy('funding')->get() as $row) {
-            $funding[$row->funding]=(int)$row->accounts;
-        }
+        $recurringAccounts = $inWindow->select('u.id as user_id')->selectRaw($method.' AS funding');
         $credits = $this->confirmedOrders()->where('o.credit_bytes','>',0)
             ->whereRaw("COALESCE(o.callback_no,'') <> 'manual_operation'")
             ->whereRaw('COALESCE(o.balance_amount,0) >= 0')
@@ -47,10 +46,21 @@ final class ProductAnalytics {
         $creditAccounts = (clone $cohort)->whereExists(function($q) use($credits) {
             $q->selectRaw('1')->fromSub($credits->select('o.user_id','o.paid_at'),'p')->whereColumn('p.user_id','u.id')
                 ->whereColumn('p.paid_at','>=','u.created_at')->whereRaw('p.paid_at < u.created_at + 604800');
-        })->count();
+        })->select('u.id as user_id')->selectRaw("'credit' AS funding");
+
+        // Each arm contributes at most one row per account. Count the union once,
+        // including accounts whose only verified product is an independent credit pack.
+        $accountCounts = DB::query()->fromSub($recurringAccounts->unionAll($creditAccounts), 'purchases');
+        $funding = array_fill_keys(['externalOnly','mixed','walletOnly','manual','unclassified'],0);
+        foreach (array_keys($funding) as $source) {
+            $accountCounts->selectRaw("COUNT(CASE WHEN funding = ? THEN 1 END) AS $source", [$source]);
+        }
+        $totals = $accountCounts->selectRaw("COUNT(CASE WHEN funding = 'credit' THEN 1 END) AS credits,
+            COUNT(DISTINCT CASE WHEN funding IN ('externalOnly','mixed','walletOnly','credit') THEN user_id END) AS paying")->first();
+        foreach (array_keys($funding) as $source) $funding[$source] = (int)$totals->$source;
         return ['available'=>true,'from'=>gmdate('c',$from),'to'=>gmdate('c',$to),'windowDays'=>7,'registered'=>$registered,
             'funding'=>$funding,'verifiedRecurringAccounts'=>$funding['externalOnly']+$funding['mixed']+$funding['walletOnly'],
-            'verifiedCreditAccounts'=>$creditAccounts];
+            'verifiedCreditAccounts'=>(int)$totals->credits,'verifiedPayingAccounts'=>(int)$totals->paying];
     }
 
     public function settings(): array {
@@ -134,8 +144,8 @@ final class ProductAnalytics {
         }
         if ($view !== 'traffic') {
             [$cohort,$cohortStart,$cohortEnd]=$this->registrationCohort($days,$now,$zone);
-            $window += ['funnel'=>$ready ? $this->visitFunnel($sessions) : [],
-                'firstPurchase'=>$this->firstPurchase($cohort,$cohort->count(),$cohortStart,$cohortEnd)];
+            $window += $ready ? $this->visitFunnel($sessions) : ['visitedSessions'=>0,'funnel'=>[]];
+            $window['firstPurchase']=$this->firstPurchase($cohort,$cohort->count(),$cohortStart,$cohortEnd);
         }
         return $window;
     }
@@ -161,13 +171,13 @@ final class ProductAnalytics {
     }
 
     private function visitFunnel($sessions): array {
-        $counts=$sessions ? (clone $sessions)->selectRaw('SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS entered,
-            SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmed, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payment')->first() : null;
-        return [
+        $counts=(clone $sessions)->selectRaw('COUNT(*) AS visits, SUM(CASE WHEN stage>=1 THEN 1 ELSE 0 END) AS entered,
+            SUM(CASE WHEN stage>=2 THEN 1 ELSE 0 END) AS confirmed, SUM(CASE WHEN stage>=3 THEN 1 ELSE 0 END) AS payment')->first();
+        return ['visitedSessions'=>(int)$counts->visits, 'funnel'=>[
             ['step'=>'plan','sessions'=>(int)($counts->entered ?? 0)],
             ['step'=>'confirmation','sessions'=>(int)($counts->confirmed ?? 0)],
             ['step'=>'payment','sessions'=>(int)($counts->payment ?? 0)],
-        ];
+        ]];
     }
 
     private function visitTrend($sessions, \DateTimeImmutable $end, int $days, int $effectiveStart, int $started): array {

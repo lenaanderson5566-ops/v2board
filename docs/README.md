@@ -52,7 +52,7 @@
 
 - [公告和群发邮件多语言](content-translations.md)、[邮件模板与投递](product-mail.md)
 - [Azure 套餐自动翻译](plan-auto-translation.md)、[Banner 管理](banner-management.md)
-- [后台经营、邀请和活动视图](admin-workspaces.md)、[后台共用组件](admin-components.md)
+- [后台工作区与统计口径](admin-workspaces.md)、[后台共用组件](admin-components.md)
 - [后台运行诊断](admin-diagnostics.md)、[性能／告警／功能维护](observability-governance.md)
 - [日志管理与统计](log-management-review.md)、[风控复核与配置检查](risk-review-and-config-checks.md)
 

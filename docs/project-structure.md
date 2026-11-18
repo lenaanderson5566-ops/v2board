@@ -32,7 +32,7 @@ Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序�
 
 用户页面实现按总览、连接配置、结算、知识库、邀请与账户设置分布在 `DashboardPage`、`SubscribePage`、`CheckoutPages`、`KnowledgePage`、`InvitePage`、`AccountPages`，`user.tsx` 仅保留兼容导出。`user-entry.tsx` 的显式页面映射同时决定分发和统计页名，订单详情单独映射为 `order_detail`，未知页面仍回总览；原懒加载边界、订单组件 key 和购买参数保持原职责。新增页面先扩展该映射，避免再维护一份平行路由名单或长条件链。
 
-管理员分析表格统一实现在 `admin/ReportTable.tsx`。分析页面直接引用表格模块，不为复用表格依赖整个 `OperationsAnalytics` 工作区；原模块保留兼容导出。表格继续复用共享表格容器和分页组件，权限、查询和业务字段归各分析页面维护。
+管理员报表从 `admin/ReportTable.tsx` 引入共用表格和分页，各分析页面负责查询和业务字段。
 
 管理员协议展示统一使用 `admin/ProtocolBadge.tsx` 和 `protocol-badge.css` 的固定色板，未知协议保留原文字并使用中性样式，不以颜色代替协议名称。套餐引用统一由 `admin-plan-reference.ts` 根据现有关系名或页面套餐目录解析；显示名称与提交的 ID 分离，目录读取失败及已删除引用有明确回退，不能把未知选中 ID 自动变为空值。用户、订单工作区把已加载目录传给通用列表，避免重复获取，管理员组件不从共享用户入口静态导入。
 

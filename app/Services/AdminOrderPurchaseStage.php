@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Order;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Collection;
 
 final class AdminOrderPurchaseStage
@@ -16,13 +15,7 @@ final class AdminOrderPurchaseStage
         }
 
         // A legacy completed order without a payment time can make a first purchase uncertain.
-        $undatedPurchases = RecurringOrderPurchase::valuedWithConfirmedStatus('h')
-            ->whereColumn('h.user_id', 'o.user_id')
-            ->whereColumn('h.created_at', '<=', 'o.paid_at')
-            ->where(function (Builder $query) {
-                $query->whereNull('h.paid_at')->orWhere('h.paid_at', '<=', 0);
-            })
-            ->selectRaw('1')->limit(1);
+        $undatedPurchases = RecurringOrderPurchase::potentiallyPriorUndated()->selectRaw('1')->limit(1);
         $purchases = RecurringOrderPurchase::valued()
             ->whereIn('o.id', $orders->pluck('id'))
             ->select('o.id', 'o.paid_at')

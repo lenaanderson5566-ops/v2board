@@ -7,7 +7,6 @@ import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import { adminInstant as formatInstant, adminBusinessInstant } from "./admin-log-time";
 import { ReportTable } from "./ReportTable";
 import "./analytics.css";
-export { ReportTable } from "./ReportTable";
 
 type Access = {
     available: boolean;
@@ -327,12 +326,19 @@ function AccessReport({
         </Panel>
     );
 }
+const sectionTitles = {
+    security: "登录与订阅质量",
+    delivery: "支付与邮件送达",
+    health: "历史运行健康",
+};
+type OperationsSection = keyof typeof sectionTitles;
+
 export function OperationsAnalytics({
     days,
-    section = "all",
+    section,
 }: {
     days: number;
-    section?: "all" | "security" | "delivery" | "health";
+    section: OperationsSection;
 }) {
     const report = useData<OperationsReport>(
         query(admin("analytics/operations"), { days }),
@@ -343,32 +349,21 @@ export function OperationsAnalytics({
     const data = report.data;
     return (
         <>
-            <Panel padded title="运营与安全报表">
-                <p className="muted">
-                    沿用上方日期范围，不受设备筛选与浏览器采集开关影响。缓存 60
-                    秒，队列数据为生成时快照。
-                </p>
-                <button
-                    type="button"
-                    onClick={report.reload}
-                    disabled={report.loading}
-                >
-                    刷新运营报表
-                </button>
-                <State loading={report.loading} error={report.error}>
-                    {null}
-                </State>
+            <Panel padded title={sectionTitles[section]} actions={
+                <button type="button" onClick={report.reload} disabled={report.loading}>刷新运营报表</button>
+            }>
+                <State loading={report.loading} error={report.error} retry={report.reload} retryAt={report.retryAt}>{null}</State>
                 {data && (
                     <p className="muted">
                         统计区间（业务时区 {data.timeZone}）：
                         {adminBusinessInstant(data.from, {}, data.timeZone)} — {adminBusinessInstant(data.to, {}, data.timeZone)} · 生成于{" "}
-                        {formatInstant(data.generatedAt)}
+                        {formatInstant(data.generatedAt)} · 缓存 60 秒
                     </p>
                 )}
             </Panel>
             {data && (
                 <>
-                    {(section === "all" || section === "security") && (
+                    {section === "security" && (
                         <>
                             <AccessReport
                                 title="登录质量"
@@ -434,7 +429,7 @@ export function OperationsAnalytics({
                             </Panel>
                         </>
                     )}
-                    {(section === "all" || section === "delivery") && (
+                    {section === "delivery" && (
                         <>
                             <Panel padded title="支付与开通质量">
                                 {!data.payments.available ? (
@@ -580,7 +575,7 @@ export function OperationsAnalytics({
                             </Panel>
                         </>
                     )}
-                    {(section === "all" || section === "health") && (
+                    {section === "health" && (
                         <Panel padded title="队列与定时任务健康">
                             <ReportTable
                                 headers={["检查项", "状态", "说明"]}
@@ -652,15 +647,11 @@ export function OperationsAnalytics({
 export function OperationsDetails({
     section,
 }: {
-    section: "security" | "delivery" | "health";
+    section: OperationsSection;
 }) {
     const [open, setOpen] = useState(false),
         [days, setDays] = useState(30);
-    const title = {
-        security: "登录与订阅质量",
-        delivery: "支付与邮件送达",
-        health: "历史运行健康",
-    }[section];
+    const title = sectionTitles[section];
     return (
         <section className="analytics-page">
             <div className="actions pad">

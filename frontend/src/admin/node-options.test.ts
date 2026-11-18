@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { anytlsPresets, paddingPreset } from "./anytls-padding";
 import { nodeSettingsInitial, nodeSettingsPayload, nodeSettingsFields } from "./node-settings";
 import { linkNode, nodeFields } from "./admin-linkage";
-import { nodeDeploymentCommand, nodeUpgradeCommand } from "./node-deployment";
+import { nodeUpgradeCommand } from "./node-deployment";
 it("saves all AnyTLS presets as native arrays without the UI-only selector", () => {
     for (const preset of anytlsPresets) {
         const linked = linkNode("padding_preset",preset.id,{protocol:"anytls"});
@@ -21,14 +21,6 @@ it("preserves custom and serialized existing schemes", () => {
     expect(nodeFields("v2box",list,{protocol:"anytls",padding_preset:"light"}).map(f=>f.key)).toEqual(["padding_preset"]);
     expect(nodeFields("v2box",list,{protocol:"vless"})).toEqual([]);
 });
-it("keeps DDNS opt-in and quotes generated shell arguments", () => {
-    const row={type:"v2box",install_command:"bash install.sh"};
-    expect(nodeDeploymentCommand(row)).toBe(row.install_command);
-    expect(nodeDeploymentCommand({...row,ddns:true,ddns_domain:"node.example.com",ddns_family:"dual"})).toBe("bash install.sh --ddns --ddns-domain 'node.example.com' --ddns-family dual");
-    expect(nodeDeploymentCommand({...row,ddns:true,ddns_domain:"a'b"})).toContain("'a'\\''b'");
-});
-
-
 it("uses the short server-provided upgrade command", () => {
  const command="wget --https-only -O install-v2box.sh 'https://panel.example/api/v10/public/node-deployment/bootstrap' && sh install-v2box.sh --install v1.0.20";
  expect(nodeUpgradeCommand({upgrade_command:command})).toBe(command);

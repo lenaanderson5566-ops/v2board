@@ -5,9 +5,7 @@ import { admin, request, rows, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { formatInstant, utcOffsetLabel, validZone } from "../shared/timezone";
 import "./admin-timezone-impact.css";
-import { supportedClients as recommendationClients } from "../shared/import-links";
 import { Editor, Panel, State, useData } from "../shared/ui";
-import type { Device as RecommendationDevice } from "../shared/user-experience";
 import { AdminEntrypoints } from "./AdminEntrypoints";
 import { AdminFastaiDownloads } from "./AdminFastaiDownloads";
 import { AdminMailPreview } from "./AdminMailPreview";
@@ -250,24 +248,7 @@ export function Settings({ section: group }: { section: string }) {
                                   ...adminPlanOptions(rows(plans.data), v, plans),
                               ],
                           }
-                        : /^client_(primary|secondary)_/.test(k)
-                          ? {
-                                key: k,
-                                label: labels[k],
-                                type: "select" as const,
-                                options: [
-                                    ["", "使用默认推荐"] as [string, string],
-                                    ...recommendationClients(
-                                        k
-                                            .split("_")
-                                            .pop() as RecommendationDevice,
-                                    ).map(
-                                        (c) =>
-                                            [c.id, c.name] as [string, string],
-                                    ),
-                                ],
-                            }
-                          : configField(k, v, schema.data?.[k], labels[k] || k),
+                        : configField(k, v, schema.data?.[k], labels[k] || k),
             ),
     ).map((field) => mailCredentialField(field, raw));
     const savedTimezone = String(latestSource.system_timezone || raw.system_timezone || "");
@@ -385,7 +366,7 @@ export function Settings({ section: group }: { section: string }) {
                                     ] || "未知"}
                                 </strong>
                                 <p className="muted">
-                                    验证码、账单和服务提醒使用事务通道；必要服务群发使用事务通道。活动与推广可独立配置服务商与发件子域名，只发给主动订阅的用户。修改后保存并重启队列。星号表示凭据已设置，不代表已验证可用。
+                                    验证码、账单、服务提醒和必要服务群发使用事务通道。活动与推广可独立配置服务商与发件子域名，只发给主动订阅的用户。修改后保存并重启队列。星号表示凭据已设置，不代表已验证可用。
                                 </p>
                             </div>
                         )}
@@ -493,7 +474,7 @@ export function Settings({ section: group }: { section: string }) {
                             <div className="pad">
                                 <h3>测试邮件通道</h3>
                                 <p className="muted">
-                                    测试邮件发往当前管理员邮箱，使用已保存的发送通道。修改邮件配置后需重启队列服务。发送成功仅代表服务商接受。
+                                    测试邮件发往当前管理员邮箱，使用已保存的通道配置。
                                 </p>
                                 {dirty && <p className="muted">请先保存配置，再执行测试或连接操作。</p>}
                                 <h4>事务通道</h4>

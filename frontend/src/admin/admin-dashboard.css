@@ -208,9 +208,6 @@ body[data-console="admin"] .dashboard-workspace .legacy-ranks,
 body[data-console="admin"] .dashboard-workspace .split {
     gap: 16px;
 }
-body[data-console="admin"] .dashboard-workspace .legacy-chart {
-    padding: 20px;
-}
 body[data-console="admin"] .dashboard-workspace .risk-toolbar {
     padding: 12px 16px;
     border: 1px solid var(--line, #e2e8f0);

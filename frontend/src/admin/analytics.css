@@ -43,22 +43,12 @@ body[data-console="admin"]
 .analytics-page .panel-body > .analytics-settings {
     margin-block: 16px;
 }
-.analytics-page .table-wrap {
-    max-width: 100%;
-    overflow-x: auto;
-}
 body[data-console="admin"] .analytics-page td:last-child {
     position: static;
     right: auto;
     box-shadow: none;
 }
-.analytics-time-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
-    gap: 24px;
-}
-.analytics-metrics > div,
-.analytics-funnel > li {
+.analytics-metrics > div {
     min-width: 0;
 }
 
@@ -101,30 +91,33 @@ body[data-console="admin"] .analytics-page td:last-child {
 .analytics-metrics strong.analytics-date {
     font-size: 16px;
 }
-.analytics-metrics small,
-.analytics-funnel small {
+.analytics-metrics small {
     color: var(--muted, #64748b);
 }
-.analytics-funnel {
-    list-style: none;
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
-    gap: 20px;
-    padding: 0;
-    margin: 20px 0;
-}
-.analytics-funnel li > div {
+.analytics-path-summary {
     display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
+    align-items: baseline;
+    gap: 6px 12px;
+    flex-wrap: wrap;
+    margin: 0 0 16px;
 }
-.analytics-funnel progress {
-    width: 100%;
-    height: 10px;
-    accent-color: var(--primary, #334155);
-    display: block;
-    margin-bottom: 10px;
+.analytics-path-summary strong {
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+}
+.analytics-path-summary > span:last-child,
+.analytics-definition p {
+    color: var(--muted);
+}
+.analytics-definition {
+    margin-top: 12px;
+}
+.analytics-definition summary {
+    cursor: pointer;
+}
+.analytics-definition p {
+    margin: 8px 0;
+    line-height: 1.6;
 }
 @media (max-width: 700px) {
     .analytics-metrics {
@@ -170,12 +163,8 @@ body[data-console="admin"] .analytics-page td:last-child {
     color: var(--muted);
     font-size: 12px;
 }
-
-.analytics-pagination {
+.analytics-trend figcaption {
     display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 12px;
     flex-wrap: wrap;
-    padding: 12px;
+    gap: 4px 16px;
 }

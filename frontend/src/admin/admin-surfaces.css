@@ -237,12 +237,6 @@ body[data-console="admin"] :is(.release-card,.risk-rule-card) p { line-height: 1
  body[data-console="admin"] .release-hero { flex-wrap: wrap; gap: 12px; }
 }
 
-@media (max-width: 600px) {
-    body[data-console="admin"] .legacy-stat-main,
-    body[data-console="admin"] .legacy-stat-extra { grid-template-columns: minmax(0, 1fr); gap: 16px; }
-    body[data-console="admin"] .legacy-stat-main strong { font-size: 26px; overflow-wrap: anywhere; }
-}
-
 /* Search/filter controls stay left; bulk actions stay right, view tools in panel head. */
 body[data-console="admin"] .user-toolbar > form.actions { flex: 1 1 460px; }
 body[data-console="admin"] .user-toolbar > form.actions input { flex: 1 1 220px; max-width: 360px; }
@@ -489,8 +483,6 @@ body[data-console="admin"] .banner-editor > .admin-dialog-actions {
 body[data-console="admin"] .banner-editor > fieldset { min-inline-size: 0; border-color: var(--border); border-radius: var(--admin-radius); }
 body[data-console="admin"] .banner-editor .banner-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
 body[data-console="admin"] .banner-options > label { min-width: 0; }
-body[data-console="admin"] .modal .detail-grid > div { min-width: 0; }
-body[data-console="admin"] .modal .detail-grid dd { overflow-wrap: anywhere; }
 @media (max-width: 600px) {
     body[data-console="admin"] .banner-editor .banner-options { grid-template-columns: minmax(0, 1fr); }
 }

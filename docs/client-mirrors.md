@@ -45,7 +45,7 @@
 
 当前配置下载必须识别出已支持的客户端，即使 UA 白名单关闭也不再允许未知 UA。开启白名单后进一步限制到所选客户端。General 公开输出及模糊子串兜底已移除；格式选择只接受明确标识，并检查其与识别客户端的兼容性。v2rayN、v2rayNG 等已识别客户端仍使用各自的 URI 序列化器，不受取消 General 影响。应用配置接口执行相同的 UA 与兼容性检查。
 
-标准标识统一由 SubscriptionClientRegistry 管理：mihomo、sing-box、clash-verge、quantumult-x 等。旧 meta、sing、verge、quantumult%20x 保留为兼容存储键，避免重置既有策略与历史统计。v2RayTun.php / class v2RayTun 规范为 V2RayTun.php / class V2RayTun；路由按明确注册表选择处理器，不再扫描目录猜测格式。旧 General 策略行保留在数据库但退出可用客户端列表。
+订阅处理器由 `SubscriptionClientRegistry` 注册。旧 meta、sing、verge、quantumult%20x 仍作为兼容存储键使用。管理员可修改已注册客户端的策略。旧 General 等历史策略留存在数据库中，原删除接口 `client/strategy/delete` 已退役。
 
 订阅 token 入口共用 IP、账号限流与黑名单检查，包括自定义订阅路径和旧应用配置入口。默认每 IP 120 次/分钟，每账号 30 次/分钟、240 次/24 小时固定窗口；后台风控规则的「订阅访问拦截」可调整。固定窗口从首次请求计时，非滚动统计；跨 IP/UA/输出格式共享账号额度，返回 429 与 Retry-After。限流计数采用共享缓存锁；缓存服务不可用时请求失败，不放行。缓存键不含明文 token。专用客户端保持独立认证和现有限流。
 

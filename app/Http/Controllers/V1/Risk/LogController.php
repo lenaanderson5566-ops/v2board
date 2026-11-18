@@ -8,9 +8,7 @@ use App\Models\RiskRuleHit;
 use App\Models\RiskRuleConfig;
 use App\Models\SubscribeLog;
 use App\Models\User;
-use App\Models\Order;
 use App\Models\Plan;
-use App\Models\ServerGroup;
 use App\Models\UserConnectionLog;
 use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
@@ -213,24 +211,6 @@ class LogController extends Controller
             'data' => app(RiskStatisticsService::class)->clientSubscriptionStats($strategies)
         ]);
     }
-
-    public function deleteClientStrategy(Request $request)
-    {
-        $clientType = strtolower((string) $request->input('client_type', ''));
-        if (!$clientType) {
-            abort(422, 'client_type is required');
-        }
-
-        (new ClientStrategyService())->deleteStrategy($clientType);
-
-        $strategies = (new ClientStrategyService())->getStrategies();
-
-        return response([
-            'data' => app(RiskStatisticsService::class)->clientSubscriptionStats($strategies)
-        ]);
-    }
-
-
 
     public function getIpBlacklists(Request $request)
     {
@@ -455,129 +435,6 @@ class LogController extends Controller
             'meta' => ['users' => count(array_unique(array_column($rows, 'user_id'))),
                 'ips' => count(array_unique(array_column($rows, 'ip'))), 'connections' => $total,
                 'updated_at' => time()],
-        ]);
-    }
-
-    public function getUserUsage(Request $request)
-    {
-        $current = max((int)$request->input('current', 1), 1);
-        $pageSize = min(max((int)$request->input('page_size', 50), 1), 200);
-
-        $userBuilder = User::query();
-        if ($request->filled('email')) {
-            $userBuilder->where('email', 'like', '%' . $request->input('email') . '%');
-        }
-
-        $total = $userBuilder->count();
-        $users = $userBuilder->orderBy('id', 'desc')
-            ->forPage($current, $pageSize)
-            ->get([
-                'id',
-                'email',
-                'token',
-                'created_at',
-                't',
-                'last_login_at',
-                'last_login_ip',
-                'expired_at',
-                'plan_id',
-                'group_id',
-                'balance',
-            ]);
-
-        if ($users->isEmpty()) {
-            return response([
-                'data' => [],
-                'total' => $total,
-            ]);
-        }
-
-        $userIds = $users->pluck('id')->toArray();
-
-        $planNames = Plan::query()
-            ->whereIn('id', array_values(array_filter($users->pluck('plan_id')->unique()->toArray())))
-            ->pluck('name', 'id')
-            ->toArray();
-
-        $groupNames = ServerGroup::query()
-            ->whereIn('id', array_values(array_filter($users->pluck('group_id')->unique()->toArray())))
-            ->pluck('name', 'id')
-            ->toArray();
-
-        $latestSubscribeMap = [];
-        $subscribeLogs = SubscribeLog::query()
-            ->whereIn('user_id', $userIds)
-            ->whereIn('id', SubscribeLog::query()->whereIn('user_id', $userIds)->selectRaw('MAX(id)')->groupBy('user_id'))
-            ->get(['user_id', 'created_at', 'ip', 'user_agent']);
-        foreach ($subscribeLogs as $log) {
-            if (!isset($latestSubscribeMap[$log->user_id])) {
-                $latestSubscribeMap[$log->user_id] = $log;
-            }
-        }
-
-        $orderStatsMap = [];
-        $orderStats = Order::query()
-            ->whereIn('user_id', $userIds)
-            ->where('status', 3)
-            ->selectRaw('user_id, COUNT(*) as paid_order_count, COALESCE(SUM(total_amount), 0) as paid_total_amount')
-            ->groupBy('user_id')
-            ->get();
-        foreach ($orderStats as $item) {
-            $orderStatsMap[$item->user_id] = [
-                'paid_order_count' => (int) $item->paid_order_count,
-                'paid_total_amount' => (int) $item->paid_total_amount,
-            ];
-        }
-
-        $latestOnlineMap = UserOnlineSnapshot::query()
-            ->whereIn('user_id', $userIds)
-            ->whereNotExists(function ($query) {
-                $query->selectRaw('1')->from('v2_user_online_snapshot as newer')
-                    ->whereColumn('newer.user_id', 'v2_user_online_snapshot.user_id')
-                    ->where(function ($q) {
-                        $q->whereColumn('newer.online_at', '>', 'v2_user_online_snapshot.online_at')
-                          ->orWhere(function ($tie) {
-                              $tie->whereColumn('newer.online_at', 'v2_user_online_snapshot.online_at')->whereColumn('newer.id', '>', 'v2_user_online_snapshot.id');
-                          });
-                    });
-            })
-            ->get(['user_id', 'online_at', 'ip', 'node'])
-            ->keyBy('user_id');
-
-        $rows = [];
-        foreach ($users as $user) {
-            $latestSubscribe = $latestSubscribeMap[$user->id] ?? null;
-            $orderStat = $orderStatsMap[$user->id] ?? [
-                'paid_order_count' => 0,
-                'paid_total_amount' => 0,
-            ];
-            $latestOnline = $latestOnlineMap[$user->id] ?? null;
-
-            $rows[] = [
-                'user_id' => $user->id,
-                'email' => $user->email,
-                'register_at' => (int) ($user->created_at ?? 0),
-                'last_subscribe_at' => $latestSubscribe ? (int) $latestSubscribe->created_at : null,
-                'last_subscribe_ip' => $latestSubscribe ? $this->formatIp($latestSubscribe->ip) : null,
-                'last_subscribe_ua' => $latestSubscribe ? (string) ($latestSubscribe->user_agent ?? '') : null,
-                'last_online_at' => $latestOnline ? (int) $latestOnline->online_at : null,
-                'last_online_ip' => $latestOnline ? $this->formatIp($latestOnline->ip) : null,
-                'last_online_node' => $latestOnline ? $latestOnline->node : null,
-                'last_login_at' => $user->getRawOriginal('last_login_at') ? (int) $user->getRawOriginal('last_login_at') : null,
-                'last_login_ip' => $this->formatIp($user->getRawOriginal('last_login_ip')),
-                'subscription_plan' => $planNames[$user->plan_id] ?? null,
-                'group_name' => $groupNames[$user->group_id] ?? null,
-                'recharge_total' => round($orderStat['paid_total_amount'] / 100, 2),
-                'paid_total_amount' => $orderStat['paid_total_amount'],
-                'balance' => round(((int) $user->balance) / 100, 2),
-                'balance_cents' => (int) $user->balance,
-                'expired_at' => $user->expired_at ? (int) $user->expired_at : null,
-            ];
-        }
-
-        return response([
-            'data' => $rows,
-            'total' => $total,
         ]);
     }
 

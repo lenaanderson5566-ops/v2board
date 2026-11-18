@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { admin, query } from "../shared/api";
 import { formatNumber, formatPercent } from "../shared/number-format";
-import { Panel, State, useData } from "../shared/ui";
+import { Panel, Reload, State, useData } from "../shared/ui";
 import type { V10AnalyticsConfiguration } from "../shared/v10-types";
 import { AdminTabs } from "./AdminChoices";
 import { DashboardFirstPurchase, type DashboardFirstPurchaseData } from "./FirstPurchaseReport";
-import { JourneyAnalytics } from "./JourneyAnalytics";
+import { ExperienceAnalytics } from "./ExperienceAnalytics";
 import { ReportTable } from "./ReportTable";
 import { adminBusinessInstant } from "./admin-log-time";
 import { analyticsLabels as labels } from "./analytics-labels";
@@ -30,6 +30,7 @@ type TrafficReport = ReportWindow & {
 };
 
 type ConversionReport = ReportWindow & {
+    visitedSessions?: number | null;
     funnel: { step: string; sessions: number }[];
     firstPurchase?: DashboardFirstPurchaseData;
 };
@@ -58,21 +59,21 @@ function TrafficOverview({ data }: { data: TrafficReport }) {
                 </div>
                 <div>
                     <span>较上期同期</span>
-                    <strong>{comparable ? formatPercent((data.sessions - previous.sessions) / previous.sessions, { fraction: true }) : "—"}</strong>
+                    <strong>{comparable ? (data.sessions > previous.sessions ? "+" : "") + formatPercent((data.sessions - previous.sessions) / previous.sessions, { fraction: true }) : "—"}</strong>
                     <small>{comparable ? <>上期 {count(previous.sessions)} 个会话（{instant(previous.from, data.timeZone)} — {instant(previous.to, data.timeZone)}）</>
                         : previous ? "上期同期未收到会话上报。"
                         : "当前没有可对照的上期采集数据。"}</small>
                 </div>
                 <div>
-                    <span>单日最高会话</span><strong>{availableDays.length ? count(max) : "—"}</strong>
-                    <small>{peak ? peak.date : "当前范围未收到会话上报。"}</small>
+                    <span>查询窗口内日期</span><strong>{count(availableDays.length)} / {count(data.daily.length)} 天</strong>
+                    <small>从 {instant(data.effectiveFrom, data.timeZone)} 起，首尾日期可能不完整。</small>
                 </div>
             </div>
             {data.daily.length > 0 && <figure className="analytics-trend">
                 <div className="analytics-trend-bars" role="img" aria-label="每日访问会话趋势，详细数值可展开查看">
                     {data.daily.map((day) => (
                         <div key={day.date} data-available={day.available} title={`${day.date}：${day.available ? count(day.sessions) + " 会话" : "超出采集窗口"}`}>
-                            {day.available && <span style={{ height: `${day.sessions / (max || 1) * 100}%` }} />}
+                            {day.available && day.sessions > 0 && <span style={{ height: `${day.sessions / (max || 1) * 100}%` }} />}
                         </div>
                     ))}
                 </div>
@@ -81,7 +82,10 @@ function TrafficOverview({ data }: { data: TrafficReport }) {
                     {data.daily.length > 2 && <span>{data.daily[Math.floor(data.daily.length / 2)].date}</span>}
                     {data.daily.length > 1 && <span>{data.daily[data.daily.length - 1].date}</span>}
                 </div>
-                {availableDays.length < data.daily.length && <figcaption>斜纹日期超出采集窗口。</figcaption>}
+                {(peak || availableDays.length < data.daily.length) && <figcaption>
+                    {peak && <span>单日最高会话 {count(peak.sessions)} · {peak.date}</span>}
+                    {availableDays.length < data.daily.length && <span>斜纹日期超出采集窗口。</span>}
+                </figcaption>}
             </figure>}
             <details>
                 <summary>每日会话明细</summary>
@@ -89,7 +93,7 @@ function TrafficOverview({ data }: { data: TrafficReport }) {
                     day.date, day.available ? count(day.sessions) : "超出采集窗口",
                 ])} />
             </details>
-            <p className="muted">有效窗口起点 {instant(data.effectiveFrom, data.timeZone)}。按会话开始日统计，首尾日期可能不完整。采集期间的 0 表示未收到上报，停采、拒绝和拦截也会造成缺口。</p>
+            <p className="muted">用户登录后可在账户偏好中同意匿名统计。样本来自已选择参与且成功上报的浏览器，按会话开始日统计；0 表示当天未收到上报。</p>
         </Panel>
         <Panel padded title="来源网站与购买意向">
             {!coverage ? <p role="status">来源字段尚未可用，请通过更新流程执行数据库迁移。</p> : <>
@@ -97,28 +101,35 @@ function TrafficOverview({ data }: { data: TrafficReport }) {
                 <ReportTable pageSize={10} headers={["来源网站", "采集会话", "到达付款页的会话", "到达率"]} rows={data.sources.map((source) => [
                     source.domain, count(source.sessions), count(source.paymentEntries), ratio(source.paymentEntries, source.sessions),
                 ])} />
-                <p className="muted">最多展示会话最多的 50 个已识别来源。比较渠道时同时看样本量和到达率；直接打开、复制链接及浏览器隐藏来源均可能归为未知。</p>
-                <p className="muted">到达率以该来源的采集会话为分母，到达需在同一会话依次浏览套餐、确认订单和进入付款页。该指标衡量购买意向，实际付款以订单记录为准。</p>
+                <details className="analytics-definition">
+                    <summary>来源和到达率如何统计</summary>
+                    <p>按会话数列出前 50 个已识别来源。直接访问、复制链接和浏览器隐藏来源都可能归为未知。到达率是该来源的会话中，依次浏览套餐、确认订单并进入付款页的比例。</p>
+                </details>
             </>}
         </Panel>
     </>;
 }
 
 function PurchasePath({ data }: { data: ConversionReport }) {
+    const allVisits = data.visitedSessions;
+    const steps = data.funnel.map((step) => ({ label: labels[step.step] || step.step, sessions: step.sessions }));
+    if (allVisits != null) steps.unshift({ label: "全部采集会话", sessions: allVisits });
+    const payment = data.funnel.find((step) => step.step === "payment");
     return <Panel padded title="站内购买路径 · 同一访问会话">
-        {!data.ready || !data.funnel[0]?.sessions ? <p role="status">当前没有可计算购买路径的套餐浏览会话。</p> : (
-            <ol className="analytics-funnel">
-                {data.funnel.map((step, index) => (
-                    <li key={step.step}>
-                        <div><span>{labels[step.step]}</span><strong>{count(step.sessions)}</strong></div>
-                        <progress max={data.funnel[0].sessions} value={step.sessions} aria-label={labels[step.step]} />
-                        <small>{index === 0 ? "起始样本" :
-                            `较上一步 ${ratio(step.sessions, data.funnel[index - 1].sessions)} · 未进入下一步 ${count(data.funnel[index - 1].sessions - step.sessions)}`}</small>
-                    </li>
-                ))}
-            </ol>
-        )}
-        <p className="muted">找出浏览套餐、确认订单和进入付款页之间的流失。仅统计已采集、按顺序完成且在同一会话内的步骤；跨会话续付可能缺失。进入付款页只代表到达，付款结果以上方业务订单为准。</p>
+        {!data.ready ? <p role="status">访问采集表尚未就绪，暂时无法计算购买路径。</p>
+            : !data.funnel.length || !steps[0]?.sessions ? <p role="status">{allVisits == null ? "当前没有可计算购买路径的套餐浏览会话。" : "当前范围未收到访问会话，暂无可计算的到达率。"}</p>
+            : <>
+                {allVisits != null && payment && <p className="analytics-path-summary">
+                    <span>付款页到达率</span><strong>{ratio(payment.sessions, allVisits)}</strong>
+                    <span>{count(payment.sessions)} / {count(allVisits)} 个采集会话到达付款页</span>
+                </p>}
+                <ReportTable headers={["步骤", "起点会话", "到达会话", "本步到达率", "未到达会话"]} rows={steps.slice(1).map((step, index) => {
+                    const previous = steps[index];
+                    return [`${previous.label} → ${step.label}`, count(previous.sessions), count(step.sessions),
+                        ratio(step.sessions, previous.sessions), count(previous.sessions - step.sessions)];
+                })} />
+            </>}
+        <p className="muted">仅统计同一会话内依次到达的页面。余额足额或零元开通可能跳过付款页，跨会话续付也可能缺失。进入付款页只代表到达，实际付款以订单记录为准。</p>
     </Panel>;
 }
 
@@ -148,6 +159,7 @@ export function AdminAnalytics() {
                         </select>
                     </label>
                     <a className="button" href="#/log-settings?tab=analytics">管理统计采集</a>
+                    {tab !== "experience" && <Reload loading={report.loading} onClick={report.reload} />}
                 </div>
                 {tab === "conversion" && <p className="muted">设备筛选应用于站内购买路径，业务订单统计涵盖全部设备。</p>}
                 {data && <>
@@ -163,7 +175,7 @@ export function AdminAnalytics() {
                 { value: "experience", label: "体验问题" },
             ]}>
                 <div className="analytics-page">
-                    {tab === "experience" ? <JourneyAnalytics days={days} device={device} experienceOnly /> : (
+                    {tab === "experience" ? <ExperienceAnalytics days={days} device={device} /> : (
                         <State loading={report.loading} error={report.error} retry={report.reload}>
                             {tab === "overview" && data && "daily" in data && <TrafficOverview key={`${days}-${device}`} data={data} />}
                             {tab === "conversion" && data && "funnel" in data && <>

@@ -188,7 +188,7 @@ it("keeps report bounds and daily schedules in the business zone while generatio
     setAdminDisplayTimeZone("America/New_York");
     setup();
     try {
-        const view = render(<OperationsAnalytics days={30} />);
+        const view = render(<OperationsAnalytics days={30} section="health" />);
         const note = await screen.findByText(/统计区间（业务时区 Asia\/Shanghai）/);
         expect(note.textContent).toContain("2026/09/21 00:00:00");
         expect(note.textContent).toContain("2026/10/19 10:00:00");
@@ -197,7 +197,7 @@ it("keeps report bounds and daily schedules in the business zone while generatio
         expect(screen.getByText("00:00")).toBeTruthy();
         const reads = api.request.mock.calls.length;
         setAdminDisplayTimeZone("UTC");
-        view.rerender(<OperationsAnalytics days={30} />);
+        view.rerender(<OperationsAnalytics days={30} section="health" />);
         expect(note.textContent).toContain("2026/09/21 00:00:00");
         expect(note.textContent).toContain("2026/10/19 02:00:00");
         expect(api.request).toHaveBeenCalledTimes(reads);
@@ -205,7 +205,7 @@ it("keeps report bounds and daily schedules in the business zone while generatio
 });
 it("shows review denominators, separate currencies, callback counts and honest latency labels", async () => {
     setup();
-    render(<OperationsAnalytics days={30} />);
+    const view = render(<OperationsAnalytics days={30} section="security" />);
     await screen.findByRole("heading", { name: "登录质量" });
     expect(screen.getAllByText("75%")).toHaveLength(2);
     expect(screen.getByText("密码错误")).toBeTruthy();
@@ -215,6 +215,9 @@ it("shows review denominators, separate currencies, callback counts and honest l
         .closest("section")!;
     expect(within(risk).getByText("25%")).toBeTruthy();
     expect(within(risk).getByText("40%")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "查看登录日志" }).getAttribute("href")).toBe("#/access-logs");
+    expect(screen.getByRole("link", { name: "查看订阅请求" }).getAttribute("href")).toBe("#/access-logs-subscriptions");
+    view.rerender(<OperationsAnalytics days={30} section="delivery" />);
     expect(screen.getByText("CNY")).toBeTruthy();
     expect(screen.getByText("USD")).toBeTruthy();
     expect(screen.getByText("平均下单至付款")).toBeTruthy();
@@ -223,12 +226,11 @@ it("shows review denominators, separate currencies, callback counts and honest l
     const callbackTable = screen.getByRole("columnheader", { name: "诊断记录" }).closest("table")!;
     const callbackRow = within(callbackTable).getByRole("row", { name: /示例渠道/ });
     expect(within(callbackRow).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["示例渠道", "3", "2", "1", "0"]);
-    expect(screen.getByText("预计清空耗时")).toBeTruthy();
-    expect(screen.getByText("异常").getAttribute("data-tone")).toBe("danger");
-    expect(screen.getByRole("link", { name: "查看登录日志" }).getAttribute("href")).toBe("#/access-logs");
-    expect(screen.getByRole("link", { name: "查看订阅请求" }).getAttribute("href")).toBe("#/access-logs-subscriptions");
     expect(screen.getByText("结果不确定")).toBeTruthy();
     expect(screen.getByText(/服务商接受不代表送达/)).toBeTruthy();
+    view.rerender(<OperationsAnalytics days={30} section="health" />);
+    expect(screen.getByText("预计清空耗时")).toBeTruthy();
+    expect(screen.getByText("异常").getAttribute("data-tone")).toBe("danger");
 });
 it("distinguishes missing sources and queue failures from healthy zero", async () => {
     const data = fixture();
@@ -239,11 +241,13 @@ it("distinguishes missing sources and queue failures from healthy zero", async (
     data.health.dailyTasks = null;
     data.health.failedJobsRetained = null;
     setup(data);
-    render(<OperationsAnalytics days={90} />);
+    const view = render(<OperationsAnalytics days={90} section="security" />);
     await screen.findByText("日志表不可用，无法统计。");
+    view.rerender(<OperationsAnalytics days={90} section="delivery" />);
     expect(screen.getByText("回调历史表不可用。")).toBeTruthy();
-    expect(screen.getByText("队列指标读取失败，请检查 Horizon。")).toBeTruthy();
     expect(screen.getAllByText(/所选范围超过保留期/).length).toBeGreaterThan(0);
+    view.rerender(<OperationsAnalytics days={90} section="health" />);
+    expect(screen.getByText("队列指标读取失败，请检查 Horizon。")).toBeTruthy();
 });
 it("renders empty denominators as unavailable and offers a refresh", async () => {
     const data = fixture();
@@ -260,7 +264,7 @@ it("renders empty denominators as unavailable and offers a refresh", async () =>
     data.mail.providers = [];
     data.health.queues = [];
     setup(data);
-    render(<OperationsAnalytics days={7} />);
+    render(<OperationsAnalytics days={7} section="security" />);
     await screen.findByRole("heading", { name: "登录质量" });
     const login = screen
         .getByRole("heading", { name: "登录质量" })
@@ -277,10 +281,10 @@ it("renders empty denominators as unavailable and offers a refresh", async () =>
 });
 it("reloads for the selected range and displays request errors", async () => {
     setup();
-    const view = render(<OperationsAnalytics days={7} />);
+    const view = render(<OperationsAnalytics days={7} section="security" />);
     await screen.findByRole("heading", { name: "登录质量" });
     api.request.mockRejectedValue(new Error("报表读取失败"));
-    view.rerender(<OperationsAnalytics days={90} />);
+    view.rerender(<OperationsAnalytics days={90} section="security" />);
     await screen.findByText("报表读取失败");
     expect(api.request.mock.calls.at(-1)?.[0]).toBe(
         "test-admin/analytics/operations?days=90",
@@ -300,7 +304,8 @@ it("uses the traffic and conversion projections and keeps observed intent separa
                   collectionStartedAt: at,
                   previous: null,
                   ...(path.includes("view=conversion") ? {
-                      firstPurchase: { ...firstPurchaseFixture(), verifiedRecurringAccounts: 4, verifiedCreditAccounts: 2 },
+                      visitedSessions: 20,
+                      firstPurchase: { ...firstPurchaseFixture(), verifiedPayingAccounts: 5, verifiedRecurringAccounts: 4, verifiedCreditAccounts: 2 },
                       funnel: [{ step: "plan", sessions: 10 }, { step: "confirmation", sessions: 4 }, { step: "payment", sessions: 3 }],
                   } : {
                       daily: [{ date: "2026-10-18", sessions: 0, available: false }, { date: "2026-10-19", sessions: 10, available: true }],
@@ -317,7 +322,8 @@ it("uses the traffic and conversion projections and keeps observed intent separa
     expect(screen.getByText(/来源未知 4 个，历史未采集 2 个/).textContent).toContain("4 / 10");
     expect(screen.getByText(/当前没有可对照的上期采集数据/)).toBeTruthy();
     expect(screen.getByText("较上期同期").nextElementSibling?.textContent).toBe("—");
-    expect(screen.getByText("单日最高会话").nextElementSibling?.textContent).toBe("10");
+    expect(screen.getByText("查询窗口内日期").nextElementSibling?.textContent).toBe("1 / 2 天");
+    expect(screen.getByText(/单日最高会话 10/)).toBeTruthy();
     expect(screen.getByText("斜纹日期超出采集窗口。")).toBeTruthy();
     const daily = screen.getByText("每日会话明细").closest("details")!;
     daily.open = true;
@@ -329,10 +335,20 @@ it("uses the traffic and conversion projections and keeps observed intent separa
     expect(api.request.mock.calls.every(([path])=>!path.includes("/operations") && !path.includes("/journey"))).toBe(true);
     fireEvent.mouseDown(screen.getByRole("tab",{name:"购买转化"}),{button:0,ctrlKey:false});
     await screen.findByRole("heading",{name:"新用户付费转化 · 7 天观察窗"});
+    expect(screen.getByText("整体付费转化率").parentElement?.textContent).toContain("50%5 / 10");
     expect(screen.getByText("周期套餐首购").parentElement?.textContent).toContain("40%");
     expect(screen.getByText("独立额度包购买").parentElement?.textContent).toContain("20%");
-    expect(screen.getByText(/人工确认首购 1 个/)).toBeTruthy();
+    fireEvent.click(screen.getByText("哪些订单计入转化"));
+    expect(screen.getByText(/人工确认首购 1 个/).closest("details")?.open).toBe(true);
     expect(screen.getByText(/进入付款页只代表到达/)).toBeTruthy();
+    expect(screen.getByText("付款页到达率").nextElementSibling?.textContent).toBe("15%");
+    expect(screen.getByRole("row", {name:"全部采集会话 → 浏览套餐 20 10 50% 10"})).toBeTruthy();
+    expect(screen.getByRole("row", {name:"浏览套餐 → 确认订单 10 4 40% 6"})).toBeTruthy();
+    expect(screen.getByRole("row", {name:"确认订单 → 进入付款 4 3 75% 1"})).toBeTruthy();
+    const requests = api.request.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    await waitFor(() => expect(api.request.mock.calls).toHaveLength(requests + 1));
+    expect(api.request.mock.calls.at(-1)?.[0]).toContain("view=conversion");
     expect(screen.queryByRole("heading",{name:"外部订单回调确认金额"})).toBeNull();
     expect(screen.queryByRole("heading",{name:/注册后的业务转化/})).toBeNull();
     fireEvent.mouseDown(screen.getByRole("tab",{name:"访问概览"}),{button:0,ctrlKey:false});
@@ -358,7 +374,8 @@ it("shows missing traffic and immature conversion samples without displaying a z
         settings: { enabled: false, retentionDays: 30 }, ready: true, timeZone: "Asia/Shanghai",
         from: at, to: at, effectiveFrom: at, collectionStartedAt: null,
         ...(path.includes("view=conversion") ? {
-            firstPurchase: { ...firstPurchaseFixture(), registered: 0, verifiedRecurringAccounts: 0, verifiedCreditAccounts: 0 },
+            firstPurchase: { ...firstPurchaseFixture(), registered: 0, verifiedPayingAccounts: 0, verifiedRecurringAccounts: 0, verifiedCreditAccounts: 0 },
+            visitedSessions: 0,
             funnel: [],
         } : { daily: [], sessions: 0, previous: null, sourceCoverage: null, sources: [] }),
     } }));
@@ -367,8 +384,33 @@ it("shows missing traffic and immature conversion samples without displaying a z
     expect(screen.queryByText(/本期已采集会话/)).toBeNull();
     fireEvent.mouseDown(screen.getByRole("tab", { name: "购买转化" }), { button: 0, ctrlKey: false });
     expect((await screen.findByText("周期套餐首购")).parentElement?.textContent).toContain("—");
+    expect(screen.getByText("整体付费转化率").nextElementSibling?.textContent).toBe("—");
     expect(screen.getByText("独立额度包购买").parentElement?.textContent).toContain("—");
-    expect(screen.getByText("当前没有可计算购买路径的套餐浏览会话。")).toBeTruthy();
+    expect(screen.getByText("当前范围未收到访问会话，暂无可计算的到达率。")).toBeTruthy();
+});
+
+it("retains a visited session with no plan views and handles earlier reports without deduplicated totals", async () => {
+    let legacy = false;
+    api.request.mockImplementation(async (path: string) => ({ data: {
+        settings: { enabled: true, retentionDays: 30 }, ready: true, timeZone: "Asia/Shanghai",
+        from: at, to: at, effectiveFrom: at, collectionStartedAt: at,
+        ...(path.includes("view=conversion") ? {
+            ...(legacy ? {} : { visitedSessions: 8 }),
+            firstPurchase: firstPurchaseFixture(),
+            funnel: [{ step: "plan", sessions: legacy ? 3 : 0 }, { step: "confirmation", sessions: 0 }, { step: "payment", sessions: 0 }],
+        } : { daily: [], sessions: 0, previous: null, sourceCoverage: null, sources: [] }),
+    } }));
+    render(<AdminAnalytics />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "购买转化" }), { button: 0, ctrlKey: false });
+    expect(await screen.findByRole("row", { name: "全部采集会话 → 浏览套餐 8 0 0% 8" })).toBeTruthy();
+    expect(screen.getByRole("row", { name: "浏览套餐 → 确认订单 0 0 — 0" })).toBeTruthy();
+    expect(screen.getByText("付款页到达率").nextElementSibling?.textContent).toBe("0%");
+    legacy = true;
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    await screen.findByRole("row", { name: "浏览套餐 → 确认订单 3 0 0% 3" });
+    expect(screen.queryByText("付款页到达率")).toBeNull();
+    expect(screen.getByText("整体付费转化率").nextElementSibling?.textContent).toBe("—");
+    expect(screen.getByText("周期套餐首购").nextElementSibling?.textContent).toBe("40%");
 });
 
 it("labels existing-log IP totals and renders masked addresses without implying unique users", async () => {
@@ -381,7 +423,7 @@ it("labels existing-log IP totals and renders masked addresses without implying 
         countries: [{ country: "未知", total: 4 }],
     };
     setup(data);
-    render(<OperationsAnalytics days={7} />);
+    render(<OperationsAnalytics days={7} section="security" />);
     expect(await screen.findByText("192.0.2.***")).toBeTruthy();
     expect(screen.getByText("微信")).toBeTruthy();
     expect(screen.getByText(/IP 数不等于用户数/)).toBeTruthy();

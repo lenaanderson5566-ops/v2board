@@ -346,7 +346,9 @@ try {
     $assert(!array_intersect(['browser','browser_major','embedded','language','os'],array_keys((array)$session))
         && !Illuminate\Support\Facades\Schema::hasTable('v2_analytics_page'), 'Retired session dimensions and page-view table are absent');
     $assert($session->stage===1,'Error and numeric events never advance the purchase path');
-    $assert($measurement->report(7,'mobile')['rows']===[],'Experience reports respect anonymous device filtering');
+    $emptyExperience=$measurement->report(7,'mobile');
+    $assert($emptyExperience['rows']===[] && $emptyExperience['observedSessions']===0 && $emptyExperience['affectedSessions']===0,
+        'Experience counts and rows respect anonymous device filtering with no sample');
     $analytics->record(array_replace($event,['page'=>'payment','event'=>'payment_open']));
     $assert(!DB::table('v2_analytics_measurement')->where('event','payment_open')->exists()
         && DB::table('v2_analytics_session')->first()->stage===1,'Retired payment clicks never persist or advance the purchase path');
@@ -378,18 +380,27 @@ try {
     $referral=array_replace($event,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'attributionVersion'=>1,'sourceDomain'=>'partner.example.test']);
     foreach (['plan','confirmation','payment'] as $page) $analytics->record(array_replace($referral,['page'=>$page]));
     $analytics->record($referral+['event'=>'js_error']);
+    $analytics->record(array_replace($referral,['page'=>'payment','event'=>'copy_failed']));
     $analytics->record(array_replace($referral,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'sourceDomain'=>null]));
     $analytics->record(array_replace($referral,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'device'=>'mobile']));
+    $analytics->record(array_replace($event,['sessionId'=>(string)Illuminate\Support\Str::uuid(),'page'=>'landing']));
     $traffic=$analytics->report(7,'desktop','traffic');
-    $assert($traffic['sessions']===3 && array_sum(array_column($traffic['daily'],'sessions'))===3
-        && $traffic['sourceCoverage']===['known'=>1,'unknown'=>1,'historical'=>1],
+    $assert($traffic['sessions']===4 && array_sum(array_column($traffic['daily'],'sessions'))===4
+        && $traffic['sourceCoverage']===['known'=>1,'unknown'=>1,'historical'=>2],
         'Dashboard coverage reconciles to all sampled sessions and respects the device filter');
     $assert($traffic['sources']===[['domain'=>'partner.example.test','sessions'=>1,'paymentEntries'=>1]]
         && !isset($traffic['views'],$traffic['receipts'],$traffic['browsers']) && !array_key_exists('views',$traffic['daily'][0]),
         'Traffic projection exposes ordered checkout intent for attributable sessions and skips unused report dimensions');
-    $assert(array_column($analytics->report(7,'desktop','conversion')['funnel'],'sessions')===[3,1,1],
-        'Dashboard conversion uses the ordered stages for each anonymous session');
-    $assert(array_column($measurement->report(7,'desktop')['rows'],'event')===['copy_failed','js_error','lcp'],
+    $conversion=$analytics->report(7,'desktop','conversion');
+    $assert($conversion['visitedSessions']===4 && array_column($conversion['funnel'],'sessions')===[3,1,1]
+        && $analytics->report(7,'mobile','conversion')['visitedSessions']===1
+        && $analytics->report(7,'tablet','conversion')['visitedSessions']===0,
+        'Dashboard conversion includes visits before plan browsing and respects the device filter');
+    $desktopExperience=$measurement->report(7,'desktop');
+    $assert($desktopExperience['observedSessions']===4 && $desktopExperience['affectedSessions']===2
+        && $desktopExperience['timeZone']===App\Services\TimeZones::system(),
+        'Experience counts include view-only sessions and count a session with multiple pages or issue types only once');
+    $assert(array_column($desktopExperience['rows'],'event')===['copy_failed','js_error','lcp'],
         'Dashboard experience keeps errors and performance while omitting click-only action counters');
     DB::table('v2_analytics_session')->update(['created_at'=>$now-8*86400]);
     $analytics->prune();
@@ -464,6 +475,7 @@ try {
     $exchange=$purchaseUser('exchange'); $purchaseOrder($exchange,0,['surplus_amount'=>1500,'refund_amount'=>500]);
     $credits=$purchaseUser('credits'); $purchaseOrder($credits,400,['period'=>'onetime_price','type'=>5,'credit_bytes'=>1073741824]);
     $creditOrder=['period'=>'onetime_price','type'=>5,'credit_bytes'=>1073741824];
+    $purchaseOrder($external,400,$creditOrder+['payment_id'=>$payment->id,'callback_no'=>'credit-and-recurring']);
     $purchaseOrder($credits,400,$creditOrder+['payment_id'=>$payment->id,'callback_no'=>'credit-external']);
     $purchaseOrder($credits,0,$creditOrder+['balance_amount'=>400]);
     $purchaseOrder($manual,400,$creditOrder+['payment_id'=>$payment->id,'callback_no'=>'manual_operation']);
@@ -479,32 +491,50 @@ try {
     $purchaseOrder($tied,100,['balance_amount'=>900,'payment_id'=>$payment->id,'callback_no'=>'tied-first']);
     $purchaseOrder($tied,0,['balance_amount'=>1000]);
     $placeholder=$purchaseUser('placeholder'); $purchaseOrder($placeholder,0,['balance_amount'=>1000,'credit_bytes'=>0]);
+    $purchaseOrder($placeholder,300,['paid_at'=>null,'created_at'=>(int)$placeholder->getRawOriginal('created_at')+110]);
+    $uncertain=$purchaseUser('undated-prior');
+    $purchaseOrder($uncertain,300,['paid_at'=>null]);
+    $purchaseOrder($uncertain,400,['payment_id'=>$payment->id,'callback_no'=>'verified-after-undated']);
     $negative=$purchaseUser('negative');
     try { $purchaseOrder($negative,1000,['credit_bytes'=>-1]); throw new RuntimeException('Unsigned credit-byte metadata accepted a negative entitlement'); }
     catch (Illuminate\Database\QueryException $error) { $assert(true,'The persisted entitlement schema rejects negative credit bytes'); }
     $immature=$purchaseUser('immature',2); $purchaseOrder($immature,1000);
     $admin=$purchaseUser('admin',10,true); $purchaseOrder($admin,1000);
     $purchaseReport=$analytics->report(7,'mobile'); $first=$purchaseReport['firstPurchase'];
-    $assert($first['registered']===16 && $first['verifiedRecurringAccounts']===5,'First purchase uses mature registrations and the earliest lifetime valued recurring purchase');
+    $assert($first['registered']===17 && $first['verifiedRecurringAccounts']===5,
+        'First purchase excludes a possible earlier undated valued order but retains a first purchase followed by a later-created undated order');
     $assert($first['funding']===['externalOnly'=>1,'mixed'=>2,'walletOnly'=>2,'manual'=>1,'unclassified'=>1],'First-purchase funding includes zero credit-byte placeholders but excludes invalid negative entitlements');
     $assert($first===$analytics->report(7,'desktop')['firstPurchase'],'Business purchases do not depend on consent, collection enablement or browser device');
     $assert(isset($purchaseReport['sessions'],$purchaseReport['funnel']) && !array_intersect(
         ['cohort','receipts','browsers','browsersReady','pages','views','latestEventAt','hours','weekdays','devices'],array_keys($purchaseReport))
         && !str_contains(json_encode($first),'@example.test'),'Default report returns retained metrics and keeps purchase identity anonymous');
     $dashboardConversion=$analytics->report(7,'mobile','conversion'); $dashboardPurchase=$dashboardConversion['firstPurchase'];
-    $assert($dashboardPurchase['registered']===16 && $dashboardPurchase['verifiedRecurringAccounts']===5
-        && $dashboardPurchase['verifiedCreditAccounts']===1 && $dashboardPurchase['funding']['manual']===1
+    $assert($dashboardPurchase['registered']===17 && $dashboardPurchase['verifiedRecurringAccounts']===5
+        && $dashboardPurchase['verifiedCreditAccounts']===2 && $dashboardPurchase['verifiedPayingAccounts']===6 && $dashboardPurchase['funding']['manual']===1
         && $dashboardPurchase['funding']['unclassified']===1 && !isset($dashboardConversion['receipts'],$dashboardConversion['cohort']),
-        'Dashboard conversion excludes unverifiable first purchases and deduplicates verified independent quota purchases');
+        'Dashboard conversion excludes unverifiable first purchases and counts a verified buyer of both products once');
 
     DB::table('v2_order')->delete(); DB::table('v2_user')->delete();
     $immatureAccount=$purchaseUser('immature-only',1);
     $emptyFirst=$analytics->report(7,'all')['firstPurchase'];
     $assert($emptyFirst['registered']===0 && $emptyFirst['verifiedRecurringAccounts']===0
-        && $emptyFirst['verifiedCreditAccounts']===0,'Immature accounts never supply a conversion denominator');
+        && $emptyFirst['verifiedCreditAccounts']===0 && $emptyFirst['verifiedPayingAccounts']===0,'Immature accounts never supply a conversion denominator');
     $noticeReasons=['traffic_exhausted','credits_expired','credits_exhausted','no_available_nodes','subscription_changed'];
     foreach($noticeReasons as $reason)DB::table('v2_subscribe_log')->insert(['user_id'=>$immatureAccount->id,'status'=>'failed','reason'=>$reason,'created_at'=>time()-10]);
     $noticeCounts=array_column($service->report(7)['subscription']['reasons'],'count','reason');
     foreach($noticeReasons as $reason)$assert(($noticeCounts[$reason]??0)===1,'Operational reports preserve a distinct safe notice reason: '.$reason);
+    $archiveEnd=strtotime('today');
+    $archiveStart=strtotime('-1 day', $archiveEnd);
+    foreach ([['CNY',1000,3,$archiveStart],['USD',300,3,$archiveEnd-1],['CNY',100,2,$archiveEnd-1],['CNY',9999,3,$archiveEnd]] as [$currency,$amount,$state,$at]) {
+        $purchaseOrder($immatureAccount,$amount,['currency'=>$currency,'status'=>$state,'created_at'=>$at,'paid_at'=>$at]);
+    }
+    $assert(Illuminate\Support\Facades\Artisan::call('fastai:statistics')===0,'Archive the previous business day');
+    $daily=DB::table('v2_stat')->where('record_at',$archiveStart)->where('record_type','d');
+    $record=$daily->first();
+    $assert($record && (int)$record->order_count===3 && (int)$record->order_total===1100
+        && (int)$record->paid_count===2 && (int)$record->paid_total===1000,
+        'Daily counts span currencies; amounts use CNY, omit cancelled payments and exclude the next day');
+    $assert(Illuminate\Support\Facades\Artisan::call('v2board:statistics')===0 && $daily->count()===1
+        && $daily->value('id')===$record->id,'Rerunning the archive through the previous command name updates the same daily row');
     echo "PASS {$n} admin payment/version/operations/journey checks\n";
 } finally { DB::rollBack(); }

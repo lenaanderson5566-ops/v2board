@@ -351,3 +351,41 @@ it("reports a payment copy failure without including payment results or private 
         expect(event).not.toHaveProperty("url");
     }
 });
+
+it("keeps an idle session idle when collection settings refresh and starts fresh after renewed consent", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    const clock = vi.spyOn(Date, "now");
+    fetcher.mockImplementation(async (url: string) => url.endsWith("/configuration")
+        ? { ok: true, json: async () => ({ data: { enabled: true, retentionDays: 30 } }) }
+        : { ok: true });
+    const reports = () => fetcher.mock.calls.filter(([url]) => url.endsWith("/events"))
+        .map(([, options]) => JSON.parse(options.body));
+    const page = render(<><Page /><AnalyticsPrivacy /><AnalyticsPrivacySetting /></>);
+    try {
+        await act(async () => {});
+        const toggle = screen.getByRole("switch");
+        expect(reports()).toHaveLength(0);
+        await act(async () => { fireEvent.click(toggle); });
+        expect(reports()).toHaveLength(1);
+        const firstSession = reports()[0].sessionId;
+
+        for (let interval = 1; interval <= 6; interval++) {
+            clock.mockReturnValue(testWindow + interval * 300000);
+            await act(async () => { await vi.advanceTimersByTimeAsync(300000); });
+        }
+        expect(fetcher.mock.calls.filter(([url]) => url.endsWith("/configuration"))).toHaveLength(7);
+        expect(reports()).toHaveLength(1);
+        await act(async () => { trackCopyFailure("subscribe"); });
+        const resumedSession = reports()[1].sessionId;
+        expect(resumedSession).not.toBe(firstSession);
+
+        await act(async () => { fireEvent.click(toggle); trackCopyFailure("subscribe"); });
+        expect(reports()).toHaveLength(2);
+        await act(async () => { fireEvent.click(toggle); });
+        expect(reports()).toHaveLength(3);
+        expect(reports()[2].sessionId).not.toBe(resumedSession);
+    } finally {
+        page.unmount();
+        vi.useRealTimers();
+    }
+});

@@ -2,14 +2,12 @@
   "site": {
     "app_name": {
       "label": "站点名称",
-      "hint": "用于显示需要站点名称的地方。",
       "placeholder": "请输入站点名称",
       "child": false,
       "line": 5682
     },
     "app_description": {
       "label": "站点描述",
-      "hint": "用于显示需要站点描述的地方。",
       "placeholder": "请输入站点描述",
       "child": false,
       "line": 5691
@@ -29,20 +27,9 @@
     },
     "logo": {
       "label": "LOGO",
-      "hint": "用于显示需要LOGO的地方。",
       "placeholder": "请输入LOGO URL，末尾不要/",
       "child": false,
       "line": 5715
-    },
-    "frontend_theme_sidebar": {
-      "label": "边栏风格",
-      "child": false,
-      "line": 6191
-    },
-    "frontend_theme_header": {
-      "label": "头部风格",
-      "child": false,
-      "line": 6198
     }
   },
   "safe": {
@@ -402,12 +389,6 @@
       "child": false,
       "line": 6370
     },
-    "email_template": {
-      "label": "邮件模板",
-      "hint": "你可以在文档查看如何自定义邮件模板",
-      "child": false,
-      "line": 6375
-    },
     "email_default_language": {
       "label": "默认邮件语言",
       "hint": "用户未设置语言时使用；验证码跟随本次界面语言。",
@@ -644,57 +625,6 @@
       "hint": "开启后bot将会对绑定了telegram的管理员和用户进行基础通知。",
       "child": false,
       "line": 6425
-    },
-    "telegram_discuss_link": {
-      "label": "群组地址",
-      "hint": "填写后将会在用户端展示，或者被用于需要的地方。",
-      "placeholder": "https://t.me/xxxxxx",
-      "child": false,
-      "line": 6434
-    }
-  },
-  "app": {
-    "windows_version": {
-      "label": "Windows",
-      "hint": "Windows端版本号及下载地址",
-      "placeholder": "1.0.0",
-      "child": false,
-      "line": 6459
-    },
-    "windows_download_url": {
-      "label": "Windows",
-      "hint": "兼容下载地址：用于 Clash Verge 的 windows 镜像入口。优先使用下方按客户端设置的镜像地址。",
-      "placeholder": "https://xxxx.com/xxx.exe",
-      "child": false,
-      "line": 6465
-    },
-    "macos_version": {
-      "label": "macOS",
-      "hint": "macOS端版本号及下载地址",
-      "placeholder": "1.0.0",
-      "child": false,
-      "line": 6474
-    },
-    "macos_download_url": {
-      "label": "macOS",
-      "hint": "兼容下载地址：用于 Clash Verge 的 macos 镜像入口。优先使用下方按客户端设置的镜像地址。",
-      "placeholder": "https://xxxx.com/xxx.dmg",
-      "child": false,
-      "line": 6480
-    },
-    "android_version": {
-      "label": "Android",
-      "hint": "Android端版本号及下载地址",
-      "placeholder": "1.0.0",
-      "child": false,
-      "line": 6489
-    },
-    "android_download_url": {
-      "label": "Android",
-      "hint": "兼容下载地址：用于 Hiddify 的 android 镜像入口。优先使用下方按客户端设置的镜像地址。",
-      "placeholder": "https://xxxx.com/xxx.apk",
-      "child": false,
-      "line": 6495
     }
   },
   "registration": {

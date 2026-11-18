@@ -53,22 +53,19 @@ try{
     foreach(['shadowsocks','v2node','v2box'] as $type) App\Models\StatServer::create(['server_id'=>($type==='v2box'?$box->id:$node->id),'server_type'=>$type,'u'=>1024,'d'=>2048,'record_type'=>'d','record_at'=>strtotime(date('Y-m-d'))]);
     $rank=(new App\Http\Controllers\V1\Admin\StatController())->getServerTodayRank()['data'];
     $assert(!array_diff(array_column($rank,'server_type'),['v2box']),'Ranking excludes retired types');
-    // Current traffic aggregation must keep working after removal of the old log/stat query paths.
-    $statistics=new App\Services\StatisticalService();
-    $statistics->setStartAt(time()+random_int(1000000,9000000));
-    try {
-        $statistics->setServerStats(); $statistics->setUserStats();
-        $statistics->statServer($node->id,'v2box',100,200);
-        $statistics->statServer($box->id,'v2box',300,400);
-        $statistics->statUser(1,42,100,200);
-        $statistics->statUser(1,42,20,30);
-        $statistics->setServerStats(); $statistics->setUserStats();
-        $serverStats=collect($statistics->getStatServer())->keyBy('server_id');
-        $assert(count($serverStats)===2 && $serverStats[$node->id]['u']===100 && $serverStats[$box->id]['d']===400,'Both current node backends retain cached daily aggregation');
-        $userStats=$statistics->getStatUser();
-        $assert(count($userStats)===1 && (int)$userStats[0]['user_id']===42 && $userStats[0]['u']===120 && $userStats[0]['d']===230,'User daily aggregation persists accumulated traffic');
-    } finally {
-        $statistics->clearStatServer(); $statistics->clearStatUser();
+    // The retained queue workers aggregate directly into the daily database rows.
+    $statUserId=2000000042;
+    foreach ([[$node,100,200],[$box,20,30]] as [$server,$up,$down]) {
+        $traffic=[$statUserId=>[$up,$down]];
+        (new App\Jobs\StatServerJob($traffic,$server->toArray(),'v2box'))->handle();
+        (new App\Jobs\StatUserJob($traffic,$server->toArray(),'v2box'))->handle();
     }
+    $serverStats=App\Models\StatServer::where('server_type','v2box')->whereIn('server_id',[$node->id,$box->id])
+        ->where('record_at',strtotime('today'))->get()->keyBy('server_id');
+    $assert($serverStats->count()===2 && (int)$serverStats[$node->id]->u===100 && (int)$serverStats[$box->id]->d===2078,
+        'Each node accumulates only its own raw traffic in daily database statistics');
+    $userStats=App\Models\StatUser::where('user_id',$statUserId)->where('record_at',strtotime('today'))->get();
+    $assert($userStats->count()===1 && (int)$userStats[0]->u===120 && (int)$userStats[0]->d===230,
+        'User daily aggregation accumulates traffic across nodes at the same rate');
 }finally{DB::rollBack();}
 echo "Node backend retirement: $checks checks passed\n";

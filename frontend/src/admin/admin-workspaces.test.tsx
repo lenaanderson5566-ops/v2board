@@ -2510,7 +2510,7 @@ it.each([
         completeSort!();
         await screen.findByRole("button", { name: /ascending@example.com/ });
         expect(screen.getByRole("columnheader", { name: "加入时间" }).getAttribute("aria-sort")).toBe("ascending");
-        expect(document.activeElement).toBe(moveFocus ? search : screen.getByRole("button", { name: "加入时间" }));
+        await waitFor(() => expect(document.activeElement).toBe(moveFocus ? search : screen.getByRole("button", { name: "加入时间" })));
     } finally {
         cleanup();
         if (savedView === null) localStorage.removeItem(storageKey);

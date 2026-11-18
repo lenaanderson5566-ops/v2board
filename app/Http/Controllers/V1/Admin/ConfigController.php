@@ -13,17 +13,6 @@ use Illuminate\Support\Facades\File;
 
 class ConfigController extends Controller
 {
-    public function getEmailTemplate()
-    {
-        $path = resource_path('views/mail/');
-        $files = array_map(function ($item) use ($path) {
-            return str_replace($path, '', $item);
-        }, glob($path . '*'));
-        return response([
-            'data' => $files
-        ]);
-    }
-
     public function previewMail(Request $request)
     {
         $request->validate([
@@ -151,7 +140,6 @@ class ConfigController extends Controller
                 'email_mailgun_domain' => config('fastai.email_mailgun_domain', ''),
                 'email_mailgun_api_key' => '',
                 'email_mailgun_key_configured' => (bool)config('fastai.email_mailgun_api_key'),
-                'email_template' => config('fastai.email_template', 'default'),
                 'email_host' => config('fastai.email_host'),
                 'email_port' => config('fastai.email_port'),
                 'email_username' => config('fastai.email_username'),

@@ -43,9 +43,6 @@ class StatUserJob implements ShouldQueue
     public function handle()
     {
         $recordAt = strtotime(date('Y-m-d'));
-        if ($this->recordType === 'm') {
-            //
-        }
         $attempt = 0;
         $maxAttempts = 3;
         $existingData = StatUser::where('record_at', $recordAt)

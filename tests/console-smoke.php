@@ -309,10 +309,29 @@ try {
     }
     $response = $call('/api/v1/' . $securePath . '/config/fetch', null, $token);
     $config = json_decode($response->getContent(), true)['data'];
+    foreach ([$securePath . '/config/getEmailTemplate', $opsPath . '/risk/user-usage/fetch'] as $retiredPath) {
+        foreach ([$token, null] as $credential) {
+            $assert($call('/api/v1/' . $retiredPath, null, $credential)->getStatusCode() === 404,
+                'Retired administrative listing is still routed: ' . $retiredPath);
+        }
+    }
+    $oldStrategy = App\Models\ClientStrategy::create(['client_type'=>'retired-smoke', 'client_name'=>'Retired client', 'is_enabled'=>0]);
+    foreach ([$token, null] as $credential) {
+        $assert($call('/api/v1/' . $opsPath . '/client/strategy/delete', ['client_type'=>$oldStrategy->client_type], $credential)->getStatusCode() === 404,
+            'Retired strategy deletion is still routed');
+    }
+    $assert($oldStrategy->fresh() !== null, 'Removing the old strategy endpoint must preserve historical records');
+    $assert(!array_key_exists('email_template', $config['email']), 'Retired mail theme selector is still exposed');
     $assert(!isset($config['frontend']) && isset($config['footer']['custom_footer_html']), 'Footer configuration failed');
     $assert($call('/api/v1/' . $securePath . '/console/configSchema')->getStatusCode() === 403, 'Config schema must require admin authentication');
     $response = $call('/api/v1/' . $securePath . '/console/configSchema', null, $token);
     $rules = json_decode($response->getContent(), true)['data'] ?? [];
+    $assert(!array_key_exists('email_template', $rules), 'Retired mail theme selector is still writable');
+    $assert(!array_key_exists('telegram_discuss_link', $rules), 'Retired Telegram group direct link is still writable');
+    foreach (['windows','macos','android'] as $os) {
+        $assert(!array_key_exists($os . '_version', $rules) && array_key_exists($os . '_download_url', $rules),
+            'Legacy platform version is retired while historical download URLs remain usable');
+    }
     $assert($response->getStatusCode() === 200 && ($rules['email_verify'] ?? '') === 'in:0,1' && ($rules['reset_traffic_method'] ?? '') === 'in:0,1,2,3,4', 'Configuration control schema failed');
     $assert(($rules['passkey_enable'] ?? '') === 'in:0,1' && !isset($rules['recaptcha_enable'],$rules['recaptcha_key'],$rules['recaptcha_site_key']), 'Passkey replaces retired CAPTCHA settings');
     $assert(!array_key_exists('allow_new_period',$rules),'Retired traffic period advance is absent from the admin settings schema');
@@ -851,8 +870,10 @@ try {
         $assert($call('/api/v1/' . $securePath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Legacy read control failed: ' . $endpoint);
         $assert($call('/api/v1/' . $securePath . '/' . $endpoint)->getStatusCode() === 403, 'Legacy control lacks admin authentication: ' . $endpoint);
     }
-    foreach (['risk/overview/fetch', 'risk/rule/fetch', 'risk/settings/fetch', 'client/strategy/fetch', 'log/login/fetch'] as $endpoint) {
+    foreach (['risk/overview/fetch', 'risk/rule/fetch', 'risk/settings/fetch', 'client/strategy/fetch', 'log/login/fetch',
+        'risk/online-user/fetch', 'risk/user-activity/fetch?user_id=' . $subject->id] as $endpoint) {
         $assert($call('/api/v1/' . $opsPath . '/' . $endpoint, null, $token)->getStatusCode() === 200, 'Unified operations endpoint failed: ' . $endpoint);
+        $assert($call('/api/v1/' . $opsPath . '/' . $endpoint)->getStatusCode() === 403, 'Operations endpoint requires administrator authentication: ' . $endpoint);
     }
     foreach (['Country', 'City', 'ASN'] as $type) {
         $reader = new GeoIp2\Database\Reader(storage_path('geoip/GeoLite2-' . $type . '.mmdb'));

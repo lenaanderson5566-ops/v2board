@@ -110,6 +110,21 @@ export function AdminShell({
     const [open, setOpen] = useState(false);
     const [menu, setMenu] = useState(false);
     useEffect(() => {
+        if (mobile) return;
+        function focusSearch(event: KeyboardEvent) {
+            if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey ||
+                !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+            if (document.querySelector('[aria-modal="true"], [role="menu"][data-state="open"]') ||
+                (event.target instanceof HTMLElement && event.target !== searchInput.current &&
+                    event.target.closest('input, textarea, select, [contenteditable="true"]'))) return;
+            event.preventDefault();
+            searchInput.current?.focus();
+            searchInput.current?.select();
+        }
+        document.addEventListener("keydown", focusSearch);
+        return () => document.removeEventListener("keydown", focusSearch);
+    }, [mobile]);
+    useEffect(() => {
         setOpen(false);
         setMenu(false);
         setSearch("");
@@ -182,6 +197,7 @@ export function AdminShell({
         [],
     );
     const term = search.trim().toLocaleLowerCase();
+    const words = term.split(/\s+/);
     const activeLink = term ? page : root;
     const navigation = adminMenu.flatMap(([key, label, icon, group]) => {
         const subpages = adminSubpages(key);
@@ -206,11 +222,10 @@ export function AdminShell({
                     parent: label,
                     alias: "",
                 })),
-        ].filter((item) =>
-            `${item.label} ${item.alias} ${item.parent} ${item.group} ${item.key}`
-                .toLocaleLowerCase()
-                .includes(term),
-        );
+        ].filter((item) => {
+            const text = `${item.label} ${item.alias} ${item.parent} ${item.group} ${item.key}`.toLocaleLowerCase();
+            return words.every(word => text.includes(word));
+        });
     });
     return (
         <div
@@ -290,9 +305,28 @@ export function AdminShell({
                             type="search"
                             value={search}
                             aria-label={tx("搜索后台页面")}
+                            aria-keyshortcuts={mobile ? undefined : "Control+k Meta+k"}
                             placeholder={tx("输入页面名称或分组")}
                             onChange={(event) => setSearch(event.target.value)}
+                            onKeyDown={(event) => {
+                                if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229 || !term) return;
+                                if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setSearch("");
+                                    return;
+                                }
+                                const first = sidebar.current?.querySelector<HTMLAnchorElement>(".nav-main-link");
+                                if (event.key === "ArrowDown" && first) {
+                                    event.preventDefault();
+                                    first.focus();
+                                } else if (event.key === "Enter" && navigation.length === 1 && first) {
+                                    event.preventDefault();
+                                    first.click();
+                                }
+                            }}
                         />
+                        {!mobile && !search && <kbd aria-hidden="true">{/Mac/i.test(navigator.platform) ? "⌘ K" : "Ctrl K"}</kbd>}
                     </label>
                     {search && (
                         <button
@@ -323,7 +357,10 @@ export function AdminShell({
                                         aria-current={activeLink === key ? "page" : undefined}
                                         href={`#/${key}`}
                                         onClick={() => {
-                                            if (page === key) setOpen(false);
+                                            if (page === key) {
+                                                setOpen(false);
+                                                setSearch("");
+                                            }
                                         }}
                                     >
                                         <AdminIcon

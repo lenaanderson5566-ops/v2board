@@ -10,7 +10,7 @@ import { formatInstant } from "../shared/timezone";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { NodeCredentials } from "./NodeCredentials";
 import { NodeDnsObservation } from "./NodeDnsObservation";
-import { nodeUpgradeCommand } from "./node-deployment";
+import { deploymentTaskState, nodeUpgradeCommand } from "./node-deployment";
 
 export function NodeDeployment({
     node,
@@ -23,7 +23,7 @@ export function NodeDeployment({
     openConnection,
 }: {
     editorName?: string;
-    openConnection?: () => void;
+    openConnection?: (defaultEndpoint?: boolean) => void;
     navigation?: (busy: boolean, dirty: boolean) => ReactNode;
     node: Row;
     close: () => void;
@@ -47,6 +47,7 @@ export function NodeDeployment({
     const [deployment, setDeployment] = useState<Row | null>(null),
         [copied, setCopied] = useState("");
     const generating = useRef(false);
+    const reportAtIssue = useRef<Row | null>(null);
     const report = useData<Row>(
         scope === "connection"
             ? ""
@@ -66,7 +67,7 @@ export function NodeDeployment({
         { refreshOnEvents: false },
     );
     const network = useData<Row>(
-        tab === "deploy" ? admin("server/ddns/fetch") : "",
+        tab === "deploy" ? query(admin("server/ddns/fetch"), node.type === "v2box" ? {node_type:node.type, node_id:node.id} : {}) : "",
         undefined,
         false,
         { refreshOnEvents: false },
@@ -77,18 +78,29 @@ export function NodeDeployment({
     const binding = (network.data?.assignments || []).find(
         (a: Row) => a.node_type === node.type && a.node_id === node.id && a.status !== "manual",
     );
+    const reportedTask = report.data?.deploymentTask;
+    const task = deployment?.task && report.data === reportAtIssue.current
+        ? deployment.task : reportedTask ?? deployment?.task;
+    const taskState = deploymentTaskState(task);
+    const commandUsed = !!deployment?.task && !!task &&
+        (task.id !== deployment.task.id || task.phase !== "issued");
     useEffect(() => {
         if (!deployment) return;
+        if (commandUsed) {
+            setDeployment(null);
+            setCopied("");
+            return;
+        }
         const timer = setTimeout(
             () => {
                 setDeployment(null);
                 setCopied("");
-                setError("部署命令已过期，请重新生成");
+                report.reload();
             },
             Math.max(0, Date.parse(deployment.expiresAt) - Date.now()),
         );
         return () => clearTimeout(timer);
-    }, [deployment]);
+    }, [deployment, commandUsed, report.reload]);
     async function copy(value: string, label: string, track = false) {
         try {
             await navigator.clipboard.writeText(value);
@@ -111,6 +123,7 @@ export function NodeDeployment({
                 admin("server/credentials/deployment"),
                 { type: node.type, id: node.id },
             );
+            reportAtIssue.current = report.data;
             setDeployment(result.data);
             refreshStatus();
         } catch (e) {
@@ -130,6 +143,8 @@ export function NodeDeployment({
         binding,
         authenticated,
     );
+    const service = nodeDeploymentStage(node, runtime.data, undefined, authenticated);
+    const terminalTask = !!task && !taskState.polling;
     const statusError = report.error || runtime.error || network.error;
     function refreshStatus() {
         deadline.current = Date.now() + 900000;
@@ -144,7 +159,7 @@ export function NodeDeployment({
             tab !== "deploy" ||
             busy ||
             paused ||
-            (stage.terminal && !statusError && !tracking) ||
+            (stage.terminal && !statusError && !taskState.polling && (!tracking || terminalTask)) ||
             report.loading ||
             runtime.loading ||
             network.loading
@@ -156,7 +171,7 @@ export function NodeDeployment({
                 return;
             }
             if (document.visibilityState !== "visible") return;
-            if (!authenticated || report.error) report.reload();
+            if (!authenticated || report.error || taskState.polling) report.reload();
             runtime.reload();
             if (binding || network.error) network.reload();
         }, statusError ? 30000 : 15000);
@@ -166,6 +181,8 @@ export function NodeDeployment({
         busy,
         paused,
         tracking,
+        terminalTask,
+        taskState.polling,
         stage.terminal,
         statusError,
         stage.dnsReady,
@@ -265,14 +282,14 @@ export function NodeDeployment({
                             <section
                                 className="node-deployment-progress"
                                 aria-label="部署状态"
-                                data-ready={stage.target === "runtime" && !statusError}
+                                data-ready={runtime.data?.runtimeStatus === "online" && service.target === "runtime" && !runtime.data?.maintenance && !runtime.error}
                             >
                                 <div>
-                                    <strong>
-                                        {statusError
+                                    <strong className="node-deployment-line"><span>当前服务</span><b>
+                                        {runtime.error
                                             ? "状态读取暂不可用"
-                                            : stage.title}
-                                    </strong>
+                                            : service.title}
+                                    </b></strong>
                                     <button
                                         disabled={
                                             busy ||
@@ -290,6 +307,25 @@ export function NodeDeployment({
                                         ? paused ? "自动检查已暂停，请刷新状态重试。" : "状态查询失败，页面可见时每 30 秒自动重试，也可手动刷新。"
                                         : stage.description}
                                 </p>
+                                {node.type === "v2box" && (
+                                    <section className="node-deployment-task" aria-label="本次部署" aria-live="polite">
+                                        <strong className="node-deployment-line"><span>本次部署</span><b>{report.error ? "任务状态读取失败" : report.loading && !task && !report.data ? "正在读取" : taskState.label}</b></strong>
+                                        {!report.error && taskState.hint && <p>{taskState.hint}</p>}
+                                        {!report.error && task?.phase === "issued" && !deployment?.command && <small>若未保存原命令，可在下方重新生成。</small>}
+                                        {!report.error && task?.recoveryExpiresAt && taskState.polling && <small>恢复有效至 {formatInstant(task.recoveryExpiresAt, { timeZoneName: undefined })}</small>}
+                                        {!report.error && task?.resumeCommand && task.recoveryExpiresAt && taskState.polling && <details>
+                                            <summary>恢复此节点的部署</summary>
+                                            <p>在原服务器执行，仅恢复此面板和节点已保存的任务。</p>
+                                            <textarea aria-label="本节点恢复命令" className="admin-command-input" rows={2} readOnly spellCheck={false} value={task.resumeCommand}/>
+                                            <button onClick={() => copy(task.resumeCommand, "恢复命令已复制")}>复制此节点恢复命令</button>
+                                        </details>}
+                                    </section>
+                                )}
+                                {binding?.relay_cutover && <section className="node-deployment-task" aria-label="中转入口验证">
+                                    <strong className="node-deployment-line"><span>订阅入口</span><b>新入口待验证</b></strong>
+                                    <p>候选入口 {binding.relay_cutover.host}:{binding.relay_cutover.port}，当前订阅仍使用 {binding.relay_cutover.previousHost}:{binding.relay_cutover.previousPort}。</p>
+                                    <button disabled={busy} onClick={() => openConnection ? openConnection(true) : setTab("domain")}>验证新入口</button>
+                                </section>}
                                 {node.type === "v2box" && scope === "service" && (
                                     <section className="node-runtime-versions" aria-label="节点运行版本">
                                         <dl>
@@ -311,7 +347,7 @@ export function NodeDeployment({
                                         查看运行诊断
                                     </button>
                                 )}
-                                {stage.target === "domain" && (
+                                {stage.target === "domain" && !binding?.relay_cutover && (
                                     <button
                                         disabled={busy}
                                         onClick={() => openConnection ? openConnection() : setTab("domain")}
@@ -384,15 +420,21 @@ export function NodeDeployment({
                                         <p role="status">
                                             执行位置：回源服务器（运行代理服务的机器）。请先完成中转服务器的
                                             IP
-                                            上报，等待入口与回源解析就绪。部署完成后仍需在入口服务器加载转发配置，并通过客户端验证。
+                                            上报，等待入口与回源解析就绪。在入口服务器加载转发配置后，使用客户端验证候选入口；更换已上线的入口时，在“域名与解析”确认后切换订阅。
                                         </p>
                                     )}
 
-                                    <p className="muted">在代理服务器以 root 执行。首次使用自动安装；已有兼容的 V2Box 会追加当前面板节点，保留其他面板配置。</p>
+                                    <p className="muted">在代理服务器以 root 执行。已有兼容的 V2Box 会追加当前面板节点，保留其他面板配置。</p>
+                                    {report.data?.prepareCommand && <details className="admin-deployment-tools">
+                                        <summary>首次安装：先准备 V2Box 程序</summary>
+                                        <p>在新服务器执行以下命令。准备完成后再生成部署命令，下载和安装耗时不会占用 10 分钟的领取期限。</p>
+                                        <textarea className="admin-command-input" aria-label="准备程序命令" readOnly rows={2} spellCheck={false} value={report.data.prepareCommand}/>
+                                        <button onClick={() => copy(report.data!.prepareCommand, "准备命令已复制")}>复制准备命令</button>
+                                    </details>}
                                     <details className="admin-deployment-tools">
                                         <summary>安装条件与中断恢复</summary>
                                         <p>自动安装依赖并配置密钥；已绑定域名时同时配置 IP 上报，等待解析生效并验证节点就绪后启用域名。</p>
-                                        <p>自动申请证书请选择 HTTP 或 DNS 申请。HTTP 验证需保持公网 80 端口可达。保留证书及其他节点配置；重新部署会更新当前节点凭据。中断后使用 --resume，授权过期时重新生成部署命令。</p>
+                                        <p>HTTP 证书验证需保持公网 80 端口可达。若已保存部署进度，可在原服务器运行 v2box resume。命令领取后，恢复期限单独计算。</p>
                                     </details>
                                     <button
                                         className={deployment ? "" : "primary"}
@@ -409,15 +451,15 @@ export function NodeDeployment({
                                             ? "正在生成…"
                                             : "生成一键部署命令"}
                                     </button>
-                                    {deployment && (
+                                    {deployment && !commandUsed && (
                                         <>
                                             <p
                                                 role="status"
                                                 className="admin-deployment-expiry"
                                             >
-                                                有效至{" "}
+                                                首次领取有效至{" "}
                                                 {formatInstant(deployment.expiresAt, { timeZoneName: undefined })}
-                                                ，仅可使用一次。新命令会使旧命令失效。
+                                                。新生成的命令会替代尚未领取的旧命令。
                                             </p>
                                             <textarea
                                                 className="admin-command-input"

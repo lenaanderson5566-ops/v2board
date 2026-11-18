@@ -547,6 +547,12 @@ body[data-console="admin"] .settings-panel .editor {
 body[data-console="admin"] .settings-panel .field-grid {
     display: block;
 }
+body[data-console="admin"] .settings-panel .settings-field-jump {
+    width: auto;
+    max-width: 17rem;
+    min-height: var(--admin-row-control-height);
+    font-size: 13px;
+}
 body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) {
     display: grid;
     grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);

@@ -9,23 +9,37 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\Rule;
 class NodeDdnsController extends Controller {
-    public function fetch() {
-        $connections=DB::table('v2_node_connection')->select('id','node_type','node_id','entry_id','entry_port','published','revision','verified_at')->get()->map(function($c){$c->published=$c->published?json_decode($c->published,true):null;return $c;});
-        $assignments=DB::table('v2_node_ddns')->select('id','server_id','entry_id','entry_port','purpose','published_origin','published_port','relay_verified_at','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run')->orderBy('id')->get();
+    public function fetch(Request $request) {
+        $scope=$request->validate(['node_type'=>'required_with:node_id|in:v2box','node_id'=>'required_with:node_type|integer|min:1']);
+        $connections=$scope ? collect() : DB::table('v2_node_connection')->select('id','node_type','node_id','entry_id','entry_port','published','revision','verified_at')->get()->map(function($c){$c->published=$c->published?json_decode($c->published,true):null;return $c;});
+        $query=DB::table('v2_node_ddns')->select('id','server_id','entry_id','entry_port','purpose','published_origin','published_port','relay_verified_at','credential_id','node_type','node_id','domain','published_domain','tls_transition_state','tls_transition','managed','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at','last_success','status','next_run');
+        if ($scope) {
+            $binding=DB::table('v2_node_ddns')->where('node_type',$scope['node_type'])->where('node_id',$scope['node_id']);
+            $query->whereIn('id',(clone $binding)->select('id'))->orWhereIn('id',$binding->select('entry_id'));
+        }
+        $assignments=$query->orderBy('id')->get();
         $keys=$assignments->where('node_type','v2box')->map(fn($a)=>'V2BOX_CAPABILITIES:'.$a->node_id)->unique()->values()->all();
         $capabilities=$keys ? Cache::many($keys) : [];
         $dnsKeys=$assignments->where('node_type','v2box')->map(fn($a)=>'NODE_DEPLOY_DNS:'.$a->node_id)->unique()->values()->all();
         $dnsObservations=$dnsKeys?Cache::many($dnsKeys):[];
         $autoKeys=$assignments->map(fn($a)=>'domain-auto-state:'.$a->id)->all();
         $automatic=$autoKeys?Cache::many($autoKeys):[];
-        $servers=DB::table('v2_network_server')->select('id','name','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at')->orderBy('id')->get();
+        $servers=DB::table('v2_network_server')->select('id','name','family','enabled','ipv4','ipv6','ipv4_seen_at','ipv6_seen_at')
+            ->when($scope,fn($q)=>$q->whereIn('id',$assignments->pluck('server_id')))->orderBy('id')->get();
         $serverMap=$servers->keyBy('id'); $byId=$assignments->keyBy('id');
         $entryIds=$assignments->pluck('entry_id')->filter()->unique()->all();
         $records=$entryIds ? DB::table('v2_node_dns_record')->whereIn('assignment_id',$entryIds)->where('status','active')->where('delete_after',0)->whereNotNull('record_id')->get()->groupBy('assignment_id') : collect();
         $ready=[];
+        $cutovers=\App\Services\NodeRelayCutover::reviews($assignments,$connections);
         $connectionCounts=[];
-        foreach($connections as $connection) foreach(array_unique(array_filter([$connection->entry_id,$connection->published['entry_id']??null])) as $entryId) $connectionCounts[$entryId]=($connectionCounts[$entryId]??0)+1;
-        foreach($assignments as $assignment) if($assignment->entry_id) $connectionCounts[$assignment->entry_id]=($connectionCounts[$assignment->entry_id]??0)+1;
+        if (!$scope) {
+            $entryByDomain=$assignments->where('purpose','entry')->keyBy('domain');
+            foreach($connections as $connection) foreach(array_unique(array_filter([$connection->entry_id,$connection->published['entry_id']??null])) as $entryId) $connectionCounts[$entryId]=($connectionCounts[$entryId]??0)+1;
+            foreach ($assignments as $assignment) {
+                $published=$assignment->published_origin ? $entryByDomain->get($assignment->published_domain)?->id : null;
+                foreach (array_unique(array_filter([$assignment->entry_id,$published])) as $entryId) $connectionCounts[$entryId]=($connectionCounts[$entryId]??0)+1;
+            }
+        }
         foreach ($entryIds as $id) {
             $e=$byId->get($id);$ok=$e && $e->enabled && ($serverMap->get($e->server_id)->enabled??false) && in_array($e->status,['healthy','ready_to_switch'],true) && $e->last_success>=time()-900;
             if ($e) foreach($e->family==='dual'?['ipv4','ipv6']:[$e->family] as $f) $ok=$ok && $e->$f && $e->{$f.'_seen_at'}>=time()-900 && $records->get($id,collect())->contains(fn($r)=>$r->credential_id==$e->credential_id && $r->domain===$e->domain && $r->type===($f==='ipv4'?'A':'AAAA') && $r->content===$e->$f);
@@ -34,14 +48,16 @@ class NodeDdnsController extends Controller {
         return ['data'=>[
             'connections'=>$connections,
             'servers'=>$servers,
-            'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')->orderBy('id')->get(),
-            'assignments'=>$assignments->map(function($a)use($automatic,$dnsObservations,$capabilities,$byId,$ready,$serverMap,$connectionCounts){
+            'credentials'=>DB::table('v2_ddns_credential')->select('id','name','zone_id','root_domain','status','next_run')
+                ->when($scope,fn($q)=>$q->whereIn('id',$assignments->pluck('credential_id')))->orderBy('id')->get(),
+            'assignments'=>$assignments->map(function($a)use($scope,$automatic,$dnsObservations,$capabilities,$byId,$ready,$serverMap,$connectionCounts,$cutovers){
+                $a->relay_cutover=$cutovers[$a->id]??null;
                 $a->deployment_dns=$a->node_type==='v2box'?($dnsObservations['NODE_DEPLOY_DNS:'.$a->node_id]??null):null;
                 if ($a->deployment_dns) { unset($a->deployment_dns['proof']); }
                 $a->configuration_revision=NodeDomainController::revision($a);
                 $state=$automatic['domain-auto-state:'.$a->id]??null;
                 $a->automatic_status=$state && ($state['revision']??null)===$a->configuration_revision ? $state['code'] : null;
-                $a->connection_count=$connectionCounts[$a->id]??0;
+                if (!$scope) $a->connection_count=$connectionCounts[$a->id]??0;
                 $entry=$a->entry_id ? $byId->get($a->entry_id) : null;
                 $a->connection_domain=$entry ? $entry->domain : $a->domain;
                 $a->entry_ready=$a->entry_id ? ($ready[$a->entry_id]??false) : true;

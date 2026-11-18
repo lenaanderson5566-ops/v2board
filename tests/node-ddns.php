@@ -22,7 +22,7 @@ try {
     $assert($stored->secret!=='secret-ddns-test' && Crypt::decryptString($stored->secret)==='secret-ddns-test','encrypted credential');
     $admin->saveCredential($req(['id'=>$cid,'name'=>'Renamed','zone_id'=>str_repeat('a',32)]));
     $assert(DB::table('v2_ddns_credential')->find($cid)->secret===$stored->secret,'blank token preserves secret');
-    $assert(!str_contains(json_encode($admin->fetch()),'secret-ddns-test') && !str_contains(json_encode($admin->fetch()),'secret"'),'no credential projection');
+    $assert(!str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),'secret-ddns-test') && !str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),'secret"'),'no credential projection');
     $base=['group_id'=>[999999],'name'=>'DDNS test','host'=>'node.example.test','port'=>'443','server_port'=>443,'protocol'=>'vless','tls'=>0,'network'=>'tcp','rate'=>'1','up_mbps'=>0,'down_mbps'=>0];
     $certId=DB::table('v2_ddns_credential')->insertGetId(['name'=>'Certificate zone','zone_id'=>str_repeat('f',32),'root_domain'=>'cert.example.test','secret'=>Crypt::encryptString('cert-only-test'),'status'=>'ready','next_run'=>0]);
     $certTls=['cert_mode'=>'dns','dns_credential_id'=>$certId,'server_name'=>'entry.cert.example.test','dns_env'=>'must-not-be-stored'];
@@ -43,7 +43,7 @@ try {
     $assert(App\Services\Actions\NodeConfiguration::build($certNode)['tls_settings']['dns_env']==='CF_DNS_API_TOKEN=cert-rotated-test','rotation used on subsequent node fetch');
     DB::table('v2_ddns_credential')->where('id',$certId)->update(['next_run'=>-1]);
     $reject(fn()=>App\Services\NodeCertificateCredential::resolve($normalized),422);
-    $assert(!str_contains(json_encode($admin->fetch()),'cert-rotated-test'),'administrator metadata never returns certificate token');
+    $assert(!str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),'cert-rotated-test'),'administrator metadata never returns certificate token');
     $certNode->delete();$admin->dropCredential($req(['id'=>$certId]));
     $addressAdmin=new App\Http\Controllers\V1\Admin\NodeConnectionController();
     $manual=App\Models\ServerV2box::create(array_replace($base,['tls'=>1,'tls_settings'=>['server_name'=>'identity.example.test','tls_key'=>'private-test-material']]));
@@ -69,10 +69,10 @@ try {
     $id=$admin->saveAssignment($req($binding))['data']['id'];
     $lockedAddress=$addressAdmin->address($req(['type'=>'v2box','id'=>$node->id]))['data'];
     $reject(fn()=>$addressAdmin->updateAddress($req(['type'=>'v2box','id'=>$node->id,'revision'=>$lockedAddress['revision'],'host'=>'bypass.example.test','port'=>443,'confirm'=>true])),409);
-    $projected=$admin->fetch()['data']['assignments']->firstWhere('id',$id);
+    $projected=$admin->fetch(Request::create('/', 'GET'))['data']['assignments']->firstWhere('id',$id);
     $assert($projected->certificate_transition_supported===false,'Missing node capability is not treated as supported');
     Illuminate\Support\Facades\Cache::put('V2BOX_CAPABILITIES:'.$node->id,['features'=>['certificate-transition-v1'],'secret'=>'not-for-ui'],60);
-    $projected=$admin->fetch()['data']['assignments']->firstWhere('id',$id);
+    $projected=$admin->fetch(Request::create('/', 'GET'))['data']['assignments']->firstWhere('id',$id);
     $assert($projected->certificate_transition_supported===true,'Domain status projects reported TLS transition capability');
     $assert(!str_contains(json_encode($projected),'not-for-ui'),'Capability projection contains no raw cached payload');
     Illuminate\Support\Facades\Cache::forget('V2BOX_CAPABILITIES:'.$node->id);
@@ -81,7 +81,7 @@ try {
     $reject(fn()=>$admin->dropCredential($req(['id'=>$cid])),409);
     $token=json_decode($admin->rotate($req(['id'=>$id]))->getContent(),true)['data']['reportToken'];
     $assert(DB::table('v2_network_server')->find(DB::table('v2_node_ddns')->find($id)->server_id)->report_hash===hash('sha256',$token),'report key hashed');
-    $assert(!str_contains(json_encode($admin->fetch()),$token),'no report key in fetch');
+    $assert(!str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),$token),'no report key in fetch');
     $r=$call('', ['ipv4'=>'8.8.8.8'],'?token='.$token);
     $assert($r->getStatusCode()===401,'query token refused');
     $p=json_decode($r->getContent(),true);$assert($p['code']==='UNAUTHENTICATED' && $p['requestId']===$r->headers->get('X-Request-ID'),'problem contract');
@@ -338,7 +338,7 @@ try {
     $assert((int)$portNode->fresh()->port===443,'offline nodes never automatically publish');
     App\Services\NodeRuntimeService::record('v2box',$portNode->id,$portConfig,'v10');
     $advance($portBind);
-    $assert($admin->fetch()['data']['assignments']->firstWhere('id',$portBind)->automatic_status==='dns_mismatch','DNS mismatch is visible and not treated as manual verification');
+    $assert($admin->fetch(Request::create('/', 'GET'))['data']['assignments']->firstWhere('id',$portBind)->automatic_status==='dns_mismatch','DNS mismatch is visible and not treated as manual verification');
     $assert((int)$portNode->fresh()->port===443,'automatic DNS mismatch retains published port');
     $autoProbe->ips=['8.8.8.8'];$autoProbe->unavailable=true;$advance($portBind);
     $assert((int)$portNode->fresh()->port===443,'unavailable public DNS cannot publish');
@@ -412,7 +412,7 @@ try {
     $assert(DB::table('v2_node_ddns')->find($bid)->tls_transition_state==='pending' && $managed->fresh()->host==='old.example.test','automatic TLS activation stages certificate without publishing before receipt');
     $pending=$config();
     $beforeNoop=DB::table('v2_node_ddns')->find($bid);
-    $projectedRevision=$admin->fetch()['data']['assignments']->firstWhere('id',$bid)->configuration_revision;
+    $projectedRevision=$admin->fetch(Request::create('/', 'GET'))['data']['assignments']->firstWhere('id',$bid)->configuration_revision;
     $reject(fn()=>$domains->manual($req(['id'=>$bid,'revision'=>$projectedRevision,'confirm'=>true])),409);
     $sameBind=$domains->bind($req($body+['revision'=>$projectedRevision]))['data'];
     $afterNoop=DB::table('v2_node_ddns')->find($bid);
@@ -421,7 +421,7 @@ try {
 
     $assert($managed->fresh()->host==='old.example.test' && $managed->fresh()->tls_settings['server_name']==='old.example.test','candidate does not publish connection hostname or TLS identity');
     $assert($pending['tlsSettings']->serverName==='hk-01.example.test' && $pending['domainTransition']['addresses']->ipv4==='8.8.8.8','node receives synchronized candidate and expected public address');
-    $assert(!str_contains(json_encode($admin->fetch()),'tls_transition"') && !str_contains(DB::table('v2_node_ddns')->find($bid)->tls_transition,'certificate.example.test'),'candidate secrets never projected and encrypted at rest');
+    $assert(!str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),'tls_transition"') && !str_contains(DB::table('v2_node_ddns')->find($bid)->tls_transition,'certificate.example.test'),'candidate secrets never projected and encrypted at rest');
     $report('applied',null);$report('applied',str_repeat('a',64),str_repeat('0',64));
     $assert($managed->fresh()->host==='old.example.test','missing fingerprint and stale receipts cannot publish');
     $report('failed');
@@ -432,7 +432,7 @@ try {
     $a=DB::table('v2_node_ddns')->find($bid);$expired=json_decode(Crypt::decryptString($a->tls_transition),true);$expired['expires']=time()-1;
     DB::table('v2_node_ddns')->where('id',$bid)->update(['tls_transition'=>Crypt::encryptString(json_encode($expired))]);
     $assert(!isset($config()['domainTransition']),'expired operation falls back to published configuration');
-    $assert($admin->fetch()['data']['assignments']->firstWhere('id',$bid)->tls_transition_state==='failed','expired operation is retryable in the admin view without waiting for scheduler');
+    $assert($admin->fetch(Request::create('/', 'GET'))['data']['assignments']->firstWhere('id',$bid)->tls_transition_state==='failed','expired operation is retryable in the admin view without waiting for scheduler');
     $domains->activate($req(['id'=>$bid,'confirm'=>true]));
     $staleHash=hash('sha256',json_encode($config()));
     $managed->name='Changed during verification';$managed->save();
@@ -688,7 +688,7 @@ try {
     preg_match('/ns_[a-f0-9]{64}/',$grant['command'],$m);$enrolled=App\Services\NodeDeployment::redeem($m[0]);
     $assert($enrolled['purpose']==='server' && $enrolled['serverId']===$ingress && !isset($enrolled['apiKey']) && $enrolled['networkReport']['token']===$entryToken,'server-only enrollment neither issues node keys nor rotates a shared reporter');
     $reject(fn()=>App\Services\NodeDeployment::redeem($m[0]),401);
-    $assert(!str_contains(json_encode($admin->fetch()),$entryToken) && !str_contains(json_encode($admin->fetch()),'test-only-acme'),'server and certificate credentials never appear in administrative lists');
+    $assert(!str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),$entryToken) && !str_contains(json_encode($admin->fetch(Request::create('/', 'GET'))),'test-only-acme'),'server and certificate credentials never appear in administrative lists');
     // Origin cleanup is independent from service readiness and requires an exact preview.
     $call($entryToken,['ipv4'=>'1.1.1.1']);DB::table('v2_node_ddns')->where('id',$eid)->update(['next_run'=>0]);$service->sync($eid);
     $oldOriginRecord=DB::table('v2_node_dns_record')->where('assignment_id',$rid)->where('domain','origin-a.example.test')->first();
@@ -726,6 +726,73 @@ try {
     }
     $retired=$kernel->handle(Request::create(substr($serverRoute,0,-strlen('enroll')).'confirm-relay','POST',[],[],[],['HTTP_ACCEPT'=>'application/json','HTTP_AUTHORIZATION'=>$auth]));
     $assert($retired->getStatusCode()===404,'manual relay confirmation route stays retired');
+    // A visible imported alias uses the default endpoint even if the service itself is hidden.
+    DB::beginTransaction();
+    $visibleAlias=App\Models\ServerV2box::create(array_replace($base,['service_id'=>$relay->id,'host'=>$relay->fresh()->host,'port'=>'8443','show'=>true]));
+    $domains->bind($req(array_replace($args,['prefix'=>'fresh-upstream'])));$service->sync($rid);
+    $reject(fn()=>$net->originCleanupPreview($req(['id'=>$rid])),409);
+    $assert(DB::table('v2_node_ddns')->find($rid)->published_origin==='origin-new.example.test','changing only the upstream keeps its previous DNS records until the new forwarding is tested');
+    $nextEntry=$net->entry($req(['server_id'=>$ingress,'credential_id'=>$cid,'prefix'=>'next-ingress','family'=>'ipv4']))['data']['id'];
+    $call($entryToken,['ipv4'=>'1.1.1.1']);$service->sync($nextEntry);
+    $switchArgs=array_replace($args,['prefix'=>'origin-new','entry_id'=>$nextEntry,'entry_port'=>8553]);
+    $domains->bind($req($switchArgs));$service->sync($rid);
+    $scoped=fn()=>$admin->fetch(Request::create('/','GET',['node_type'=>'v2box','node_id'=>$relay->id]))['data'];
+    $narrow=$scoped();
+    $assert($narrow['assignments']->pluck('id')->sort()->values()->all()===collect([$rid,$nextEntry])->sort()->values()->all()
+        && $narrow['credentials']->pluck('id')->all()===[$cid] && $narrow['servers']->count()===2 && $narrow['connections']->isEmpty(),'deployment polling reads only the requested service, origin and ingress');
+    $reject(fn()=>$admin->fetch(Request::create('/','GET',['node_id'=>$relay->id])),422);
+    $empty=$admin->fetch(Request::create('/','GET',['node_id'=>99999999,'node_type'=>'v2box']))['data'];
+    $assert($empty['credentials']->isEmpty() && $empty['servers']->isEmpty() && $empty['assignments']->isEmpty(),'an unknown service cannot expand scoped polling to all data');
+    $preview=fn()=>$scoped()['assignments']->firstWhere('id',$rid)->relay_cutover;
+    $switch=fn($proof)=>$domains->activate($req(['id'=>$rid,'confirm'=>true,'clientTested'=>true,'relayProof'=>$proof]));
+    $reject(fn()=>App\Services\NodeDnsLifecycle::locked(fn()=>App\Services\NodeDnsLifecycle::activateLocked($rid,true)),409);
+    $assert(!App\Services\NodeDnsLifecycle::locked(fn()=>App\Services\NodeDnsLifecycle::activateLocked($rid,true,null,str_repeat('a',64))), 'origin receipt defers live subscriber cutover');
+    $reject(fn()=>$domains->activate($req(['id'=>$rid,'confirm'=>true])),409);
+    $reject(fn()=>$domains->activate($req(['id'=>$rid,'confirm'=>true,'relayProof'=>str_repeat('a',64)])),422);
+    $assert(!$domains->activateBatch($req(['ids'=>[$rid],'confirm'=>true]))['data'][0]['success'],'batch cannot confirm a live relay');
+    $assert(App\Services\NodeConnection::referencesEntry($eid) && App\Services\NodeRelayCutover::publishedPort($ingress,8443),'old ingress and port stay reserved throughout migration');
+    $assert($admin->fetch(Request::create('/','GET'))['data']['assignments']->firstWhere('id',$eid)->connection_count>=2,'ingress usage includes the default route still published during migration');
+    $reject(fn()=>$domains->bind($req(array_replace($args,['node_id'=>$relay2->id,'prefix'=>'origin-b']))),409);
+    $reject(fn()=>$switch($preview()['proof']),409);
+    $live=App\Services\Actions\NodeV10Config::build($relay->fresh());
+    App\Services\NodeRuntimeService::record('v2box',$relay->id,$live,'v10');
+    $certReceipt=['hash'=>hash('sha256',json_encode($live)),'state'=>'applied','certificateFingerprint'=>str_repeat('a',64)];
+    App\Services\NodeRuntimeService::receipt($relay->id,$certReceipt);
+    $review=$preview();
+    $assert($review['ready'] && $review['protocol']==='vless' && $review['serverName']==='old-cert.example.test'
+        && $review['previousHost']==='entry.example.test' && $review['host']==='next-ingress.example.test' && $review['port']===8553,'review describes the tested candidate and previous subscription endpoint');
+    $call($entryToken,['ipv4'=>'9.9.9.9']);
+    DB::table('v2_node_ddns')->where('id',$nextEntry)->update(['next_run'=>0]);$service->sync($nextEntry);
+    $reject(fn()=>$switch($review['proof']),409);
+    $viewer=new App\Models\User(['group_id'=>999999,'transfer_enable'=>1024,'expired_at'=>time()+3600]);
+    $activeAlias=fn()=>collect((new App\Services\ServerService())->getAvailableV2box($viewer,'v2box'))->firstWhere('id',$visibleAlias->id);
+    $assert($activeAlias()['host']==='entry.example.test' && (int)$activeAlias()['port']===8443,'subscribers still receive old host and port after stale confirmation');
+    $binding=DB::table('v2_node_ddns')->find($rid);
+    $rootRow=DB::table('v2_server_v2box')->find($relay->id);
+    App\Services\NodeTlsTransition::queue($binding,$rootRow,App\Services\NodeTlsTransition::affected($binding),array_replace($tls,['server_name'=>'new-cert.example.test']));
+    $candidateConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());
+    $certReceipt=['hash'=>hash('sha256',json_encode($candidateConfig)),'state'=>'applied','certificateFingerprint'=>str_repeat('b',64)];
+    App\Services\NodeRuntimeService::record('v2box',$relay->id,$candidateConfig,'v10');
+    App\Services\NodeRuntimeService::receipt($relay->id,$certReceipt);
+    $assert(App\Services\NodeTlsTransition::receipt($relay->id,$certReceipt) && $activeAlias()['tls_settings']['server_name']==='old-cert.example.test','candidate TLS acknowledgement keeps the published identity on the previous endpoint');
+    $review=$preview();
+    $assert($review['ready'] && $review['serverName']==='new-cert.example.test' && $review['certificateFingerprint']===str_repeat('b',64),'client test uses the candidate identity and applied certificate');
+    $switch($review['proof']);
+    $assert($preview()===null && $activeAlias()['host']==='next-ingress.example.test' && (int)$activeAlias()['port']===8553
+        && $activeAlias()['tls_settings']['server_name']==='new-cert.example.test'
+        && DB::table('v2_node_ddns')->where('id',$rid)->value('relay_verified_at') && !App\Services\NodeRelayCutover::publishedPort($ingress,8443),'confirmed cutover publishes the tested endpoint and releases the former port');
+    $reject(fn()=>$switch($review['proof']),409);
+    $sameEntry=DB::table('v2_node_ddns')->find($rid);
+    $rootRow=DB::table('v2_server_v2box')->find($relay->id);
+    App\Services\NodeTlsTransition::queue($sameEntry,$rootRow,App\Services\NodeTlsTransition::affected($sameEntry),array_replace($tls,['server_name'=>'third-cert.example.test']));
+    $candidateConfig=App\Services\Actions\NodeV10Config::build($relay->fresh());
+    $certReceipt=['hash'=>hash('sha256',json_encode($candidateConfig)),'state'=>'applied','certificateFingerprint'=>str_repeat('c',64)];
+    App\Services\NodeRuntimeService::record('v2box',$relay->id,$candidateConfig,'v10');
+    App\Services\NodeRuntimeService::receipt($relay->id,$certReceipt);
+    $assert(App\Services\NodeTlsTransition::receipt($relay->id,$certReceipt) && $activeAlias()['tls_settings']['server_name']==='new-cert.example.test','changing only TLS identity on a live relay keeps the previous identity through the client test');
+    $switch($preview()['proof']);
+    $assert($activeAlias()['tls_settings']['server_name']==='third-cert.example.test','tested TLS identity can be published on the same address and port');
+    DB::rollBack();
     $directArgs=array_replace($args,['prefix'=>'origin-new','entry_id'=>null,'entry_port'=>null]);
     $domains->bind($req($directArgs));$service->sync($rid);$domains->activate($req(['id'=>$rid,'confirm'=>true]));
     $direct=App\Services\Actions\NodeV10Config::build($relay->fresh());

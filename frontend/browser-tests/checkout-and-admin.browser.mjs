@@ -371,6 +371,47 @@ test("mobile admin users prioritize account columns and distinguish subscription
 test.describe("desktop admin frontend", () => {
     test.use({ isMobile: false, hasTouch: false, viewport: { width: 1280, height: 900 } });
 
+    test("desktop traffic trends fit 90 days and distinguish missing coverage from zero sessions", async ({ page, context }) => {
+        const dateAt = index => new Date(Date.UTC(2026, 7, 21 + index)).toISOString().slice(0, 10);
+        const history = Array.from({ length: 90 }, (_, index) => ({
+            date: dateAt(index),
+            available: index >= 10,
+            sessions: index >= 10 && index < 60 ? 2 + index % 9 : 0,
+        }));
+        const total = days => days.reduce((sum, day) => sum + day.sessions, 0);
+        await consoleFixture(context, "admin", (path, request) => {
+            if (path === "/api/v1/test-admin/config/fetch") return {};
+            if (path !== "/api/v1/test-admin/analytics/report") return;
+            const days = Number(new URL(request.url()).searchParams.get("days"));
+            const daily = history.slice(-days);
+            return {
+                ready: true, settings: { enabled: true, retentionDays: 180 }, timeZone: "UTC",
+                from: daily[0].date + "T00:00:00Z", to: dateAt(89) + "T12:00:00Z",
+                collectionStartedAt: dateAt(10) + "T00:00:00Z", effectiveFrom: dateAt(Math.max(10, 90 - days)) + "T00:00:00Z",
+                sessions: total(daily), daily,
+                previous: days === 30 ? { sessions: total(history.slice(30, 60)), from: dateAt(30) + "T00:00:00Z", to: dateAt(59) + "T12:00:00Z" } : null,
+                sourceCoverage: { known: 0, unknown: total(daily), historical: 0 }, sources: [],
+            };
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/overview-analytics`);
+        const metrics = page.locator(".analytics-metrics");
+        await expect(metrics.getByText("-100%", { exact: true })).toBeVisible();
+        await page.getByLabel("统计范围").selectOption("90");
+        const chart = page.getByRole("img", { name: /每日访问会话趋势/ });
+        await expect(chart.locator(":scope > div")).toHaveCount(90);
+        await expect(chart.locator('[data-available="false"]')).toHaveCount(10);
+        await expect(metrics.getByText(String(total(history)), { exact: true })).toBeVisible();
+        await expect(metrics.getByText("10", { exact: true })).toBeVisible();
+        await expect(metrics.getByText("—", { exact: true })).toBeVisible();
+        expect(await chart.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+        await expectPageWidth(page, 1280);
+        await page.screenshot({ path: test.info().outputPath("admin-traffic-90-days-desktop.png") });
+        await page.getByText("每日会话明细", { exact: true }).click();
+        const newest = page.locator("details[open] tbody tr").first();
+        await expect(newest.getByRole("cell").first()).toHaveText(dateAt(89));
+        await expect(newest.getByRole("cell").last()).toHaveText("0");
+    });
+
     test("a signed-in refresh waits without displaying the sign-in layout", async ({ page, context }) => {
         const url = `${consoleOrigin}/admin.html#/users`;
         const email = "refresh@example.test";
@@ -513,6 +554,8 @@ test.describe("desktop admin frontend", () => {
         await batch.focus();
         await page.keyboard.press("ArrowDown");
         const group = page.getByRole("group", { name: "用户批量操作" });
+        await expect(group).toBeVisible();
+        await viewport.evaluate(element => element.dispatchEvent(new Event("scroll")));
         const reset = group.getByRole("button", { name: "全局重置用量" });
         const mail = group.getByRole("button", { name: "发送邮件" });
         await expect(group.getByRole("button", { name: "批量封禁" })).toBeDisabled();
@@ -548,7 +591,8 @@ test.describe("desktop admin frontend", () => {
         const user = { id: 7, email: "account@example.test", transfer_enable: 1073741824, expired_at: 1900000000 };
         await consoleFixture(context, "admin", path => {
             if (path === "/api/v1/test-admin/config/fetch") return {
-                site: { app_name: "Example service", app_url: "https://console.example.test", app_description: "Example site description" },
+                site: { app_name: "Example service", app_url: "https://console.example.test", app_description: "Example site description",
+                    system_timezone: "Asia/Shanghai", logo: "", force_https: 1, landing_style: "original", tos_url: "", subscribe_url: "" },
             };
             if (path === "/api/v1/test-admin/console/configSchema") return {};
             if (path === "/api/v1/test-admin/server/group/fetch") return [];
@@ -562,8 +606,15 @@ test.describe("desktop admin frontend", () => {
         const label = page.locator("[data-field=app_name] > span");
         expect((await label.boundingBox()).width).toBeLessThan(220);
         expect((await name.boundingBox()).width).toBeLessThanOrEqual(512);
-
-        await page.goto(`${consoleOrigin}/admin.html#/users`);
+        await page.getByRole("combobox", { name: "定位设置项" }).selectOption("app_name");
+        await expect(name).toBeFocused();
+        await page.getByRole("heading", { level: 1 }).click();
+        await page.keyboard.press("Control+k");
+        const navigationSearch = page.getByRole("searchbox", { name: "搜索后台页面" });
+        await expect(navigationSearch).toBeFocused();
+        await navigationSearch.fill("支持 用户管理");
+        await navigationSearch.press("Enter");
+        await expect(page).toHaveURL(`${consoleOrigin}/admin.html#/users`);
         await page.getByRole("button", { name: "编辑", exact: true }).click();
         const dialog = page.getByRole("dialog", { name: "编辑 · 用户管理" });
         const email = dialog.locator("[data-field=email] input");
@@ -888,6 +939,52 @@ test("mobile admin navigation protects a settings draft and restores the tab on 
     await page.goBack();
     await expect(page).toHaveURL(url);
     await expect(field).toHaveValue("30");
+});
+
+test("desktop node deployment keeps the live relay until its candidate is tested", async ({page, context}) => {
+    await page.setViewportSize({width:1440,height:960});
+    const node = {id:12, type:"v2box", name:"测试代理服务", protocol:"vless", show:1, group_id:[],
+        host:"live.example.test", port:443, server_port:8443, tls:0, runtime_status:"online"};
+    const entry = {id:8, purpose:"entry", server_id:2, enabled:true, domain:"next.example.test"};
+    const candidate = {host:entry.domain,port:7443,previousHost:node.host,previousPort:443,ready:true,proof:"f".repeat(64),protocol:"vless"};
+    let published=false;
+    const submissions=[];
+    await consoleFixture(context,"admin",(path, request) => {
+        if (path.endsWith("/manage/getNodes")) return [published ? {...node,host:candidate.host,port:candidate.port} : node];
+        if (path.endsWith("/connections/default")) return {revision:"current",values:{...node,tags:[]},sharedLines:0};
+        if (path.endsWith("/manage/runtime")) return {runtimeStatus:"online",applicationState:"applied"};
+        if (path.endsWith("/server/credentials")) return {keys:[{status:"active",lastUsedAt:1}],deploymentTask:{id:"latest",phase:"issued"}};
+        if (path.endsWith("/ddns/fetch")) return {servers:[],credentials:[],assignments:[entry,{
+            id:9, purpose:"node",node_type:"v2box",node_id:node.id,domain:"origin.example.test",family:"ipv4",enabled:true,managed:true,
+            entry_id:entry.id,entry_port:candidate.port,published_domain:published ? candidate.host : node.host,
+            published_port:published ? candidate.port : node.port,relay_cutover:published ? null : candidate}]};
+        if (path.endsWith("/domains/activate") && request.method()==="POST") {
+            submissions.push(request.postDataJSON());
+            published=true;
+            return true;
+        }
+        if (path.endsWith("/group/fetch") || path.endsWith("/route/fetch")) return [];
+        if (path.startsWith("/api/v1/test-admin/")) return {};
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/nodes`);
+    await page.getByRole("row").filter({hasText:node.name}).getByRole("button",{name:"编辑",exact:true}).click();
+    await page.getByRole("button",{name:"部署与状态"}).click();
+    await expect(page.getByText("服务运行正常",{exact:true})).toBeVisible();
+    await expect(page.getByRole("region",{name:"本次部署"})).toContainText("等待执行部署命令");
+    await page.getByRole("button",{name:"验证新入口"}).click();
+    const review=page.getByRole("region",{name:"验证候选入口"});
+    await expect(review).toContainText("live.example.test:443");
+    const publish=review.getByRole("button",{name:"确认并切换订阅入口"});
+    await expect(publish).toBeDisabled();
+    await review.getByRole("checkbox").check();
+    page.once("dialog", dialog=>dialog.dismiss());
+    await publish.click();
+    expect(submissions).toEqual([]);
+    page.once("dialog", dialog=>dialog.accept());
+    await publish.click();
+    await expect(review).toHaveCount(0);
+    expect(submissions).toEqual([{id:9,confirm:true,clientTested:true,relayProof:candidate.proof}]);
+    await expect(page.getByRole("region",{name:"地址与证书概览"})).toContainText("next.example.test:7443");
 });
 
 test("mobile admin plan workspace opens a focused credit package editor", async ({ page, context }) => {

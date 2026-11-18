@@ -1,4 +1,5 @@
 import { formatDuration } from "../shared/number-format";
+import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
@@ -9,6 +10,10 @@ import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
 const time = logTime;
+const levelTones: Record<string, StatusTone> = {
+    WARNING: "warning", ERROR: "danger", CRITICAL: "danger", ALERT: "danger", EMERGENCY: "danger",
+};
+const requestIdFormat = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const levels = [
     "DEBUG",
     "INFO",
@@ -41,7 +46,7 @@ function recent(): Filters {
     const requestId = new URLSearchParams(
         window.location.hash.split("?")[1] || "",
     ).get("request_id");
-    if (requestId && /^[0-9a-f-]{36}$/i.test(requestId))
+    if (requestId && requestIdFormat.test(requestId))
         return { ...empty, request_id: requestId };
     return { ...empty, from: Math.floor(Date.now() / 1000) - 86400 };
 }
@@ -73,6 +78,12 @@ export function AdminSystemLogs() {
                     className="admin-log-filters"
                     onSubmit={(e) => {
                         e.preventDefault();
+                        const requestId = draft.request_id.trim();
+                        if (requestId && !requestIdFormat.test(requestId)) {
+                            setError("请求 ID 需要完整的 UUID，可从订单支付诊断中复制。");
+                            e.currentTarget.querySelector<HTMLInputElement>('[name="request_id"]')?.focus();
+                            return;
+                        }
                         try {
                             const from = dateTimeFieldInstant(draft.from, filters.from, dateInputZone);
                             const to = dateTimeFieldInstant(draft.to, filters.to, dateInputZone);
@@ -80,7 +91,7 @@ export function AdminSystemLogs() {
                                 throw new Error("结束时间不能早于开始时间");
                             setError("");
                             setPage(1);
-                            setFilters({ ...draft, from, to, request_id: draft.request_id.trim() });
+                            setFilters({ ...draft, from, to, request_id: requestId });
                         } catch (e) {
                             setError((e as Error).message);
                         }
@@ -142,6 +153,7 @@ export function AdminSystemLogs() {
                         请求 ID
                         <input
                             aria-label="日志请求 ID"
+                            name="request_id"
                             value={draft.request_id}
                             placeholder="完整 UUID"
                             onChange={(e) =>
@@ -168,10 +180,13 @@ export function AdminSystemLogs() {
                     </div>
                     {error && <p className="alert admin-filter-error" role="alert">{error}</p>}
                 </AdminFilterBar>
-                <p className="admin-log-note muted">
-                    默认查看最近 24
-                    小时。历史日志的检索字段由清理任务分批补齐；不展示原始请求参数、异常内容或历史敏感字段。
-                </p>
+                <div className="admin-system-log-summary">
+                    <span>{filters.from != null || filters.to != null
+                        ? `${filters.from == null ? "不限开始时间" : time(filters.from)} 至 ${filters.to == null ? "现在" : time(filters.to)}`
+                        : "全部时间"}</span>
+                    {!logs.loading && !logs.error && logs.data && <strong>匹配 {logs.total} 条日志</strong>}
+                    <details><summary>历史日志说明</summary>历史日志的检索字段由清理任务分批补齐，仅展示已保留的诊断信息。</details>
+                </div>
                 <State {...logs} retry={logs.reload}>
                     {logs.data?.length ? <TableViewport>
                         <table>
@@ -189,7 +204,7 @@ export function AdminSystemLogs() {
                                     <tr key={r.id}>
                                         <td>{time(r.created_at)}</td>
                                         <td>
-                                            {r.level}
+                                            <StatusBadge tone={levelTones[r.level] || "neutral"}>{r.level || "—"}</StatusBadge>
                                             <br />
                                             {r.title}
                                         </td>

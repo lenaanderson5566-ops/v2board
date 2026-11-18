@@ -44,7 +44,7 @@ export function nodeDomainProgress(
             Number(binding.published_port) === Number(binding.entry_port)) &&
         portReady &&
         !pending &&
-        !failed;
+        !failed && !binding.relay_cutover;
     const unsupported =
         Number(node.tls) === 1 && !binding.certificate_transition_supported;
     let title = "下一步：等待解析同步";
@@ -63,8 +63,9 @@ export function nodeDomainProgress(
             "节点连接地址需在节点设置中维护；此处不会自动切换订阅地址。";
     } else if (pending) {
         title = "正在验证新域名";
-        description =
-            "等待节点验证新证书与监听，成功后自动切换。当前域名继续生效，请勿重复部署。";
+        description = binding.relay_cutover
+            ? "等待回源节点验证证书与监听，之后可确认候选入口。当前订阅继续使用原地址。"
+            : "等待节点验证新证书与监听，成功后自动切换。当前域名继续生效，请勿重复部署。";
     } else if (!reportsReady) {
         title = "下一步：检查 IP 上报";
         description = `尚未收到有效的 ${missing.map((f) => (f === "ipv4" ? "IPv4" : "IPv6")).join("、")} 上报。新节点请执行一键部署；已开始部署请按终端提示恢复，已安装节点可在高级维护中修复上报。仅使用 IPv4 的服务器请选择 IPv4。`;
@@ -86,6 +87,11 @@ export function nodeDomainProgress(
         title = "下一步：核对重复解析";
         description =
             "目标域名存在多条同类记录。请在 Cloudflare 核对并处理后重试 DNS 同步。";
+    } else if (binding.relay_cutover) {
+        title = binding.relay_cutover.ready ? "候选入口待客户端验证" : "等待候选入口就绪";
+        description = binding.relay_cutover.ready
+            ? "请在入口服务器加载转发配置，通过候选入口完成一次客户端连接，然后确认切换订阅。"
+            : "请检查入口解析和回源节点的配置应用状态，当前订阅继续使用原地址。";
     } else if (active) {
         title = "新域名已生效";
         description =

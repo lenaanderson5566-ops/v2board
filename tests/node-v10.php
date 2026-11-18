@@ -818,7 +818,7 @@ try {
     try {$credentials::disableLegacy((int)$user->id);$assert(false,'Unconfirmed migration cannot disable legacy');}
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===409,'Unconfirmed migration cannot disable legacy');}
     $install=(new App\Services\ServerService())->getAllServers();
-    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -T 30 -t 3 -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.19') && str_contains($server['upgrade_command'],'--install v1.0.19'),'Manual install and upgrade share bounded HTTPS download retries');
+    foreach ($install as $server) if ($server['type']==='v2box') $assert(str_starts_with($server['install_command'],'wget --https-only -T 30 -t 3 -O install-v2box.sh ') && str_contains($server['install_command'],'&& sh install-v2box.sh --install v1.0.20') && str_contains($server['upgrade_command'],'--install v1.0.20'),'Manual install and upgrade share bounded HTTPS download retries');
     $assert(!str_contains(json_encode($install),'node-v10-test-secret'),'Install commands never expose global token');
     $freshSecret=json_decode($issued->getContent(),true)['data']['secret'];
     $assert($call('GET',$root.'/users',[],['HTTP_AUTHORIZATION'=>'Bearer '.$freshSecret])->getStatusCode()===200,'Replacement confirmed before global retirement');
@@ -846,6 +846,10 @@ try {
     $assert(!str_contains($grant['command'],'wget -q') && !str_contains($grant['command'],'apt-get'),'Copied deployment command shows download progress; dependencies belong in the script');
     preg_match('/nd_[a-f0-9]{64}/',$grant['command'],$matches);$grantToken=$matches[0]??'';
     $assert(strlen($grantToken)===67,'One-use token format');
+    $taskStatus = fn(int $id) => json_decode($call('GET',$adminPath.'/server/credentials?type=v2box&id='.$id,[],['HTTP_AUTHORIZATION'=>$token])->getContent(),true)['data'];
+    $report = $taskStatus($nodeId);
+    $assert($report['deploymentTask'] === $grant['task'] && $grant['task']['phase'] === 'issued', 'Admin can reopen the same issued task without using old service health');
+    $assert(str_ends_with($report['prepareCommand'],' --prepare') && str_contains($grant['task']['resumeCommand'], '--resume --api-host ') && str_ends_with($grant['task']['resumeCommand'], '--node-id '.$nodeId) && !str_contains(json_encode($report),$grantToken), 'Preparation and targeted recovery are available without exposing the grant');
     $assert(DB::table('v2_node_credential')->where('node_type','v2box')->where('node_id',$nodeId)->count()===$beforeKeys,'Creating command does not rotate live credentials');
     $repo=Cache::store('node_deployment');$grantKey='grant:'.hash('sha256',$grantToken);
     $assert(!str_contains(json_encode($repo->get($grantKey)),$grantToken),'Redis stores only grant hash and metadata');
@@ -855,10 +859,14 @@ try {
     $assert($call('POST',$root.'/enrollments/redeem?token='.$grantToken,[],['HTTP_AUTHORIZATION'=>''])->getStatusCode()===401,'Query deployment token never accepted');
     $newGrant=$deploymentCall($deployParams);preg_match('/nd_[a-f0-9]{64}/',json_decode($newGrant->getContent(),true)['data']['command'],$m);$newToken=$m[0];
     $assert($redeem($grantToken)->getStatusCode()===401,'Generating new command invalidates prior command');
+    $assert($taskStatus($nodeId)['deploymentTask']['id'] !== $grant['task']['id'], 'Replacement command starts a separate status timeline');
     $meta=$repo->get('grant:'.hash('sha256',$newToken));$meta['expires']=time()-1;$repo->put('grant:'.hash('sha256',$newToken),$meta,60);
     $assert($redeem($newToken)->getStatusCode()===401,'Expired deployment grant rejected');
+    $taskKey='task:node:'.$nodeId;$taskMeta=$repo->get($taskKey);$taskMeta['expires']=time()-1;$repo->put($taskKey,$taskMeta,60);
+    $assert($taskStatus($nodeId)['deploymentTask']['phase']==='command_expired','Unclaimed authorization expires independently of workflow recovery');
     $newGrant=$deploymentCall($deployParams);preg_match('/nd_[a-f0-9]{64}/',json_decode($newGrant->getContent(),true)['data']['command'],$m);$newToken=$m[0];
     $user->is_admin=0;$user->save();$assert($redeem($newToken)->getStatusCode()===403,'Demoted administrator invalidates outstanding deployment');$user->is_admin=1;$user->save();
+    $assert($taskStatus($nodeId)['deploymentTask']['phase']==='invalidated','A burned grant cannot be resumed or shown as waiting for execution');
     $newGrant=$deploymentCall($deployParams);preg_match('/nd_[a-f0-9]{64}/',json_decode($newGrant->getContent(),true)['data']['command'],$m);$staleToken=$m[0];
     $savedPassword=$user->password;$user->password=password_hash('changed-fixture-password',PASSWORD_DEFAULT);$user->save();
     $assert($redeem($staleToken)->getStatusCode()===403,'Administrator password change invalidates outstanding deployment');$user->password=$savedPassword;$user->save();
@@ -895,6 +903,10 @@ try {
     $assert(str_contains($result->headers->get('Cache-Control'),'no-store'),'Credential enrollment response not cached');
     $assert(($enrolled['networkReport']['family']??'')==='dual' && preg_match('/^[a-f0-9]{64}$/',$enrolled['networkReport']['token']??'') && DB::table('v2_network_server')->find($enrolled['networkReport']['serverId'])->report_hash===hash('sha256',$enrolled['networkReport']['token']),'Enrollment configures scoped address reporting without Cloudflare secret');
     $workflow=$enrolled['deployment']['token']??'';
+    $claimed=$taskStatus($nodeId)['deploymentTask'];
+    $assert($claimed['phase']==='redeemed' && strtotime($claimed['recoveryExpiresAt'])>time()+23*3600 && !str_contains(json_encode($claimed),$workflow),'First redemption starts an independent recovery window and returns no workflow bearer in administration');
+    $taskMeta=$repo->get($taskKey);$taskMeta['expires']=time()-1;$repo->put($taskKey,$taskMeta,86400);
+    $assert($taskStatus($nodeId)['deploymentTask']['phase']==='redeemed','Command expiry cannot interrupt an already redeemed task');
     $progress=fn($action,$bearer=null)=>$call('POST',$root.'/enrollments/progress',['action'=>$action],['HTTP_AUTHORIZATION'=>'Bearer '.($bearer??$workflow)]);
     $assert(preg_match('/^dp_[a-f0-9]{64}$/',$workflow),'Managed deployment receives scoped completion token');
     $assert($progress('status','invalid')->getStatusCode()===401 && $progress('status',$enrolled['apiKey'])->getStatusCode()===401,'Progress rejects wrong credential types');
@@ -902,6 +914,7 @@ try {
     $assert($progress('start')->getStatusCode()===409 && $progress('complete')->getStatusCode()===409,'Unresolved DNS cannot start or publish');
     $observed=$call('POST',$root.'/enrollments/progress',['action'=>'status','dnsState'=>'unavailable','dnsRole'=>'origin'],['HTTP_AUTHORIZATION'=>'Bearer '.$workflow]);
     $assert($observed->getStatusCode()===200 && Cache::get('NODE_DEPLOY_DNS:'.$nodeId)['state']==='unavailable','Authorized installer reports DNS outage for admin visibility');
+    $assert($taskStatus($nodeId)['deploymentTask']['phase']==='preparing','Authenticated workflow observation confirms that the enrolled node has contacted the panel');
     $assert($call('POST',$root.'/enrollments/progress',['action'=>'status','dnsState'=>'arbitrary','dnsRole'=>'origin'],['HTTP_AUTHORIZATION'=>'Bearer '.$workflow])->getStatusCode()===422,'DNS observation is an enum, not arbitrary log text');
     $assert($call('POST',$root.'/enrollments/progress',['action'=>'start','dnsState'=>'verified','dnsRole'=>'origin'],['HTTP_AUTHORIZATION'=>'Bearer '.$workflow])->getStatusCode()===409,'Installer observation cannot bypass server readiness');
     $user->is_admin=0;$user->save();$assert($progress('status')->getStatusCode()===403,'Demotion revokes deployment workflow');$user->is_admin=1;$user->save();
@@ -931,16 +944,20 @@ try {
     DB::table('v2_node_ddns')->where('id',$deploymentBinding)->update(['status'=>'ready_to_switch','last_success'=>time(),'ipv4'=>'8.8.8.8','ipv6'=>'2606:4700:4700::1111','ipv4_seen_at'=>time(),'ipv6_seen_at'=>time()]);
     foreach(['A'=>'8.8.8.8','AAAA'=>'2606:4700:4700::1111'] as $kind=>$ip) DB::table('v2_node_dns_record')->insert(['assignment_id'=>$deploymentBinding,'credential_id'=>999999,'domain'=>'deployment.example.test','type'=>$kind,'record_id'=>bin2hex(random_bytes(16)),'owner'=>bin2hex(random_bytes(24)),'content'=>$ip,'status'=>'active']);
     $assert($progress('start')->getStatusCode()===200,'Ready DNS permits one start boundary');
+    $assert($taskStatus($nodeId)['deploymentTask']['phase']==='applying','Only starting this workflow advances the current task to application');
     $assert($progress('complete')->getStatusCode()===409,'DNS alone never publishes without applied receipt');
     $assert($call('GET',$root.'/configuration',[],['HTTP_AUTHORIZATION'=>'Bearer '.$enrolled['apiKey']])->getStatusCode()===200,'New node retrieves authoritative configuration');
     $fetch=Cache::get('NODE_CONFIG_FETCH:v2box:'.$nodeId);
     App\Services\NodeRuntimeService::receipt($nodeId,['hash'=>$fetch['hash'],'state'=>'failed','errorCode'=>'certificate']);
     $assert(json_decode($progress('status')->getContent(),true)['data']['errorCode']==='certificate' && $progress('complete')->getStatusCode()===409,'Certificate failure cannot publish domain');
+    $failedTask=$taskStatus($nodeId)['deploymentTask'];
+    $assert($failedTask['phase']==='failed' && $failedTask['errorCode']==='certificate','A current acknowledged failure appears in the same recoverable task');
     App\Services\NodeRuntimeService::receipt($nodeId,['hash'=>$fetch['hash'],'state'=>'applied']);
     $assert($progress('complete')->getStatusCode()===409,'TLS deployment cannot publish without verified certificate fingerprint');
     App\Services\NodeRuntimeService::receipt($nodeId,['hash'=>$fetch['hash'],'state'=>'applied','certificateFingerprint'=>str_repeat('d',64)]);
     $done=$progress('complete');
     $assert($done->getStatusCode()===200 && $node->fresh()->host==='deployment.example.test','Fresh applied receipt activates only enrolled binding');
+    $assert($taskStatus($nodeId)['deploymentTask']['phase']==='completed','Only confirmed workflow completion marks the deployment complete');
     $assert(json_decode($progress('complete')->getContent(),true)['data']['completed']===true,'Completion remains idempotent after lost response');
     $workflowKey='workflow:'.hash('sha256',$workflow);$savedWorkflow=$repo->get($workflowKey);$expiredWorkflow=$savedWorkflow;$expiredWorkflow['expires']=time()-1;$repo->put($workflowKey,$expiredWorkflow,60);
     $assert($progress('status')->getStatusCode()===401,'Expired workflow cannot resume');$repo->put($workflowKey,$savedWorkflow,60);

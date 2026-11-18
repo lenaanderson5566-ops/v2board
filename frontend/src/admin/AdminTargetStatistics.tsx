@@ -1,4 +1,4 @@
-import { formatNumber } from "../shared/number-format";
+import { finiteNumber, formatNumber } from "../shared/number-format";
 import { adminInstant } from "./admin-log-time";
 import { useState } from "react";
 import { admin, bytes, query, request, type Row } from "../shared/api";
@@ -27,6 +27,7 @@ export function TargetStatisticsSettings({
                             <AdminSwitch
                                 label="统计用户访问的域名和 IP"
                                 checked={saved ?? data.data.settings.enabled}
+                                disabled={busy}
                                 onChange={async (enabled) => {
                                     if (busy) return;
                                     setBusy(true);
@@ -254,12 +255,12 @@ export function AdminTargetStatistics() {
                     { value: "daily", label: "节点日汇总" },
                 ]}
             />
-            {view === "daily" && (
+            {view === "daily" && data?.settings && (
                 <p className="muted" role="status">
                     按 UTC 自然日聚合，不含用户维度，今日尚未结束。
                     {data?.dailyReady === false
                         ? "请先更新数据库迁移。"
-                        : `日汇总 ${formatNumber(data?.dailyUsedRows ?? 0, { maximumFractionDigits: 0 })} / ${formatNumber(data?.dailyMaxRows ?? 0, { maximumFractionDigits: 0 })} 行；当前节点最早记录 ${data?.availableFrom || "暂无"}。`}
+                        : `日汇总 ${formatNumber(data.dailyUsedRows, { maximumFractionDigits: 0 })} / ${formatNumber(data.dailyMaxRows, { maximumFractionDigits: 0 })} 行；当前节点最早记录 ${data.availableFrom || "暂无"}。`}
                     {data?.latestBucketAt &&
                         ` 最近归档 ${adminInstant(data.latestBucketAt)}。`}
                     {data?.settings?.dailyRetentionDays === 0 &&
@@ -362,7 +363,7 @@ export function AdminTargetStatistics() {
                         {!data.settings.enabled && (
                             <p role="status">访问目标统计未开启。</p>
                         )}
-                        {data.settings.enabled && !nodeId && (
+                        {(data.settings.enabled || view === "daily") && !nodeId && (
                             <p>请选择节点查看统计。</p>
                         )}
                         {data.usage && (
@@ -396,7 +397,12 @@ export function AdminTargetStatistics() {
                                     (r) => (r.type === "ip" ? "IP" : "域名"),
                                 ],
                                 ["target", "访问目标"],
-                                ["connections", "连接数"],
+                                ["connections", "连接数", (r) => formatNumber(r.connections, { maximumFractionDigits: 0 })],
+                                ["totalBytes", "总流量", (r) => {
+                                    const upload = finiteNumber(r.uploadBytes);
+                                    const download = finiteNumber(r.downloadBytes);
+                                    return upload === null || download === null ? "—" : bytes(upload + download);
+                                }],
                                 [
                                     "uploadBytes",
                                     "上传",

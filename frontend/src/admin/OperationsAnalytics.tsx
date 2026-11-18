@@ -1,10 +1,12 @@
 import { formatDuration, formatNumber, formatPercent } from "../shared/number-format";
 import { browserLabel } from "./browser-labels";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { admin, query } from "../shared/api";
 import { Panel, State, useData } from "../shared/ui";
+import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import { adminInstant as formatInstant, adminBusinessInstant } from "./admin-log-time";
 import { ReportTable } from "./ReportTable";
+import "./analytics.css";
 export { ReportTable } from "./ReportTable";
 
 type Access = {
@@ -165,6 +167,13 @@ const states: Record<string, string> = {
     not_due: "未到执行时间",
     skipped_upgrade: "升级时跳过",
 };
+const statusTones: Record<string, StatusTone> = {
+    healthy: "success", completed: "success",
+    warning: "warning", error: "danger", failed: "danger", running: "info",
+};
+function healthStatus(status: string) {
+    return <StatusBadge tone={statusTones[status] || "neutral"}>{states[status] || "未知"}</StatusBadge>;
+}
 function Retention({ days, selected }: { days: number; selected: number }) {
     return (
         <p className="muted">
@@ -177,17 +186,19 @@ function Retention({ days, selected }: { days: number; selected: number }) {
 }
 function AccessReport({
     title,
+    logAction,
     data,
     retention,
     days,
 }: {
     title: string;
+    logAction: ReactNode;
     data: Access;
     retention: number;
     days: number;
 }) {
     return (
-        <Panel padded title={title}>
+        <Panel padded title={title} actions={logAction}>
             {!data.available ? (
                 <p className="alert">日志表不可用，无法统计。</p>
             ) : (
@@ -214,6 +225,14 @@ function AccessReport({
                             <small>仅当前范围</small>
                         </div>
                     </div>
+                    <h3>失败原因排行</h3>
+                    <ReportTable
+                        headers={["原因", "事件数"]}
+                        rows={data.reasons.map((r) => [
+                            reasons[r.reason] || reasons.other,
+                            r.count,
+                        ])}
+                    />
                     {data.clients && (
                         <>
                             <h3>浏览器与 IP 分布</h3>
@@ -299,14 +318,6 @@ function AccessReport({
                             </p>
                         </>
                     )}
-                    <h3>失败原因排行</h3>
-                    <ReportTable
-                        headers={["原因", "事件数"]}
-                        rows={data.reasons.map((r) => [
-                            reasons[r.reason] || reasons.other,
-                            r.count,
-                        ])}
-                    />
                     <p className="muted">
                         按日志事件计数，非用户人数；未写入日志的限流、验证或网络失败不包含在内。订阅成功表示日志记录的配置获取成功，不代表已连接节点。
                     </p>
@@ -361,6 +372,7 @@ export function OperationsAnalytics({
                         <>
                             <AccessReport
                                 title="登录质量"
+                                logAction={<a href="#/access-logs">查看登录日志</a>}
                                 data={data.login}
                                 retention={
                                     data.retention.login_log_retention_days
@@ -369,6 +381,7 @@ export function OperationsAnalytics({
                             />
                             <AccessReport
                                 title="订阅获取质量"
+                                logAction={<a href="#/access-logs-subscriptions">查看订阅请求</a>}
                                 data={data.subscription}
                                 retention={
                                     data.retention.subscribe_log_retention_days
@@ -573,7 +586,7 @@ export function OperationsAnalytics({
                                 headers={["检查项", "状态", "说明"]}
                                 rows={data.health.checks.map((r) => [
                                     r.label,
-                                    states[r.status] || "未知",
+                                    healthStatus(r.status),
                                     r.message,
                                 ])}
                             />
@@ -623,7 +636,7 @@ export function OperationsAnalytics({
                                     rows={data.health.dailyTasks.map((r) => [
                                         r.task,
                                         r.scheduledAt,
-                                        states[r.status] || "未知",
+                                        healthStatus(r.status),
                                         instant(r.lastSuccessAt),
                                     ])}
                                 />

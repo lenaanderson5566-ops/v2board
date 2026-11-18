@@ -1,0 +1,1 @@
+import{j as i}from"./api-C-KBz2TF.js";import"./AdminApp-D-F_OCnx.js";function e({className:r="",...a}){return i.jsx("form",{"aria-label":"\u7B5B\u9009\u6761\u4EF6",...a,className:`admin-filter-bar ${r}`})}export{e as A};

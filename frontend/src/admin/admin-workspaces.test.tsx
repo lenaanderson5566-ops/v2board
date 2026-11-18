@@ -491,12 +491,24 @@ it("restores order search from applied filters and queries email without droppin
     await screen.findByRole("button", { name: "订单详情" });
     fireEvent.change(screen.getByLabelText("订单查询字段"), { target: { value: "email" } });
     fireEvent.change(screen.getByLabelText("订单查询内容"), { target: { value: "guest@example.com" } });
+    fireEvent.change(screen.getByLabelText("按订单状态筛选"), { target: { value: "0" } });
+    expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("guest@example.com");
     fireEvent.submit(screen.getByRole("form", { name: "订单快速查询" }));
-    await waitFor(() => expect(api.request.mock.calls.some(([path]) => decodeURIComponent(String(path)).includes("guest@example.com"))).toBe(true));
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => {
+        const query = new URLSearchParams(String(path).split("?")[1]);
+        return query.get("filter[0][key]") === "status" && query.get("filter[0][value]") === "0"
+            && query.get("filter[1][value]") === "guest@example.com";
+    })).toBe(true));
     cleanup();
     render(<OrdersPage />);
     expect((screen.getByLabelText("订单查询字段") as HTMLSelectElement).value).toBe("email");
     expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("guest@example.com");
+    expect((screen.getByLabelText("按订单状态筛选") as HTMLSelectElement).value).toBe("0");
+    fireEvent.change(screen.getByLabelText("按订单状态筛选"), { target: { value: "" } });
+    await waitFor(() => expect(api.request.mock.calls.some(([path]) => {
+        const query = new URLSearchParams(String(path).split("?")[1]);
+        return query.get("filter[0][value]") === "guest@example.com" && !query.has("filter[1][key]");
+    })).toBe(true));
 });
 it("keeps the advanced order filter open for whitespace and submits the trimmed value", async () => {
     window.location.hash = "#/orders?status=0";
@@ -560,6 +572,24 @@ it("clears the user email draft together with its applied filter chip", async ()
     fireEvent.submit(screen.getByRole("form", { name: "用户搜索与筛选" }));
     fireEvent.click(screen.getByRole("button", { name: "移除筛选条件 1" }));
     expect((screen.getByLabelText("搜索所有用户邮箱") as HTMLInputElement).value).toBe("");
+});
+it("uses a fresh user count for bulk actions after a failed refresh", async () => {
+    let rejectRefresh!: (error: Error) => void;
+    let reads = 0;
+    api.request.mockImplementation(async (path: string) => {
+        if (!path.includes("user/fetch?")) return { data: [] };
+        if (++reads === 2) return new Promise((_, reject) => { rejectRefresh = reject; });
+        return { data: [{ id: 7, email: "member@example.com" }], total: 12 };
+    });
+    render(<UsersPage />);
+    await screen.findByText(/共 12 名用户/);
+    fireEvent.click(screen.getByRole("button", { name: "刷新" }));
+    expect(await screen.findByText("正在查询用户人数…")).toBeTruthy();
+    rejectRefresh(new Error("列表不可用"));
+    await screen.findByText("当前用户人数暂不可用。");
+    fireEvent.click(screen.getByRole("button", { name: "批量操作" }));
+    expect((screen.getByRole("button", { name: "发送邮件" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "批量发放储备重置" }) as HTMLButtonElement).disabled).toBe(true);
 });
 it("requires a fresh successful mail audience check after a repeated check fails", async () => {
     let rejectPreview!: (error: Error) => void;
@@ -1977,12 +2007,19 @@ it("switches trend periods and metrics locally and exposes exact daily values", 
     render(<Overview />);
     const chart=await screen.findByRole("figure",{name:"订单金额（CNY）"});
     expect(within(chart).getAllByRole("button")).toHaveLength(30);
+    expect(within(chart).getByText("近 30 天合计 CNY 571.95")).toBeTruthy();
     api.request.mockClear();
     fireEvent.click(screen.getByRole("button",{name:"近 7 天"}));
     fireEvent.click(screen.getByRole("button",{name:"订单笔数"}));
     const counts=screen.getByRole("figure",{name:"支付订单笔数"});
     expect(within(counts).getAllByRole("button")).toHaveLength(7);
-    expect(within(counts).getByRole("button",{name:"2026-10-30 · 支付订单笔数：30"})).toBeTruthy();
+    expect(within(counts).getByText("近 7 天合计 189 笔")).toBeTruthy();
+    const last = within(counts).getByRole("button",{name:"2026-10-30 · 支付订单笔数：30"});
+    fireEvent.keyDown(last, { key: "Home" });
+    const first = within(counts).getByRole("button",{name:"2026-10-24 · 支付订单笔数：24"});
+    expect(document.activeElement).toBe(first);
+    fireEvent.keyDown(first, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(within(counts).getByRole("button",{name:"2026-10-25 · 支付订单笔数：25"}));
     fireEvent.click(within(counts).getByText("查看每日数据"));
     expect(within(counts).getByRole("columnheader",{name:"日期"})).toBeTruthy();
     expect(api.request).not.toHaveBeenCalled();

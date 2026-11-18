@@ -20,6 +20,7 @@ import { isMixedPlan, planInView, validateCreditPlan, type PlanView } from "./ad
 import { readListView, saveListView } from "./list-view-state";
 import { RouteRuleEditor } from "./RouteRuleEditor";
 import { readRouteForm } from "./route-form";
+import "./admin-resource-list.css";
 
 const AdminPlanTranslationWorkspace = lazy(() => import("./AdminPlanTranslationWorkspace").then(module => ({
     default: module.AdminPlanTranslationWorkspace,
@@ -76,7 +77,6 @@ export function ResourcePage({
     searchable = true,
     pageSize: initialPageSize = 20,
     onPageSizeChange,
-    onTotal,
     tableSort,
     onTableSort,
     hiddenColumns = [],
@@ -86,7 +86,7 @@ export function ResourcePage({
     hiddenColumns?: string[];
     planDirectory?: AdminPlanDirectory;
     queryParams?: Row;
-    toolbar?: ReactNode;
+    toolbar?: ReactNode | ((state: { total: number | null; error: string }) => ReactNode);
     extraActions?: (row: Row, context?: boolean, secondary?: ReactNode) => ReactNode;
     headerActions?: ReactNode;
     onUserDetails?: (row: Row) => void;
@@ -94,7 +94,6 @@ export function ResourcePage({
     searchable?: boolean;
     pageSize?: number;
     onPageSizeChange?: (size: number) => void;
-    onTotal?: (total: number) => void;
     tableSort?: { key: string; direction: string; fields: string[] };
     onTableSort?: (key: string, direction: string) => void;
 }) {
@@ -221,8 +220,8 @@ export function ResourcePage({
             typeof savedView.search === "string" ? savedView.search : "",
         ),
         [error, setError] = useState("");
-    const searchesServer = Boolean(resource.serverSearch || resource.title.includes("日志") ||
-        resource.title.includes("黑名单") || kind === "online");
+    const searchesByEmail = Boolean(logKind || kind === "online");
+    const searchesServer = Boolean(resource.serverSearch || searchesByEmail);
     const pageContext = JSON.stringify([viewKey, queryParams, pageSize, logFilters, searchesServer ? search : ""]);
     const [pagination, setPagination] = useState(() => ({
         context: pageContext,
@@ -264,14 +263,8 @@ export function ResourcePage({
             page: page,
             pageSize,
             page_size: pageSize,
-            email:
-                resource.title.includes("日志") || kind === "online"
-                    ? search
-                    : undefined,
-            keyword:
-                resource.serverSearch || resource.title.includes("黑名单")
-                    ? search
-                    : undefined,
+            email: searchesByEmail ? search : undefined,
+            keyword: resource.serverSearch ? search : undefined,
             ...logFilters,
             ...queryParams,
             include_periodic_stats: planView === "periodic" ? 1 : undefined,
@@ -311,9 +304,6 @@ export function ResourcePage({
         }, 60000);
         return () => window.clearInterval(timer);
     }, [resource, editing, d.loading, d.reload]);
-    useEffect(() => {
-        onTotal?.(total);
-    }, [total, onTotal]);
     const key = resource.key || "id";
     const actionPending = useRef(false);
     const [actionBusy, setActionBusy] = useState(false);
@@ -373,8 +363,7 @@ export function ResourcePage({
         return form && (form.kind === "dns" || form.kind === "default" ? form.kind === routeFilter : form.action === routeFilter);
     }).filter(
         (r) =>
-            Boolean(logKind) ||
-            resource.serverSearch ||
+            searchesServer ||
             !search ||
             kind === "routes" && JSON.stringify(r).toLowerCase().includes(search.toLowerCase()) ||
             Object.values(r).some((v) =>
@@ -474,7 +463,10 @@ export function ResourcePage({
                         <a href="#/plans-currencies">价格与币种</a>中设置。
                     </p>
                 )}
-                {toolbar}
+                {typeof toolbar === "function" ? toolbar({
+                    total: d.loading || d.error || d.data == null ? null : total,
+                    error: d.error,
+                }) : toolbar}
                 {kind === "routes" && (
                     <div className="pad">
                         <div className="actions">
@@ -489,12 +481,16 @@ export function ResourcePage({
                     </div>
                 )}
                 {kind === "online" && (
-                    <p className="pad muted">
-                        基于节点有效上报窗口内的记录，受流量阈值影响。用户{" "}
-                        {d.meta?.users ?? "—"} · IP {d.meta?.ips ?? "—"} ·
-                        上报记录 {d.total} · 查询时间 {date(d.meta?.updated_at)}
-                        。按用户、节点和 IP 展示，不代表实时连接数或实际设备数；节点未上报时可能不显示。
-                    </p>
+                    <section className="admin-online-summary" aria-label="在线上报概况" aria-busy={d.loading}>
+                        <dl>
+                            <div><dt>上报用户</dt><dd>{d.meta?.users ?? "—"}</dd></div>
+                            <div><dt>独立 IP</dt><dd>{d.meta?.ips ?? "—"}</dd></div>
+                            <div><dt>上报记录</dt><dd>{d.data == null ? "—" : d.total}</dd></div>
+                        </dl>
+                        <p className="muted">按节点有效上报窗口统计，受流量阈值影响。记录按用户、节点和 IP 区分，不等于实时连接数或设备数。
+                            {d.meta?.updated_at && <span> 查询时间 {date(d.meta.updated_at)}</span>}
+                        </p>
+                    </section>
                 )}
                 {kind === "access-logs-risk" && (
                     <p className="admin-log-note muted">

@@ -199,6 +199,21 @@ result=m.main();Path(state).with_name('boot-events.json').write_text(json.dumps(
         self.assertEqual(json.loads(self.path.read_text())["managedRecovery"]["deadline"], state["managedRecovery"]["deadline"])
         self.assertTrue((self.units / m.MANAGED_UNIT).exists())
 
+    def test_temporary_final_check_keeps_systemd_scheduled(self):
+        state = self.enable_boot_fixture()
+        args = ["deploy", "--boot-worker", str(self.path)]
+        failure = m.TemporaryDeploymentError("No response to the completion request")
+        with patch.object(m.os, "geteuid", return_value=0), patch.object(m.sys, "argv", args), patch.object(
+            m.Deployment, "progress", return_value={}
+        ), patch.object(m.Deployment, "run", side_effect=failure), patch.object(
+            m, "service_command"
+        ) as service, patch.object(m.sys, "stderr", new_callable=io.StringIO) as err:
+            self.assertEqual(m.main(), 1)
+        self.assertIn("retry automatically", err.getvalue())
+        service.assert_not_called()
+        self.assertTrue((self.units / m.MANAGED_UNIT).exists())
+        self.assertEqual(json.loads(self.path.read_text())["managedRecovery"], state["managedRecovery"])
+
     def test_unselected_old_task_cannot_run_or_disable_the_selected_task(self):
         self.enable_boot_fixture()
         other = self.path.parent / "deployment-state-other.json";other.write_bytes(self.path.read_bytes())
@@ -1137,6 +1152,34 @@ wait "$child"
         self.assertEqual(cert.read_text(), "existing certificate")
         self.assertTrue(self.path.exists())
 
+    def test_scoped_resume_matches_panel_and_node_before_touching_saved_tasks(self):
+        script = Path(sys.argv[1]).with_suffix(".sh").read_text()
+        trust = script.split("trusted_path() {", 1)[1].split("for directory in", 1)[0]
+        selector = script.split("select_resume_state() {", 1)[1].split("# Resume can follow", 1)[0]
+        command = ("set -eu\ntrusted_path() {" + trust + "select_resume_state() {" + selector).replace("/etc/v2box", str(self.path.parent))
+        command += '\nselect_resume_state "$@"\nprintf "%s" "$deployment_state"'
+        other_host = "https://other.example.test"
+        digest = m.hashlib.sha256((other_host + "|3").encode()).hexdigest()
+        other_path = self.path.with_name("deployment-state-" + digest + ".json")
+        m.write_private(other_path, {"data": dict(self.data, apiHost=other_host)})
+        before = {p: p.read_bytes() for p in (self.path, other_path)}
+
+        def select(*args):
+            return subprocess.run(["bash", "-c", command, "selector", *args], capture_output=True, text=True, timeout=5)
+
+        for host, expected in [(self.data["apiHost"], self.path), (other_host, other_path)]:
+            found = select("--api-host", host, "--node-id", "3")
+            self.assertEqual((found.returncode, found.stdout), (0, str(expected)), found.stderr)
+        self.assertIn("Multiple pending", select().stderr)
+        self.assertIn("No saved deployment", select("--api-host", other_host, "--node-id", "4").stderr)
+        for target, contents in before.items():
+            self.assertEqual(target.read_bytes(), contents)
+        self.path.unlink()
+        self.path.symlink_to(other_path)
+        unsafe = select("--api-host", self.data["apiHost"], "--node-id", "3")
+        self.assertNotEqual(unsafe.returncode, 0)
+        self.assertIn("root-owned regular file", unsafe.stderr)
+
     def test_bootstrap_runtime_and_service_queries_stop_on_timeout(self):
         root = Path(self.tmp.name)
         binpath = root / "bounded-bin"
@@ -1695,6 +1738,7 @@ wait "$child"
         with patch("sys.stdout", new_callable=io.StringIO) as out:
             self.deploy.finish()
             self.assertIn("test a client connection", out.getvalue())
+            self.assertIn("confirm the tested target", out.getvalue())
             self.assertNotIn("connection domain is active", out.getvalue())
 
     def test_dns_stale_ipv6_rejected(self):
@@ -2223,12 +2267,45 @@ exec "$@"''')
         with patch.object(
             m.time, "monotonic", side_effect=iter(range(0, 2000, 100))
         ), patch.object(m.time, "sleep"):
-            with self.assertRaisesRegex(m.DeploymentError, "readiness timed out"):
+            with self.assertRaisesRegex(m.TemporaryDeploymentError, "Cannot read deployment status"):
                 self.deploy.wait_ready()
         self.assertEqual(self.deploy.config.read_bytes(), before)
         self.assertTrue(self.path.exists())
         self.assertNotIn("restart", self.events)
         self.assertNotIn("reload", self.events)
+
+    def test_tls_handshake_name_mismatch_is_actionable(self):
+        with patch.object(self.deploy, "verify_certificate", side_effect=m.ssl.SSLCertVerificationError()), patch.object(m.time, "sleep") as delay:
+            with self.assertRaisesRegex(m.DeploymentError, "listener presented an invalid certificate") as caught:
+                self.deploy.wait_ready()
+        self.assertNotIsInstance(caught.exception, m.TemporaryDeploymentError)
+        self.assertNotIn("complete", self.events)
+        delay.assert_not_called()
+
+    def test_panel_certificate_rejection_requires_repair(self):
+        failure = m.urllib.error.URLError(m.ssl.SSLCertVerificationError())
+        with patch.object(m.urllib.request, "build_opener") as opener:
+            opener.return_value.open.side_effect = failure
+            with self.assertRaisesRegex(m.DeploymentError, "Panel HTTPS certificate") as caught:
+                m.json_request("https://panel.example.test", token="test-only", body={})
+        self.assertNotIsInstance(caught.exception, m.TemporaryDeploymentError)
+
+    def test_completion_response_lost_then_confirmed_without_reapplying(self):
+        replies = [{"applicationState": "applied"}, OSError(), {"completed": True}]
+        with patch.object(self.deploy, "progress", side_effect=replies) as progress, patch.object(m.time, "sleep"):
+            self.deploy.wait_ready()
+        self.assertEqual(progress.call_args_list, [call(), call("complete"), call()])
+        self.assertEqual(self.events, ["certificate"])
+
+    def test_network_timeout_preserves_running_shared_addition(self):
+        self.deploy.shared_listener = "existing"
+        failure = m.TemporaryDeploymentError("panel offline")
+        with patch.object(self.deploy, "prepare_config"), patch.object(self.deploy, "ensure_started"), patch.object(
+            self.deploy, "wait_ready", side_effect=failure
+        ), patch.object(self.deploy, "rollback_addition") as rollback:
+            with self.assertRaises(m.TemporaryDeploymentError):
+                self.deploy.run()
+        rollback.assert_not_called()
 
     def test_unmanaged_deployment_never_queries_dns_provider(self):
         self.deploy.flow["accessMode"] = "unmanaged"

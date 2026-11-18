@@ -47,8 +47,10 @@ export function AdminRowMenu({
             trigger.current?.focus({ preventScroll: true });
         };
         const scroll = (event: Event) => {
-            if (event.target instanceof Node && menu.current?.contains(event.target)) return;
-            setOpen(false);
+            // Only scrolling the trigger's ancestors can move the menu away from its anchor.
+            if (event.target === window || (event.target instanceof Node && event.target.contains(trigger.current))) {
+                setOpen(false);
+            }
         };
         document.addEventListener("pointerdown", close);
         document.addEventListener("focusin", close);

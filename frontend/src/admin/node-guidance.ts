@@ -186,6 +186,8 @@ export function nodeDeploymentStage(
             description: "请先在运行诊断中确认维护设置。",
             target: "runtime",
         };
+    if (runtime?.runtimeStatus === "limited")
+        return { ...base, terminal: true, title: "流量额度受限", description: runtime.applicationState === "applied" ? "当前配置已应用，请在流量额度中检查预算限制。" : "请检查流量预算及节点配置回执。", target: "runtime" };
     if (managed && binding && (!binding.enabled || binding.server_enabled === false || binding.server_enabled === 0)) return { ...base, terminal: true, title: dns?.title || "域名绑定已停用", description: dns?.description || "请启用服务器和域名绑定后继续。", target: "domain" };
     if (runtime?.runtimeStatus === "offline" && authenticated)
         return {

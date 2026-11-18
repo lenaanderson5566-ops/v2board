@@ -331,9 +331,10 @@ it("keeps transactional success and promotional failure as separate test results
 });
 
 it("applies target user filters only on submit and keeps shared pagination", async () => {
- api.request.mockResolvedValue({data:{settings:{enabled:true},nodes:[{id:7,name:"节点 7",supported:true}],rows:[{userId:123,type:"domain",target:"example.com",connections:1}],total:26,dropped:0}});
+ api.request.mockResolvedValue({data:{settings:{enabled:true},nodes:[{id:7,name:"节点 7",supported:true}],rows:[{userId:123,type:"domain",target:"example.com",connections:1,uploadBytes:1024,downloadBytes:3072}],total:26,dropped:0}});
  render(<AdminTargetStatistics />);
  await screen.findByText("example.com");
+ expect(screen.getByRole("cell", {name:"4 KiB"})).toBeTruthy();
  fireEvent.change(screen.getByLabelText("访问目标节点"),{target:{value:"7"}});
  await waitFor(()=>expect(api.request.mock.calls.some(([path])=>path.includes("nodeId=7"))).toBe(true));
  await waitFor(()=>expect((screen.getByRole("button",{name:"查询"}) as HTMLButtonElement).disabled).toBe(false));

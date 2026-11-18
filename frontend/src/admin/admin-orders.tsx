@@ -22,14 +22,16 @@ const orderSearchFields = [
     ["callback_no", "回调单号"],
 ] as const;
 const maxOrderFilters = 20;
+const orderStatuses = ["待支付", "开通中", "已取消", "已完成", "已折抵"];
+const commissionStatuses = ["待确认", "有效", "已发放", "无效"];
 const orderFilterLabels: Row = {
     email: "用户邮箱", trade_no: "订单号", status: "订单状态",
     commission_status: "佣金状态", user_id: "用户 ID", invite_user_id: "邀请人 ID",
     callback_no: "回调单号", commission_balance: "佣金金额（分）",
 };
 function orderFilterValue(filter: Row) {
-    const statuses = filter.key === "status" ? ["待支付", "开通中", "已取消", "已完成", "已折抵"]
-        : filter.key === "commission_status" ? ["待确认", "有效", "已发放", "无效"] : null;
+    const statuses = filter.key === "status" ? orderStatuses
+        : filter.key === "commission_status" ? commissionStatuses : null;
     return statuses?.[Number(filter.value)] || String(filter.value);
 }
 
@@ -146,10 +148,16 @@ export function OrdersPage({
         [commission, setCommission] = useState<Row | null>(null);
     const [searchField, setSearchField] = useState(() => commissionMode ? "invite_email"
         : orderSearchFields.find(([key]) => filter.some(item => item.key === key))?.[0] || "trade_no");
-    const [searchText, setSearchText] = useState(() => String(filter.find(item => item.key === searchField)?.value || ""));
+    const appliedSearch = String(filter.find(item => item.key === searchField)?.value ?? "");
+    const [searchText, setSearchText] = useState(appliedSearch);
     useEffect(() => {
-        if (!commissionMode) setSearchText(String(filter.find(item => item.key === searchField)?.value || ""));
-    }, [filter, searchField, commissionMode]);
+        if (!commissionMode) setSearchText(appliedSearch);
+    }, [appliedSearch, searchField, commissionMode]);
+    const statusFilters = filter.filter(item => item.key === "status");
+    const simpleStatus = statusFilters.length === 1 && statusFilters[0].condition === "=" &&
+        orderStatuses.some((_, index) => String(index) === String(statusFilters[0].value));
+    const statusSelection = simpleStatus ? String(statusFilters[0].value) : statusFilters.length ? "advanced" : "";
+    const statusAtLimit = !statusFilters.length && filter.length >= maxOrderFilters;
     const quickSearchValue = searchText.trim();
     const otherFilters = filter.filter(item => item.key !== searchField);
     const quickSearchAtLimit = otherFilters.length + Number(Boolean(quickSearchValue)) > maxOrderFilters;
@@ -194,6 +202,19 @@ export function OrdersPage({
                                 value={searchText} onChange={event => setSearchText(event.target.value)} />
                             <button type="submit" disabled={quickSearchAtLimit}>{tx("查询")}</button>
                         </AdminFilterBar>}
+                        {!commissionMode && (
+                            <select aria-label="按订单状态筛选" value={statusSelection}
+                                disabled={statusAtLimit} title={statusAtLimit ? "请先移除一条筛选条件" : "按订单状态筛选"}
+                                onChange={event => {
+                                    const value = event.target.value;
+                                    const other = filter.filter(item => item.key !== "status");
+                                    setFilter(value ? [...other, { key: "status", condition: "=", value }] : other);
+                                }}>
+                                <option value="">全部订单状态</option>
+                                {statusSelection === "advanced" && <option value="advanced" disabled>自定义状态条件</option>}
+                                {orderStatuses.map((label, index) => <option key={label} value={index}>{label}</option>)}
+                            </select>
+                        )}
                         {!commissionMode && quickSearchAtLimit && (
                             <span className="muted admin-order-filter-summary" role="status" id="admin-order-quick-search-limit">
                                 最多可添加 {maxOrderFilters} 条筛选条件，请先移除一条再查询。
@@ -472,21 +493,7 @@ export function OrdersPage({
                                         }
                                     >
                                         <option value="">请选择</option>
-                                        {(f.key === "status"
-                                            ? [
-                                                  "待支付",
-                                                  "开通中",
-                                                  "已取消",
-                                                  "已完成",
-                                                  "已折抵",
-                                              ]
-                                            : [
-                                                  "待确认",
-                                                  "有效",
-                                                  "已发放",
-                                                  "无效",
-                                              ]
-                                        ).map((l, k) => (
+                                        {(f.key === "status" ? orderStatuses : commissionStatuses).map((l, k) => (
                                             <option key={k} value={k}>
                                                 {l}
                                             </option>
@@ -676,13 +683,7 @@ function CommissionReview({ row, saved, plans }: { row: Row; saved: () => void; 
                                 <div>
                                     <dt>订单状态</dt>
                                     <dd>
-                                        {[
-                                            "待支付",
-                                            "开通中",
-                                            "已取消",
-                                            "已完成",
-                                            "已折抵",
-                                        ][orderStatus] || "无记录"}
+                                        {orderStatuses[orderStatus] || "无记录"}
                                     </dd>
                                 </div>
                                 <div>

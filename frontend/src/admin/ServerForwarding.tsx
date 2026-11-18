@@ -68,7 +68,7 @@ export function serverForwardingRows(serverId: number, data: Row): Row[] {
             active: a.published_domain
                 ? `${a.published_domain}:${a.published_port || "—"} → ${a.published_origin || a.domain}`
                 : "尚未启用",
-            status:
+            status: a.relay_cutover ? "新入口待验证，订阅沿用原入口" :
                 a.published_domain !== (draft?.domain || a.domain) ||
                 (a.entry_id &&
                     Number(a.published_port) !== Number(a.entry_port))

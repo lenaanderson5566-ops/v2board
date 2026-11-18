@@ -33,15 +33,16 @@ export function deploymentDnsSteps(binding: Row, network: Row, now = Date.now() 
         if (Number(credential.next_run) > now)
             return result("unknown", `${scope}：Cloudflare 正在退避，约 ${Math.ceil((Number(credential.next_run) - now) / 60)} 分钟后重试`, "等待自动重试，避免反复保存或轮换凭据。");
         if (["healthy", "ready_to_switch"].includes(a.status) && Number(a.last_success) >= now - 900)
-            return result("pass", `${scope}：面板解析同步已完成`, "公共解析是否生效请使用下方“一键检查”；同步完成不等于公网连通。");
+            return result("pass", `${scope}：面板解析同步已完成`, "部署任务会检查公共解析，入口连通性可通过客户端验证。");
         return result("unknown", `${scope}：IP 已收到，等待解析同步`, "保持部署任务运行，它会推进到期同步；长期同步仍需面板定时任务正常运行。");
     });
 }
 
 export function NodeDeploymentProgress({ binding, network, runtime }: { binding?: Row; network?: Row | null; runtime?: Row | null }) {
     const steps = binding && network ? deploymentDnsSteps(binding, network) : [];
-    const error = ({ certificate: "证书申请或加载失败，请核对 TLS 身份、Cloudflare 证书凭据和证书模式。", start: "服务启动失败，请核对端口占用及监听地址。", decode: "节点无法解析配置，请核对节点版本与协议配置。", users: "用户配置应用失败，请检查节点同步及运行诊断。", core: "协议内核未能应用配置，请检查协议参数及运行诊断。" } as Record<string, string>)[runtime?.errorCode] || "节点未能应用配置，请打开运行诊断检查错误。";
-    steps.push({ label: "配置、证书与监听", state: runtime?.configurationState === "invalid" || runtime?.applicationState === "failed" ? "fail" : runtime?.applicationState === "applied" && runtime?.runtimeStatus === "online" ? "pass" : "unknown", detail: runtime?.configurationState === "invalid" ? "当前配置无法下发" : runtime?.applicationState === "failed" ? error : runtime?.applicationState === "applied" && runtime?.runtimeStatus === "online" ? "节点已确认应用当前配置" : "尚未收到当前配置的有效应用确认", next: runtime?.configurationState === "invalid" ? "检查协议与证书设置及凭据后保存。" : runtime?.applicationState === "failed" ? "修正上述原因后等待节点重新应用配置；仍失败时查看节点日志。" : "等待节点应用配置；长时间未确认时查看运行状态与日志。" });
+    const error = ({ certificate: "证书申请或加载失败。请查看 v2box log；同机多节点请核对证书与私钥路径是否冲突，自动签发请检查 TLS 身份和证书验证凭据。", start: "服务启动失败，请核对端口占用及监听地址。", decode: "节点无法解析配置，请核对节点版本与协议配置。", users: "用户配置应用失败，请检查节点同步及运行诊断。", core: "协议内核未能应用配置，请检查协议参数及运行诊断。" } as Record<string, string>)[runtime?.errorCode] || "节点未能应用配置，请打开运行诊断检查错误。";
+    const applied = runtime?.applicationState === "applied" && ["online", "limited"].includes(runtime.runtimeStatus);
+    steps.push({ label: "配置、证书与监听", state: runtime?.configurationState === "invalid" || runtime?.applicationState === "failed" ? "fail" : applied ? "pass" : "unknown", detail: runtime?.configurationState === "invalid" ? "当前配置无法下发" : runtime?.applicationState === "failed" ? error : applied ? "节点已确认应用当前配置" : "尚未收到当前配置的有效应用确认", next: runtime?.configurationState === "invalid" ? "检查协议与证书设置及凭据后保存。" : runtime?.applicationState === "failed" ? "修正上述原因后等待节点重新应用配置；仍失败时查看节点日志。" : "等待节点应用配置；长时间未确认时查看运行状态与日志。" });
     const actionable = steps.filter(step => step.state !== "pass");
     if (!actionable.length) return null;
     return <section aria-label="部署步骤与处理建议" className="admin-deployment-card">

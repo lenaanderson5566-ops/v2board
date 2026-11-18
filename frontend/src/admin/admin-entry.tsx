@@ -139,7 +139,7 @@ function AdminPageBody({ current, route }: { current: string; route: string }) {
             </section>
         );
     if (current === "mail-logs") return <AdminMailLogs />;
-    if (current === "system-log") return <AdminSystemLogs />;
+    if (current === "system-log") return <AdminSystemLogs key={route} />;
     if (current === "node-domains") return <AdminDDNS />;
     if (["servers", "server-lightsail"].includes(current)) return <Infrastructure section={current} />;
     if (current === "node-forwarding") return <Nodes initialTab="forwarding" />;

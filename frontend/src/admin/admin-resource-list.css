@@ -1,0 +1,33 @@
+body[data-console="admin"] .admin-online-summary {
+    padding: 12px var(--admin-space);
+    border-bottom: 1px solid var(--border);
+}
+body[data-console="admin"] .admin-online-summary dl {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 36px;
+    margin: 0;
+}
+body[data-console="admin"] .admin-online-summary dl > div {
+    display: grid;
+    gap: 2px;
+    min-width: 6rem;
+}
+body[data-console="admin"] .admin-online-summary dt {
+    font-size: 12px;
+    color: var(--muted);
+}
+body[data-console="admin"] .admin-online-summary dd {
+    margin: 0;
+    color: var(--admin-heading);
+    font-size: 20px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+body[data-console="admin"] .admin-online-summary p {
+    margin: 6px 0 0;
+    font-size: 12px;
+}
+body[data-console="admin"] .admin-online-summary p span {
+    display: inline-block;
+}

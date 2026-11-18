@@ -271,6 +271,9 @@ export function Settings({ section: group }: { section: string }) {
             ),
     ).map((field) => mailCredentialField(field, raw));
     const savedTimezone = String(latestSource.system_timezone || raw.system_timezone || "");
+    const settingsContent = useRef<HTMLElement>(null);
+    const visibleFields = settingsFields(fields, previewValues || raw);
+    const settingsLoading = d.loading || schema.loading || creditGroups.loading;
     const hasTimezoneField = fields.some(field => field.key === "system_timezone");
     const timezoneChangeKey = (value: unknown) => `${group}:${savedTimezone}:${String(value || "")}`;
     function timezoneReview(values: Row) {
@@ -299,17 +302,26 @@ export function Settings({ section: group }: { section: string }) {
         <Panel
             title={sectionTitles[group]}
             className="settings-panel"
+            actions={group !== "entrypoints" && visibleFields.length >= 6 && (
+                <select className="settings-field-jump" aria-label="定位设置项" value="" disabled={saving || settingsLoading}
+                    onChange={event => {
+                        const row = settingsContent.current?.querySelector<HTMLElement>(`[data-field="${CSS.escape(event.target.value)}"]`);
+                        const control = row?.querySelector<HTMLElement>('input:not(:disabled):not([type="hidden"]), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)');
+                        if (!control) return;
+                        row?.scrollIntoView({ block: "center" });
+                        control.focus({ preventScroll: true });
+                    }}>
+                    <option value="" disabled>定位设置项…</option>
+                    {visibleFields.map(field => <option key={field.key} value={field.key}>{tx(field.label)}</option>)}
+                </select>
+            )}
         >
             <div data-saving={saving || actionBusy ? "true" : undefined}>
-                <section className="admin-settings-content">
+                <section className="admin-settings-content" ref={settingsContent}>
                     <State
                         data={loadedGroup.current === group ? true : undefined}
                         retryAt={Math.max(d.retryAt || 0, schema.retryAt || 0, creditGroups.retryAt || 0)}
-                        loading={
-                            d.loading ||
-                            schema.loading ||
-                            creditGroups.loading
-                        }
+                        loading={settingsLoading}
                         error={
                             d.error ||
                             schema.error ||

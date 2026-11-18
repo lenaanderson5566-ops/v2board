@@ -10,11 +10,12 @@ use Illuminate\Support\Facades\DB;
 /** One durable, encrypted candidate per binding. Published subscription data stays unchanged until acknowledged. */
 final class NodeTlsTransition
 {
-    public static function affected($a) {
+    public static function affected($a, bool $lock = false) {
         $table='v2_server_'.$a->node_type;
         $host=DB::table($table)->where('id',$a->node_id)->value('host');
-        return DB::table($table)->where(fn($q)=>$q->where('id',$a->node_id)->orWhere('service_id',$a->node_id))->where('host',$host)
-            ->whereNotIn('id',DB::table('v2_node_connection')->where('node_type',$a->node_type)->select('node_id'))->orderBy('id')->get();
+        $query=DB::table($table)->where(fn($q)=>$q->where('id',$a->node_id)->orWhere('service_id',$a->node_id))->where('host',$host)
+            ->whereNotIn('id',DB::table('v2_node_connection')->where('node_type',$a->node_type)->select('node_id'))->orderBy('id');
+        return ($lock ? $query->lockForUpdate() : $query)->get();
     }
     private static function proof($a): string {
         return hash('sha256',json_encode([$a->credential_id,$a->domain,$a->published_domain,$a->family,$a->enabled,$a->managed,$a->report_hash,$a->server_id,$a->published_origin,$a->ipv4,$a->ipv6,$a->entry_id,$a->entry_port,($a->entry_id ? [NetworkServer::target($a)->domain,NetworkServer::target($a)->server_id,NetworkServer::addresses(NetworkServer::target($a))] : null),self::affected($a)]));
@@ -103,6 +104,11 @@ final class NodeTlsTransition
             if (!$p || !$node || !hash_equals(hash('sha256',json_encode(NodeV10Config::build($node))),$report['hash']) || (empty($p['configurationOnly']) ? $p['id']!==($report['transitionId']??null) : isset($report['transitionId']))) return false;
             if ($report['state']==='failed') { self::fail($a->id); return false; }
             if (!preg_match('/^[a-f0-9]{64}$/D',$report['certificateFingerprint']??'')) return false;
+            if ($a->entry_id && NodeRelayCutover::required($a,NetworkServer::target($a),self::affected($a))) {
+                // Keep delivering the candidate to the origin; publish its TLS identity and
+                // the new relay endpoint together after the administrator's client test.
+                return true;
+            }
             // Recheck fresh DNS ownership and publication guards before committing any node changes.
             if (!empty($p['identityOnly'])) {
                 $tls=$p['tls'];

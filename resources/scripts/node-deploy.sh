@@ -35,7 +35,7 @@ if [[ "${1:-}" == --install ]]; then
   shift
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
-  curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh"
+  curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.20/script/install.sh -o "$stage/install.sh"
   V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" "$@" 9>&- || {
     echo 'Installation or update failed or exceeded 15 minutes. Review the installer error above; existing configuration and certificates were retained. Re-run the original command after correcting the cause.' >&2; exit 1;
   }
@@ -93,7 +93,24 @@ require_support() {
 select_resume_state() {
   shopt -s nullglob
   local states=(/etc/v2box/deployment-state*.json)
-  ((${#states[@]} == 1)) || { echo 'More than one pending deployment (or none). Re-run the original panel command to resume its specific node; no state was changed.' >&2; exit 1; }
+  if (($#)); then
+    [[ $# -eq 4 && $1 == --api-host && $3 == --node-id && $2 =~ ^https://[^/?#[:space:]@]+(/[^?#[:space:]]*)?$ && $4 =~ ^[1-9][0-9]*$ ]] || {
+      echo 'Use --resume --api-host HTTPS_PANEL --node-id NODE_ID.' >&2; exit 1;
+    }
+    local candidate digest
+    digest=$(printf '%s|%s' "$2" "$4" | sha256sum | cut -d ' ' -f 1)
+    states=()
+    for candidate in "/etc/v2box/deployment-state-$digest.json" /etc/v2box/deployment-state.json; do
+      [[ -e "$candidate" || -L "$candidate" ]] || continue
+      require_private_state "$candidate"
+      if jq -e --arg host "$2" --arg id "$4" '.data.apiHost == $host and (.data.nodeId | tostring) == $id' "$candidate" >/dev/null; then
+        states+=("$candidate")
+      fi
+    done
+    ((${#states[@]} < 2)) || { echo 'Two saved tasks match this panel and node. Check the private task files before resuming.' >&2; exit 1; }
+  fi
+  ((${#states[@]})) || { echo 'No saved deployment for this selection on this server. Check the task in the panel. If it was claimed but never saved, review its credentials before generating a new command.' >&2; exit 1; }
+  ((${#states[@]} == 1)) || { echo 'Multiple pending deployments. Use the selected node recovery command from the panel.' >&2; exit 1; }
   deployment_state=${states[0]}
 }
 # Resume can follow uninstall: restore programs before invoking the helper.
@@ -105,20 +122,47 @@ restore_programs() {
     echo 'Deployment recovery: restoring missing V2Box programs; configuration and certificates are retained.'
     stage=$(mktemp -d)
     trap 'rm -rf -- "$stage"' EXIT
-    curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
-    V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.19 </dev/null 9>&- || { echo 'Program restoration failed or exceeded 15 minutes. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
+    curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.20/script/install.sh -o "$stage/install.sh" || { echo 'Program download failed. Check HTTPS access to GitHub, then run this script with --resume.' >&2; exit 1; }
+    V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.20 </dev/null 9>&- || { echo 'Program restoration failed or exceeded 15 minutes. Configuration and certificates retained; fix the installer error above, then --resume.' >&2; exit 1; }
     programs_ready || { echo 'Program restoration is incomplete. Check disk space, permissions and release files, then run --resume; do not remove configuration or certificates.' >&2; exit 1; }
     rm -rf -- "$stage"
     trap - EXIT
   fi
 }
 if [[ "${1:-}" == --resume ]]; then
-  [[ $# -eq 1 ]] || { echo 'Use --resume without other arguments' >&2; exit 1; }
-  select_resume_state
+  shift
+  select_resume_state "$@"
   restore_programs
   require_support
   install_helper
   exec python3 /usr/local/lib/v2box/panel-deploy.py --managed "$deployment_state"
+fi
+# A cold server may spend longer on dependencies and release files than the
+# enrollment grant's lifetime. Preparation is repeatable and takes no grant.
+ensure_deployment_programs() {
+  local stage=$1 existing_install=false marker=/etc/v2box/.deployment-pending
+  if [[ -L "$marker" || ( -e "$marker" && ! -f "$marker" ) ]]; then echo 'Unsafe pending deployment file; files retained.' >&2; exit 1; fi
+  if [[ -f /etc/v2box/config.json ]] && ! jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null; then
+    jq -e '.Nodes | type == "array" and length > 0 and all(.[]; type == "object" and ((.NodeType // "v2box") == "v2box") and (.ApiHost | type == "string" and test("^https://")) and (.NodeID | type == "number" and . > 0 and floor == .))' /etc/v2box/config.json >/dev/null || { echo 'Existing node configuration is invalid; preserved.' >&2; exit 1; }
+    existing_install=true
+  fi
+  if programs_ready && { $existing_install || { [[ -f "$marker" ]] && grep -qx programs-ready "$marker"; }; }; then return; fi
+  if $existing_install; then refuse_live_repair; fi
+  echo 'Preparing V2Box program files. Existing configuration and certificates are retained.'
+  : > "$marker"
+  curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.20/script/install.sh -o "$stage/install.sh"
+  V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.20 </dev/null 9>&- || { echo 'Installation failed or exceeded 15 minutes. Fix the installer error, run this script with --prepare, then generate a fresh deployment command.' >&2; exit 1; }
+  programs_ready || { echo 'Installation is incomplete. Check disk space, permissions and release files, then rerun with --prepare.' >&2; exit 1; }
+  printf '%s\n' programs-ready > "$marker"
+}
+if [[ "${1:-}" == --prepare ]]; then
+  [[ $# -eq 1 ]] || { echo 'Use --prepare without enrollment arguments.' >&2; exit 1; }
+  stage=$(mktemp -d)
+  trap 'rm -rf -- "$stage"' EXIT
+  ensure_deployment_programs "$stage"
+  require_support
+  echo 'V2Box is ready. Generate the one-time deployment command in the panel and run it on this server.'
+  exit
 fi
 requested_id=''
 shared_listener=''
@@ -165,7 +209,7 @@ if $network_only; then
   stage=$(mktemp -d)
   trap 'rm -rf -- "$stage"' EXIT
   # Download and validate prerequisites before consuming the one-use grant.
-  curl -q -fsS --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/node-network.py -o "$stage/node-network.py"
+  curl -q -fsS --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.20/script/node-network.py -o "$stage/node-network.py"
   python3 -m py_compile "$stage/node-network.py"
   timeout -k 2 15 python3 "$stage/node-network.py" capabilities | jq -e '.features | index("report-multi-target-v1") != null' >/dev/null || { echo 'Reporting helper check failed or timed out, or lacks multi-target support; no authorization was consumed.' >&2; exit 1; }
   install_helper
@@ -221,27 +265,11 @@ if [[ -e "$deployment_state" ]]; then
   fi
   echo 'New deployment authorization supplied; previous state retained until redemption succeeds.'
 fi
-existing_install=false
-if [[ -e /etc/v2box/config.json ]]; then
-  if jq -e '.Nodes | length == 1 and .[0].ApiKey == "REPLACE_ME" and .[0].ApiHost == "https://panel.example.com"' /etc/v2box/config.json >/dev/null; then
-    :
-  else
-    jq -e '.Nodes | type == "array" and length > 0 and all(.[]; type == "object" and ((.NodeType // "v2box") == "v2box") and (.ApiHost | type == "string" and test("^https://")) and (.NodeID | type == "number" and . > 0 and floor == .))' /etc/v2box/config.json >/dev/null || { echo 'Existing node configuration is invalid; preserved.' >&2; exit 1; }
-    existing_install=true
-  fi
-fi
 install -d -m 755 /etc/v2box
 stage=$(mktemp -d)
 config_stage=''
 trap 'rm -rf -- "$stage"; [[ -z "$config_stage" ]] || rm -f -- "$config_stage"' EXIT
-if ! $existing_install || ! programs_ready; then
-  if $existing_install; then refuse_live_repair; fi
-  echo 'Checking installation: installing or repairing V2Box program files; existing configuration and certificates are retained.'
-  : > /etc/v2box/.deployment-pending
-  curl -q -fSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 120 https://raw.githubusercontent.com/lenaanderson5566-ops/v2box/v1.0.19/script/install.sh -o "$stage/install.sh"
-  V2BOX_BOOTSTRAP_LOCK_HELD=1 timeout -k 120 900 bash "$stage/install.sh" v1.0.19 </dev/null 9>&- || { echo 'Installation failed or exceeded 15 minutes. Configuration and certificates were retained and deployment authorization has not been consumed; correct the installer error, then rerun the original command.' >&2; exit 1; }
-  programs_ready || { echo 'Installation is incomplete. Check disk space, permissions and release files, then rerun this command. Deployment authorization has not been consumed.' >&2; exit 1; }
-fi
+ensure_deployment_programs "$stage"
 require_support
 install_helper
 completed_state=${deployment_state/deployment-state/deployment-completed}

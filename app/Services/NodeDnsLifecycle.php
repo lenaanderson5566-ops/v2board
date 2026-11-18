@@ -95,12 +95,12 @@ final class NodeDnsLifecycle
             if ($a->status!==$status) NodeDdnsService::event($id,$status);
         });
     }
-    public static function activate(int $id): void {
-        self::locked(fn()=>self::activateLocked($id));
+    public static function activate(int $id, ?string $relayProof = null): void {
+        self::locked(fn()=>self::activateLocked($id, relayProof: $relayProof));
     }
     /** Caller must hold the DNS lifecycle lock. */
-    public static function activateLocked(int $id,bool $verified=false,?array $candidate=null,?string $fingerprint=null): void {
-        DB::transaction(function()use($id,$verified,$candidate,$fingerprint){
+    public static function activateLocked(int $id,bool $verified=false,?array $candidate=null,?string $fingerprint=null,?string $relayProof=null): bool {
+        return DB::transaction(function()use($id,$verified,$candidate,$fingerprint,$relayProof){
             $a=DB::table('v2_node_ddns')->where('id',$id)->lockForUpdate()->first();
             abort_unless($a && $a->managed && NetworkServer::ready($a),409,'请等待所属服务器启用、有效 IP 上报及解析同步成功');
             abort_if($a->purpose==='entry',422,'入口域名由引用它的节点分别启用');
@@ -111,9 +111,33 @@ final class NodeDnsLifecycle
             $node=DB::table($table)->where('id',$a->node_id)->lockForUpdate()->first();
             abort_unless($node && ($node->host===$a->published_domain || $node->host===$target->domain),409,'节点地址已变化，请重新保存域名绑定');
             // Preserve managed connection endpoints; only update the default endpoint and imported aliases.
-            $affected=NodeTlsTransition::affected($a);
+            $affected=NodeTlsTransition::affected($a, true);
+            $requiresTest=NodeRelayCutover::required($a,$target,$affected);
+            $transitionAck=null;
+            if ($relayProof !== null) {
+                abort_unless($requiresTest,409,'待切换的入口已变化或已经发布，请刷新部署状态');
+                $transition=NodeTlsTransition::pending($a);
+                $receipt=Cache::get('NODE_CONFIG_RECEIPT:v2box:'.$node->id,[]);
+                $review=NodeRelayCutover::review($a,$target,$node,$affected,$transition,$receipt);
+                abort_unless(hash_equals($review['proof'],$relayProof),409,'入口、回源或节点配置已变化，请刷新并使用新候选地址重新测试');
+                abort_unless($review['ready'],409,'请等待代理服务在线、确认应用当前配置和证书，且入口与回源解析均已就绪');
+                $verified=true;
+                $fingerprint=$review['certificateFingerprint'];
+                if ($transition) {
+                    $candidate=$transition['tls'];
+                    $transitionAck=\Illuminate\Support\Facades\Crypt::encryptString(json_encode(['id'=>$transition['id'],'hash'=>$receipt['hash']]));
+                }
+            } elseif ($requiresTest) {
+                // An origin receipt completes the installer. Only the administrator who tested
+                // the candidate may publish it to existing subscribers.
+                if ($verified) {
+                    abort_if($affected->contains(fn($line)=>(int)$line->tls===1) && !preg_match('/^[a-f0-9]{64}$/D',$fingerprint??''),409,'节点尚未验证目标域名的证书');
+                    return false;
+                }
+                abort(409,'当前订阅继续使用旧地址，请在节点域名中完成候选入口的客户端测试后切换');
+            }
             if (!$verified && $affected->contains(fn($n)=>(int)$n->tls===1)) {
-                NodeTlsTransition::queue($a,$node,$affected); return;
+                NodeTlsTransition::queue($a,$node,$affected); return false;
             }
             $connectionPort=$a->entry_id ? $a->entry_port : $node->server_port;
             if(!$verified && !$a->entry_id && $node->host===$target->domain && (int)$node->port!==(int)$connectionPort){
@@ -137,14 +161,18 @@ final class NodeDnsLifecycle
             }
             // Relay origin records are retired only through an explicit cleanup preview.
             if (!$a->entry_id) DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('delete_after',0)->where('domain','!=',$a->domain)->update(['delete_after'=>time()+86400,'next_run'=>0,'status'=>'pending_cleanup']);
-            DB::table('v2_node_ddns')->where('id',$id)->update(['published_domain'=>$target->domain,'published_port'=>$connectionPort,'published_origin'=>$a->entry_id?($a->published_origin?:$a->domain):null,'relay_verified_at'=>0,'status'=>'healthy','tls_transition'=>null,'tls_transition_state'=>$verified?'applied':'none']);
+            $publishedOrigin=$a->entry_id ? ($relayProof !== null ? $a->domain : ($a->published_origin ?: $a->domain)) : null;
+            $testedAt=$relayProof !== null ? time() : ($a->entry_id && $a->published_domain===$target->domain && (int)$a->published_port===(int)$connectionPort ? $a->relay_verified_at : 0);
+            DB::table('v2_node_ddns')->where('id',$id)->update(['published_domain'=>$target->domain,'published_port'=>$connectionPort,'published_origin'=>$publishedOrigin,'relay_verified_at'=>$testedAt,'status'=>'healthy','tls_transition'=>$transitionAck,'tls_transition_state'=>$verified?'applied':'none']);
             NodeDdnsService::event($id,'domain_activated');
+            return true;
         });
     }
     /** Caller holds the lifecycle lock. Preview never changes DNS or node configuration. */
     public static function originCleanupPlan(int $id): array {
         $a=DB::table('v2_node_ddns')->find($id);
         abort_unless($a && $a->managed && $a->entry_id && NetworkServer::ready($a) && NetworkServer::ready(NetworkServer::target($a)) && $a->published_domain===NetworkServer::target($a)->domain && (int)$a->published_port===(int)$a->entry_port && $a->tls_transition_state!=='pending',409,'请先完成当前域名与节点证书验证');
+        abort_if(NodeRelayCutover::required($a,NetworkServer::target($a),NodeTlsTransition::affected($a)),409,'请先使用客户端验证新入口和回源，再清理原有转发地址');
         $records=DB::table('v2_node_dns_record')->where('assignment_id',$id)->where('domain','!=',$a->domain)->where('delete_after',0)->orderBy('id')->get();
         $rows=$records->map(function($r)use($id){
             $blocked=self::inUse($r->domain,$id);

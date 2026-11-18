@@ -49,13 +49,20 @@ final class NodeDeployment
         ]));
     }
 
-    public static function host(): string
+    public static function configuredHost(): ?string
     {
         $host = rtrim((string)(config('fastai.server_api_url') ?: config('fastai.app_url')), '/');
         $parts = parse_url($host);
-        abort_unless($parts && ($parts['scheme'] ?? '') === 'https' && !empty($parts['host'])
+        $valid = $parts && ($parts['scheme'] ?? '') === 'https' && !empty($parts['host'])
             && !isset($parts['user']) && !isset($parts['pass'])
-            && !isset($parts['query']) && !isset($parts['fragment']) && !preg_match('/[\s\x00-\x1f]/', $host), 422, '请先设置有效的 HTTPS 节点 API 地址');
+            && !isset($parts['query']) && !isset($parts['fragment']) && !preg_match('/[\s\x00-\x1f]/', $host);
+        return $valid ? $host : null;
+    }
+
+    public static function host(): string
+    {
+        $host = self::configuredHost();
+        abort_unless($host, 422, '请先设置有效的 HTTPS 节点 API 地址');
         return $host;
     }
 
@@ -81,7 +88,9 @@ final class NodeDeployment
                 self::cache()->forget('grant:'.$old);
             }
             $expires = time() + self::TTL;
+            $taskId = $networkOnly ? null : bin2hex(random_bytes(16));
             abort_unless(self::cache()->put($key, [
+                'taskId' => $taskId,
                 'id' => $id,
                 'networkOnly' => $networkOnly,
                 'actor' => $actor,
@@ -94,7 +103,12 @@ final class NodeDeployment
             $command = self::bootstrapCommand($host).' '.($networkOnly ? '--network-only ' : '')
                 .'--api-host '.self::quote($host).' --node-id '.$id
                 .' --deploy-token '.self::quote($token);
-            return ['command' => $command,'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires)];
+            $response = ['command' => $command,'expiresAt' => gmdate('Y-m-d\TH:i:s\Z', $expires)];
+            if ($taskId) {
+                $resume = self::bootstrapCommand($host).' --resume --api-host '.self::quote($host).' --node-id '.$id;
+                $response['task'] = NodeDeploymentTask::issued($id, $taskId, $expires, $resume);
+            }
+            return $response;
         });
     }
 
@@ -176,7 +190,7 @@ final class NodeDeployment
             // Burn before issuing; a lost response must never allow a second redemption.
             abort_unless(self::cache()->forget($key), 401);
             self::cache()->forget($index);
-            return NodeDnsLifecycle::locked(fn () => DB::transaction(function () use ($grant, $runtimeReady) {
+            $issue = function () use ($grant, $runtimeReady) {
                 $node = ServerV2box::whereKey($grant['id'])->lockForUpdate()->first();
                 $actor = User::find($grant['actor']);
                 abort_unless($grant['expires'] > time() && $node && !$node->service_id && self::actorAuthorized($actor, $grant['actorProof']), 403);
@@ -194,9 +208,18 @@ final class NodeDeployment
                     return $network + ['purpose' => 'network','nodeType' => 'v2box','nodeId' => (int)$node->id,'apiHost' => $grant['host']];
                 }
                 $workflow = NodeDeploymentWorkflow::issue($node, $credential['id'], $grant, $runtimeReady);
+                if (!empty($grant['taskId'])) {
+                    NodeDeploymentTask::redeemed($grant['taskId'], $workflow['deployment']['token'] ?? null);
+                }
                 return $workflow + $network + ['nodeType' => 'v2box','nodeId' => (int)$node->id,'apiHost' => $grant['host'],
                     'apiKey' => $credential['secret'],'credentialId' => $credential['id']];
-            }));
+            };
+            try {
+                return NodeDnsLifecycle::locked(fn () => DB::transaction($issue));
+            } catch (\Throwable $e) {
+                if (!empty($grant['taskId'])) NodeDeploymentTask::rejected($grant['taskId']);
+                throw $e;
+            }
         });
     }
 }

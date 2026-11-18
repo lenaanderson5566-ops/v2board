@@ -2,6 +2,8 @@
 namespace App\Http\Controllers\V1\Admin;
 use App\Http\Controllers\Controller;
 use App\Services\NodeCredentials;
+use App\Services\NodeDeployment;
+use App\Services\NodeDeploymentTask;
 use Illuminate\Http\Request;
 final class NodeCredentialController extends Controller {
     private function identity(Request $r): array {
@@ -15,7 +17,11 @@ final class NodeCredentialController extends Controller {
     }
     public function index(Request $r) {
         $p=$this->identity($r);
-        return response()->json(['data'=>NodeCredentials::listing($p['type'],(int)$p['id'])]);
+        $data = NodeCredentials::listing($p['type'], (int)$p['id']);
+        $host = NodeDeployment::configuredHost();
+        $data['prepareCommand'] = $host ? NodeDeployment::bootstrapCommand($host).' --prepare' : null;
+        $data['deploymentTask'] = NodeDeploymentTask::latest((int)$p['id']);
+        return response()->json(['data'=>$data])->header('Cache-Control', 'private, no-store');
     }
     public function deployment(Request $r) {
         $p=$this->identity($r);$actor=$this->verify($r);

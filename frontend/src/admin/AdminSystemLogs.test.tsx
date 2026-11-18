@@ -47,6 +47,12 @@ it("submits exact filters and resets pagination", async () => {
     render(<AdminSystemLogs />);
     expect((await screen.findByText("暂无匹配日志")).getAttribute("role")).toBe("status");
     expect(screen.queryByRole("region", { name: "数据表格" })).toBeNull();
+    const initialReads = api.request.mock.calls.length;
+    fireEvent.change(screen.getByLabelText("日志请求 ID"), { target: { value: "incomplete" } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    expect(screen.getByRole("alert").textContent).toContain("完整的 UUID");
+    expect(document.activeElement).toBe(screen.getByLabelText("日志请求 ID"));
+    expect(api.request.mock.calls).toHaveLength(initialReads);
     fireEvent.change(screen.getByLabelText("日志级别"), {
         target: { value: "ERROR" },
     });

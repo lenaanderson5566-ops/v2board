@@ -365,6 +365,11 @@ section.node-config-section {padding:16px 24px;}
 .node-deployment-drawer .node-deployment-progress > div:first-child > strong { display:flex; align-items:center; gap:8px; }
 .node-deployment-drawer .node-deployment-progress[data-ready="true"] > div:first-child > strong::before { content:""; width:8px; height:8px; border-radius:50%; background:var(--success,#15803d); flex-shrink:0; }
 .node-deployment-drawer .node-deployment-progress > p { font-size:13px; color:var(--muted); margin:8px 0 12px; }
+.node-deployment-line { display:inline-flex; align-items:baseline; flex-wrap:wrap; gap:10px; }
+.node-deployment-line > span { font-weight:500; font-size:13px; color:var(--muted); }
+.node-deployment-task { padding:10px 0; border-top:1px solid var(--border); }
+.node-deployment-task p { font-size:13px; color:var(--muted); }
+.admin-deployment-card code { overflow-wrap:anywhere; }
 .node-deployment-drawer .node-runtime-versions { padding:12px 0; margin:0 0 10px; border-block:1px solid var(--border); }
 .node-runtime-versions dl { display:grid; grid-template-columns:1fr 1fr 1.4fr; gap:12px; margin:0; }
 .node-runtime-versions dt { font-size:12px; color:var(--muted); }

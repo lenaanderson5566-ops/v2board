@@ -654,6 +654,91 @@ it("creates one-use deployment without a password and copies no permanent creden
     fireEvent.click(screen.getByRole("button",{name:"安装 / 接入面板"}));
     expect(screen.getByText(/已有兼容的 V2Box 会追加当前面板节点/)).toBeTruthy();
 });
+it("tracks the issued task independently of an already healthy service and the command deadline", async () => {
+    vi.useFakeTimers();
+    vi.spyOn(document, "visibilityState", "get").mockReturnValue("visible");
+    const expiresAt = new Date(Date.now() + 600000).toISOString();
+    const recoveryExpiresAt = new Date(Date.now() + 86400000).toISOString();
+    let phase = "";
+    const task = () => phase ? {id:"new-task", phase, commandExpiresAt:expiresAt, recoveryExpiresAt:phase === "issued" ? null : recoveryExpiresAt, resumeCommand:"scoped-resume"} : null;
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/deployment")) {
+            phase = "issued";
+            return {data:{task:task(), command:"one-use-command", expiresAt}};
+        }
+        if (path.includes("manage/runtime")) return {data:{runtimeStatus:"online", applicationState:"applied"}};
+        if (path.includes("ddns/fetch")) return {data:{assignments:[]}};
+        return {data:{deploymentTask:task(), keys:[{status:"active",lastUsedAt:1}]}};
+    });
+    const drawer = () => <NodeDeployment node={{id:12,type:"v2box",name:"Proxy"}} close={()=>{}}/>;
+    let view!:ReturnType<typeof render>;
+    await act(async () => { view=render(drawer()); });
+    await act(async () => { fireEvent.click(screen.getByRole("button",{name:"生成一键部署命令"})); });
+    expect(screen.getByText("服务运行正常")).toBeTruthy();
+    expect(within(screen.getByRole("region",{name:"本次部署"})).getByText("等待执行部署命令")).toBeTruthy();
+    phase = "preparing";
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(screen.queryByLabelText("一键部署命令")).toBeNull();
+    await act(() => vi.advanceTimersByTimeAsync(600000));
+    expect(screen.getByText("节点正在准备部署")).toBeTruthy();
+    expect(screen.queryByText("部署命令已过期")).toBeNull();
+    view.unmount();
+    await act(async () => { view=render(drawer()); });
+    expect(screen.getByLabelText("本节点恢复命令")).toHaveProperty("value","scoped-resume");
+    phase = "completed";
+    await act(() => vi.advanceTimersByTimeAsync(15000));
+    expect(screen.getByText("本次部署已完成")).toBeTruthy();
+    const calls = api.request.mock.calls.length;
+    await act(() => vi.advanceTimersByTimeAsync(30000));
+    expect(api.request).toHaveBeenCalledTimes(calls);
+});
+
+it("shows an unclaimed expiry and keeps preparation separate from issuing another grant", async () => {
+    api.request.mockImplementation(async (path:string) => path.includes("server/credentials")
+        ? {data:{deploymentTask:{id:"old",phase:"command_expired"},prepareCommand:"prepare-v2box",keys:[]}} : {data:{}});
+    render(<NodeDeployment node={{id:2,type:"v2box",name:"Proxy"}} close={()=>{}}/>);
+    expect(await screen.findByText("部署命令已过期")).toBeTruthy();
+    expect(screen.queryByLabelText("一键部署命令")).toBeNull();
+    expect(screen.getByLabelText("准备程序命令")).toHaveProperty("value","prepare-v2box");
+    expect(api.request.mock.calls.some(([path])=>String(path).endsWith("/deployment"))).toBe(false);
+});
+
+it("publishes a tested relay candidate only after confirming its current proof", async () => {
+    let proof="revision-a";
+    let ready=false;
+    const previousHost="live.example.test";
+    const node={id:13,type:"v2box",host:previousHost,port:443,server_port:8443,protocol:"vless"};
+    const entry={id:8,purpose:"entry",enabled:true,domain:"next.example.test",server_id:2};
+    api.request.mockImplementation(async (path:string) => {
+        if (path.includes("domains/activate")) throw new Error("入口已变化，请重新测试");
+        return {data:{servers:[],credentials:[],assignments:[entry,{id:9,node_type:"v2box",node_id:13,entry_id:8,entry_port:7443,managed:true,enabled:true,family:"ipv4",domain:"origin.example.test",published_domain:previousHost,published_port:443,
+            relay_cutover:{host:entry.domain,port:7443,previousHost,previousPort:443,proof,ready,protocol:"vless"}}]}};
+    });
+    const confirm=vi.spyOn(window,"confirm").mockReturnValue(true);
+    render(<NodeDomainBinding node={node}/>);
+    const button=await screen.findByRole("button",{name:"确认并切换订阅入口"});
+    const check=screen.getByRole("checkbox",{name:"已通过候选入口完成客户端连接测试"});
+    expect(check).toHaveProperty("disabled",true);
+    expect(button).toHaveProperty("disabled",true);
+    ready=true;
+    fireEvent.click(screen.getByRole("button",{name:"刷新状态"}));
+    await waitFor(()=>expect(check).toHaveProperty("disabled",false));
+    fireEvent.click(check);
+    proof="revision-b";
+    fireEvent.click(screen.getByRole("button",{name:"刷新状态"}));
+    await waitFor(()=>expect(check).toHaveProperty("checked",false));
+    expect(button).toHaveProperty("disabled",true);
+    fireEvent.click(check);
+    confirm.mockReturnValueOnce(false);
+    fireEvent.click(button);
+    expect(api.request.mock.calls.some(([p])=>String(p).includes("domains/activate"))).toBe(false);
+    fireEvent.click(button);
+    expect(api.request).toHaveBeenCalledWith(expect.stringContaining("domains/activate"),{id:9,clientTested:true,confirm:true,relayProof:"revision-b"});
+    expect(await screen.findByText("入口已变化，请重新测试")).toBeTruthy();
+    expect(check).toHaveProperty("checked",false);
+    expect(screen.getByText("live.example.test:443")).toBeTruthy();
+});
+
 it("keeps deployment retryable on error and groups credentials in the same drawer", async () => {
     api.request.mockImplementation(async(path:string)=>{if(path.endsWith("/deployment"))throw new Error("授权失败");return {data:{keys:[],legacyEnabled:false}};});
     render(<NodeDeployment node={{id:1,type:"v2box",name:"A"}} close={()=>{}}/>);

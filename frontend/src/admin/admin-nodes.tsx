@@ -797,7 +797,7 @@ function NodesContent({
                         editorNavigation("deploy", busy, dirty)
                     }
                     editorName={managedLine?.name}
-                    openConnection={managedLine ? () => openSection(managedLine, "service") : undefined}
+                    openConnection={managedLine ? (defaultEndpoint) => openSection(defaultEndpoint ? credentialNode : managedLine, "service") : undefined}
                     node={credentialNode}
                     scope="service"
                     inspect={() => {

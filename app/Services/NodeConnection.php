@@ -6,7 +6,9 @@ use Illuminate\Support\Facades\DB;
 /** Administrative connection planning. No DNS or network calls on subscription paths. */
 final class NodeConnection {
     public static function referencesEntry(int $id): bool {
-        return DB::table('v2_node_connection')->where('entry_id',$id)->orWhere('published->entry_id',$id)->exists();
+        return DB::table('v2_node_connection')->where('entry_id',$id)->orWhere('published->entry_id',$id)->exists()
+            || DB::table('v2_node_ddns as binding')->join('v2_node_ddns as entry','entry.domain','=','binding.published_domain')
+                ->where('entry.id',$id)->where('entry.purpose','entry')->whereNotNull('binding.published_origin')->exists();
     }
     public static function inUse(string $domain): bool {
         return DB::table('v2_node_connection')->where('published->origin_domain',$domain)->orWhere('published->entry_domain',$domain)->exists();
@@ -58,7 +60,7 @@ final class NodeConnection {
         NodeListenerGuard::assertForwardingPort($plan['entry_server_id'], $plan['port']);
         $entries=DB::table('v2_node_ddns')->where('server_id',$plan['entry_server_id'])->where('purpose','entry')->pluck('id');
         // Reserve the whole port conservatively; no implicit TCP/UDP or SNI sharing.
-        abort_if(DB::table('v2_node_ddns')->whereIn('entry_id',$entries)->where('entry_port',$plan['port'])->exists(),409,'入口服务器端口已被现有线路占用');
+        abort_if(NodeRelayCutover::publishedPort($plan['entry_server_id'],$plan['port']) || DB::table('v2_node_ddns')->whereIn('entry_id',$entries)->where('entry_port',$plan['port'])->exists(),409,'入口服务器端口已被现有线路占用');
         $rows=DB::table('v2_node_connection')->where('id','!=',$except)->where(function($q)use($entries){
             $q->whereIn('entry_id',$entries)->orWhereIn('published->entry_id',$entries);
         })->get(['entry_id','entry_port','published']);

@@ -59,6 +59,9 @@ export function NodeDomainBinding({
         (a: Row) => a.node_type === node.type && a.node_id === node.id,
     );
     const binding=configuredBinding?.status==="manual" ? undefined : configuredBinding;
+    const candidate = binding?.relay_cutover;
+    const [testedProof, setTestedProof] = useState("");
+    useEffect(() => setTestedProof(""), [candidate?.proof]);
     const servers: Row[] = data.data?.servers || [];
     const entries: Row[] = (data.data?.assignments || []).filter(
         (a: Row) => a.purpose === "entry" && a.enabled,
@@ -163,9 +166,9 @@ export function NodeDomainBinding({
             onChanged?.();
             setNotice(
                 path === "bind"
-                    ? r.data.unchanged ? "域名配置未变化，现有解析和证书验证状态已保留。" : "域名已保存。新安装会等待解析并验证节点后启用；已有直连节点将在条件满足后自动验证并生效；中转请配置入口转发并进行客户端连接测试，无需在面板确认测试。"
+                    ? r.data.unchanged ? "域名配置未变化，现有解析和证书验证状态已保留。" : "域名已保存。直连节点在解析和节点验证通过后启用；已上线线路更换中转入口时，请用客户端测试候选入口，再确认切换订阅。"
                     : path === "activate"
-                      ? "已提交启用请求，请查看上方进度；验证成功后会自动更新生效域名。"
+                      ? payload.relayProof ? "候选入口已验证，订阅已切换。" : "已提交启用请求，请查看上方进度。"
                       : path === "retry"
                         ? "已安排 DNS 同步，将由下一轮后台调度执行。同步使用最近上报的服务器 IP，不会重启节点或切换订阅地址。"
                       : path === "manual" ? "已改为手动维护。现有解析、服务器关联和节点证书保持不变，DNS 不再自动更新。" : "操作已完成",
@@ -173,6 +176,7 @@ export function NodeDomainBinding({
             return r.data;
         } catch (e) {
             setError((e as Error).message);
+            if (payload.relayProof) data.reload();
         } finally {
             pending.current = false;
             setBusy(false);
@@ -284,7 +288,22 @@ export function NodeDomainBinding({
                                         PROXY protocol。
                                     </p>
                                 </details>
-                                <p>请配置入口转发，并通过入口进行实际客户端连接测试。节点就绪不代表转发链路已连通，无需在面板确认测试完成。</p>
+                                {candidate ? <section className="admin-deployment-card" aria-label="验证候选入口">
+                                    <h3>验证候选入口</h3>
+                                    <p>在客户端使用 {candidate.host}:{candidate.port} 测试 {candidate.protocol || node.protocol} 连接。确认前，订阅继续使用 {candidate.previousHost}:{candidate.previousPort}，请保留旧入口的转发规则。</p>
+                                    {candidate.serverName && <p>TLS 身份域名：{candidate.serverName}</p>}
+                                    {candidate.certificateFingerprint && <p>证书 SHA-256 指纹：<code>{candidate.certificateFingerprint}</code></p>}
+                                    {!candidate.ready && <p>等待回源配置、证书与解析就绪后可确认。</p>}
+                                    <label className="node-quota-filter"><input type="checkbox" checked={!!candidate.proof && testedProof === candidate.proof}
+                                        disabled={!candidate.ready || !candidate.proof || busy || manualBusy || formDirty || manualDirty}
+                                        onChange={e => setTestedProof(e.target.checked ? candidate.proof : "")} />已通过候选入口完成客户端连接测试</label>
+                                    <button className="primary" disabled={!candidate.ready || !candidate.proof || testedProof !== candidate.proof || busy || manualBusy || formDirty || manualDirty}
+                                        onClick={() => {
+                                            if (!window.confirm(`确认将订阅入口切换为 ${candidate.host}:${candidate.port}？`)) return;
+                                            setTestedProof("");
+                                            void act("activate", {id: binding.id, confirm: true, clientTested: true, relayProof: candidate.proof});
+                                        }}>确认并切换订阅入口</button>
+                                </section> : <p>在入口服务器加载转发配置后，请通过该入口完成实际客户端连接测试。</p>}
                                 <details className="admin-deployment-tools">
                                     <summary>高级维护：旧回源解析</summary>
                                     <p className="muted">仅在更换回源域名后使用。先确认入口转发已使用当前回源，且客户端连接正常；预览不会改动任何解析。确认清理后仍保留 24 小时，不会重启节点或更改证书。</p>
@@ -384,7 +403,7 @@ export function NodeDomainBinding({
                                     重试 DNS 同步
                                 </button>
                             )}
-                            {progress?.canActivate && (binding.entry_id || binding.tls_transition_state === "failed" || ["manual_required","configuration_blocked"].includes(binding.automatic_status) || ["hysteria2","tuic"].includes(node.protocol) && Number(node.tls)!==1) && (
+                            {!candidate && progress?.canActivate && (binding.entry_id || binding.tls_transition_state === "failed" || ["manual_required","configuration_blocked"].includes(binding.automatic_status) || ["hysteria2","tuic"].includes(node.protocol) && Number(node.tls)!==1) && (
                                 <button
                                     className="primary"
                                     disabled={busy || manualBusy}

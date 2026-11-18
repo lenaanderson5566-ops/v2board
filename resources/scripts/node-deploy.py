@@ -152,6 +152,8 @@ def _json_request(url, token=None, body=None, timeout=10, extra_headers=None):
                 "部署授权已撤销": "Deployment authorization was revoked. Check node credentials in the panel.",
             }
             detail = payload.get("detail", payload.get("message"))
+            if e.code == 409 and detail == "节点尚未确认应用当前配置":
+                raise TemporaryDeploymentError("Waiting for a fresh node application receipt before confirmation.") from None
             if isinstance(detail, str) and detail in known:
                 raise DeploymentError(known[detail]) from None
             raise DeploymentError(
@@ -159,6 +161,10 @@ def _json_request(url, token=None, body=None, timeout=10, extra_headers=None):
                 % e.code
             ) from None
         raise OSError("HTTP service unavailable") from None
+    except urllib.error.URLError as error:
+        if token and isinstance(error.reason, ssl.SSLCertVerificationError):
+            raise DeploymentError("Panel HTTPS certificate verification failed. Check the panel hostname, certificate chain and node clock, then resume.") from None
+        raise
     except (ValueError, UnicodeError):
         raise OSError("Invalid response") from None
 
@@ -722,7 +728,10 @@ def boot_recovery(path):
         raise DeploymentError("Automatic recovery requires current panel deployment authorization")
     # Revalidate server-side authorization before reporting setup, config writes
     # or service changes. Reboot never creates a new grant or resets ACME state.
-    deployment.progress()
+    try:
+        deployment.progress()
+    except OSError:
+        raise TemporaryDeploymentError("Cannot reach the panel to recheck this deployment. Check HTTPS connectivity to the panel.") from None
     return deployment
 
 
@@ -1542,43 +1551,64 @@ class Deployment:
         )
         deadline = time.monotonic() + 300
         next_notice = 0
+        waiting_receipt = "Waiting for the current configuration receipt; check V2Box connectivity and its log."
+        reason = waiting_receipt
         while time.monotonic() < deadline:
             service = self.service_state()
             if service in ("inactive", "failed"):
                 raise DeploymentError(
                     "V2Box stopped before becoming ready. Inspect v2box log, fix the startup error, then resume; the resume command will start the stopped service once."
                 )
+            reason = "Cannot read deployment status from the panel; check HTTPS connectivity."
             try:
                 status = self.progress()
-                if status.get("completed"):
-                    return
-                if status.get("applicationState") == "failed":
-                    self.rollback_addition()
-                    raise DeploymentError(
-                        "Node configuration failed: "
-                        + str(status.get("errorCode"))
-                        + ". Inspect journalctl -u v2box. ACME failure guards and certificates were preserved."
-                    )
-                if status.get("applicationState") == "applied":
-                    self.verify_certificate()
-                    self.progress("complete")
-                    return
             except OSError:
-                pass
+                status = {}
+            else:
+                reason = waiting_receipt
+            if status.get("completed"):
+                return
+            if status.get("applicationState") == "failed":
+                self.rollback_addition()
+                raise DeploymentError(
+                    "Node configuration failed: "
+                    + str(status.get("errorCode"))
+                    + ". Inspect v2box log. ACME failure guards and certificates were preserved."
+                )
+            if status.get("applicationState") == "applied":
+                try:
+                    self.verify_certificate()
+                except ssl.SSLCertVerificationError:
+                    raise DeploymentError("The listener presented an invalid certificate. Check its hostname, expiry and trust chain, then resume.") from None
+                except ssl.SSLError as error:
+                    if getattr(error, "reason", None) in ("WRONG_VERSION_NUMBER", "NO_SHARED_CIPHER", "TLSV1_ALERT_PROTOCOL_VERSION"):
+                        raise DeploymentError("The local listener rejected the configured TLS protocol. Check its port, protocol and TLS settings, then resume.") from None
+                    reason = "Local TLS handshake did not finish; check the listener and V2Box log."
+                except (FileNotFoundError, PermissionError):
+                    raise DeploymentError("Certificate verification files or openssl are unavailable. Check their paths and permissions, then resume.") from None
+                except (OSError, subprocess.TimeoutExpired):
+                    reason = "Local certificate or TLS listener check is unavailable; check the listener port and V2Box log."
+                else:
+                    try:
+                        if self.progress("complete").get("completed"):
+                            return
+                        reason = "Waiting for the panel to confirm completion."
+                    except TemporaryDeploymentError as error:
+                        reason = str(error)
+                    except OSError:
+                        reason = "No response to the completion request; the next check will read the panel result."
             if time.monotonic() >= next_notice:
                 print(
                     "Service: "
                     + service
-                    + ". Waiting for the panel to confirm configuration and certificate; "
+                    + ". " + reason + " "
                     + str(max(0, int(deadline - time.monotonic())))
                     + " seconds remaining.",
                     flush=True,
                 )
                 next_notice = time.monotonic() + 30
             time.sleep(10)
-        raise DeploymentError(
-            "Node readiness timed out. Inspect journalctl -u v2box; do not repeatedly restart or remove ACME state. The domain was not activated."
-        )
+        raise TemporaryDeploymentError("Node readiness timed out. " + reason)
 
     def finish(self):
         if self.state.get("grantHash"):
@@ -1601,7 +1631,7 @@ class Deployment:
             (self.path.parent / ".deployment-pending").unlink(missing_ok=True)
         if self.flow and self.flow.get("accessMode") == "relay":
             print(
-                "Origin node verified. Configure L4 forwarding on the entry server, test a client connection. No forwarding confirmation is required in the panel."
+                "Origin node verified. Configure L4 forwarding on the entry server and test a client connection to the candidate entry. If the panel shows a pending entry switch, confirm the tested target there to publish it."
             )
             return
         if self.flow and self.flow.get("accessMode") == "unmanaged":
@@ -1642,6 +1672,9 @@ class Deployment:
                 self.ensure_started()
                 if not already_completed:
                     self.wait_ready()
+            except TemporaryDeploymentError:
+                # A delayed receipt alone cannot justify undoing a live shared listener.
+                raise
             except (DeploymentError, OSError, subprocess.TimeoutExpired):
                 if self.shared_listener:
                     self.rollback_addition()
@@ -1755,9 +1788,14 @@ def main():
                 "State, configuration and certificates retained. Save the intended settings and generate a new deployment command in the panel; repeating --resume cannot repair this authorization or state.",
                 file=sys.stderr,
             )
-        else:
+        elif persistent and not terminal:
             print(
-                "State retained. After fixing the cause, run: sh install-v2box.sh --resume (authorization valid for 24 hours).",
+                "State retained. The selected systemd task will retry automatically while its recovery authorization is valid. Follow it with v2box deploy-log.",
+                file=sys.stderr,
+            )
+        elif recovery_path and not isinstance(error, UnselectedDeploymentError):
+            print(
+                "State retained. After fixing the cause, run v2box resume on this server. For multiple pending tasks, copy this node's recovery command from the panel. Recovery authorization lasts 24 hours from enrollment.",
                 file=sys.stderr,
             )
         return 78 if terminal else 1

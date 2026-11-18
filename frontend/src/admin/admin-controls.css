@@ -90,6 +90,19 @@ body[data-console="admin"] .admin-log-empty {
     color: var(--muted);
     text-align: center;
 }
+body[data-console="admin"] .admin-system-log-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 16px;
+    padding: 8px var(--admin-space);
+    color: var(--muted);
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+}
+body[data-console="admin"] .admin-system-log-summary strong { color: var(--admin-text); }
+body[data-console="admin"] .admin-system-log-summary details { margin-inline-start: auto; }
+body[data-console="admin"] .admin-system-log-summary summary { cursor: pointer; }
 @media (min-width: 601px) {
     body[data-console="admin"] .admin-filter-advanced > label:has(input[type="datetime-local"]) { flex-basis: 208px; }
 }

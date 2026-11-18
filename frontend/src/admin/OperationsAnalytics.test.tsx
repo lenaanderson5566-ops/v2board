@@ -224,7 +224,9 @@ it("shows review denominators, separate currencies, callback counts and honest l
     const callbackRow = within(callbackTable).getByRole("row", { name: /示例渠道/ });
     expect(within(callbackRow).getAllByRole("cell").map(cell => cell.textContent)).toEqual(["示例渠道", "3", "2", "1", "0"]);
     expect(screen.getByText("预计清空耗时")).toBeTruthy();
-    expect(screen.getByText("异常")).toBeTruthy();
+    expect(screen.getByText("异常").getAttribute("data-tone")).toBe("danger");
+    expect(screen.getByRole("link", { name: "查看登录日志" }).getAttribute("href")).toBe("#/access-logs");
+    expect(screen.getByRole("link", { name: "查看订阅请求" }).getAttribute("href")).toBe("#/access-logs-subscriptions");
     expect(screen.getByText("结果不确定")).toBeTruthy();
     expect(screen.getByText(/服务商接受不代表送达/)).toBeTruthy();
 });
@@ -314,6 +316,14 @@ it("uses the traffic and conversion projections and keeps observed intent separa
     expect(screen.getByRole("row", {name:/partner.example.test.*4.*2.*50%/})).toBeTruthy();
     expect(screen.getByText(/来源未知 4 个，历史未采集 2 个/).textContent).toContain("4 / 10");
     expect(screen.getByText(/当前没有可对照的上期采集数据/)).toBeTruthy();
+    expect(screen.getByText("较上期同期").nextElementSibling?.textContent).toBe("—");
+    expect(screen.getByText("单日最高会话").nextElementSibling?.textContent).toBe("10");
+    expect(screen.getByText("斜纹日期超出采集窗口。")).toBeTruthy();
+    const daily = screen.getByText("每日会话明细").closest("details")!;
+    daily.open = true;
+    expect(within(daily).getAllByRole("row").slice(1).map(row => row.textContent)).toEqual([
+        "2026-10-1910", "2026-10-18超出采集窗口",
+    ]);
     expect(screen.queryByText("页面浏览")).toBeNull();
     expect(screen.queryByRole("heading", {name:"访问浏览器与系统"})).toBeNull();
     expect(api.request.mock.calls.every(([path])=>!path.includes("/operations") && !path.includes("/journey"))).toBe(true);

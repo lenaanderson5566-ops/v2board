@@ -35,7 +35,7 @@ final class NodeListenerGuard {
         }
         $entries=DB::table('v2_node_ddns')->where('server_id',$server)->where('purpose','entry')->pluck('id');
         // Ingress reservations are conservative because their actual listener address is external.
-        abort_if(DB::table('v2_node_ddns')->whereIn('entry_id',$entries)->where('entry_port',$node->server_port)->exists() ||
+        abort_if(NodeRelayCutover::publishedPort($server,$node->server_port) || DB::table('v2_node_ddns')->whereIn('entry_id',$entries)->where('entry_port',$node->server_port)->exists() ||
             DB::table('v2_node_connection')->where(function($q)use($entries,$node){
                 $q->where(fn($q)=>$q->whereIn('entry_id',$entries)->where('entry_port',$node->server_port))
                     ->orWhere(fn($q)=>$q->whereIn('published->entry_id',$entries)->where('published->port',$node->server_port));

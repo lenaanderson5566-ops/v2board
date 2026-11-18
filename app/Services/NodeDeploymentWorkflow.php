@@ -121,13 +121,15 @@ final class NodeDeploymentWorkflow
             $actor = User::find($workflow['actor']);
             $credential = DB::table('v2_node_credential')->find($workflow['credential']);
             abort_unless($node && !$node->service_id && NodeDeployment::actorAuthorized($actor, $workflow['actorProof']) && $credential && !$credential->revoked_at && (!$credential->expires_at || $credential->expires_at > time()), 403, '部署授权已撤销');
-            abort_unless(hash_equals($workflow['proof'], self::snapshot($node)), 409, '节点或域名配置已变化，请核对后重新部署');
-            if ($dns) {
-                abort_if($workflow['runtimeOnly'] ?? false, 422, '非托管部署不允许提交 DNS 验证状态');
-                Cache::put('NODE_DEPLOY_DNS:'.$node->id, $dns + ['checkedAt' => time()], 180);
-            }
+            abort_if($dns && ($workflow['runtimeOnly'] ?? false), 422, '非托管部署不允许提交 DNS 验证状态');
+            // An administrator may already have published the tested relay and its new TLS
+            // identity while the node is retrying a previously acknowledged completion.
             if ($workflow['completed']) {
                 return ['completed' => true,'dnsReady' => true,'applicationState' => 'applied','errorCode' => null,'addresses' => (object)[]];
+            }
+            abort_unless(hash_equals($workflow['proof'], self::snapshot($node)), 409, '节点或域名配置已变化，请核对后重新部署');
+            if ($dns) {
+                Cache::put('NODE_DEPLOY_DNS:'.$node->id, $dns + ['checkedAt' => time()], 180);
             }
             if ($workflow['runtimeOnly'] ?? false) {
                 if ($action === 'start' && !$workflow['startedAt']) {
@@ -184,7 +186,7 @@ final class NodeDeploymentWorkflow
                 if (!$workflow['startedAt']) {
                     Cache::forget("NODE_CONFIG_RECEIPT:v2box:{$node->id}");
                     $workflow['startedAt'] = time();
-                    $cache->put($key, $workflow, $workflow['expires'] - time());
+                    abort_unless($cache->put($key, $workflow, max(1, $workflow['expires'] - time())), 503);
                 }
             }
             $runtime = NodeRuntimeService::inspect('v2box', $node);
@@ -195,7 +197,7 @@ final class NodeDeploymentWorkflow
                 NodeDnsLifecycle::activateLocked($binding->id, true, null, $receipt['certificateFingerprint'] ?? null);
                 $workflow['proof'] = self::snapshot($node->fresh());
                 $workflow['completed'] = true;
-                $cache->put($key, $workflow, $workflow['expires'] - time());
+                abort_unless($cache->put($key, $workflow, max(1, $workflow['expires'] - time())), 503);
             }
             return ['completed' => $workflow['completed'],'dnsReady' => (bool)$ready,'addresses' => (object)$addresses,'entryAddresses' => (object)NetworkServer::addresses(NetworkServer::target($binding)),
                 'dnsChecks' => array_values(array_filter([self::dnsCheck($binding, 'origin'),$binding->entry_id ? self::dnsCheck(NetworkServer::target($binding), 'entry') : null])),

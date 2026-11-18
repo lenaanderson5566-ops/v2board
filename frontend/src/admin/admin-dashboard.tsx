@@ -1,4 +1,4 @@
-import { formatNumber, formatPercent } from "../shared/number-format";
+import { finiteNumber, formatNumber, formatPercent } from "../shared/number-format";
 import "./admin-dashboard.css";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { adminUserLabel } from "./admin-user-label";
@@ -70,19 +70,30 @@ function IncomeOverview() {
     const finance = (stats.financial?.currencies || []).find(
         (row: Row) => row.currency === currency,
     );
-    const amount = (value: unknown) =>
-        value == null
-            ? "—"
-            : money(value, currency);
+    const amount = (value: unknown) => money(value, currency);
+    const periodDays = Number(days);
+    const daily: Row[] = Array.isArray(finance?.daily) ? finance.daily.slice(-periodDays) : [];
+    const counts = trend === "count";
+    const dailyValues = daily.map((row) => finiteNumber(row[trend]));
+    // Only total a complete period of consecutive days. Sum money in minor units.
+    const firstDay = Date.parse(`${daily[0]?.date}T00:00:00Z`);
+    const complete = daily.length === periodDays && daily.every((row, index) => {
+        const value = dailyValues[index];
+        return value !== null && value >= 0 &&
+            Date.parse(`${row.date}T00:00:00Z`) === firstDay + index * 86400000;
+    });
+    const total = complete ? dailyValues.reduce<number>((sum, value) => sum + value!, 0) : null;
+    const formattedTotal = counts ? `${formatNumber(total)} 笔` : amount(total);
+    const comparisonBase = finiteNumber(finance?.comparable_amount);
+    const change = finiteNumber(finance?.change_percent);
+    const comparisonDetail = comparisonBase === null ? undefined : `上月同期 ${amount(comparisonBase)}`;
 
     return (
         <>
             <div className="dashboard-toolbar">
                 <div>
                     <strong>经营概览</strong>
-                    <p className="muted">
-                        先处理待办，再查看经营与使用趋势。今日数据仍在累计。
-                    </p>
+                    {stats.financial?.timeZone && <p className="muted">经营统计时区 · {stats.financial.timeZone}</p>}
                 </div>
                 <Reload
                     loading={[stat, health, todayNodes, todayUsers].some(
@@ -157,18 +168,18 @@ function IncomeOverview() {
                                 amount(finance?.previous_amount),
                             ],
                             ["本月已支付订单", formatNumber(finance?.month_count, { maximumFractionDigits: 0 })],
-                            ["平均支付金额", amount(finance?.average_amount)],
+                            ["本月平均支付金额", amount(finance?.average_amount)],
                             [
                                 "较上月同期",
-                                finance?.change_percent == null
-                                    ? "—"
-                                    : `${Number.isFinite(Number(finance.change_percent)) && Number(finance.change_percent) > 0 ? "+" : ""}${formatPercent(finance.change_percent)}`,
+                                change === null ? "—" : `${change > 0 ? "+" : ""}${formatPercent(change)}`,
+                                comparisonBase === 0 ? "上月同期金额为零，无法计算增幅" : comparisonDetail,
                             ],
-                        ].map(([label, value]) => (
+                        ].map(([label, value, detail]) => (
                             <Metric
                                 key={String(label)}
                                 label={String(label)}
                                 value={value}
+                                detail={detail}
                             />
                         ))}
                     </div>
@@ -183,37 +194,6 @@ function IncomeOverview() {
                     </details>
                     {finance && (
                         <>
-                            <h3 className="pad">业务构成与佣金</h3>
-                            <div className="dashboard-core-metrics">
-                                {[
-                                    [
-                                        "本月订阅订单金额",
-                                        amount(finance.subscription_amount),
-                                    ],
-                                    [
-                                        "本月充值订单金额",
-                                        amount(finance.deposit_amount),
-                                    ],
-                                    [
-                                        "本月已发放佣金",
-                                        amount(finance.commission_paid),
-                                    ],
-                                    [
-                                        "待审核佣金",
-                                        amount(finance.commission_pending),
-                                    ],
-                                ].map(([label, value]) => (
-                                    <Metric
-                                        key={label}
-                                        label={label}
-                                        value={value}
-                                    />
-                                ))}
-                            </div>
-                            <p className="pad muted">
-                                充值与订阅金额分别展示，不将充值到账后使用的余额再次计入收款。待审核佣金{" "}
-                                {finance.commission_pending_count} 笔。
-                            </p>
                             <div className="dashboard-trend-toolbar">
                                 <h3>支付趋势</h3>
                                 <AdminChoiceGroup
@@ -236,15 +216,11 @@ function IncomeOverview() {
                                 />
                             </div>
                             <HistoryChart
-                                data={(finance.daily || [])
-                                    .slice(-Number(days))
-                                    .map((r: Row) => ({
-                                        date: r.date,
-                                        value:
-                                            trend === "amount"
-                                                ? r.amount / 100
-                                                : r.count,
-                                    }))}
+                                data={daily.map((row, index) => {
+                                    const value = dailyValues[index];
+                                    return { date: row.date, value: value === null || counts ? value : value / 100 };
+                                })}
+                                totalLabel={total === null ? undefined : `近 ${periodDays} 天合计 ${formattedTotal}`}
                                 label={
                                     trend === "amount"
                                         ? `订单金额（${currency}）`
@@ -253,11 +229,44 @@ function IncomeOverview() {
                                 integer={trend === "count"}
                                 fixed={trend === "amount"}
                             />
+                            <details className="dashboard-breakdown">
+                                <summary>业务构成与佣金</summary>
+                                <div className="dashboard-core-metrics">
+                                    {[
+                                        [
+                                            "本月订阅订单金额",
+                                            amount(finance.subscription_amount),
+                                        ],
+                                        [
+                                            "本月充值订单金额",
+                                            amount(finance.deposit_amount),
+                                        ],
+                                        [
+                                            "本月已发放佣金",
+                                            amount(finance.commission_paid),
+                                        ],
+                                        [
+                                            "待审核佣金",
+                                            amount(finance.commission_pending),
+                                        ],
+                                    ].map(([label, value]) => (
+                                        <Metric
+                                            key={label}
+                                            label={label}
+                                            value={value}
+                                        />
+                                    ))}
+                                </div>
+                                <p className="pad muted">
+                                    充值与订阅金额分别展示，不将充值到账后使用的余额再次计入收款。待审核佣金{" "}
+                                    {formatNumber(finance.commission_pending_count)} 笔。
+                                </p>
+                            </details>
                         </>
                     )}
                 </State>
             </Panel>
-            <Panel title="用户活跃与流量">
+            <Panel title="用户活跃与流量" actions={<a className="button" href="#/online">查看在线用户</a>}>
                 <State {...stat} retry={stat.reload}>
                     <div className="dashboard-core-metrics">
                         {[
@@ -275,7 +284,7 @@ function IncomeOverview() {
                     {stats.usage ? (
                         <>
                             <div className="dashboard-usage-grid">
-                                {(stats.usage.periods as Row[]).map(
+                                {((stats.usage.periods || []) as Row[]).map(
                                     (period) => (
                                         <article
                                             key={period.days}
@@ -322,11 +331,10 @@ function IncomeOverview() {
                             </div>
                             <HistoryChart
                                 label="实际流量（GiB）"
-                                data={(stats.usage.daily as Row[]).map((r) => ({
-                                    type: "实际流量（GiB）",
-                                    date: r.date,
-                                    value: Number(r.bytes) / 1073741824,
-                                }))}
+                                data={((stats.usage.daily || []) as Row[]).map((row) => {
+                                    const bytes = finiteNumber(row.bytes);
+                                    return { date: row.date, value: bytes === null ? null : bytes / 1073741824 };
+                                })}
                             />
                         </>
                     ) : (
@@ -445,18 +453,20 @@ export function HistoryChart({
     label,
     integer = false,
     fixed = false,
+    totalLabel,
 }: {
     data: Row[];
     label: string;
     integer?: boolean;
     fixed?: boolean;
+    totalLabel?: string;
 }) {
     const [selected, setSelected] = useState("");
     const dayMs = 86400000;
     const points = data
         .map((row) => ({
             date: String(row.date),
-            value: row.value == null ? NaN : Number(row.value),
+            value: finiteNumber(row.value) ?? NaN,
             time: Date.parse(`${row.date}T00:00:00Z`),
         }))
         .filter(
@@ -495,7 +505,10 @@ export function HistoryChart({
     return (
         <figure className="dashboard-history" aria-label={label}>
             <figcaption>
-                <strong>{label}</strong>
+                <div className="dashboard-chart-summary">
+                    <strong>{label}</strong>
+                    {totalLabel && <span>{totalLabel}</span>}
+                </div>
                 <span className="muted">
                     {active
                         ? `${active.date} · ${format(active.value)}`
@@ -510,6 +523,7 @@ export function HistoryChart({
                             role="group"
                             aria-label={`每日趋势：${label}`}
                         >
+                            <desc>使用左右方向键逐日查看，Home 和 End 跳至首日和末日。</desc>
                             {[0, 1, 2, 3, 4].map((i) => (
                                 <g key={i} aria-hidden="true">
                                     <line
@@ -566,7 +580,7 @@ export function HistoryChart({
                                     className="dashboard-chart-line"
                                 />
                             ))}
-                            {valid.map((point) => (
+                            {valid.map((point, index) => (
                                 <circle
                                     key={point.date}
                                     cx={x(point.time)}
@@ -574,19 +588,26 @@ export function HistoryChart({
                                     r={active?.date === point.date ? 6 : 4}
                                     className="dashboard-chart-point"
                                     role="button"
-                                    tabIndex={0}
+                                    tabIndex={active?.date === point.date ? 0 : -1}
                                     aria-label={`${point.date} · ${label}：${format(point.value)}`}
                                     onFocus={() => setSelected(point.date)}
                                     onMouseEnter={() => setSelected(point.date)}
                                     onClick={() => setSelected(point.date)}
                                     onKeyDown={(event) => {
-                                        if (
-                                            event.key === "Enter" ||
-                                            event.key === " "
-                                        ) {
-                                            event.preventDefault();
-                                            setSelected(point.date);
+                                        let next = index;
+                                        switch (event.key) {
+                                            case "ArrowLeft": next = Math.max(0, index - 1); break;
+                                            case "ArrowRight": next = Math.min(valid.length - 1, index + 1); break;
+                                            case "Home": next = 0; break;
+                                            case "End": next = valid.length - 1; break;
+                                            case "Enter":
+                                            case " ": break;
+                                            default: return;
                                         }
+                                        event.preventDefault();
+                                        const target = event.currentTarget.ownerSVGElement?.querySelectorAll<SVGCircleElement>("circle")[next];
+                                        target?.focus();
+                                        setSelected(valid[next].date);
                                     }}
                                 >
                                     <title>

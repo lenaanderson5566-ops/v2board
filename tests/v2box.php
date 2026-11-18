@@ -69,7 +69,7 @@ try {
     $assert(count($nodes)===1,'Only V2Box listed');
     foreach ($nodes as $node) if ($node['type']==='v2box') {
         $assert(strpos($node['install_command'],'--node-type v2box')!==false,'Installer selects V2Box');
-        $assert(str_contains($node['install_command'],'--install v1.0.19'),'Installer pins the reboot recovery, entitlement sync and certificate release, not legacy main');
+        $assert(str_contains($node['install_command'],'--install v1.0.20'),'Installer pins the release with certificate conflict receipts and upgrade preflight validation');
         $assert(str_ends_with($node['upgrade_command'],'--update'),'Upgrade requires existing installation and preserves configuration');
         $assert(strpos($node['install_command'],'--prompt-api-key')!==false,'Installer keeps credential input interactive');
     }
@@ -140,6 +140,7 @@ if $response; then
 else cat > "$out" <<'INSTALL'
 #!/bin/bash
 set -eu
+echo installed >> "$DNS_FIXTURE/installations"
 mkdir -p "$DNS_FIXTURE/lib"
 for file in v2box manager.sh install.sh node-network.py node-credentials.py; do
   cat > "$DNS_FIXTURE/lib/$file" <<'PROGRAM'
@@ -176,16 +177,22 @@ SH,
             $script=str_replace('__NODE_DEPLOY_HELPER__',file_get_contents(resource_path('scripts/node-deploy.py')),file_get_contents(resource_path('scripts/node-deploy.sh')));
             $script=str_replace(['__NODE_PREREQUISITES__','/etc/v2box','/usr/local/lib/v2box','/etc/node-network','/usr/local/bin/v2box','/run/systemd/system','[[ $EUID -eq 0 && $(uname -s) == Linux ]]'],['',$fixture.'/config',$fixture.'/lib',$fixture.'/network',$fixture.'/bin/v2box',$fixture.'/no-systemd','[[ $(uname -s) == Linux ]]'],$script);
             file_put_contents($fixture.'/bootstrap.sh',$script);
-            $run=function($failure=null,$nodeId=3,$panelHost='https://panel.example.invalid')use($fixture,$reportFailure,$networkOnly,$serverOnly){
-                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host',$panelHost,...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').hash('sha256',$panelHost.'|'.$nodeId)],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
+            $run=function($failure=null,$nodeId=3,$panelHost='https://panel.example.invalid',$prepare=false)use($fixture,$reportFailure,$networkOnly,$serverOnly){
+                $args=$prepare ? ['--prepare'] : [...($networkOnly && !$serverOnly?['--network-only']:[]),'--api-host',$panelHost,...($serverOnly?['--server-id','7']:['--node-id',(string)$nodeId]),'--deploy-token',($serverOnly?'ns_':'nd_').hash('sha256',$panelHost.'|'.$nodeId)];
+                $pipes=[];$p=proc_open(['bash',$fixture.'/bootstrap.sh',...$args],[['pipe','r'],['pipe','w'],['pipe','w']],$pipes,null,array_merge(getenv(),['PATH'=>$fixture.'/bin:'.getenv('PATH'),'TMPDIR'=>$fixture.'/tmp','DNS_FIXTURE'=>$fixture,'DNS_REPORT_FAILURE'=>(string)($failure??$reportFailure)]));
                 fclose($pipes[0]);$output=stream_get_contents($pipes[1]).stream_get_contents($pipes[2]);fclose($pipes[1]);fclose($pipes[2]);return [proc_close($p),$output];
             };
             if (!$networkOnly && !$reportFailure) {
                 mkdir($fixture.'/config',0700);
                 file_put_contents($fixture.'/config/config.json',json_encode(['Nodes'=>[['ApiHost'=>'https://panel.example.com','ApiKey'=>'REPLACE_ME']]]));
+                [$prepared,$preparation]=$run(prepare:true);
+                $assert($prepared===0 && !file_exists($fixture.'/redemptions') && !file_exists($fixture.'/events') && str_contains($preparation,'Generate the one-time deployment command'), 'Cold preparation succeeds without any enrollment or service action');
+                [$repeated]=$run(prepare:true);
+                $assert($repeated===0 && file_get_contents($fixture.'/installations')==="installed\n",'Repeating successful preparation reuses the program installation');
             }
             [$exit,$output]=$run();
             $assert($exit===$reportFailure,'Deployment bootstrap reports address setup result: '.$exit.' '.preg_replace('/(?:nk_|nd_)?[a-f0-9.]{64,}/','[redacted]',$output));
+            if (!$networkOnly && !$reportFailure) $assert(file_get_contents($fixture.'/installations')==="installed\n",'A newly issued grant uses the prepared installation immediately');
             if ($networkOnly) {
                 $assert(file_get_contents($fixture.'/events')==="report\n",'Network-only setup never restarts node');
                 $assert($serverOnly ? !file_exists($fixture.'/config/config.json') : hash_file('sha256',$fixture.'/config/config.json')===$originalHash,'Network-only setup preserves node configuration and key');

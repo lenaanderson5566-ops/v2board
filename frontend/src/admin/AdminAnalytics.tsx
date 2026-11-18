@@ -43,31 +43,49 @@ function TrafficOverview({ data }: { data: TrafficReport }) {
     if (!data.ready) return null;
     const hasCoverage = data.sessions > 0 || (data.settings.enabled && data.collectionStartedAt !== null);
     if (!hasCoverage) return <Panel padded title="访问会话与趋势"><p role="status">当前范围没有可用的访问采集样本。</p></Panel>;
-    const max = Math.max(1, ...data.daily.map((day) => day.sessions));
+    const availableDays = data.daily.filter((day) => day.available);
+    const max = Math.max(0, ...availableDays.map((day) => day.sessions));
+    const peak = availableDays.find((day) => day.sessions === max && max > 0);
     const previous = data.previous;
+    const comparable = previous && previous.sessions > 0;
     const coverage = data.sourceCoverage;
     return <>
         <Panel padded title="访问会话与趋势">
-            <p>本期已采集会话 <strong>{count(data.sessions)}</strong> · 30 分钟无操作后重新计数，同一访客可能有多次会话。</p>
-            <p>{previous?.sessions && data.sessions > 0
-                ? <>与上期同期相比 <strong>{formatPercent((data.sessions - previous.sessions) / previous.sessions, { fraction: true })}</strong> · 上期 {count(previous.sessions)} 个会话（{instant(previous.from, data.timeZone)} — {instant(previous.to, data.timeZone)}）</>
-                : previous?.sessions
-                    ? "本期未收到会话上报，变化率不可算。"
-                    : previous
-                    ? "上期同期未收到会话上报，变化率不可算。"
-                    : "当前没有可对照的上期采集数据，暂不计算变化率。"}
-            </p>
-            <div className="analytics-trend" role="img" aria-label="每日访问会话趋势，详细数值可展开查看">
-                {data.daily.map((day) => (
-                    <div key={day.date} title={`${day.date}：${day.available ? count(day.sessions) + " 会话" : "超出采集窗口"}`}>
-                        <span style={{ height: `${day.available ? (day.sessions / max) * 100 : 0}%` }} />
-                        <small>{day.date.slice(5)}</small>
-                    </div>
-                ))}
+            <div className="analytics-metrics">
+                <div>
+                    <span>本期已采集会话</span><strong>{count(data.sessions)}</strong>
+                    <small>同一访客 30 分钟无操作后重新计数。</small>
+                </div>
+                <div>
+                    <span>较上期同期</span>
+                    <strong>{comparable ? formatPercent((data.sessions - previous.sessions) / previous.sessions, { fraction: true }) : "—"}</strong>
+                    <small>{comparable ? <>上期 {count(previous.sessions)} 个会话（{instant(previous.from, data.timeZone)} — {instant(previous.to, data.timeZone)}）</>
+                        : previous ? "上期同期未收到会话上报。"
+                        : "当前没有可对照的上期采集数据。"}</small>
+                </div>
+                <div>
+                    <span>单日最高会话</span><strong>{availableDays.length ? count(max) : "—"}</strong>
+                    <small>{peak ? peak.date : "当前范围未收到会话上报。"}</small>
+                </div>
             </div>
+            {data.daily.length > 0 && <figure className="analytics-trend">
+                <div className="analytics-trend-bars" role="img" aria-label="每日访问会话趋势，详细数值可展开查看">
+                    {data.daily.map((day) => (
+                        <div key={day.date} data-available={day.available} title={`${day.date}：${day.available ? count(day.sessions) + " 会话" : "超出采集窗口"}`}>
+                            {day.available && <span style={{ height: `${day.sessions / (max || 1) * 100}%` }} />}
+                        </div>
+                    ))}
+                </div>
+                <div className="analytics-trend-dates" aria-hidden="true">
+                    <span>{data.daily[0].date}</span>
+                    {data.daily.length > 2 && <span>{data.daily[Math.floor(data.daily.length / 2)].date}</span>}
+                    {data.daily.length > 1 && <span>{data.daily[data.daily.length - 1].date}</span>}
+                </div>
+                {availableDays.length < data.daily.length && <figcaption>斜纹日期超出采集窗口。</figcaption>}
+            </figure>}
             <details>
                 <summary>每日会话明细</summary>
-                <ReportTable pageSize={10} headers={["日期", "已采集会话"]} rows={data.daily.map((day) => [
+                <ReportTable pageSize={10} headers={["日期", "已采集会话"]} rows={data.daily.slice().reverse().map((day) => [
                     day.date, day.available ? count(day.sessions) : "超出采集窗口",
                 ])} />
             </details>
@@ -116,7 +134,7 @@ export function AdminAnalytics() {
     const data = report.data;
     return (
         <div className="analytics-page">
-            <Panel padded title="访问与转化">
+            <section className="panel analytics-report-filters" aria-label="报表筛选">
                 <div className="analytics-settings">
                     <label>统计范围{" "}
                         <select value={days} onChange={(event) => setDays(Number(event.target.value))}>
@@ -129,15 +147,16 @@ export function AdminAnalytics() {
                             {["desktop", "mobile", "tablet"].map((value) => <option value={value} key={value}>{labels[value]}</option>)}
                         </select>
                     </label>
+                    <a className="button" href="#/log-settings?tab=analytics">管理统计采集</a>
                 </div>
-                <p className="muted">设备筛选仅适用于访问、站内购买路径和体验样本。<a href="#/log-settings?tab=analytics">管理统计采集</a></p>
+                {tab === "conversion" && <p className="muted">设备筛选应用于站内购买路径，业务订单统计涵盖全部设备。</p>}
                 {data && <>
                     <p className="muted">访问统计 {instant(data.from, data.timeZone)} — {instant(data.to, data.timeZone)} · 业务时区 {data.timeZone} · 最多缓存 60 秒</p>
                     {!data.ready
                         ? <p className="alert">访问统计表尚未安装，请通过更新流程执行数据库迁移。业务购买仍可查看。</p>
                         : !data.settings.enabled && <p className="muted">访问采集已关闭，仅展示保留期内已有的历史样本。</p>}
                 </>}
-            </Panel>
+            </section>
             <AdminTabs label="访问与转化报表分类" value={tab} onChange={setTab} options={[
                 { value: "overview", label: "访问概览" },
                 { value: "conversion", label: "购买转化" },

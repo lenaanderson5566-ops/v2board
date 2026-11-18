@@ -8,6 +8,14 @@ body[data-console="admin"] .analytics-page > .panel {
     margin-bottom: 0;
     min-width: 0;
 }
+body[data-console="admin"] .analytics-report-filters {
+    padding: 14px var(--admin-space);
+}
+body[data-console="admin"] .analytics-report-filters .analytics-settings > a {
+    margin-inline-start: auto;
+    min-height: var(--admin-row-control-height);
+}
+body[data-console="admin"] .analytics-report-filters > p { margin: 8px 0 0; }
 body[data-console="admin"] .analytics-page .analytics-settings label {
     flex-direction: row;
     flex-wrap: wrap;
@@ -125,30 +133,42 @@ body[data-console="admin"] .analytics-page td:last-child {
 }
 
 .analytics-trend {
-    display: flex;
-    gap: 4px;
-    align-items: stretch;
-    overflow-x: auto;
-    padding: 12px 0 32px;
-    height: 180px;
-    margin: 16px 0;
+    margin: 20px 0 12px;
 }
-.analytics-trend > div {
-    flex: 1 0 24px;
+.analytics-trend-bars {
+    display: flex;
+    gap: 2px;
+    block-size: 128px;
+    border-block-end: 1px solid var(--border);
+    background: repeating-linear-gradient(to top, transparent 0 calc(25% - 1px), var(--line) calc(25% - 1px) 25%);
+}
+.analytics-trend-bars > div {
+    flex: 1 1 0;
+    min-inline-size: 0;
     display: flex;
     align-items: flex-end;
-    position: relative;
+    justify-content: center;
 }
-.analytics-trend span {
+.analytics-trend-bars > [data-available="false"] {
+    background: repeating-linear-gradient(135deg, transparent 0 4px, #cbd5e1 4px 5px);
+}
+.analytics-trend-bars span {
     width: 100%;
-    background: var(--primary, #334155);
-    border-radius: 3px 3px 0 0;
+    max-width: 56px;
+    min-height: 1px;
+    background: var(--accent);
+    border-radius: 2px 2px 0 0;
 }
-.analytics-trend small {
-    position: absolute;
-    bottom: -24px;
-    font-size: 9px;
-    white-space: nowrap;
+.analytics-trend-dates {
+    display: flex;
+    justify-content: space-between;
+    font-variant-numeric: tabular-nums;
+}
+.analytics-trend-dates,
+.analytics-trend figcaption {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 12px;
 }
 
 .analytics-pagination {

@@ -3,7 +3,10 @@ namespace App\Http\Controllers\V10;
 
 use App\Http\Controllers\Controller;
 use App\Services\NodeDeployment;
+use App\Services\NodeDeploymentTask;
+use App\Services\NodeDeploymentWorkflow;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 
 final class NodeDeploymentController extends Controller
 {
@@ -23,6 +26,14 @@ final class NodeDeploymentController extends Controller
         abort_unless($request->isJson(),415);
         abort_if(array_diff(array_keys($request->json()->all()),['action','dnsState','dnsRole']),422);
         $v=$request->validate(['action'=>'required|in:status,start,complete','dnsState'=>'sometimes|required|in:checking,verified,mismatch,unavailable','dnsRole'=>'required_with:dnsState|in:origin,entry,certificate']);
-        return response()->json(['data'=>\App\Services\NodeDeploymentWorkflow::progress((string)$request->bearerToken(),$v['action'],isset($v['dnsState'])?['state'=>$v['dnsState'],'role'=>$v['dnsRole']]:null)])->header('Cache-Control','private, no-store');
+        $token = (string)$request->bearerToken();
+        try {
+            $result = NodeDeploymentWorkflow::progress($token, $v['action'], isset($v['dnsState']) ? ['state'=>$v['dnsState'], 'role'=>$v['dnsRole']] : null);
+        } catch (HttpException $e) {
+            NodeDeploymentTask::checkRejection($token, $e->getStatusCode());
+            throw $e;
+        }
+        NodeDeploymentTask::observed($token, $result);
+        return response()->json(['data'=>$result])->header('Cache-Control','private, no-store');
     }
 }

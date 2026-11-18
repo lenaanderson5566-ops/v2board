@@ -2,7 +2,9 @@ import { AdminUserDetails } from "./AdminUserDetails";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { UserFilters } from "./UserFilters";
 import { adminUserLabel } from "./admin-user-label";
-import { adminPlanLabel } from "./admin-plan-reference";
+import { adminPlanLabel, type AdminPlanDirectory } from "./admin-plan-reference";
+import { businessTimeZone } from "../shared/timezone";
+import { dateTimeFieldValue } from "../shared/date-time-field";
 import { AdminMailComposer } from "./AdminMailComposer";
 import { useEffect, useState, useRef } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
@@ -23,6 +25,18 @@ import {
 } from "./user-filters";
 
 const userViewKey = "admin.users.view.v1";
+function filterDisplayValue(filter: UserFilter, plans: AdminPlanDirectory) {
+    if (filter.key === "uuid" || filter.key === "token") return "已填写";
+    if (filter.key === "plan_id") return adminPlanLabel({ plan_id: filter.value }, plans, { empty: "无套餐" });
+    if (filter.key === "created_at" || filter.key === "expired_at") {
+        const zone = businessTimeZone();
+        return `${dateTimeFieldValue(filter.value, zone).replace("T", " ")} (${zone})`;
+    }
+    if (filter.key === "banned") return String(filter.value) === "1" ? "封禁" : "正常";
+    if (filter.key === "is_admin") return String(filter.value) === "1" ? "是" : "否";
+    return String(filter.value);
+}
+
 const userColumnsVersion = 5;
 function savedUserView(): Record<string, any> {
     try {
@@ -77,7 +91,6 @@ export function UsersPage() {
         [email, setEmail] = useState(""),
         [showFilters, setShowFilters] = useState(false),
         [showDisplay, setShowDisplay] = useState(false),
-        [total, setTotal] = useState(0),
         [revision, setRevision] = useState(0),
         [error, setError] = useState(""),
         [notice, setNotice] = useState(""),
@@ -120,6 +133,9 @@ export function UsersPage() {
             count: number;
         } | null>(null);
     const params = { filter: filters, sort, sort_type: direction };
+    function openBulk(kind: string, count: number | null) {
+        if (count) setBulk({ kind, filters: structuredClone(filters), count });
+    }
     const refresh = () => setRevision((v) => v + 1);
     const copyGeneration = useRef(0);
     useEffect(() => { copyGeneration.current += 1; }, [detail, filters]);
@@ -190,7 +206,6 @@ export function UsersPage() {
                 pageSize={pageSize}
                 onPageSizeChange={setPageSize}
                 searchable={false}
-                onTotal={setTotal}
                 tableSort={{
                     key: sort,
                     direction,
@@ -202,7 +217,7 @@ export function UsersPage() {
                 }}
                 onUserDetails={(row) => setDetail({kind:"profile",row})}
                 headerActions={<button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
-                toolbar={
+                toolbar={({ total, error: listError }) => (
                     <div className="pad user-toolbar">
                         <form
                             aria-label="用户搜索与筛选"
@@ -243,7 +258,7 @@ export function UsersPage() {
                             <AdminRowMenu label="用户批量操作" triggerLabel="批量操作">
                                 <AdminUsageReset
                                     filters={filters}
-                                    count={total}
+                                    count={total ?? 0}
                                     onComplete={() => {
                                         refresh();
                                         setNotice("用量重置操作已完成");
@@ -251,63 +266,39 @@ export function UsersPage() {
                                 />
                                 <button
                                     disabled={!total}
-                                    onClick={() =>
-                                        setBulk({
-                                            kind: "mail",
-                                            filters:
-                                                structuredClone(filters),
-                                            count: total,
-                                        })
-                                    }
+                                    onClick={() => openBulk("mail", total)}
                                 >
                                     发送邮件
                                 </button>
                                 <button
                                     className="danger"
                                     disabled={!filters.length || !total}
-                                    onClick={() =>
-                                        setBulk({
-                                            kind: "ban",
-                                            filters:
-                                                structuredClone(filters),
-                                            count: total,
-                                        })
-                                    }
+                                    onClick={() => openBulk("ban", total)}
                                 >
                                     批量封禁
                                 </button>
                                 <button
                                     className="danger"
                                     disabled={!filters.length || !total}
-                                    onClick={() =>
-                                        setBulk({
-                                            kind: "delete",
-                                            filters:
-                                                structuredClone(filters),
-                                            count: total,
-                                        })
-                                    }
+                                    onClick={() => openBulk("delete", total)}
                                 >
                                     批量删除
                                 </button>
                             </AdminRowMenu>
                         </div>
                         <div className="user-toolbar-summary">
-                            <p className="muted">
-                                {filters.length
-                                    ? `当前筛选结果 ${total} 名用户；批量操作使用全部匹配结果，不限当前页。`
-                                    : `共 ${total} 名用户；批量封禁和删除需要先设置筛选条件。`}
+                            <p className="muted" role="status">
+                                {listError ? "当前用户人数暂不可用。"
+                                    : total === null ? "正在查询用户人数…"
+                                    : filters.length ? `当前筛选匹配 ${total} 名用户。批量操作适用于全部匹配用户。`
+                                    : `共 ${total} 名用户。批量封禁和删除需要先设置筛选条件。`}
                             </p>
                             {filters.length > 0 && <div className="actions">
                                 {filters.map((f, i) => (
                                     <span className="filter-chip" key={i}>
                                         {userFilterFields.find(([key]) => key === f.key)?.[1]}{" "}
                                         {f.condition}{" "}
-                                        {["uuid", "token"].includes(f.key)
-                                            ? "已填写"
-                                            : f.key === "plan_id"
-                                              ? adminPlanLabel({ plan_id: f.value }, plans, { empty: "无套餐" })
-                                              : String(f.value)}{" "}
+                                        {filterDisplayValue(f, plans)}{" "}
                                         <button
                                             type="button"
                                             aria-label={`移除筛选条件 ${i + 1}`}
@@ -322,7 +313,7 @@ export function UsersPage() {
                             {notice && <p role="status">{notice}</p>}
                         </div>
                     </div>
-                }
+                )}
                 extraActions={(row, context, secondary) => (
                     <>
                         {!optionalColumns.includes("id") && (

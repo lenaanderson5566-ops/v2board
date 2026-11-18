@@ -43,7 +43,7 @@ final class NodeDomainController extends Controller
                     $q->where(fn($q)=>$q->whereIn('entry_id',$entryIds)->where('entry_port',$v['entry_port']))
                         ->orWhere(fn($q)=>$q->whereIn('published->entry_id',$entryIds)->where('published->port',$v['entry_port']));
                 })->exists(),409,'入口服务器端口已被关联线路占用');
-                abort_if(DB::table('v2_node_ddns')->whereIn('entry_id',DB::table('v2_node_ddns')->where('purpose','entry')->where('server_id',$entry->server_id)->select('id'))->where('entry_port',$v['entry_port'])->where('id','!=',$old->id??0)->exists(),409,'此入口端口已被另一节点使用');
+                abort_if(\App\Services\NodeRelayCutover::publishedPort($entry->server_id,$v['entry_port'],$old->id??0) || DB::table('v2_node_ddns')->whereIn('entry_id',DB::table('v2_node_ddns')->where('purpose','entry')->where('server_id',$entry->server_id)->select('id'))->where('entry_port',$v['entry_port'])->where('id','!=',$old->id??0)->exists(),409,'此入口端口已被另一节点使用');
                 abort_if(!empty($v['server_id']) && $entry->server_id==($v['server_id']??$old->server_id??0),422,'入口和回源应选择不同服务器');
             }
             $same=$old && $old->enabled && $old->managed && $old->status!=='host_changed' && ($n->host===$old->published_domain || $n->host===($entry->domain??$domain)) && $old->domain===$domain && (int)$old->credential_id===(int)$c->id
@@ -95,8 +95,9 @@ final class NodeDomainController extends Controller
         }));
     }
     public function activate(Request $request) {
-        $v=$request->validate(['id'=>'required|integer|min:1','confirm'=>'required|accepted']);
-        NodeDnsLifecycle::activate($v['id']); return ['data'=>true];
+        $v=$request->validate(['id'=>'required|integer|min:1','confirm'=>'required|accepted',
+            'relayProof'=>'required_with:clientTested|string|regex:/^[a-f0-9]{64}$/D','clientTested'=>'required_with:relayProof|in:1,true']);
+        NodeDnsLifecycle::activate($v['id'],$v['relayProof']??null); return ['data'=>true];
     }
     public function activateBatch(Request $request) {
         $v=$request->validate(['ids'=>'required|array|min:1|max:200','ids.*'=>'required|integer|min:1|distinct','confirm'=>'required|accepted']);

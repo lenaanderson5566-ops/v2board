@@ -14,7 +14,7 @@ final class BrowserSession
         // Native protocols never participate in browser cookie authentication.
         if (!$request->is('api/v10/*','api/v1/*')) return $next($request);
         if ($request->is('api/v10/mail/unsubscribe/*','api/v10/public/*','api/v10/subscriptions/*','api/v10/webhooks/*','api/v10/server/*')) return $next($request);
-        if ($request->is('api/v1/guest/*','api/v1/client/*','api/v1/server/*')) return $next($request);
+        if ($request->is('api/v1/guest/*','api/v1/client/*')) return $next($request);
         $sessions = app(Sessions::class);
         $record = $sessions->load($request, $scope);
         $request->attributes->set('browser.session', $record);

@@ -28,7 +28,7 @@
 | 订阅与独立额度 | 恰好到期、耗尽、清理未运行、缓存及渲染中状态变化均检查；有效独立额度可在周期套餐到期后继续授权。公开安全提示不得携带真实凭据、模板或 provider，原生保留结构化错误。 | [订阅提示](subscription-info.md)、[独立额度](traffic-credits.md) |
 | 节点与机器认证 | 节点密钥、订阅凭据和账户 JWT 是独立边界；普通账户 JWT 不能调用机器接口。配置先准备后切换，失败恢复及授权重放保护保持生效。 | [V2Box](v2box.md)、[节点管理](node-management-ui.md) |
 | 文件与内容 | 下载归属、范围和大小限制；API 异常隐藏路径/堆栈，敏感响应 no-store；富文本过滤、危险链接及跟踪图片限制。工单只渲染文本，不解析图片或 HTML。 | [本地镜像](client-mirrors.md)、[邮件](product-mail.md) |
-| Telegram 回调 | 机器人必须启用且令牌非空后才校验凭据；V10 使用请求头，保留入口使用原参数，不能以空配置生成可预测凭据。 | [Telegram](telegram-community.md) |
+| Telegram 回调 | 机器人启用且令牌已配置时，V10 使用 `X-Telegram-Bot-Api-Secret-Token` 请求头验证回调。 | [Telegram](telegram-community.md) |
 | 统计与日志 | 同意/GPC/DNT、严格事件字段、Origin、限流和保留期；不记录原始凭据、验证码、支付内容或配置正文，浏览器点击不作为付款证明。 | [监控与治理](observability-governance.md)、[日志管理](log-management-review.md) |
 
 必要的授权输出仍按业务返回：原生登录返回本人的登录凭据，订阅配置包含本人连接凭据，管理员复制/CSV 可含受授权订阅链接，具备资格的下载账户接口返回共享账户信息，节点机器接口返回其服务用户的连接 UUID。字段白名单和鉴权不能替换为“所有接口均不返回凭据”的错误保证。

@@ -68,7 +68,7 @@ class TelegramService {
             && preg_match('/^[A-Za-z0-9_]{5,32}$/D', $bot['username']) === 1;
     }
 
-    public function setWebhook(string $url)
+    public function setWebhook()
     {
         $commands = TelegramText::commandMenus()['en'];
         $this->setMyCommands($commands);
@@ -76,9 +76,9 @@ class TelegramService {
             $this->request('setMyCommands',['commands'=>json_encode($menu,JSON_UNESCAPED_UNICODE),'language_code'=>$language]);
         }
         return $this->request('setWebhook', [
-            'url' => $url,
+            'url' => secure_url('/api/v10/webhooks/telegram'),
             'allowed_updates' => json_encode(['message','chat_join_request','chat_member','my_chat_member']),
-            ...(str_contains($url, '/api/v10/webhooks/telegram') ? ['secret_token'=>md5(config('fastai.telegram_bot_token'))] : [])
+            'secret_token' => md5(config('fastai.telegram_bot_token')),
         ]);
     }
 

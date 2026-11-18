@@ -19,6 +19,15 @@ foreach($entries as $entry){
     $assert($call($entry['legacyMethod'],$path)->getStatusCode()===404,'Retired route still resolves: '.$path);
 }
 $assert($call('GET','/api/v1/user/resetSecurity')->getStatusCode()===404,'Retired GET credential rotation remains');
+foreach ([
+    ['GET', '/api/v1/server/UniProxy/user'],
+    ['GET', '/api/v1/server/UniProxy/alivelist'],
+    ['POST', '/api/v1/server/UniProxy/push'],
+    ['POST', '/api/v1/server/UniProxy/alive'],
+    ['GET', '/api/v2/server/config'],
+] as [$method, $path]) {
+    $assert($call($method,$path)->getStatusCode()===404,'Retired node endpoint still resolves: '.$method.' '.$path);
+}
 // Removed administrator account export and generation must not remain as dead code.
 $adminPath=config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
 foreach (['dumpCSV', 'generate'] as $action) {
@@ -29,7 +38,7 @@ foreach (['dumpCSV', 'generate'] as $action) {
 }
 $assert(!file_exists(app_path('Http/Requests/Admin/UserGenerate.php')),'Unused user generation validator remains');
 // Retired wrappers must not return as unregistered dead code.
-foreach (['User'=>[], 'Client'=>[], 'Passport'=>['AuthController.php','CommController.php'], 'Guest'=>['PaymentController.php','TelegramController.php']] as $area=>$keep) {
+foreach (['User'=>[], 'Client'=>[], 'Passport'=>['AuthController.php','CommController.php'], 'Guest'=>['PaymentController.php']] as $area=>$keep) {
     foreach (glob(app_path('Http/Controllers/V1/'.$area.'/*Controller.php')) as $file) {
         $assert(in_array(basename($file),$keep,true),'Unused legacy controller: '.basename($file));
     }

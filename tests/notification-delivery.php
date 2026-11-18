@@ -237,15 +237,24 @@ $one->plan_id=1; $one->expired_at=time()-2*86400; $assert($community->eligibilit
 $one->expired_at=time()-4*86400; $assert($community->eligibility($one)==='expired','Expired user eligible');
 echo "PASS binding ownership, identity uniqueness, grace period and eight languages\n";
 
-// Authenticated webhook inbox, deduplication, encrypted minimum data and processing.
-$req=Request::create('/api/v10/webhooks/telegram','POST');
-$reject(fn()=>new App\Services\Actions\Guest\TelegramActions($req),401);
-$req->headers->set('X-Telegram-Bot-Api-Secret-Token',md5(config('fastai.telegram_bot_token')));
-new App\Services\Actions\Guest\TelegramActions($req); $checks++;
+// Register the production callback with the fake Telegram transport.
+NotificationTestCurl::$respond=fn()=>(object)['ok'=>true,'result'=>true];
+(new TelegramService())->setWebhook();
+[$method,$registration]=end(NotificationTestCurl::$calls);
+$assert($method==='setWebhook' && $registration['url']===secure_url('/api/v10/webhooks/telegram') &&
+    $registration['secret_token']===md5(config('fastai.telegram_bot_token')),'Webhook registration requires the V10 URL and header secret');
+NotificationTestCurl::$calls=[];
+
+// Deliver through the HTTP kernel, then verify deduplication, encryption and processing.
 $delivery=new TelegramDeliveryService;
 $event=['update_id'=>1,'message'=>['message_id'=>1,'chat'=>['id'=>555,'type'=>'private'],'from'=>['id'=>555,'language_code'=>'en'],'text'=>'/start','extra'=>'PRIVATE_EXTRA']];
-NotificationTestCurl::$respond=fn($method,$params)=>(object)['ok'=>true,'result'=>true];
-$delivery->receive($event); $delivery->receive($event);
+$webhook = function (array $headers) use ($app,$registration,$event) {
+    $request=Request::create($registration['url'],'POST',[],[],[],['CONTENT_TYPE'=>'application/json']+$headers,json_encode($event));
+    return $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
+};
+$assert($webhook([])->getStatusCode()===401 && DB::table('v2_telegram_update')->count()===0,'Unauthenticated callback must not enqueue an update');
+$headers=['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'=>$registration['secret_token']];
+$assert($webhook($headers)->isSuccessful() && $webhook($headers)->isSuccessful(),'Telegram accepts authenticated callbacks and retries');
 $assert(DB::table('v2_telegram_update')->count()===1 && count(NotificationTestCurl::$calls)===0,'Webhook did synchronous network or duplicated event');
 $row=DB::table('v2_telegram_update')->first();
 $payload=Crypt::decryptString($row->payload);

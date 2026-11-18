@@ -46,7 +46,7 @@
         "security": [],
         "x-permission": "public",
         "x-legacy-path": "/api/v1/guest/telegram/webhook",
-        "description": "Provider-native signature verification and response. Payment notifications are idempotent; Telegram requires X-Telegram-Bot-Api-Secret-Token. New payments use V10 callback URLs, including custom callback domains. Old payment callbacks remain compatible for existing orders. Historical callback URLs remain supported. The bot must be enabled with a nonempty configured token; disabled, unconfigured or invalid credentials return 401.",
+        "description": "Telegram updates require X-Telegram-Bot-Api-Secret-Token and an enabled bot with a configured token. A disabled bot, missing token or invalid webhook secret returns 401. The retired V1 Telegram webhook returns 404.",
         "requestBody": {
           "content": {
             "application/json": {

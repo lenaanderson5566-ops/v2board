@@ -11,13 +11,14 @@ $checks=0;$failures=[];
 $assert=function($ok,$label) use (&$checks,&$failures){$checks++;if(!$ok)$failures[]=$label;};
 $status=function($callback){try{$callback();return 200;}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){return $e->getStatusCode();}};
 // Constructing the webhook action checks authentication without sending network traffic.
-foreach (['/api/v10/webhooks/telegram','/api/v1/guest/telegram/webhook'] as $path) {
-    foreach ([[null,1,md5(''),401],['',1,md5(''),401],['test-token',0,md5('test-token'),401],['test-token',1,'wrong',401],['test-token',1,md5('test-token'),200]] as [$token,$enabled,$secret,$expected]) {
-        config(['fastai.telegram_bot_token'=>$token,'fastai.telegram_bot_enable'=>$enabled]);
-        $r=Illuminate\Http\Request::create($path,'POST',['access_token'=>$secret],[],[],['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'=>$secret]);
-        $assert($status(fn()=>new App\Services\Actions\Guest\TelegramActions($r))===$expected,'Telegram rejects missing/disabled/incorrect credentials: '.$path.' '.$expected);
-    }
+$telegramPath='/api/v10/webhooks/telegram';
+foreach ([[null,1,md5(''),401],['',1,md5(''),401],['test-token',0,md5('test-token'),401],['test-token',1,'wrong',401],['test-token',1,md5('test-token'),200]] as [$token,$enabled,$secret,$expected]) {
+    config(['fastai.telegram_bot_token'=>$token,'fastai.telegram_bot_enable'=>$enabled]);
+    $r=Illuminate\Http\Request::create($telegramPath,'POST',[],[],[],['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'=>$secret]);
+    $assert($status(fn()=>new App\Services\Actions\Guest\TelegramActions($r))===$expected,'Telegram header authentication: HTTP '.$expected);
 }
+$r=Illuminate\Http\Request::create($telegramPath.'?access_token='.md5('test-token'),'POST',['access_token'=>md5('test-token')]);
+$assert($status(fn()=>new App\Services\Actions\Guest\TelegramActions($r))===401,'Telegram requires the webhook secret in the header');
 config(['fastai.telegram_bot_enable'=>0]);
 $rules=(new App\Http\Requests\Admin\PlanSave())->rules();
 foreach (['month_price','quarter_price','half_year_price','year_price','two_year_price','three_year_price','onetime_price','reset_price'] as $field) {

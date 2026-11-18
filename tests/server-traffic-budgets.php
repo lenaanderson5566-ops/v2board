@@ -30,10 +30,11 @@ try{
  $assert(Budgets::forNode('v2box',$box->id)['usedBytes']===80,'Deduplication covers server quota at receipt');
  (new App\Jobs\StatServerJob([$user->id=>[10,10]],$legacy->toArray(),'v2box'))->handle();
  $state=Budgets::forNode('v2box',$box->id);$assert($state['usedBytes']===100 && $state['blocked'],'Shared V2Box services reach quota');
- $assert(Budgets::blocked('v2box',$legacy->id),'Legacy node shares restriction');
- $legacyRequest=Request::create('/','GET');$response=(new App\Services\Actions\NodeCommunication($legacy,'v2box'))->user($legacyRequest);$assert(json_decode($response->getContent(),true)['users']===[],'Legacy users blocked without protocol changes');
+ $assert(Budgets::blocked('v2box',$legacy->id),'Second node shares restriction');
  $controller=new App\Http\Controllers\V10\NodeController();$request=Request::create('/','GET',[],[],[],['HTTP_X_NODE_TYPE'=>'v2box','HTTP_X_NODE_ID'=>(string)$box->id]);
  $assert(json_decode($controller->users($request)->getContent(),true)['data']===[],'V10 users blocked');
+ $secondRequest=$request->duplicate();$secondRequest->headers->set('X-Node-ID',(string)$legacy->id);
+ $assert(json_decode($controller->users($secondRequest)->getContent(),true)['data']===[],'V10 users also blocked on the second node');
  $settings['limitBytes']=200;$admin->save(Request::create('/','POST',$settings));
  $assert(!Budgets::blocked('v2box',$box->id),'Raising quota restores access without zeroing usage');
  $assert(count(json_decode($controller->users($request)->getContent(),true)['data'])===1,'V10 authentication restored');

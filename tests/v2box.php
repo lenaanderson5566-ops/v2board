@@ -25,7 +25,6 @@ if (getenv('V2BOX_INDEPENDENT_PANEL_SEED')==='1') {
     file_put_contents(getenv('V2BOX_PANEL_PRIVATE'),json_encode($data));chmod(getenv('V2BOX_PANEL_PRIVATE'),0600);
     echo "Independent panel fixture prepared\n";return;
 }
-config(['fastai.server_token'=>'v2box-local-test']);
 $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 DB::beginTransaction();
@@ -46,21 +45,23 @@ try {
         $assert($node['type']===$type, 'Subscription type preserved');
         $assert(!isset($node['tls_settings']['private_key'],$node['tls_settings']['ech_key'],$node['tls_settings']['tls_key']), 'Secrets stripped');
         $assert(strpos(App\Utils\Helper::buildUri('00000000-0000-4000-8000-000000000001',$node),'vless://')===0,'Subscription URI');
-        $request=Request::create('/api/v2/server/config','GET',['token'=>config('fastai.server_token'),'node_type'=>$type,'node_id'=>$id]);
-        $controller=new App\Http\Controllers\V2\Server\ServerController($request);
-        $config=json_decode($controller->config($request)->getContent(),true);
-        $assert($config['protocol']==='vless','Node config');
-        $request=Request::create('/api/v1/server/UniProxy/user','GET',['token'=>config('fastai.server_token'),'node_type'=>$type,'node_id'=>$id]);
-        $controller=new App\Http\Controllers\V1\Server\UniProxyController($request);
-        $controller->user($request);
-        $key=CacheKey::get('SERVER_'.strtoupper($type).'_LAST_CHECK_AT',$id); $cacheKeys[]=$key;
-        $assert(Cache::has($key),'Independent heartbeat');
     }
-    $legacy=Request::create('/api/v2/server/config','GET',['token'=>config('fastai.server_token'),'node_id'=>$id]);
-    $assert(json_decode((new App\Http\Controllers\V2\Server\ServerController($legacy))->config($legacy)->getContent(),true)['protocol']==='vless','Legacy config without node_type');
+    $credential=App\Services\NodeCredentials::issue('v2box',$id,1);
+    $nodeRequest=function(string $method,string $endpoint,array $body=[]) use ($app,$id,$credential) {
+        $headers=['HTTP_AUTHORIZATION'=>'Bearer '.$credential['secret'],'HTTP_X_NODE_TYPE'=>'v2box',
+            'HTTP_X_NODE_ID'=>(string)$id,'CONTENT_TYPE'=>'application/json','HTTP_ACCEPT'=>'application/json'];
+        $request=Request::create('/api/v10/server/'.$endpoint,$method,[],[],[],$headers,json_encode($body));
+        return $app->make(Illuminate\Contracts\Http\Kernel::class)->handle($request);
+    };
+    $config=$nodeRequest('GET','configuration');
+    $assert($config->getStatusCode()===200 && $config->getData(true)['data']['protocol']==='vless','V10 node configuration');
+    $users=$nodeRequest('GET','users');
+    $assert($users->getStatusCode()===200 && is_array($users->getData(true)['data']),'V10 node users');
+    $key=CacheKey::get('SERVER_V2BOX_LAST_CHECK_AT',$id); $cacheKeys[]=$key;
+    $assert(Cache::has($key),'Configuration pull records an independent heartbeat');
     Illuminate\Support\Facades\Queue::fake();
-    $push=Request::create('/api/v1/server/UniProxy/push?'.http_build_query(['token'=>config('fastai.server_token'),'node_type'=>'v2box','node_id'=>$id]),'POST',[],[],[],['CONTENT_TYPE'=>'application/json'],json_encode([123=>[1024,2048]]));
-    (new App\Http\Controllers\V1\Server\UniProxyController($push))->push($push);
+    $push=$nodeRequest('POST','traffic',['records'=>[['userId'=>123,'uploadBytes'=>1024,'downloadBytes'=>2048]]]);
+    $assert($push->getStatusCode()===202,'V10 traffic accepted');
     $assert(Illuminate\Support\Facades\Queue::pushed(App\Jobs\TrafficFetchJob::class)->count()===1, 'Traffic job queued');
     foreach (['ONLINE_USER','LAST_PUSH_AT'] as $suffix) $cacheKeys[]=CacheKey::get('SERVER_V2BOX_'.$suffix,$id);
     $assert((int) Cache::get(CacheKey::get('SERVER_V2BOX_ONLINE_USER',$id))===1,'Traffic report updates V2Box status');
@@ -89,7 +90,6 @@ try {
     $certificateNode=ServerV2box::find($id);$certificateNode->tls=1;$certificateNode->tls_settings=['cert_mode'=>'http','server_name'=>'node.example.test'];
     try { App\Services\NodeDeploymentWorkflow::validate($certificateNode);$assert(false,'Automatic certificate deployment requires managed DNS'); }
     catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { $assert($e->getStatusCode()===422,'Automatic certificate deployment requires managed DNS'); }
-    $credential=App\Services\NodeCredentials::issue('v2box',$id,1);
     $admin->drop(Request::create('/','POST',['id'=>$id]));
     $assert(DB::table('v2_node_credential')->where('id',$credential['id'])->value('revoked_at')!==null,'Deleted node credentials revoked');
     $assert(!ServerV2box::find($id),'V2Box delete isolated');

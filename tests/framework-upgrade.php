@@ -244,11 +244,15 @@ $path = 'framework-tests/'.bin2hex(random_bytes(8)).'.txt';
 try {
     $assert($disk->put($path, 'roundtrip') && $disk->get($path) === 'roundtrip', 'Flysystem write/read failed');
 } finally { $disk->delete($path); }
-$legacy = app(App\Http\Controllers\V1\Server\UniProxyController::class);
-$configController = app(App\Http\Controllers\V2\Server\ServerController::class);
-$assert($legacy instanceof App\Http\Controllers\Controller && $configController instanceof App\Http\Controllers\Controller, 'Route tooling can resolve controllers without node credentials');
-foreach(['user','push','alive','alivelist'] as $method){try{$legacy->$method(Request::create('/','GET',['node_id'=>1,'node_type'=>'v2box']));throw new RuntimeException('Legacy authentication bypass');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===401,'Legacy authentication still runs before each action');}}
-$invalid=$configController->config(Request::create('/','GET',['node_id'=>1,'node_type'=>'v2box']));$assert($invalid->getStatusCode()===200 && $invalid->getData(true)['message']==='token is null','V2 failure response contract preserved without process exit');
+$assert(app(App\Http\Controllers\V10\NodeController::class) instanceof App\Http\Controllers\Controller, 'Route tooling can resolve the node controller without credentials');
+$nodeKernel=app(Illuminate\Contracts\Http\Kernel::class);
+foreach (['GET'=>['configuration','users','online-counts'], 'POST'=>['traffic','online-users']] as $method=>$actions) {
+    foreach ($actions as $action) {
+        $request=Illuminate\Http\Request::create('/api/v10/server/'.$action,$method,[],[],[],['HTTP_ACCEPT'=>'application/json']);
+        $response=$nodeKernel->handle($request);
+        $assert($response->getStatusCode()===401 && $response->getData(true)['code']==='NODE_UNAUTHENTICATED','V10 node authentication on '.$action);
+    }
+}
 // Resolve registration without running scheduled business commands.
 $commands = app(Illuminate\Contracts\Console\Kernel::class)->all();
 $tinkerProvider = 'Laravel\\Tinker\\TinkerServiceProvider';

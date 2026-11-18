@@ -199,6 +199,10 @@ Lightsail IP 管理新增 `2026_10_11_000010_create_lightsail_servers.php` 定�
 
 更新白名单已接入 `2026_10_17_000002_add_analytics_sources.php`，在访问统计基础表迁移后执行，并检查两个来源字段。历史数据保持“未采集”，不会补写来源。未执行此迁移时现有统计继续工作，后台提示安装来源字段。此次前端将访问统计用途版本升级为 3，已有允许选择需重新确认，有效的拒绝选择继续生效。
 
+## 节点通信和 Telegram 回调
+
+节点和 Telegram 完成迁移后可升级到此版本。面板使用 `/api/v10/server/*` 进行节点通信，使用 `POST /api/v10/webhooks/telegram` 接收机器人更新。旧 V1 UniProxy 四个地址、V2 节点配置地址和 V1 Telegram webhook 已退役。历史订单的 V1 支付通知地址继续接收网关回调。
+
 ## 运营接口地址变更
 
 后台、外部管理脚本和反向代理统一使用 `/api/v1/{后台入口}/ops/*`。例如，原 `/api/v1/ops/risk/summary/fetch` 应改为 `/api/v1/{后台入口}/ops/risk/summary/fetch`。使用过自定义运营前缀的站点也按此规则替换。仍提供的运营接口沿用原 HTTP 方法、参数和管理员凭据。

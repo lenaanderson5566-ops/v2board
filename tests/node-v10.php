@@ -347,11 +347,6 @@ try {
         try {$admin->save(Request::create('/','POST',$base+['id'=>$node->id,'sing_box'=>$bad]));throw new RuntimeException('Bad native config accepted');}
         catch(Illuminate\Validation\ValidationException $e){$checks++;}
     }
-    $request=Request::create('/','GET',['token'=>'node-v10-test-secret','node_type'=>'v2box','node_id'=>$node->id]);
-    $legacy=(new App\Http\Controllers\V2\Server\ServerController($request))->config($request);
-    $assert(json_decode($legacy->getContent(),true)['protocol']==='vless','Legacy configuration still works');
-    $legacyUsers=(new App\Http\Controllers\V1\Server\UniProxyController($request))->user($request);
-    $assert(isset(json_decode($legacyUsers->getContent(),true)['users']),'Legacy users still work');
     $route = App\Models\ServerRoute::create(['backend'=>'v2box','remarks'=>'V10 test','match'=>json_encode(['domain:example.test']),'action'=>'block']);
     if ($fixture=getenv('NODE_V10_FIXTURE')) file_put_contents($fixture,$call('GET',$root.'/configuration')->getContent());
     $node->route_id=[$route->id];$node->save();
@@ -360,7 +355,7 @@ try {
     $user=new App\Models\User(['email'=>'node-v10-test@example.test','password'=>'unused','uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','token'=>'node-v10-test','group_id'=>999997,'expired_at'=>null,'transfer_enable'=>1024,'u'=>0,'d'=>0,'banned'=>0]);$user->save();
     $r=$call('GET',$root.'/users');$list=json_decode($r->getContent(),true)['data'];
     $assert(count($list)===1 && $list[0]['uuid']===$user->uuid && array_key_exists('speedLimit',$list[0]),'User resource projection');
-    // Business fulfillment must reach both node contracts on the next pull.
+    // Business fulfillment must reach the node on the next pull.
     // No cache flush, scheduler tick or new UUID is needed to restore access.
     (function () use ($call,$root,$node,$nodeId,$assert) {
         $originalConfig=config('fastai');
@@ -377,28 +372,24 @@ try {
             'plan_id'=>$plan->id,'group_id'=>999997,'transfer_enable'=>1073741824,'u'=>1073741824,'d'=>0,
             'expired_at'=>time()-86400,'credit_balance'=>0,'balance'=>10000,'banned'=>0]);
         $uuid=$subscriber->uuid;
-        $pull=function($previous=[],int $expectedStatus=200,?bool $present=null,string $label='',?int $target=null,?array $limits=null) use ($call,$root,$nodeId,$subscriber,$assert) {
-            $result=[];$target=$target??$nodeId;
-            foreach (['v10'=>$root.'/users','legacy'=>'/api/v1/server/UniProxy/user?node_type=v2box&node_id='.$target] as $contract=>$path) {
-                $headers=['HTTP_X_NODE_ID'=>(string)$target];
-                if (isset($previous[$contract])) $headers['HTTP_IF_NONE_MATCH']=$previous[$contract];
-                $response=$call('GET',$path,[],$headers);
-                $assert($response->getStatusCode()===$expectedStatus,$label.' '.$contract.' HTTP status');
-                $result[$contract]=$response->headers->get('ETag')??($previous[$contract]??null);
-                if ($expectedStatus===304) continue;
-                $wire=json_decode($response->getContent(),true,512,JSON_THROW_ON_ERROR);
-                $rows=$wire[$contract==='v10'?'data':'users'];
-                $row=collect($rows)->firstWhere('id',$subscriber->id);
-                $assert(($row!==null)===$present,$label.' '.$contract.' current authorization');
-                if ($row!==null) {
-                    $assert($row['uuid']===$subscriber->uuid,$label.' '.$contract.' preserves current credentials');
-                    if ($limits!==null) foreach (['speed','device'] as $index=>$field) {
-                        $key=$contract==='v10'?$field.'Limit':$field.'_limit';
-                        $assert((int)$row[$key]===$limits[$index],$label.' '.$contract.' current '.$field.' limit');
-                    }
+        $pull=function(?string $previous,int $expectedStatus,?bool $present,string $label,?int $target=null,?array $limits=null) use ($call,$root,$nodeId,$subscriber,$assert) {
+            $headers=['HTTP_X_NODE_ID'=>(string)($target??$nodeId)];
+            if ($previous!==null) $headers['HTTP_IF_NONE_MATCH']=$previous;
+            $response=$call('GET',$root.'/users',[],$headers);
+            $assert($response->getStatusCode()===$expectedStatus,$label.' HTTP status');
+            $etag=$response->headers->get('ETag');
+            $assert($etag!==null,$label.' user list has an ETag');
+            if ($expectedStatus===304) return $etag;
+            $wire=json_decode($response->getContent(),true,512,JSON_THROW_ON_ERROR);
+            $row=collect($wire['data'])->firstWhere('id',$subscriber->id);
+            $assert(($row!==null)===$present,$label.' current authorization');
+            if ($row!==null) {
+                $assert($row['uuid']===$subscriber->uuid,$label.' preserves current credentials');
+                if ($limits!==null) {
+                    $assert([$row['speedLimit'],$row['deviceLimit']]===$limits,$label.' current speed and device limits');
                 }
             }
-            return $result;
+            return $etag;
         };
         $place=function($targetPlan,$period='month_price') use ($subscriber,$assert) {
             $request=App\Http\Requests\User\OrderSave::create('/api/v10/me/orders','POST',['plan_id'=>$targetPlan->id,'period'=>$period]);
@@ -416,7 +407,7 @@ try {
             $subscriber->refresh();
         };
         try {
-            $missing=$pull([],200,false,'Expired exhausted subscriber');
+            $missing=$pull(null,200,false,'Expired exhausted subscriber');
             $renewal=$place($plan);
             $pull($missing,304,null,'Unpaid order grants no access');
             $fulfill($renewal);
@@ -439,7 +430,7 @@ try {
             $assert($subscriber->credit_balance===1073741824,'Paid independent credit grants its exact allowance');
             $available=$pull($exhausted,200,true,'Paid credit immediately restores exhausted access',null,[10,2]);
 
-            $otherMissing=$pull([],200,false,'Different node group remains unauthorized',$otherNode->id);
+            $otherMissing=$pull(null,200,false,'Different node group remains unauthorized',$otherNode->id);
             $fulfill($place($nextPlan));
             $pull($available,200,false,'Plan switch immediately removes old group access');
             $otherAvailable=$pull($otherMissing,200,true,'Plan switch grants new group and limits',$otherNode->id,[25,4]);
@@ -461,7 +452,7 @@ try {
             $edit(['banned'=>0,'speed_limit'=>7,'device_limit'=>1]);
             $restored=$pull($banned,200,true,'Unban restores current administrative limits',$otherNode->id,[7,1]);
             $edit(['speed_limit'=>9,'device_limit'=>3]);
-            $pull($restored,200,true,'Limit-only edit invalidates both node ETags',$otherNode->id,[9,3]);
+            $pull($restored,200,true,'Limit-only edit invalidates the node user ETag',$otherNode->id,[9,3]);
         } finally {
             config(['fastai'=>$originalConfig]);
             DB::table('v2_credit_batch')->where('user_id',$subscriber->id)->delete();
@@ -769,13 +760,6 @@ try {
     $assert($call('GET',$root.'/users',[],$headers)->getStatusCode()===200,'Independent key accepted');
     $assert($call('GET',$root.'/users',[],array_merge($headers,['HTTP_X_NODE_ID'=>(string)($nodeId+1)]))->getStatusCode()===403,'Key cannot access another node');
     $assert($call('GET',$root.'/users',[],array_merge($headers,['HTTP_X_NODE_TYPE'=>'v2node']))->getStatusCode()===403,'Key cannot access another backend');
-    $legacySecure=Request::create('/','GET',['node_type'=>'v2box','node_id'=>$nodeId],[],[],['HTTP_AUTHORIZATION'=>'Bearer '.$key['secret']]);
-    $assert((new App\Http\Controllers\V1\Server\UniProxyController())->user($legacySecure)->getStatusCode()===200,'Legacy endpoint supports scoped bearer');
-    foreach([App\Http\Controllers\V1\Server\UniProxyController::class=>'user',App\Http\Controllers\V2\Server\ServerController::class=>'config'] as $controller=>$method) {
-        $invalid=Request::create('/','GET',['node_type'=>'v2box','node_id'=>[$nodeId]],[],[],['HTTP_AUTHORIZATION'=>'Bearer '.$key['secret']]);
-        try {(new $controller())->$method($invalid);$assert(false,'Array node identity rejected');}
-        catch(Illuminate\Validation\ValidationException $e){$assert(true,'Array node identity rejected');}
-    }
     try { $credentials::authenticate($key['secret'],'v2box',$nodeId,false); $assert(false,'Query credential rejected'); }
     catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===401,'Query credential rejected');}
     $credentialCall=function($action,$body,$authorization=null)use($kernel,$adminPath,$token) {

@@ -12,26 +12,15 @@
 | POST | `/api/v1/passport/mfa/verifications` | POST /api/v10/auth/mfa/verifications |
 | POST | `/api/v1/passport/comm/sendEmailVerify` | POST /api/v10/auth/email-verifications |
 
-## 旧公共接口与回调（2 条路由）
+## 历史支付回调（1 条路由）
 
 | 方法 | 保留路径 | V10 对应入口 |
 |---|---|---|
-| POST | `/api/v1/guest/telegram/webhook` | POST /api/v10/webhooks/telegram |
 | GET/POST | `/api/v1/guest/payment/notify/{method}/{uuid}` | GET/POST /api/v10/webhooks/payments/{provider}/{endpointId} |
 
 ## 节点通信
 
-仅支持 `node_type=v2box`。节点通信保留原 API 版本，使用显式路由。
-
-| 方法 | 路径 |
-|---|---|
-| GET | `/api/v1/server/UniProxy/user` |
-| GET | `/api/v1/server/UniProxy/alivelist` |
-| POST | `/api/v1/server/UniProxy/push` |
-| POST | `/api/v1/server/UniProxy/alive` |
-| GET | `/api/v2/server/config` |
-
-V2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、UniProxy/config 与动态控制器分发已移除。
+V2Box 节点使用 `/api/v10/server/*`。旧 V1 UniProxy 和 V2 节点配置入口已退役，返回 404。
 
 ## 其他保留入口
 
@@ -44,8 +33,8 @@ V2 配置接口未填写 node_type 时默认 v2box。旧 Deepbwork、Tidalab、U
 
 ## 兼容说明
 
-- 上表共 7 条后台认证及历史回调路由。注册、个人资料、退出登录和客户端配置及版本查询使用 V10。
+- 上表共 6 条后台认证及历史支付回调路由。注册、个人资料、退出登录和客户端配置及版本查询使用 V10。
 - 旧用户业务 API（包括 `invite/save`）已移除；使用 V10。
-- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 保持已有兼容规则。
+- 支付新订单与后台展示统一使用 V10 回调，旧支付回调兼容此前订单；两者保持原验签和应答。Telegram 更新使用 `POST /api/v10/webhooks/telegram` 并通过请求头验证回调密钥。
 - 不再注册旧用户业务中的 GET 写操作。
 - 节点管理、订阅、排序及当前节点排行仅使用 V2Box；旧节点配置表通过定向迁移删除；共享账务记录保留。

@@ -20,15 +20,15 @@ Optional analytics accepts legacy `payment_open` and other retired click events 
 
 <!-- operation-table -->
 
-V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Node config `/api/v2/server/config` and retained UniProxy endpoints accept `node_type=v2box`. V10 subscription paths and resource shapes are unchanged; node identities use `v2box` exclusively. See [V2Box integration](../v2box.md).
+V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Nodes use the V10 machine endpoints below. The V2 configuration route and V1 UniProxy routes are retired. V10 subscription paths and resource shapes are unchanged; node identities use `v2box` exclusively. See [V2Box integration](../v2box.md).
 
 Naive is a V2Box-only protocol value on the same routes/table. V10 subscriptions export sing-box Naive outbounds or General naive+https links; native node protocol strings may now contain `naive`. No new endpoint or authentication contract is introduced. HTTPS/HTTP2 with validated certificates is required; see the V2Box integration guide and `tests/naive.php`.
 
-Standalone legacy node types (vmess, vless, shadowsocks, trojan, hysteria, tuic, anytls) are retired as management types. Only V2Box is listed, subscribed, sorted and accepted by node communication. Underlying protocols remain available within V2Box. Removed old admin CRUD routes and Deepbwork/Tidalab routes; the seven retired node configuration tables are dropped by the targeted migration; shared accounting records are retained. Node communication now uses explicit GET user/alivelist/config and POST push/alive routes.
+Standalone legacy node types (vmess, vless, shadowsocks, trojan, hysteria, tuic, anytls) are retired as management types. Only V2Box is listed, subscribed, sorted and accepted by node communication. Underlying protocols remain available within V2Box. Removed old admin CRUD routes and Deepbwork/Tidalab routes; the seven retired node configuration tables are dropped by the targeted migration; shared accounting records are retained. V2Box nodes communicate with the panel under `/api/v10/server`.
 
 ## V2Box node V10 API
 
-Explicitly configured legacy V2Box installations retain their existing routes. These new machine endpoints use a separate bearer credential. See node-api.json for schemas.
+The legacy node paths in the table are retired. V10 machine endpoints require a bearer credential. See node-api.json for schemas.
 
 <!-- node-table -->
 

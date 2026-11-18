@@ -9,12 +9,11 @@ $checks=0;
 $assert = \Tests\Support\Assertions::counter($checks);
 $reject=function($fn)use($assert){try{$fn();throw new RuntimeException('Retired type accepted');}catch(Illuminate\Validation\ValidationException $e){$assert(true,'Retired type rejected');}catch(Symfony\Component\HttpKernel\Exception\HttpException $e){$assert($e->getStatusCode()===422,'Retired type rejected');}};
 $legacy=['v2node','vmess','vless','shadowsocks','trojan','hysteria','tuic','anytls','v2ray','hysteria2'];
-config(['fastai.server_token'=>'local-node-retirement-test']);
 $svc=new ServerService();
 foreach($legacy as $type){
     $assert($svc->getServer(1,$type)===null,'Legacy lookup removed '.$type);
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>$type])));
-    $reject(fn()=>(new App\Http\Controllers\V1\Server\UniProxyController())->user(Request::create('/','GET',['token'=>config('fastai.server_token'),'node_type'=>$type,'node_id'=>1])));
+    $reject(fn()=>(new App\Http\Controllers\V10\NodeController())->users(Request::create('/','GET',[],[],[],['HTTP_X_NODE_TYPE'=>$type,'HTTP_X_NODE_ID'=>'1'])));
     $reject(fn()=>(new App\Http\Controllers\V1\Admin\Server\ManageController())->sort(Request::create('/','POST',[$type=>[1=>1]])));
 }
 $routes=app('router')->getRoutes();
@@ -22,8 +21,11 @@ foreach($routes as $route){
     $assert(!preg_match('#/server/(v2node|vmess|vless|shadowsocks|trojan|hysteria|tuic|anytls)/#',$route->uri()),'Retired admin routes absent');
     $assert(!str_contains($route->uri(),'server/{class}'),'Dynamic node dispatch absent');
 }
-foreach(['GET'=>['/api/v1/server/UniProxy/user','/api/v1/server/UniProxy/alivelist','/api/v2/server/config'], 'POST'=>['/api/v1/server/UniProxy/push','/api/v1/server/UniProxy/alive']] as $method=>$paths){
-    foreach($paths as $path){$route=$routes->match(Request::create($path,$method));$assert($route->getActionName()!=='Closure','Explicit node handler '.$path);}
+foreach(['GET'=>['users','online-counts','configuration'], 'POST'=>['traffic','online-users']] as $method=>$resources){
+    foreach($resources as $resource){
+        $route=$routes->match(Request::create('/api/v10/server/'.$resource,$method));
+        $assert($route->getController() instanceof App\Http\Controllers\V10\NodeController,'Explicit node handler '.$resource);
+    }
 }
 foreach(['/api/v1/server/Deepbwork/user','/api/v1/server/TrojanTidalab/user','/api/v1/server/ShadowsocksTidalab/user','/api/v1/server/UniProxy/config'] as $path){
     try{$route=$routes->match(Request::create($path,'GET'));$assert(!str_starts_with($route->uri(),'api/'),'Retired route cannot reach API');}

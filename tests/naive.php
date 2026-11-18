@@ -24,10 +24,8 @@ try {
         $schema=json_decode((new App\Http\Controllers\V1\Admin\ConsoleController())->nodeSchema(Request::create('/','GET',['type'=>$backend]))->getContent(),true)['data'];
         $assert(str_contains($schema['protocol'],'naive')===($backend==='v2box'),'Naive offered only for V2Box');
     }
-    config(['fastai.server_token'=>'local-naive-test']);
-    $request=Request::create('/api/v2/server/config','GET',['token'=>'local-naive-test','node_type'=>'v2box','node_id'=>$node->id]);
-    $config=json_decode((new App\Http\Controllers\V2\Server\ServerController($request))->config($request)->getContent(),true);
-    $assert($config['protocol']==='naive' && $config['network']==='tcp' && $config['tls_settings']['cert_mode']==='http','Node config retains Naive TLS settings');
+    $config=App\Services\Actions\NodeV10Config::build($node->fresh());
+    $assert($config['protocol']==='naive' && $config['network']==='tcp' && $config['tlsSettings']->certMode==='http','V10 node config retains Naive TLS settings');
     $user=['uuid'=>'b831381d-6324-4d53-ad4f-8cda48b30811','u'=>0,'d'=>0,'transfer_enable'=>1024,'expired_at'=>null];
     $server=$node->toArray();$server['type']='v2box';
     $supportedClients=['sing-box','shadowrocket','v2rayn','throne','husi','nekobox','passwall','sagernet'];

@@ -53,7 +53,7 @@ Lightsail 静态 IP 任务使用 Laravel 13 队列属性 Connection、Queue、Tr
 
 官方发布说明：https://laravel.com/docs/13.x/releases
 
-旧 UniProxy 和 V2 配置控制器改为在实际动作内校验请求，构造函数不再校验 Token、发送响应或退出进程。Laravel route:list 等工具可解析控制器；旧接口的认证、HTTP 状态与错误格式保留。
+框架升级时曾保留的 UniProxy 和 V2 配置接口现已退役。节点使用 V10 通信。
 
 ## 旧版一次性流量迁移失败后恢复
 

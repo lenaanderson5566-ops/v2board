@@ -147,7 +147,7 @@ def generate(root):
     if mapping.count('<!-- operation-table -->') != 1: raise ValueError('Exactly one operation-table marker required')
     mapping = mapping.replace('<!-- operation-table -->', '\n'.join(rows)).rstrip()
     if mapping.count('<!-- node-table -->') != 1: raise ValueError('Exactly one node-table marker required')
-    node_rows = ['| Legacy | V10 |', '|---|---|']
+    node_rows = ['| Retired path or migration note | V10 |', '|---|---|']
     for entry in node['endpoints']: node_rows.append(f"| `{entry['legacy']}` | `{entry['method']} /api/v10{entry['path']}` |")
     mapping = mapping.replace('<!-- node-table -->', '\n'.join(node_rows)) + '\n'
     runtime = {'schemas': schemas, 'endpoints': contracts}

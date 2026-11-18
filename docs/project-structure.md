@@ -44,7 +44,7 @@ Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序�
 
 Laravel 配置加载后安装统一的站点配置 Repository，HTTP/Console Kernel、业务 SQL 和迁移继续按现有边界工作。部署按 `update.sh` 刷新 Composer 自动加载、配置缓存和 Horizon/长驻进程；已排队邮件仍以原 `App\Jobs\SendEmailJob` 消费。生产环境不需要 Python。
 
-PHP 依赖按实际运行职责划分：`linfo/linfo` 已移除；`laravel/tinker` 仅在 `require-dev`，生产 `composer install --no-dev` 不提供 `artisan tinker`。Horizon 与 Carbon 的包自动发现仍需生效，不能把它们或有实际业务调用的 JWT、YAML、MessagePack、AWS、GeoIP、HTTP 与密码学库当作未使用依赖删除。Composer 的 `post-autoload-dump` 会运行包发现；更换安装配置后应重建自动加载与发现清单，避免沿用开发依赖的缓存。
+PHP 依赖按实际运行职责划分：`linfo/linfo` 已移除；`laravel/tinker` 仅在 `require-dev`，生产 `composer install --no-dev` 不提供 `artisan tinker`。Horizon 与 Carbon 的包自动发现仍需生效，不能把它们或有实际业务调用的 JWT、YAML、AWS、GeoIP、HTTP 与密码学库当作未使用依赖删除。Composer 的 `post-autoload-dump` 会运行包发现；更换安装配置后应重建自动加载与发现清单，避免沿用开发依赖的缓存。
 
 依赖更新保留既有主版本和 PHP 8.4 平台要求，以提交的 `composer.lock` 安装；不在生产服务器直接解析最新依赖。旧安全例外 `PKSA-y2cr-5h3j-g3ys` 已移除，最终安全审计须使用对应锁文件重新执行，不能只以配置检查代替审计。
 

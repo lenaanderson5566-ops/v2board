@@ -6,7 +6,7 @@
 
 Nodes 中配置 `"NodeType": "v2box"` 并填入后台 V2Box 的 `NodeID`；省略 NodeType 时也默认 V2Box。显式 `v2node` 将被拒绝，不映射到任何 V2Box 编号。安装器只接受 `--node-type v2box`。
 
-通信沿用 `/api/v2/server/config` 与 `/api/v1/server/UniProxy/{user,alivelist,push,alive}`，参数为 `node_type=v2box`。管理接口沿用管理员前缀下的 `server/v2box/{save,update,copy,drop}`。用户订阅仍走 V10，按底层协议生成；原生节点稳定标识使用 `node_v2box_ID`。
+节点通过 `/api/v10/server/*` 获取配置、同步用户并上报流量和在线设备。管理接口沿用管理员前缀下的 `server/v2box/{save,update,copy,drop}`。用户订阅仍走 V10，按底层协议生成；原生节点稳定标识使用 `node_v2box_ID`。
 
 V2Box 支持 Shadowsocks、VMess、VLESS、Trojan、TUIC、Hysteria2、AnyTLS、Naive。表单提供 TCP、WebSocket、gRPC、HTTPUpgrade；VLESS 支持 Reality。当前实现不接受 XHTTP、HTTP 传输、Xray VLESS 加密、可信 X-Forwarded-For、Proxy Protocol、ECH 等不兼容配置。高级传输参数也由后端检查。
 
@@ -50,11 +50,11 @@ Shadowrocket 分享格式参考开源面板的 [HTTP2 导出实现](https://gith
 
 ## V10 节点通信与 sing-box 原生配置
 
-升级面板时执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），依次完成原生配置、独立路由和退役清理。新版 V2Box 配置 `NodeType=v2box` 默认走 V10，`ApiVersion=legacy` 可显式保留旧接口。V10 不接受查询参数 token，使用 Authorization Bearer；用户表为空时返回 `data: []`，304 才代表无变化。
+升级面板时执行完整 [update.sh 升级流程](update-script.md)（按批准清单定向迁移，勿执行全量 migrate），依次完成原生配置、独立路由和退役清理。V2Box 配置 `NodeType=v2box` 时默认使用 V10。显式配置 `ApiVersion=legacy` 的站点需要先切换为 `v10`。V10 不接受查询参数 token，使用 Authorization Bearer；用户表为空时返回 `data: []`，304 才代表无变化。
 
 管理端“路由管理”统一维护 V2Box / sing-box 规则。V2Box 原生规则在这里编辑 JSON，节点编辑页只选择当前内核可用的规则。开放 dns、route、outbounds，支持 HTTPS DNS、DNS 分流、inline/HTTPS remote 规则集及代理出口。保留直连出口 direct。不能覆盖入站用户、计费、服务、本机证书路径，也不能配置 auth_user 或本机 rule-set 文件。原生配置字段随节点固定的 sing-box 1.14.3 校验，错误配置先预检再重载。
 
-节点通过 POST capabilities 上报 coreVersion 和 features，缓存 24 小时，随配置轮询更新；原生配置下发要求 X-Node-Capabilities 包含 native-routing-v1。节点能力不进入用户订阅。详细接口契约见 [node-api.json](api-v10/node-api.json)。旧节点通信仍调用相同的共享业务动作，流量上报暂未增加批次去重，202 仅表示已接受入队。
+节点通过 POST capabilities 上报 coreVersion 和 features，缓存 24 小时，随配置轮询更新；原生配置下发要求 X-Node-Capabilities 包含 native-routing-v1。节点能力不进入用户订阅。详细接口契约见 [node-api.json](api-v10/node-api.json)。流量批次的确认与重试规则见[节点流量去重](node-traffic-dedup.md)。
 
 ACME 申请失败保护在节点本地实现，不通过面板清除；修复后按节点 README 恢复，重启不会绕过暂停状态。
 
@@ -140,7 +140,7 @@ DDNS 日志默认保留 30 天，可在「系统设置 → 采集与保留策略
 
 V2Box 首次安装命令使用 --prompt-api-key，通过终端隐藏输入，不把密钥放入复制命令、URL 或 jq 参数。已有配置不会被安装器覆盖；升级节点后运行 `v2box credential`（需 python3），选择节点并隐藏输入新密钥，工具原子替换配置、设置 0600、不保存旧密钥备份，然后手动 `v2box restart`。多节点配置只修改选择项。命令不自动轮换或自动重启。
 
-V2Box 的 legacy 模式已支持独立凭据通过认证头发送。节点安装列表不再返回含全局密钥的命令。
+V2Box 在 V10 请求的认证头发送独立节点凭据。节点安装列表不再返回含全局密钥的命令。
 
 后台列出尚未迁移的主节点。全部主节点迁移且每个节点当前有效凭据至少认证成功一次后，才能关闭全局密钥认证；关闭后新节点也必须生成独立凭据，界面不提供恢复全局认证入口。删除节点撤销该节点全部凭据；转换内核撤销原凭据并保留禁止全局回退的状态，需要为新身份重新生成凭据。复制节点不会复制密钥。
 
@@ -194,7 +194,7 @@ TUIC、Hysteria2 等明确代理协议的访问统计使用路由改写前的请
 
 原生路由模板与当前固定的 sing-box 1.14.3 对齐，提供域名阻断、IP/CIDR 阻断、域名代理出口、HTTPS DNS 分流及远程 HTTPS 规则集。模板中的示例域名、服务器和 URL 必须按需修改；选择模板会替换编辑器内容。列表展示配置摘要和引用服务数。配置片段按节点选择顺序合并后验证出口、DNS、规则集和域名解析器引用，允许跨片段引用，拒绝未定义标签、重复冲突和已退役的 geoip/geosite 匹配；后者应改用 rule_set。模板由面板共享 JSON 提供，节点仓库保存测试快照并通过实际核心配置解析回归。
 
-V10 与兼容通信接口共用 `NodeConfiguration` 的路由解析结果：分别通过 `singBox`、`sing_box` 原样传递原生配置，兼容接口同样支持原生路由，不再只返回旧格式规则。规则编辑会改变配置版本；兼容接口正确处理 V2Box 回传的带引号 ETag，不变配置返回 304。仅更新路由时节点仍触发重载，加载失败沿用既有重试/回滚流程。此修复随面板更新生效，未新增节点核心功能或自动发布二进制。
+V10 配置接口通过 `singBox` 传递原生路由。规则编辑会改变配置版本，配置未变时节点凭 ETag 获得 304 响应。仅更新路由时节点仍触发重载，加载失败沿用既有重试/回滚流程。此修复随面板更新生效，未新增节点核心功能或自动发布二进制。
 
 
 ## 在线统计与有效上报窗口

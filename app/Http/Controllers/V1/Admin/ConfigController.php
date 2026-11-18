@@ -47,10 +47,9 @@ class ConfigController extends Controller
 
     public function setTelegramWebhook(Request $request)
     {
-        $hookUrl = secure_url('/api/v10/webhooks/telegram');
         $telegramService = new TelegramService($request->input('telegram_bot_token'));
         $telegramService->getMe();
-        $telegramService->setWebhook($hookUrl);
+        $telegramService->setWebhook();
         return response([
             'data' => true
         ]);

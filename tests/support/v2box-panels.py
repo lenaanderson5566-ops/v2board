@@ -75,6 +75,8 @@ def run(manifest):
     assert a['environment']['APP_KEY']!=b['environment']['APP_KEY'],'Independent panels must not share application keys'
     assert not Path('/etc/v2box/config.json').exists(),'Fixture refuses an existing node configuration'
     assert not Path('/etc/node-network/cloudflare.json').exists(),'Fixture refuses existing IP reporting configuration'
+    managed_unit = Path('/etc/systemd/system/v2box-deployment.service')
+    assert not managed_unit.exists() and not managed_unit.is_symlink(), 'Fixture refuses an existing deployment service'
     assert not Path('/etc/systemd/system/v2box.service').exists() and not Path('/etc/systemd/system/v2box.service').is_symlink(),'Fixture refuses an existing service unit'
     workers=[];servers=[];streams=[];logs=[];node=None
     env=dict(os.environ)
@@ -141,8 +143,23 @@ def run(manifest):
         # Node binary, both Laravel APIs, databases, keys and report endpoints are real.
         bin_dir=root/'bin';bin_dir.mkdir();pid_file=root/'node.pid';events=root/'service-events.jsonl'
         systemctl=bin_dir/'systemctl'
-        systemctl.write_text('#!/usr/bin/env python3\nimport os,sys,signal,json\nfrom pathlib import Path\np=Path('+repr(str(pid_file))+')\npid=int(p.read_text()) if p.exists() else 0\na=sys.argv[1:]\nif a and a[0]=="show": print(pid if any("MainPID" in x for x in a) else ("active" if pid else "inactive"))\nelif a and a[0]=="is-active": sys.exit(0 if pid else 3)\nelif a and a[0]=="kill": os.kill(pid,signal.SIGHUP)\nelif "v2box" in a and a and a[0] in ("restart","stop","start"):\n with open('+repr(str(events))+',"a") as f:f.write(json.dumps(a)+"\\n")\n sys.exit(1)\n')
+        shutil.copyfile(Path(__file__).with_name('v2box-systemctl.py'), systemctl)
         systemctl.chmod(0o755);env['PATH']=str(bin_dir)+':'+env['PATH'];os.environ['PATH']=env['PATH']
+        def run_deployment(command, timeout):
+            # Wait for both acceptance and the real scheduled worker's exit.
+            # Holding the marker while it runs also makes its active state observable.
+            opts = dict(cwd=root, env=env, capture_output=True, text=True, timeout=timeout)
+            pending = root / 'deployment-start.json'
+            assert not pending.exists(), 'A previous deployment worker is still active'
+            accepted = subprocess.run(command, shell=True, **opts)
+            if accepted.returncode or not pending.exists():
+                return accepted
+            try:
+                worker = subprocess.run(json.loads(pending.read_text()), **opts)
+                return subprocess.CompletedProcess(command, worker.returncode,
+                                                   accepted.stdout + worker.stdout, accepted.stderr + worker.stderr)
+            finally:
+                pending.unlink()
         Path('/run/systemd/system').mkdir(parents=True,exist_ok=True)
         real_network=program/'node-network-real.py';shutil.copy2(program/'node-network.py',real_network)
         (program/'node-network.py').write_text('#!/usr/bin/env python3\nimport importlib.util,sys\ns=importlib.util.spec_from_file_location("network",'+repr(str(real_network))+');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nm.IP_SERVICES={"A":['+repr(a['origin']+'/fixture-ip')+'],"AAAA":[]}\ntry:m.main()\nexcept m.NetworkError:sys.exit(1)\n')
@@ -179,7 +196,7 @@ def run(manifest):
         # A port collision must fail readiness and remove only the newly added panel.
         php(b,'Illuminate\\Support\\Facades\\DB::table("v2_server_v2box")->where("id",3)->update(["server_port"=>'+str(a['port'])+']); echo "true";')
         bad_grant=php(b,'echo json_encode(App\\Services\\NodeDeployment::create(3,'+str(b['actorId'])+'));')
-        rejected=subprocess.run(bad_grant['command'],shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=100)
+        rejected=run_deployment(bad_grant['command'], 100)
         assert rejected.returncode!=0 and json.loads(config.read_text())==configuration,'Port collision was reported as a successful deployment or changed another panel'
         ping(stream_a)
         php(b,'Illuminate\\Support\\Facades\\DB::table("v2_server_v2box")->where("id",3)->update(["server_port"=>'+str(b['port'])+']); echo "true";')
@@ -187,18 +204,18 @@ def run(manifest):
         # Bootstrap and redemption outages must not consume the grant or touch panel A.
         saved_reports=network.CONFIG.read_bytes();saved_config=config.read_bytes()
         b['online']=False
-        offline=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=35)
+        offline=run_deployment(b['command'], 35)
         b['online']=True
         assert offline.returncode!=0 and config.read_bytes()==saved_config and network.CONFIG.read_bytes()==saved_reports,'Bootstrap outage changed an existing deployment'
         ping(stream_a)
         b['redeemUnavailable']=True
-        unavailable=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=45)
+        unavailable=run_deployment(b['command'], 45)
         b['redeemUnavailable']=False
         assert unavailable.returncode!=0 and config.read_bytes()==saved_config and network.CONFIG.read_bytes()==saved_reports,'Redemption outage changed an existing deployment'
         assert cert_before=={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in node_root.glob('operator-*.pem')}
         ping(stream_a)
         # The normal panel-B command must append even though its database/key differ.
-        command=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=100)
+        command=run_deployment(b['command'], 100)
         if command.returncode:raise AssertionError('Second independent panel deployment failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',(command.stdout+command.stderr)[-2400:]))
         wait(lambda:listening(b['port']),'Panel B node did not become active')
         after=json.loads(config.read_text());assert after['Nodes'][0]==entry and len(after['Nodes'])==2 and after['OperatorSetting']=='retained'
@@ -235,7 +252,7 @@ def run(manifest):
             except (OSError,AssertionError):return True
         wait(a_denied,'Panel A did not apply its own user ban');ping(stream_b,b'B'*32768)
         assert php(b,'echo json_encode(Illuminate\\Support\\Facades\\DB::table("v2_user")->where("id",'+str(b['userId'])+')->value("banned"));')==0
-        repeat=subprocess.run(b['command'],shell=True,cwd=root,env=env,capture_output=True,timeout=40);assert repeat.returncode==0,'Completed independent deployment was not idempotent'
+        repeat=run_deployment(b['command'], 40);assert repeat.returncode==0,'Completed independent deployment was not idempotent'
         assert json.loads(config.read_text())==after and node.poll() is None
         assert not events.exists(),'Independent panel operations restarted or stopped the shared service'
         # Validate the real panel-generated upgrade command against an existing v1.0.15 binary.
@@ -295,9 +312,7 @@ def run(manifest):
         node=subprocess.Popen([str(program/'v2box'),'server','--config',str(config),'--watch=false'],env=env,stdout=log,stderr=log,start_new_session=True);pid_file.write_text(str(node.pid))
         wait(lambda:listening(a['port']),'Ungrouped node did not restart for automatic sharing fixture')
         # Only this disposable service fixture may perform a real process restart.
-        service_source=systemctl.read_text()
-        restart_handler="elif a and a[0]==\"restart\":\n import subprocess,time,socket\n os.killpg(pid,signal.SIGTERM)\n time.sleep(.5)\n with open("+repr(str(events))+",\"a\") as f:f.write(json.dumps(a)+\"\\n\")\n log=open("+repr(str(root/'shared-node.log'))+",\"ab\")\n child=subprocess.Popen(["+repr(str(program/'v2box'))+",\"server\",\"--config\","+repr(str(config))+",\"--watch=false\"],stdout=log,stderr=log,start_new_session=True)\n p.write_text(str(child.pid))\n"
-        systemctl.write_text(service_source.replace('elif "v2box" in a',restart_handler+'elif "v2box" in a'))
+        (root/'allow-node-restart').touch()
         # The real upgrade restores the shipped helper; reinstate controlled IP discovery.
         (program/'node-network.py').write_text('#!/usr/bin/env python3\nimport importlib.util,sys\ns=importlib.util.spec_from_file_location("network",'+repr(str(real_network))+');m=importlib.util.module_from_spec(s);s.loader.exec_module(m)\nm.IP_SERVICES={"A":['+repr(a['origin']+'/fixture-ip')+'],"AAAA":[]}\ntry:m.main()\nexcept m.NetworkError:sys.exit(1)\n')
         (program/'node-network.py').chmod(0o755)
@@ -311,7 +326,7 @@ def run(manifest):
         command_shared=php(b,'echo json_encode(App\\Services\\NodeDeployment::create(3,'+str(b['actorId'])+'));')['command']
         assert '--shared-listener' not in command_shared,'Ordinary panel command required a sharing suffix'
         shared_reports=network.CONFIG.read_bytes()
-        applied=subprocess.run(command_shared,shell=True,cwd=root,env=env,capture_output=True,text=True,timeout=110)
+        applied=run_deployment(command_shared, 110)
         if applied.returncode:raise AssertionError('Automatic same-port deployment failed: '+re.sub(r'(?:nk_|nd_|am_)[a-f0-9.]+','[redacted]',(applied.stdout+applied.stderr)[-2400:]))
         shared_nodes=json.loads(config.read_text())['Nodes']
         assert len(shared_nodes)==2 and shared_nodes[0]['SharedListener']==shared_nodes[1]['SharedListener'],'Automatic deployment did not select one shared group'
@@ -328,7 +343,7 @@ def run(manifest):
         ping(shared_a,b'A'*65536);ping(shared_b,b'B'*131072)
         assert len(events.read_text().splitlines())==1,'Initial shared conversion did not restart exactly once'
         shared_before=config.read_bytes()
-        repeated_shared=subprocess.run(command_shared,shell=True,cwd=root,env=env,capture_output=True,timeout=40)
+        repeated_shared=run_deployment(command_shared, 40)
         assert repeated_shared.returncode==0 and config.read_bytes()==shared_before and len(events.read_text().splitlines())==1,'Repeated shared deployment changed configuration or restarted again'
         result={'independent_databases':2,'different_application_keys':True,'published_program':RELEASE_TAG,'same_node_id':3,'same_server_id':7,'same_user_id':True,'one_click_append':True,'cross_panel_credentials_rejected':True,'existing_tls_stream_and_certificate_preserved':True,'configuration_change_isolated':True,'backend_outage_isolated':True,'ip_reporting_isolated':True,'other_database_user_ban_isolated':True,'direct_dns_and_legacy_reporting_preserved':True,'repeat_command_idempotent':True,'service_restarts':1,'service_manager':'fixture; real V2Box process and HTTPS Laravel backends'}
         result.update({'automatic_same_port_without_suffix':True,'automatic_group_selection':True,'automatic_conversion_restarts_once':True,'shared_two_panel_tls_connections':True,'port_conflict_rejected_and_scoped_rollback':True,'runtime_readiness_confirmed_without_managed_dns':True,'bootstrap_outage_preserves_existing_services':True,'redemption_outage_then_same_grant_retry':True,'real_previous_release_upgrade':True,'stopped_upgrade_stays_stopped':True,'upgrade_preserves_nodes_certificates_and_reporting':True,'previous_binary_backup_preserved':True,'upgraded_binary_serves_retained_nodes':True})
@@ -349,6 +364,7 @@ def run(manifest):
             if process.poll() is None:os.killpg(process.pid,signal.SIGTERM);process.wait(timeout=15)
         for log in logs:log.close()
         # All three roots were verified absent before creating this container-only fixture.
+        managed_unit.unlink(missing_ok=True)
         Path('/etc/systemd/system/v2box.service').unlink(missing_ok=True)
         for directory in ('/etc/v2box','/etc/node-network','/var/lib/node-network','/var/lib/v2box/traffic'):
             if Path(directory).exists():shutil.rmtree(directory)

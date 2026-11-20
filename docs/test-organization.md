@@ -83,7 +83,9 @@ FastAI 命名兼容复用现有模块：`framework-upgrade` 核对配置单树�
 
 `commerce` 的后台购买阶段回归覆盖旧额度订单、首次付费周期变更、缺少到期快照的再次购买、同秒付款、跨页历史、无付款时间的旧记录及余额支付。再次购买的到期证据独立投影为已到期、未到期或未知，覆盖恰好到期、不足一天、完整一天、下单后才到期、创建时间缺失和付款顺序矛盾。真实下单、付款与履约后，修改账户期限不会改写原购买时的到期判定；当前用户到期时间、相隔一年的订单和纯折抵均不代替历史付款或到期证据。
 
-`dashboard-revenue` 验证币种隔离、付款时间、缓存与排行榜；节点排行先汇总再取前 15 名，同流量按 ID 排序、批量查询名称并保留缺失节点历史。`admin-payment-diagnostics` 与前端 `OperationsAnalytics` 验证成熟注册批次的终身首次有价周期订单、试用后首购、零价/折抵/充值/额度/重置的独立分类。成熟边界按实际 168 小时计算后取业务区日期边界，覆盖 DST、起点包含/终点排除和付款秒边界。外部确认金额按可信快照分 CNY/USD，余额不重复记账，人工/缺失快照和重复回调可辨识，不伪造退款或净收入。
+`admin-payment-diagnostics` 验证网关和回调的原始诊断、脱敏、采样与后台读取权限。客户端策略和目标版本的最低要求由 `client-access-unified` 验证。
+
+`dashboard-revenue` 验证币种隔离、付款时间、缓存与排行榜，节点排行先汇总再取前 15 名，同流量按 ID 排序、批量查询名称并保留缺失节点历史。`admin-operations-analytics` 与前端 `OperationsAnalytics` 验证成熟注册批次的终身首次有价周期订单、试用后首购、零价/折抵/充值/额度/重置的独立分类。成熟边界按实际 168 小时计算后取业务区日期边界，覆盖 DST、起点包含/终点排除和付款秒边界。外部确认金额按可信快照分 CNY/USD，余额不重复记账，人工/缺失快照和重复回调可辨识，不伪造退款或净收入。
 
 ### 订阅、额度与配置记录
 
@@ -138,7 +140,7 @@ TLS 字段兼容复用 `node-v10` 和节点已有消费者测试：从实际管�
 | 后台与子窗口 | AdminApp、admin-shell、admin-workspaces、Editor、UXResilience、Banners、AdminRiskReview、AdminDictionary、Payments、AdminClients/Mirrors/MailCampaigns：搜索直达、列表/筛选、草稿、提交锁、关闭/焦点保护、429 退避及危险操作不重试。 |
 | 名称与协议 | Nodes、AdminDiagnostics、ServerTrafficBudgets、admin-user-label、AdminCouponIssue：协议中性回退、关系名优先和目录复用、未知选择保留、名称显示仍提交 ID、失败不推断删除。 |
 | 内置浏览器与懒加载 | user-experience、EmbeddedBrowserNotice、AdminBrowserPreview、admin-fields、现有构建边界与 navigation-intent：缺省/显式策略、识别不误拦、预览无副作用、安全交接、工作区和词库不进入公开初始依赖。 |
-| 记录与隐私统计 | ConfigurationUpdates、AccountControls、QuickStart、ExperienceAnalytics、OperationsAnalytics、AnalyticsCollectionSettings、product-analytics 覆盖按需加载、分页、脱敏、只读刷新、匿名采集和撤回。业务旅程 API 的账户留存、激活及续费由后端 admin-payment-diagnostics 验证。 |
+| 记录与隐私统计 | ConfigurationUpdates、AccountControls、QuickStart、ExperienceAnalytics、OperationsAnalytics、AnalyticsCollectionSettings、product-analytics 覆盖按需加载、分页、脱敏、只读刷新、匿名采集和撤回。业务旅程 API 的账户留存、激活及续费由后端 `admin-operations-analytics` 验证。 |
 | 时间与数量 | timezone、api、localization、UsageBilling/Chart、usage-data、NodeList、Editor、AdminLogFilters、user-filters、AdminEntrypoints/FastaiDownloads：非法/空日期、秒级往返和 DST 重复小时、统计日不移动、时区偏好隔离、数值边界与原始计费值不变。 |
 
 账单筛选由 `UsageBilling`、`v10-api` 和后端 `api-v10` 验证完整历史分页、组合条件、UTC 包含/排除和毫秒边界、所有者隔离、无效输入及只读不变性。数量格式覆盖二进制单位进位、负零、极小倍率、百分比边界、ms/s 和十四语言；帮助搜索同时保留旧 GB 与新 GiB 关键词。CSV 响应头及正文读取都计入超时，失败不自动重放生成/导出。下载账户时间解析覆盖不同 PHP 默认时区及 V10 投影，CSV 保留明确偏移、秒、无期限空单元格和列顺序，不泄露码明文。

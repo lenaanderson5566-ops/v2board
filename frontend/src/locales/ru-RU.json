@@ -996,6 +996,7 @@
     "architecture": "Процессор устройства",
     "chooseArchitecture": "Выберите процессор устройства",
     "architectureHelp": "Если вы не уверены, проверьте сведения о системе устройства. Выберите установщик, соответствующий его процессору.",
+    "linuxRunInstall": "Откройте терминал в папке загрузок. Введите sh и пробел, перетащите скачанный файл .run в терминал и нажмите Enter.",
     "architectureUniversal": "Универсальный установщик",
     "architectureApple": "Apple Silicon (M1 или новее, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

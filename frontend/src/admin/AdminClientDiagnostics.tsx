@@ -4,7 +4,7 @@ import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { Modal, TableViewport } from "../shared/ui";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { AdminDetails } from "./admin-section";
 
 const checks: Record<string, string> = {

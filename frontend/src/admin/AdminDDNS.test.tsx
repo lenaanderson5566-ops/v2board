@@ -129,7 +129,8 @@ it("keeps editing visible and confirms credential deletion from more actions", a
     );
 });
 
-import { NodeDomainBinding, NodeDomainTools } from "./NodeDomains";
+import { NodeDomainBinding } from "./nodes/NodeDomainBinding";
+import { NodeDomainTools } from "./nodes/NodeDomainTools";
 function managedSetup(
     transitionState = "none",
     overrides: Record<string, unknown> = {},

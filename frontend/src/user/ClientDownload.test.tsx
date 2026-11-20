@@ -112,14 +112,29 @@ it("does not carry a chip selection to another platform", () => {
     expect((screen.getByRole("combobox",{name:fastaiText("architecture","Device chip")}) as HTMLSelectElement).value).toBe("");
     expect(screen.queryByRole("link",{name:/下载 FastAI/})).toBeNull();
 });
-it("prefers a configured universal FastAI installer without asking users to guess a chip", () => {
-    boot.fastaiDownloads=[dedicated("macos","arm64","https://download.example/apple.dmg"),dedicated("macos","universal","https://download.example/universal.dmg")];
+it.each(["windows", "android", "macos", "linux"])("prefers the configured universal %s installer without asking users to guess a chip", (platform) => {
+    boot.fastaiDownloads=[dedicated(platform,"arm64","https://download.example/specific"),dedicated(platform,"universal","https://download.example/universal")];
     render(<FastaiDownload />);
-    fireEvent.change(screen.getByRole("combobox",{name:/选择系统/}),{target:{value:"macos"}});
+    fireEvent.change(screen.getByRole("combobox",{name:/选择系统/}),{target:{value:platform}});
     expect(screen.queryByRole("combobox",{name:fastaiText("architecture","Device chip")})).toBeNull();
     expect(screen.getByText(fastaiText("architectureUniversal","Universal installer"))).toBeTruthy();
-    expect(screen.getByRole("link",{name:/下载 FastAI/}).getAttribute("href")).toBe("https://download.example/universal.dmg");
+    expect(screen.queryByText(fastaiText("architectureHelp","If unsure, check your device’s system information. Choose the installer that matches its chip."))).toBeNull();
+    expect(screen.getByRole("link",{name:/下载 FastAI/}).getAttribute("href")).toBe("https://download.example/universal");
 });
+it.each([
+    ["linux", "universal", "FastAI-1.0.1-Linux-Setup.run?download=1", undefined, true],
+    ["linux", "universal", "client-installers/id/content", "run", true],
+    ["linux", "universal", "client-installers/id/content", undefined, false],
+    ["linux", "universal", "fastai.deb?file=other.run", undefined, false],
+    ["linux", "arm64", "fastai.run", undefined, false],
+    ["macos", "universal", "fastai.run", undefined, false],
+] as const)("shows Linux shell instructions only for an identified universal installer (%s, %s, %s, %s)", (platform, arch, path, installerFormat, expected) => {
+    boot.fastaiDownloads=[{...dedicated(platform, arch, `https://download.example/${path}`), installerFormat}];
+    render(<FastaiDownload />);
+    fireEvent.change(screen.getByRole("combobox",{name:/选择系统/}),{target:{value:platform}});
+    expect(Boolean(screen.queryByText(i18n.t("linuxRunInstall",{ns:"fastaiDownload"})))).toBe(expected);
+});
+
 it("shows the chip requirement for a sole FastAI build and rejects unsafe release URLs", () => {
     boot.fastaiDownloads=[dedicated("windows","x64","https://download.example/windows.exe"),dedicated("windows","arm64","javascript:alert(1)")];
     render(<FastaiDownload />);

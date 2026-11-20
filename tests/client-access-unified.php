@@ -57,5 +57,15 @@ try {
     $assert(str_contains($row['ua_observation'],'不证明真实性'), 'Observation never authenticates clients');
     $service->updateStrategies([['client_type'=>'clash-party','is_enabled'=>true], ['client_type'=>'clash-verge','sort'=>5]]);
     $assert($service->isEnabled('clash-party') && !$service->isEnabled('mihomo-party'), 'Aliases update the same policy');
-    $assert(!ClientStrategy::where('client_type','mihomo-party')->exists() && !ClientStrategy::where('client_type','verge')->exists(), 'Canonical input does not duplicate legacy storage');    echo "Unified access: {$n} checks passed\n";
+    $assert(!ClientStrategy::where('client_type','mihomo-party')->exists() && !ClientStrategy::where('client_type','verge')->exists(), 'Canonical input does not duplicate legacy storage');
+
+    ClientStrategy::updateOrCreate(['client_type'=>'fastai'], ['client_name'=>'FastAI', 'is_enabled'=>1, 'min_version'=>'v1.3.0']);
+    config(['fastai.fastai_releases'=>[['platform'=>'windows', 'architecture'=>'x64', 'minimumVersion'=>'1.2.0', 'latestVersion'=>'1.2.5']]]);
+    $row = $service->getStrategies()->firstWhere('client_type', 'fastai');
+    $target = $row->effective_minimums[0];
+    $assert($target['effectiveMinimum'] === '1.3.0' && !$target['latestAllowed'], 'Effective minimum uses normalized policy and warns when latest is blocked');
+    ClientStrategy::where('client_type', 'fastai')->update(['min_version'=>null]);
+    $row = $service->getStrategies()->firstWhere('client_type', 'fastai');
+    $assert($row->effective_minimums[0]['effectiveMinimum'] === '1.2.0', 'Release minimum applies without policy minimum');
+    echo "Unified access: {$n} checks passed\n";
 } finally { DB::rollBack(); }

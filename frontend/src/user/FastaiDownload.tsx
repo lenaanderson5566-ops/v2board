@@ -89,9 +89,9 @@ export function FastaiDownload() {
                         </option>)}
                     </select>
                 </label> : <strong>{architectureLabel(selected!.architecture)}</strong>}
-                <p id={`${architectureId}-help`} className="muted">
+                {!universal && <p id={`${architectureId}-help`} className="muted">
                     {t("architectureHelp", { defaultValue: "If unsure, check your device’s system information. Choose the installer that matches its chip." })}
-                </p>
+                </p>}
             </div>}
             <div className="actions">
                 {selected ? (
@@ -106,6 +106,10 @@ export function FastaiDownload() {
                 ) : available.length > 0 ? <button type="button" className="primary" disabled
                     aria-describedby={`${architectureId}-help`}>{tx("下载")} FastAI</button> : null}
             </div>
+            {platform === "linux" && universal && (universal.installerFormat === "run" ||
+                new URL(universal.downloadUrl).pathname.toLowerCase().endsWith(".run")) && (
+                <p className="muted">{t("linuxRunInstall")}</p>
+            )}
             {!available.length && <p className="muted">{t("unavailable")}</p>}
             <p className="muted">{t("appUpdates")}</p>
         </section>

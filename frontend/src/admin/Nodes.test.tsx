@@ -1,5 +1,5 @@
 import { serverForwardingRows } from "./ServerForwarding";
-import { NodeDomainBinding } from "./NodeDomains";
+import { NodeDomainBinding } from "./nodes/NodeDomainBinding";
 import { NodeAddressSummary } from "./NodeAddressSummary";
 import { NodeDeploymentProgress, deploymentDnsSteps } from "./NodeDeploymentProgress";
 import { nodeConfigurationProblems, nodeChangeImpact, nodeDeploymentStage } from "./node-guidance";
@@ -36,7 +36,7 @@ vi.mock("../shared/api", async (importOriginal) => ({
 }));
 import { Infrastructure } from "./Infrastructure";
 import { AdminDDNS } from "./AdminDDNS";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { Nodes } from "./admin-nodes";
 import { resources } from "./admin-resources";
 import { NodeCredentials } from "./NodeCredentials";

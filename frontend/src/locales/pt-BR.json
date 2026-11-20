@@ -994,6 +994,7 @@
     "architecture": "Processador do dispositivo",
     "chooseArchitecture": "Selecione o processador do dispositivo",
     "architectureHelp": "Em caso de dúvida, consulte as informações do sistema do dispositivo. Escolha o instalador compatível com o processador.",
+    "linuxRunInstall": "Abra um terminal na pasta de downloads. Digite sh e um espaço, arraste o arquivo .run para o terminal e pressione Enter.",
     "architectureUniversal": "Instalador universal",
     "architectureApple": "Apple Silicon (M1 ou posterior, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

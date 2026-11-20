@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Table } from "../shared/ui";
-import { domainStatus } from "./NodeDomains";
+import { domainStatus } from "./nodes/domain-status";
 
 export function ServerEntryFields({value,roots,family,onChange,disabled=false}:{value:Row;roots:Row[];family:string;onChange:(value:Row)=>void;disabled?:boolean}) {
     return <>

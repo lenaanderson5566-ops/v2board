@@ -26,17 +26,17 @@ class AdminRoute
                 $router->get('/risk/rule/fetch', 'V1\Risk\LogController@getRules');
                 $router->post('/risk/rule/update', 'V1\Risk\LogController@updateRule');
                 $router->post('/risk/rule/reset', 'V1\Risk\LogController@resetRule');
-                $router->get('/risk/blacklist/ip/fetch', 'V1\Risk\LogController@getIpBlacklists');
-                $router->post('/risk/blacklist/ip/update', 'V1\Risk\LogController@updateIpBlacklist');
-                $router->post('/risk/blacklist/ip/delete', 'V1\Risk\LogController@deleteIpBlacklist');
-                $router->get('/risk/blacklist/ua/fetch', 'V1\Risk\LogController@getUaBlacklists');
-                $router->post('/risk/blacklist/ua/update', 'V1\Risk\LogController@updateUaBlacklist');
-                $router->post('/risk/blacklist/ua/delete', 'V1\Risk\LogController@deleteUaBlacklist');
+                $router->get('/risk/blacklist/ip/fetch', 'V1\Risk\BlacklistController@getIpBlacklists');
+                $router->post('/risk/blacklist/ip/update', 'V1\Risk\BlacklistController@updateIpBlacklist');
+                $router->post('/risk/blacklist/ip/delete', 'V1\Risk\BlacklistController@deleteIpBlacklist');
+                $router->get('/risk/blacklist/ua/fetch', 'V1\Risk\BlacklistController@getUaBlacklists');
+                $router->post('/risk/blacklist/ua/update', 'V1\Risk\BlacklistController@updateUaBlacklist');
+                $router->post('/risk/blacklist/ua/delete', 'V1\Risk\BlacklistController@deleteUaBlacklist');
                 $router->get('/risk/online-user/fetch', 'V1\Risk\LogController@getOnlineUsers');
                 $router->get('/risk/user-activity/fetch', 'V1\Risk\LogController@getUserActivity');
 
-                $router->get('/client/strategy/fetch', 'V1\Risk\LogController@getClientStrategies');
-                $router->post('/client/strategy/update', 'V1\Risk\LogController@updateClientStrategy');
+                $router->get('/client/strategy/fetch', 'V1\Risk\ClientStrategyController@getClientStrategies');
+                $router->post('/client/strategy/update', 'V1\Risk\ClientStrategyController@updateClientStrategy');
 
                 $router->post('/log/rule-hit/review', 'V1\Risk\LogController@reviewRuleHit');
                 $router->get('/log/rule-hit/fetch', 'V1\Risk\LogController@getRuleHits');

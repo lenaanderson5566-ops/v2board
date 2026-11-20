@@ -57,7 +57,9 @@ final class FastaiInstallerService
     public function create(array $data): array
     {
         $extensions = ['windows'=>'/\.(exe|msi|zip)$/i', 'android'=>'/\.apk$/i', 'macos'=>'/\.(dmg|pkg|zip)$/i', 'linux'=>'/\.(deb|rpm|appimage|tar\.gz|zip)$/i'];
-        abort_unless(preg_match($extensions[$data['platform']], $data['name']), 422, '安装包扩展名与目标系统不匹配');
+        $linuxSetup = $data['platform'] === 'linux' && $data['architecture'] === 'universal'
+            && str_ends_with(strtolower($data['name']), '.run');
+        abort_unless($linuxSetup || preg_match($extensions[$data['platform']], $data['name']), 422, '安装包扩展名与目标系统不匹配');
         $id = 'fastai-'.Str::uuid();
         $url = $this->url($id);
         abort_unless(disk_free_space($this->root(true)) > $data['size'] * 2 + 104857600, 422, '磁盘空间不足，请至少预留安装包两倍大小及 100 MiB');
@@ -169,5 +171,21 @@ final class FastaiInstallerService
         $file = $this->directory($id).'/package.bin';
         abort_unless(is_file($file), 404);
         return response()->download($file, $row['name'], ['Content-Type'=>'application/octet-stream', 'X-Content-Type-Options'=>'nosniff', 'Cache-Control'=>'private, no-store']);
+    }
+
+    public function isHostedLinuxRun(array $release): bool
+    {
+        if (($release['platform'] ?? null) !== 'linux' || ($release['architecture'] ?? null) !== 'universal') return false;
+        $origin = rtrim((string)config('fastai.app_url', config('app.url')), '/');
+        $prefix = preg_quote($origin.'/api/v10/public/client-installers/', '~');
+        if (!preg_match('~^'.$prefix.'(fastai-[a-f0-9-]{36})/content$~D', $release['downloadUrl'], $match)) return false;
+        try {
+            $row = $this->read($match[1]);
+        } catch (\Symfony\Component\HttpKernel\Exception\NotFoundHttpException | \JsonException $e) {
+            return false;
+        }
+        return ($row['status'] ?? '') === 'ready' && ($row['platform'] ?? '') === 'linux'
+            && ($row['architecture'] ?? '') === 'universal' && ($row['sha256'] ?? '') === ($release['sha256'] ?? null)
+            && str_ends_with(strtolower($row['name'] ?? ''), '.run');
     }
 }

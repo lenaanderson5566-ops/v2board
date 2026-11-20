@@ -6,7 +6,7 @@ import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
 import { instantDate } from "../shared/timezone";
 import { hasRecordedPeriodicPlan } from "./AdminSubscriptionExpiry";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { OrdersPage } from "./admin-orders";
 import { adminUserLabel } from "./admin-user-label";
 import { adminPlanLabel } from "./admin-plan-reference";

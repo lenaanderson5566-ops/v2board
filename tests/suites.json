@@ -3,6 +3,7 @@
     {"id": "account-status", "file": "tests/account-status.php", "suite": "integration"},
     {"id": "admin-diagnostics", "file": "tests/admin-diagnostics.php", "suite": "integration"},
     {"id": "admin-log-search", "file": "tests/admin-log-search.php", "suite": "integration"},
+    {"id": "admin-operations-analytics", "file": "tests/admin-operations-analytics.php", "suite": "integration"},
     {"id": "admin-payment-diagnostics", "file": "tests/admin-payment-diagnostics.php", "suite": "integration"},
     {"id": "admin-user-activity-columns", "file": "tests/admin-user-activity-columns.php", "suite": "integration"},
     {"id": "admin-user-identity", "file": "tests/admin-user-identity.php", "suite": "integration"},

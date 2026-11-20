@@ -994,6 +994,7 @@
     "architecture": "تراشه دستگاه",
     "chooseArchitecture": "تراشه دستگاه را انتخاب کنید",
     "architectureHelp": "اگر مطمئن نیستید، اطلاعات سیستم دستگاه را بررسی کنید. نصب‌کننده سازگار با تراشه دستگاه را انتخاب کنید.",
+    "linuxRunInstall": "در پوشهٔ دانلودها یک ترمینال باز کنید. sh و سپس یک فاصله بنویسید، فایل .run دانلودشده را به ترمینال بکشید و Enter را بزنید.",
     "architectureUniversal": "نصب‌کننده همگانی",
     "architectureApple": "Apple Silicon (M1 یا جدیدتر، arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

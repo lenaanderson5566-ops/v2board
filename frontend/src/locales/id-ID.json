@@ -994,6 +994,7 @@
     "architecture": "Chip perangkat",
     "chooseArchitecture": "Pilih chip perangkat",
     "architectureHelp": "Jika ragu, periksa informasi sistem perangkat. Pilih penginstal yang sesuai dengan chip perangkat.",
+    "linuxRunInstall": "Buka terminal di folder unduhan. Ketik sh diikuti spasi, seret berkas .run yang diunduh ke terminal, lalu tekan Enter.",
     "architectureUniversal": "Penginstal universal",
     "architectureApple": "Apple Silicon (M1 atau lebih baru, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

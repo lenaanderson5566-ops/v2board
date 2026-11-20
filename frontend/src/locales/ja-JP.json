@@ -992,6 +992,7 @@
     "architecture": "デバイスのチップ",
     "chooseArchitecture": "デバイスのチップを選択",
     "architectureHelp": "不明な場合は、デバイスのシステム情報をご確認ください。チップに対応するインストーラーを選択してください。",
+    "linuxRunInstall": "ダウンロードフォルダーで端末を開き、sh と半角スペースを入力します。ダウンロードした .run ファイルを端末にドラッグし、Enter キーを押してください。",
     "architectureUniversal": "ユニバーサルインストーラー",
     "architectureApple": "Apple Silicon（M1 以降、arm64）",
     "architectureIntelMac": "Intel Mac（x64）",

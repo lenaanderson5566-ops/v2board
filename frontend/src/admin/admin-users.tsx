@@ -15,7 +15,7 @@ import {
     type Row,
 } from "../shared/api";
 import { Modal, Editor, State, useData } from "../shared/ui";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
 import {
     userFilterFields,

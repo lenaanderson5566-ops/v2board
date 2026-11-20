@@ -994,6 +994,7 @@
     "architecture": "Device chip",
     "chooseArchitecture": "Choose your device chip",
     "architectureHelp": "If unsure, check your device’s system information. Choose the installer that matches its chip.",
+    "linuxRunInstall": "Open a terminal in your downloads folder. Type sh followed by a space, drag the downloaded .run file into the terminal, and press Enter.",
     "architectureUniversal": "Universal installer",
     "architectureApple": "Apple Silicon (M1 or later, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

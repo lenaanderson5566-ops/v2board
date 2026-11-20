@@ -1,5 +1,5 @@
 import { useRef, useState, type FormEvent } from "react";
-import type { V10FastaiRelease } from "../shared/v10-types";
+import type { FastaiCatalogRelease } from "../shared/api";
 import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { FastaiInstallerPicker } from "./FastaiInstallerPicker";
 
@@ -14,11 +14,12 @@ const architectures = {
     arm64: "ARM64 / Apple Silicon",
     arm: "ARM",
     x86: "x86",
+    universal: "通用安装包（所有受支持架构）",
 };
-type ReleaseDraft = V10FastaiRelease & { publishedAtInput: string };
-export type FastaiReleaseTargets = Partial<Record<V10FastaiRelease["platform"], V10FastaiRelease["architecture"][]>>;
+type ReleaseDraft = FastaiCatalogRelease & { publishedAtInput: string };
+export type FastaiReleaseTargets = Partial<Record<FastaiCatalogRelease["platform"], FastaiCatalogRelease["architecture"][]>>;
 type CatalogSnapshot = {
-    releases: V10FastaiRelease[];
+    releases: FastaiCatalogRelease[];
     revision: string;
     globalMinimum?: string | null;
 };
@@ -44,10 +45,10 @@ function compareVersion(a: string, b: string) {
     return x === y ? 0 : x < y ? -1 : 1;
 }
 
-const toDraft = (releases: V10FastaiRelease[]): ReleaseDraft[] =>
+const toDraft = (releases: FastaiCatalogRelease[]): ReleaseDraft[] =>
     releases.map(release => ({ ...release, publishedAtInput: dateTimeFieldValue(release.publishedAt) }));
-const targetLabel = (release: V10FastaiRelease) => `${platforms[release.platform]} · ${release.architecture}`;
-const releaseFingerprint = (release: V10FastaiRelease) => JSON.stringify(
+const targetLabel = (release: FastaiCatalogRelease) => `${platforms[release.platform]} · ${release.architecture}`;
+const releaseFingerprint = (release: FastaiCatalogRelease) => JSON.stringify(
     Object.entries({ ...release, releaseNotes: release.releaseNotes ?? null }).sort(([a], [b]) => a.localeCompare(b)),
 );
 function installerHost(url: string) {
@@ -66,11 +67,11 @@ export function AdminFastaiDownloads({
     save,
     reload,
 }: {
-    initial: V10FastaiRelease[];
+    initial: FastaiCatalogRelease[];
     initialRevision?: string;
     globalMinimum?: string | null;
     targets?: FastaiReleaseTargets;
-    save: (releases: V10FastaiRelease[], revision?: string) => Promise<void>;
+    save: (releases: FastaiCatalogRelease[], revision?: string) => Promise<void>;
     reload?: () => Promise<CatalogSnapshot>;
 }) {
     const [releases, setReleases] = useState<ReleaseDraft[]>(() => toDraft(initial));
@@ -85,11 +86,11 @@ export function AdminFastaiDownloads({
     const [busy, setBusy] = useState(false);
     const [message, setMessage] = useState("");
     const [picker, setPicker] = useState<number | null>(null);
-    const entries = Object.entries(platforms) as [V10FastaiRelease["platform"], string][];
+    const entries = Object.entries(platforms) as [FastaiCatalogRelease["platform"], string][];
     const availablePlatforms = entries.filter(([platform]) => !targets || targets[platform]?.length);
-    const architecturesFor = (platform: V10FastaiRelease["platform"]) => targets
+    const architecturesFor = (platform: FastaiCatalogRelease["platform"]) => targets
         ? targets[platform] ?? []
-        : Object.keys(architectures) as V10FastaiRelease["architecture"][];
+        : Object.keys(architectures).filter(key => key !== "universal") as FastaiCatalogRelease["architecture"][];
     const unsupported = releases.map(release => !architecturesFor(release.platform).includes(release.architecture));
     const blockers = releases.map(({ publishedAtInput, ...release }, index) => {
         if (unsupported[index]) {
@@ -189,7 +190,7 @@ export function AdminFastaiDownloads({
                 <h3>FastAI 客户端下载与更新</h3>
                 <p className="muted">客户端访问策略最低版本：{policyMinimum || "未设置"}。<a href="#/clients">管理访问与版本策略</a></p>
                 <p className="muted">
-                    为每个平台和架构分别发布安装包。可上传本地文件或填写外部
+                    Windows、Android、macOS 和 Linux 可各发布一个通用安装包，也可按架构分别发布。可上传本地文件或填写外部
                     HTTPS 链接。上传和选择只修改草稿，确认发布后才更新用户下载及
                     App 更新策略。发布时间用于展示，确认发布后立即生效。iOS 继续使用下方原有设置。
                 </p>
@@ -230,7 +231,7 @@ export function AdminFastaiDownloads({
                                     <select
                                         value={release.platform}
                                         onChange={(e) => {
-                                            const platform = e.target.value as V10FastaiRelease["platform"];
+                                            const platform = e.target.value as FastaiCatalogRelease["platform"];
                                             const options = architecturesFor(platform);
                                             update(index, {
                                                 platform,
@@ -259,7 +260,7 @@ export function AdminFastaiDownloads({
                                         onChange={(e) =>
                                             update(index, {
                                                 architecture: e.target
-                                                    .value as V10FastaiRelease["architecture"],
+                                                    .value as FastaiCatalogRelease["architecture"],
                                             })
                                         }
                                     >

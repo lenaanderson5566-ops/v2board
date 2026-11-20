@@ -34,7 +34,7 @@ try {
   'The early IP rejection is visible without identifying an unauthenticated user');
  App\Models\RiskBlacklistIp::where('value',$ip)->delete();
  RateLimiter::clear('subscription-access:ip:'.hash('sha256',$ip));
- $controller=new App\Http\Controllers\V1\Risk\LogController();
+ $controller=new App\Http\Controllers\V1\Risk\BlacklistController();
  $blacklist=new RiskBlacklistService();
  $saveIp=fn(array $data)=>json_decode($controller->updateIpBlacklist(Request::create('/','POST',$data))->getContent(),true)['data'];
  $saveUa=fn(array $data)=>json_decode($controller->updateUaBlacklist(Request::create('/','POST',$data))->getContent(),true)['data'];

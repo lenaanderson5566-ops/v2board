@@ -8,10 +8,10 @@ use Illuminate\Validation\ValidationException;
 final class FastaiReleaseService
 {
     public const PUBLISH_TARGETS = [
-        'windows' => ['x64', 'arm64'],
-        'android' => ['x64', 'arm64', 'arm'],
-        'macos' => ['x64', 'arm64'],
-        'linux' => ['x64', 'arm64'],
+        'windows' => ['x64', 'arm64', 'universal'],
+        'android' => ['x64', 'arm64', 'arm', 'universal'],
+        'macos' => ['x64', 'arm64', 'universal'],
+        'linux' => ['x64', 'arm64', 'universal'],
     ];
 
     public static function catalogRevision(array $catalog): string
@@ -50,16 +50,23 @@ final class FastaiReleaseService
         }
     }
 
-    public function publicDownloads(): array
+    public function publicDownloads(bool $includeInstallHints = false): array
     {
         $policy = new ClientStrategyService();
         if (!$policy->isEnabled('fastai')) return [];
-        return array_values(array_filter(config('fastai.fastai_releases', []), function ($release) use ($policy) {
+        $downloads = array_values(array_filter(config('fastai.fastai_releases', []), function ($release) use ($policy) {
             return ($release['channel'] ?? '') === 'stable'
                 && str_starts_with($release['downloadUrl'] ?? '', 'https://')
                 && $policy->isVersionAllowed('fastai', $release['latestVersion'] ?? null)
                 && ClientIdentity::allowsVersion($release['minimumVersion'] ?? null, $release['latestVersion'] ?? null);
         }));
+        if ($includeInstallHints) {
+            $installers = new FastaiInstallerService();
+            foreach ($downloads as $index => $release) {
+                if ($installers->isHostedLinuxRun($release)) $downloads[$index]['installerFormat'] = 'run';
+            }
+        }
+        return $downloads;
     }
 
     public static function validateCatalog(array $catalog): void
@@ -68,7 +75,7 @@ final class FastaiReleaseService
             'releases' => 'array|max:32',
             'releases.*' => 'array:platform,architecture,channel,latestVersion,latestBuild,minimumVersion,downloadUrl,sha256,releaseNotes,publishedAt',
             'releases.*.platform' => 'required|in:windows,android,macos,linux',
-            'releases.*.architecture' => 'required|in:x64,arm64,arm,x86',
+            'releases.*.architecture' => 'required|in:x64,arm64,arm,x86,universal',
             'releases.*.channel' => 'required|in:stable',
             'releases.*.latestVersion' => ['required', 'regex:/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/'],
             'releases.*.minimumVersion' => ['required', 'regex:/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/'],
@@ -80,6 +87,9 @@ final class FastaiReleaseService
         ])->validate();
         $seen = [];
         foreach ($catalog as $release) {
+            if ($release['architecture'] === 'universal' && !in_array('universal', self::PUBLISH_TARGETS[$release['platform']], true)) {
+                throw ValidationException::withMessages(['fastai_releases' => '此平台暂不支持发布通用安装包。']);
+            }
             $url = parse_url($release['downloadUrl']);
             $key = $release['platform'] . ':' . $release['architecture'] . ':' . $release['channel'];
             if (($url['scheme'] ?? '') !== 'https' || empty($url['host']) || isset($url['user']) || isset($url['pass'])
@@ -94,12 +104,23 @@ final class FastaiReleaseService
     {
         $catalog = config('fastai.fastai_releases', []);
         self::validateCatalog($catalog);
+        if ($architecture === 'universal') return null;
+        $specific = null;
+        $universal = null;
         foreach ($catalog as $release) {
-            if ($release['platform'] === $platform && $release['architecture'] === $architecture && $release['channel'] === 'stable') {
-                return $release;
-            }
+            if ($release['platform'] !== $platform || $release['channel'] !== 'stable') continue;
+            if ($release['architecture'] === $architecture) $specific = $release;
+            if ($release['architecture'] === 'universal') $universal = $release;
         }
-        return null;
+        if ($universal === null || !in_array($architecture, self::PUBLISH_TARGETS[$platform] ?? [], true)) return $specific;
+        $universal['architecture'] = $architecture;
+        if ($specific === null) return $universal;
+        $versionOrder = version_compare($specific['latestVersion'], $universal['latestVersion']);
+        $selected = $versionOrder > 0 || ($versionOrder === 0 && (int)$specific['latestBuild'] >= (int)$universal['latestBuild'])
+            ? $specific : $universal;
+        $selected['minimumVersion'] = version_compare($specific['minimumVersion'], $universal['minimumVersion'], '>')
+            ? $specific['minimumVersion'] : $universal['minimumVersion'];
+        return $selected;
     }
 
     public function supports(string $version, string $platform, ?string $architecture): bool

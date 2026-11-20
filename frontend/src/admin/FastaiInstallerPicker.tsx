@@ -2,14 +2,14 @@ import { adminInstant } from "./admin-log-time";
 import { useEffect, useRef, useState } from "react";
 import { admin, bytes, request } from "../shared/api";
 import { Modal } from "../shared/ui";
-import type { V10FastaiRelease } from "../shared/v10-types";
+import type { FastaiCatalogRelease } from "../shared/api";
 
 export interface FastaiInstaller {
     id: string;
     name: string;
     size: number;
-    platform: V10FastaiRelease["platform"];
-    architecture: V10FastaiRelease["architecture"];
+    platform: FastaiCatalogRelease["platform"];
+    architecture: FastaiCatalogRelease["architecture"];
     latestVersion: string;
     latestBuild: number;
     sha256: string;
@@ -22,7 +22,7 @@ export function FastaiInstallerPicker({
     select,
     close,
 }: {
-    release: V10FastaiRelease;
+    release: FastaiCatalogRelease;
     select: (item: FastaiInstaller) => void;
     close: () => void;
 }) {
@@ -153,7 +153,8 @@ export function FastaiInstallerPicker({
                               ? ".exe,.msi,.zip"
                               : release.platform === "macos"
                                 ? ".dmg,.pkg,.zip"
-                                : ".deb,.rpm,.AppImage,.tar.gz,.zip"
+                                : ".deb,.rpm,.AppImage,.tar.gz,.zip" +
+                                  (release.architecture === "universal" ? ",.run" : "")
                     }
                     onChange={(e) => {
                         setFile(e.target.files?.[0] || null);

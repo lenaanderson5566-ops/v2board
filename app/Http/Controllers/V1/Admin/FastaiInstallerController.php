@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\V1\Admin;
 
 use App\Services\FastaiInstallerService;
+use App\Services\FastaiReleaseService;
 use Illuminate\Http\Request;
 
 final class FastaiInstallerController extends \App\Http\Controllers\Controller
@@ -16,10 +17,11 @@ final class FastaiInstallerController extends \App\Http\Controllers\Controller
     {
         $data = $request->validate([
             'name'=>'required|string|max:180', 'size'=>'required|integer|min:1|max:'.FastaiInstallerService::MAX_BYTES,
-            'platform'=>'required|in:windows,android,macos,linux', 'architecture'=>'required|in:x64,arm64,arm,x86',
+            'platform'=>'required|in:windows,android,macos,linux', 'architecture'=>'required|in:x64,arm64,arm,x86,universal',
             'latestVersion'=>['required','string','max:32','regex:/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/'],
             'latestBuild'=>'required|integer|min:1|max:2100000000',
         ]);
+        abort_if($data['architecture'] === 'universal' && !in_array('universal', FastaiReleaseService::PUBLISH_TARGETS[$data['platform']], true), 422, '此平台暂不支持上传通用安装包。');
         return response()->json(['data'=>$service->create($data)], 201);
     }
 

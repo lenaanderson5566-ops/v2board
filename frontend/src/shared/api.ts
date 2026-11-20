@@ -1,3 +1,4 @@
+import type { V10FastaiRelease } from "./v10-types";
 import { finiteNumber, formatBytes, formatNumber } from "./number-format";
 import { localPreferences } from "./browser-storage";
 import {
@@ -29,10 +30,14 @@ export interface Envelope<T> {
     errors?: Record<string, string[]>;
     code?: string;
 }
+export type FastaiCatalogRelease = Omit<V10FastaiRelease, "architecture"> & {
+    architecture: V10FastaiRelease["architecture"] | "universal";
+};
+
 export interface Boot {
     systemTimeZone?: string;
     timeZones?: string[];
-    fastaiDownloads?: import("./v10-types").V10FastaiRelease[];
+    fastaiDownloads?: Array<FastaiCatalogRelease & { installerFormat?: "run" }>;
     apiBaseUrl?: string;
     footerHtml?: string;
     clientRecommendations?: Record<string, (string | null)[]>;

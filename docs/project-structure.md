@@ -71,7 +71,7 @@ PHP 依赖按实际运行职责划分：`linfo/linfo` 已移除；`laravel/tinke
 - 公共请求和 CSV 下载共享错误解析与会话过期处理，忽略畸形错误字段，保留 HTTP 状态，不重放网络失败的业务请求。
 - V10 生成器验证维护模块的对象形状和引用类型，错误源在生成前失败；七份发布合同保持不变。
 
-大文件仍以职责和调用链评估：风险日志控制器、后台入口及节点/订单页面存在进一步拆分空间。其长度本身不构成故障，涉及业务查询、路由或组件状态的拆分须独立设计和验证，不在容错修复中同时改写。
+后台风控路由集中注册在 `AdminRoute`。客户端策略由 `Risk/ClientStrategyController` 处理，IP 和 UA 黑名单由 `Risk/BlacklistController` 处理，日志检索和脱敏逻辑集中在 `Risk/LogController`。节点列表、编辑抽屉和 DDNS 工具的前端入口见[前端模块说明](../frontend/README.md#module-ownership)。
 
 ## 资源清理边界
 

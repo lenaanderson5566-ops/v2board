@@ -626,5 +626,20 @@ try {
     $assert($qrCall()==='success','Converted QR callback failed');(new OrderService($qrOrder->fresh()))->open();
     $qrBalance=$usd->fresh()->balance;$assert($qrCall()==='success','Converted QR retry lost winning snapshot');
     (new OrderService($qrOrder->fresh()))->open();$assert($usd->fresh()->balance===$qrBalance,'Converted QR retry credited twice');
+    config(['fastai.deposit_bounus' => ['100:12.50', '', '50:6', '100:10']]);
+    foreach ([[$user, 'CNY', 10000, 1250], [$user, 'CNY', 4999, 0], [$usd, 'USD', 10000, 0]] as [$buyer, $currency, $amount, $bonus]) {
+        $deposit = Order::create([
+            'user_id' => $buyer->id, 'currency' => $currency, 'plan_id' => 0, 'period' => 'deposit',
+            'type' => 9, 'trade_no' => bin2hex(random_bytes(16)), 'total_amount' => $amount, 'status' => 1,
+        ]);
+        $request = Request::create('/api/v10/me/orders/'.$deposit->trade_no, 'GET', ['trade_no' => $deposit->trade_no]);
+        $request->user = ['id' => $buyer->id];
+        $response = (new OrderActions())->detail($request);
+        $detail = json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR)['data'];
+        $assert($detail['bounus'] === $bonus && $detail['get_amount'] === $amount + $bonus, 'Deposit detail selects the applicable bonus');
+        $before = $buyer->fresh()->balance;
+        (new OrderService($deposit))->open();
+        $assert($buyer->fresh()->balance - $before === $detail['get_amount'], 'Settled wallet credit matches the displayed deposit amount');
+    }
     echo "Commerce integration: $checks checks passed; database transaction rolled back.\n";
 } finally {DB::rollBack();}

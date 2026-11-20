@@ -1,61 +1,22 @@
+import { useEffect, useMemo, useRef, useState, type ComponentProps } from "react";
+import { admin, bytes, date, request, rows, type Row } from "../shared/api";
+import { Panel, Reload, State, Table, useData } from "../shared/ui";
 import { instantDate } from "../shared/timezone";
 import { formatMultiplier } from "../shared/number-format";
 import { AdminRowMenu } from "./AdminRowMenu";
 import { ProtocolBadge } from "./ProtocolBadge";
 import { DefaultNodeLineEditor } from "./DefaultNodeLineEditor";
-import { serviceLineFields,nodeLineFields,linkNodeLocation } from "./node-line-fields";
 import { AdminChoiceGroup } from "./AdminChoices";
-import { nodeConfigurationProblems, nodeChangeImpact } from "./node-guidance";
-import { nodeSetupFields, nodeSetupPayload,nodeServiceFields,certificateCredentialOptions } from "./node-setup";
 import { NodeConnectionEditor, NodeForwarding } from "./NodeConnections";
-import { NodeDomainBinding } from "./NodeDomains";
-import { NodeTopology } from "./NodeTopology";
-import { NodeDictionaryProvider,useNodeCatalog } from "./node-dictionary";
+import { NodeDictionaryProvider } from "./node-dictionary";
 import { NodeDeployment } from "./NodeDeployment";
+import { NodeEditorDrawer } from "./nodes/NodeEditorDrawer";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
-import { field } from "./admin-fields";
-import {
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ComponentProps,
-} from "react";
-import {
-    admin,
-    bytes,
-    date,
-    query,
-    request,
-    rows,
-    type Row,
-} from "../shared/api";
-import {
-    Editor,
-    Modal,
-    Panel,
-    Reload,
-    State,
-    Table,
-    useData,
-    type Field,
-} from "../shared/ui";
-import {
-    NodeDiagnostics,
-    nodeRuntimeLabels,
-    nodeIssueLabels,
-} from "./AdminDiagnostics";
+import { NodeDiagnostics, nodeRuntimeLabels, nodeIssueLabels } from "./AdminDiagnostics";
 import { sortPayload } from "./admin-actions";
-import { linkNode, nodeFields } from "./admin-linkage";
-import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
 import { SortButton } from "./admin-tools";
-import {
-    nodeEditorPresentation,
-    nodeSettingsFields,
-    nodeSettingsInitial,
-    nodeSettingsPayload,
-} from "./node-settings";
+
 // Report endpoints use zero when the node has never communicated.
 function nodeReportTime(...values: unknown[]): string {
     const reports = values.map(value => instantDate(value)?.getTime() ?? 0).filter(value => value > 0);
@@ -121,7 +82,6 @@ function NodesContent({
     initialTab = "nodes",
 }: { initialTab?: "nodes" | "forwarding" } = {}) {
     const tab = initialTab;
-    const catalog=useNodeCatalog();
     const serviceFocusFromHash = () => {
         const value =
             new URLSearchParams(location.hash.split("?")[1]).get("service") ||
@@ -135,16 +95,9 @@ function NodesContent({
         return () => window.removeEventListener("hashchange", update);
     }, []);
     const [managedLine, setManagedLine] = useState<Row | null>(null);
-    const [creationMode, setCreationMode] = useState<"new" | "reuse">("new");
     const [defaultLine, setDefaultLine] = useState<Row | null>(null);
     const [connectionNode, setConnectionNode] = useState<Row | null>(null);
-    const [nodeDirty, setNodeDirty] = useState(false);
-    const [nodeBusy, setNodeBusy] = useState(false);
-    const [connectionDirty,setConnectionDirty]=useState(false),[connectionBusy,setConnectionBusy]=useState(false);
-    const [configurationVersion,setConfigurationVersion]=useState(0);
-    const reloadConfigurationSource=useRef<Row[] | null | undefined>(undefined);
     const [savedNodeNotice, setSavedNodeNotice] = useState("");
-    const [preflightShown, setPreflightShown] = useState(false);
 
     const [diagnosticNode, setDiagnosticNode] = useState<Row | null>(null);
     const [credentialNode, setCredentialNode] = useState<Row | null>(null);
@@ -155,12 +108,8 @@ function NodesContent({
     const [quotaFilter, setQuotaFilter] = useState(false);
 
     const groups = useData<Row[]>(admin("server/group/fetch"));
-    const routes = useData<Row[]>(admin("server/route/fetch"));
     const d = useData<Row[]>(admin("server/manage/getNodes"));
-    const [type, setType] = useState("v2box"),
-        [editing, setEditing] = useState<Row | null>(null);
-    const topology = useData<Row>(editing ? admin("server/ddns/fetch") : "");
-    const managedService=!!editing?.id && !!topology.data?.assignments?.some((a:Row)=>a.node_type===editing.type && Number(a.node_id)===Number(editing.id) && a.managed);
+    const [editing, setEditing] = useState<Row | null>(null);
     const [error, setError] = useState("");
     const actionPending = useRef(false);
     const [actionBusy, setActionBusy] = useState(false);
@@ -189,28 +138,7 @@ function NodesContent({
         }
     }
 
-    const schema = useData<Row>(query(admin("console/nodeSchema"), { type }));
-    useEffect(() => {
-        setNodeDirty(false);
-        setPreflightShown(false);
-        setCreationMode("new");
-    }, [editing]);
-    useEffect(() => {
-        if (!editing || !nodeDirty) return;
-        const warn = (event: BeforeUnloadEvent) => {
-            event.preventDefault();
-            event.returnValue = "";
-        };
-        window.addEventListener("beforeunload", warn);
-        return () => window.removeEventListener("beforeunload", warn);
-    }, [editing, nodeDirty]);
-    function closeNode() {
-        if (nodeBusy || connectionBusy) return;
-        if ((nodeDirty || connectionDirty) && !window.confirm("节点配置尚未保存，确认放弃修改？"))
-            return;
-        setEditing(null);
-    }
-    const activity=useNodeActivity(d.data,tab==="nodes" && !editing && !defaultLine && !connectionNode && !credentialNode && !diagnosticNode && !nodeBusy && !actionBusy);
+    const activity=useNodeActivity(d.data,tab==="nodes" && !editing && !defaultLine && !connectionNode && !credentialNode && !diagnosticNode && !actionBusy);
     const nodeRows = activity.data;
     const serviceMap = useMemo(
         () =>
@@ -231,22 +159,6 @@ function NodesContent({
         return counts;
     }, [d.data]);
     const associatedNodes=useMemo(()=>managedLine ? nodeRows.filter(n=>n.type===managedLine.type && Number(n.service_id || n.id)===Number(managedLine.service_id || managedLine.id)) : [],[nodeRows,managedLine]);
-    const currentManagedLine=managedLine ? nodeRows.find(n=>n.type===managedLine.type && Number(n.id)===Number(managedLine.id)):undefined;
-    const serviceChanged=!!editing?.id && !!currentManagedLine && Number(currentManagedLine.service_id || currentManagedLine.id)!==Number(editing.id);
-    const reloadConfiguration=()=>{reloadConfigurationSource.current=d.data;d.reload();topology.reload();};
-    useEffect(()=>{
-        if(!editing?.id || nodeDirty || nodeBusy || connectionBusy)return;
-        const line=rows(d.data).find(n=>n.type===managedLine?.type && n.id===managedLine?.id);
-        const owner=line ? Number(line.service_id || line.id):editing.id;
-        const current=rows(d.data).find(n=>n.type===editing.type && Number(n.id)===owner);
-        if(current && owner!==Number(editing.id)){
-            setManagedLine(line!);setType(current.type);setEditing(current);setConfigurationVersion(version=>version+1);
-            reloadConfigurationSource.current=undefined;return;
-        }
-        if(reloadConfigurationSource.current===undefined || d.data===reloadConfigurationSource.current)return;
-        if(current){setEditing(current);setConfigurationVersion(version=>version+1);}
-        reloadConfigurationSource.current=undefined;
-    },[d.data,nodeDirty,nodeBusy,connectionBusy,editing?.id,managedLine?.id,managedLine?.type]);
     type EditSection = "line" | "service" | "deploy";
     function openSection(line: Row, section: EditSection) {
         const current=nodeRows.find(n=>n.type===line.type && Number(n.id)===Number(line.id));
@@ -264,11 +176,9 @@ function NodesContent({
         setConnectionNode(null);
         setCredentialNode(null);
         setEditing(null);
-        setConnectionDirty(false);setConnectionBusy(false);reloadConfigurationSource.current=undefined;
         if (section === "line")
             line.service_id ? setConnectionNode(line) : setDefaultLine(line);
         else if (section === "service") {
-            setType(service.type);
             setEditing(service);
         } else setCredentialNode(service);
     }
@@ -623,7 +533,7 @@ function NodesContent({
                                     onClick={() => {
                                         setManagedLine(null);
                                         setEditing({
-                                            type,
+                                            type: "v2box",
                                             group_id: [],
                                             route_id: [],
                                             rate: 1,
@@ -812,705 +722,26 @@ function NodesContent({
                 />
             )}
             {editing && (
-                <Modal
-                    title={
-                        editing.id
-                            ? `编辑节点 · ${managedLine?.name || editing.name || ""}`
-                            : "新增节点"
-                    }
-                    variant="drawer"
-                    wide
-                    className={`node-editor-dialog${editing.id ? "" : " node-editor-create"}`}
-                    dismissible={!nodeBusy && !connectionBusy}
-                    close={closeNode}
-                >
-                    {editing.id &&
-                        editorNavigation("service", nodeBusy || connectionBusy, nodeDirty || connectionDirty)}
-                    {editing.id && type===editing.type && <section className="node-config-section" aria-label="连接与域名">
-                        <fieldset disabled={nodeBusy}>
-                            {managedLine?.service_id ? <NodeConnectionEditor key={`${managedLine.type}:${managedLine.id}`} embedded onPublished={reloadConfiguration} pauseRefresh={nodeDirty || nodeBusy} view="path" node={managedLine} nodes={nodeRows} groups={rows(groups.data)} close={()=>{}} onSaved={d.reload} onDirty={setConnectionDirty} onBusyChange={setConnectionBusy}/> :
-                                <NodeDomainBinding key={`${editing.type}:${editing.id}`} pauseRefresh={nodeDirty || nodeBusy} node={editing} onChanged={reloadConfiguration} onPublished={reloadConfiguration} onDirty={setConnectionDirty} onBusyChange={setConnectionBusy}/>}
-                        </fieldset>
-                    </section>}
-                    {serviceChanged && <div className="pad alert" role="alert">此节点的所属代理服务已变更，请重新载入后再保存协议配置。<button type="button" disabled={nodeBusy || connectionBusy} onClick={()=>{if((nodeDirty || connectionDirty) && !confirm("重新载入将放弃当前草稿，确认继续？"))return;if(managedLine)openSection(managedLine,"service");}}>重新载入所属服务</button></div>}
-                    <fieldset className="node-config-section" disabled={connectionBusy || serviceChanged}>
-                    {editing.id && <legend>协议与证书</legend>}
-                    {!editing.id && (
-                        <div className="pad node-creation-mode">
-                            <details>
-                            <summary>高级：共用现有节点的服务</summary>
-                            <AdminChoiceGroup
-                                label="新增方式"
-                                value={creationMode}
-                                disabled={nodeBusy}
-                                options={[
-                                    { value: "new", label: "独立部署新节点" },
-                                    { value: "reuse", label: "为现有节点添加连接线路" },
-                                ]}
-                                onChange={(mode) => {
-                                    if (
-                                        mode === creationMode ||
-                                        nodeBusy
-                                    )
-                                        return;
-                                    if (
-                                        nodeDirty &&
-                                        !window.confirm(
-                                            "切换新增方式将放弃尚未保存的配置，确认切换？",
-                                        )
-                                    )
-                                        return;
-                                    setNodeDirty(false);
-                                    setPreflightShown(false);
-                                    setCreationMode(mode);
-                                }}
-                            />
-
-                            </details>
-                            {creationMode === "reuse" && <p role="status">当前节点共用现有代理服务的协议、监听、证书和倍率，无需重复部署。</p>}
-                        </div>
-                    )}
-                    {!editing.id && creationMode === "reuse" ? (
-                        <State
-                            loading={d.loading || groups.loading}
-                            error={d.error || groups.error}
-                            retry={() => {
-                                d.reload();
-                                groups.reload();
-                            }}
-                        >
-                            <NodeConnectionEditor
-                                embedded
-                                node={{ type }}
-                                nodes={nodeRows}
-                                groups={rows(groups.data)}
-                                close={closeNode}
-                                onSaved={d.reload}
-                                onDirty={setNodeDirty}
-                                onBusyChange={setNodeBusy}
-                                onCreated={node=>{const service=serviceMap.get(`${node.type}:${node.service_id}`);setNodeDirty(false);setManagedLine(node);setConnectionNode(null);if(service){setType(service.type);setEditing(service);}else setEditing(null);}}
-                            />
-                        </State>
-                    ) : (
-                        <>
-                            {editing.id && (
-                                <details className="pad node-editor-intro"><summary>配置说明与变更影响</summary>
-                                    <p>
-                                        此处维护协议、监听和证书。
-                                    </p>
-
-                                    <p className="muted">
-                                        切换协议可能清除不兼容配置；高级扩展参数仍会保留。
-                                    </p>
-                                </details>
-                            )}
-                            <div className="pad node-editor-backend"><strong>节点服务：V2Box / sing-box</strong></div>
-                            <State
-                                data={schema.data && groups.data && routes.data && topology.data ? true : null}
-                                loading={
-                                    schema.loading ||
-                                    groups.loading ||
-                                    routes.loading ||
-                                    topology.loading
-                                }
-                                error={
-                                    schema.error ||
-                                    groups.error ||
-                                    routes.error ||
-                                    topology.error
-                                }
-                                retry={() => {
-                                    schema.reload();
-                                    groups.reload();
-                                    routes.reload();
-                                    topology.reload();
-                                }}
-                            >
-                                <Editor
-                                    key={`${type}:${editing.id || "new"}:${configurationVersion}`}
-                                    onDirty={() => setNodeDirty(true)}
-                                    onBusyChange={setNodeBusy}
-                                    submit="保存节点配置"
-                                    resolveFields={(fields, values) => {
-                                        const presented =
-                                            nodeEditorPresentation(
-                                                formPresentation(
-                                                    nodeFields(
-                                                        type,
-                                                        fields,
-                                                        values,
-                                                    ),
-                                                    "nodes",
-                                                ),
-                                            );
-                                        for (const field of presented) if (field.key === "tls_settings.dns_credential_id") {
-                                            field.options = certificateCredentialOptions(values, topology.data);
-                                        }
-                                        return editing.id
-                                            ? nodeServiceFields(presented.filter(
-                                                  (field) =>
-                                                      !serviceLineFields.has(
-                                                          field.key,
-                                                      ) && !(managedService && Number(values.tls)===1 && ["disable_sni"].includes(field.key)),
-                                              ))
-                                            : nodeSetupFields(
-                                                  presented,
-                                                  values,
-                                                  topology.data,
-                                                  nodeLineFields(rows(groups.data),catalog),
-                                              );
-                                    }}
-                                    preview={(values) => {
-                                        const assignments: Row[] =
-                                            topology.data?.assignments || [];
-                                        const servers: Row[] =
-                                            topology.data?.servers || [];
-                                        const automatic =
-                                            !editing.id &&
-                                            values.setup_mode === "managed";
-                                        const root = (
-                                            topology.data?.credentials || []
-                                        ).find(
-                                            (r: Row) =>
-                                                Number(r.id) ===
-                                                Number(
-                                                    values.setup_credential_id,
-                                                ),
-                                        );
-                                        const domain = root
-                                            ? `${values.setup_prefix || "自动生成子域名"}.${root.root_domain}`
-                                            : "选择根域名后自动建立";
-                                        const origin = automatic
-                                            ? {
-                                                  domain,
-                                                  server_id: Number(
-                                                      values.setup_server_id,
-                                                  ),
-                                                  entry_id:
-                                                      values.setup_access_mode ===
-                                                      "relay"
-                                                          ? Number(
-                                                                values.setup_entry_id,
-                                                            )
-                                                          : null,
-                                              }
-                                            : assignments.find(
-                                                  (a) =>
-                                                      a.node_type === type &&
-                                                      a.node_id === editing.id,
-                                              );
-                                        const entry = assignments.find(
-                                            (a) => a.id === origin?.entry_id,
-                                        );
-                                        const connectionDomain =
-                                            entry?.domain || domain;
-                                        const connectionPort = entry
-                                            ? values.setup_entry_port
-                                            : values.server_port;
-                                        const service =
-                                            automatic &&
-                                            Number(values.tls) === 1
-                                                ? {
-                                                      ...values,
-                                                      tls_settings: {
-                                                          ...values.tls_settings,
-                                                          server_name:
-                                                              values["tls_settings.server_name"] || values.tls_settings?.server_name || domain,
-                                                      },
-                                                  }
-                                                : values;
-                                        const topologyPreview = (
-                                            <NodeTopology
-                                                service={service}
-                                                origin={origin}
-                                                entry={entry}
-                                                server={
-                                                    servers.find(
-                                                        (s) =>
-                                                            s.id ===
-                                                            origin?.server_id,
-                                                    ) ||
-                                                    (automatic
-                                                        ? {
-                                                              name:
-                                                                  values.name ||
-                                                                  "自动创建服务器",
-                                                          }
-                                                        : undefined)
-                                                }
-                                                entryServer={servers.find(
-                                                    (s) =>
-                                                        s.id ===
-                                                        entry?.server_id,
-                                                )}
-                                                host={
-                                                    automatic
-                                                        ? connectionDomain
-                                                        : values.host
-                                                }
-                                                port={
-                                                    automatic
-                                                        ? connectionPort
-                                                        : values.port
-                                                }
-                                                shared={
-                                                    entry?.connection_count || 0
-                                                }
-                                                serviceConnections={
-                                                    nodeRows.filter(
-                                                        (n) =>
-                                                            n.type === type &&
-                                                            n.service_id ===
-                                                                editing.id,
-                                                    ).length
-                                                }
-                                            />
-                                        );
-                                        const problems =
-                                            nodeConfigurationProblems(
-                                                values,
-                                                type,
-                                                topology.data,
-                                            ).filter(
-                                                (problem) =>
-                                                    (!editing.id ||
-                                                        !serviceLineFields.has(
-                                                            problem.key.split(
-                                                                ".",
-                                                            )[0],
-                                                        )) &&
-                                                    (problem.key.startsWith(
-                                                        "setup_",
-                                                    ) ||
-                                                        !!schema.data?.[
-                                                            problem.key.split(
-                                                                ".",
-                                                            )[0]
-                                                        ]),
-                                            );
-                                        return (
-                                            <>
-                                                {preflightShown && problems.length > 0 && (
-                                                    <section
-                                                        className="node-config-problems"
-                                                        aria-label="配置预检"
-                                                        aria-live="polite"
-                                                    >
-                                                        <strong>
-                                                            {`请处理 ${problems.length} 项配置问题`}
-                                                        </strong>
-                                                        {problems.length >
-                                                            0 && (
-                                                            <ul>
-                                                                {problems.map(
-                                                                    (
-                                                                        problem,
-                                                                    ) => (
-                                                                        <li
-                                                                            key={
-                                                                                problem.key +
-                                                                                problem.message
-                                                                            }
-                                                                        >
-                                                                            <button
-                                                                                type="button"
-                                                                                className="link"
-                                                                                onClick={(
-                                                                                    event,
-                                                                                ) => {
-                                                                                    const label =
-                                                                                        Array.from(
-                                                                                            event.currentTarget
-                                                                                                .closest(
-                                                                                                    "form",
-                                                                                                )
-                                                                                                ?.querySelectorAll<HTMLElement>(
-                                                                                                    "[data-field]",
-                                                                                                ) ||
-                                                                                                [],
-                                                                                        ).find(
-                                                                                            (
-                                                                                                item,
-                                                                                            ) =>
-                                                                                                item
-                                                                                                    .dataset
-                                                                                                    .field ===
-                                                                                                problem.key,
-                                                                                        );
-                                                                                    label?.scrollIntoView(
-                                                                                        {
-                                                                                            block: "center",
-                                                                                            behavior:
-                                                                                                "smooth",
-                                                                                        },
-                                                                                    );
-                                                                                    label
-                                                                                        ?.querySelector<HTMLElement>(
-                                                                                            "input,select,textarea,button",
-                                                                                        )
-                                                                                        ?.focus();
-                                                                                }}
-                                                                            >
-                                                                                {
-                                                                                    problem.message
-                                                                                }
-                                                                            </button>
-                                                                        </li>
-                                                                    ),
-                                                                )}
-                                                            </ul>
-                                                        )}
-                                                    </section>
-                                                )}
-                                                {!editing.id && (
-                                                    <details className="node-editor-path">
-                                                        <summary>
-                                                            <strong>
-                                                                连接路径预览
-                                                            </strong>
-                                                            <span>
-                                                                {automatic
-                                                                    ? connectionDomain
-                                                                    : values.host ||
-                                                                      "待填写连接地址"}
-                                                                :
-                                                                {automatic
-                                                                    ? connectionPort
-                                                                    : values.port ||
-                                                                      "—"}
-                                                            </span>
-                                                        </summary>
-                                                        {topologyPreview}
-                                                    </details>
-                                                )}
-                                            </>
-                                        );
-                                    }}
-                                    validate={(values) => {
-                                        const problems =
-                                            nodeConfigurationProblems(
-                                                values,
-                                                type,
-                                                topology.data,
-                                            ).filter(
-                                                (problem) =>
-                                                    (!editing.id ||
-                                                        !serviceLineFields.has(
-                                                            problem.key.split(
-                                                                ".",
-                                                            )[0],
-                                                        )) &&
-                                                    (problem.key.startsWith(
-                                                        "setup_",
-                                                    ) ||
-                                                        !!schema.data?.[
-                                                            problem.key.split(
-                                                                ".",
-                                                            )[0]
-                                                        ]),
-                                            );
-                                        if (problems.length) {
-                                            setPreflightShown(true);
-                                            return `配置预检发现 ${problems.length} 项问题，请按提示调整。`;
-                                        }
-                                    }}
-                                    linkValues={(key, next, values) => {
-                                        const linked = key === "region_code" ? linkNodeLocation(values, key, next, catalog) : linkNode(key, next, values);
-                                        if (!editing.id && ["setup_entry_id", "setup_credential_id", "setup_access_mode", "tls_settings.cert_mode"].includes(key)
-                                            && linked["tls_settings.cert_mode"] === "dns" && !linked["tls_settings.dns_credential_id"] && !linked["tls_settings.dns_env"]) {
-                                            const options = certificateCredentialOptions(linked, topology.data);
-                                            if (options.length === 2) linked["tls_settings.dns_credential_id"] = options[1][0];
-                                        }
-                                        return linked;
-                                    }}
-                                    fields={nodeSettingsFields(
-                                        Object.entries(schema.data || {})
-                                            .filter(
-                                                ([k]) =>
-                                                    !k.includes(".") &&
-                                                    k !== "id" &&
-                                                    k !== "service_id",
-                                            )
-                                            .map(([k, rule]) => {
-                                                if (
-                                                    k === "group_id" ||
-                                                    k === "route_id"
-                                                )
-                                                    return {
-                                                        key: k,
-                                                        label:
-                                                            k === "route_id"
-                                                                ? "sing-box 路由规则"
-                                                                : nodeLabels[
-                                                                      k
-                                                                  ] || k,
-                                                        hint:
-                                                            k === "route_id"
-                                                                ? "在路由管理中维护规则；仅显示当前内核的规则，按选择顺序应用。"
-                                                                : undefined,
-                                                        type: "multiselect",
-                                                        required:
-                                                            k === "group_id",
-                                                        options: rows(
-                                                            k === "group_id"
-                                                                ? groups.data
-                                                                : routes.data,
-                                                        )
-                                                            .filter(
-                                                                (r) =>
-                                                                    k !==
-                                                                        "route_id" ||
-                                                                    (r.backend ||
-                                                                        "v2box") ===
-                                                                        type,
-                                                            )
-                                                            .map((r) => [
-                                                                String(r.id),
-                                                                r.name ||
-                                                                    r.remarks ||
-                                                                    String(
-                                                                        r.id,
-                                                                    ),
-                                                            ]),
-                                                    } as Field;
-                                                const str = Array.isArray(rule)
-                                                    ? rule.join("|")
-                                                    : String(rule);
-                                                if (k === "flow")
-                                                    return {
-                                                        key: k,
-                                                        label: "VLESS Flow",
-                                                        type: "select",
-                                                        nullable: true,
-                                                        options: [
-                                                            ["", "不设置"],
-                                                            [
-                                                                "xtls-rprx-vision",
-                                                                "XTLS Vision",
-                                                            ],
-                                                        ],
-                                                    } as Field;
-                                                if (k === "region_code")
-                                                    return nodeLineFields(rows(groups.data), catalog).find(field => field.key === k)!;
-                                                const enumRule =
-                                                    str.match(
-                                                        /(?:^|\|)in:([^|]+)/,
-                                                    );
-                                                if (enumRule)
-                                                    return {
-                                                        key: k,
-                                                        label:
-                                                            nodeLabels[k] || k,
-                                                        type:
-                                                            enumRule[1] ===
-                                                                "0,1" &&
-                                                            [
-                                                                "show",
-                                                                "tls",
-                                                                "allow_insecure",
-                                                                "tls_allow_insecure",
-                                                                "is_shield",
-                                                                "insecure",
-                                                            ].includes(k)
-                                                                ? "switch"
-                                                                : "select",
-                                                        required:
-                                                            str.includes(
-                                                                "required",
-                                                            ),
-                                                        options: enumRule[1]
-                                                            .split(",")
-                                                            .map((v) => [v, v]),
-                                                    } as Field;
-                                                return field(
-                                                    k,
-                                                    nodeLabels[k] || k,
-                                                    str.includes("array") ||
-                                                        k.endsWith("_settings")
-                                                        ? "json"
-                                                        : str.includes(
-                                                                "integer",
-                                                            ) ||
-                                                            str.includes(
-                                                                "numeric",
-                                                            )
-                                                          ? "number"
-                                                          : "text",
-                                                    str.includes("required"),
-                                                );
-                                            }),
-                                    )}
-                                    initial={nodeSettingsInitial({
-                                        ...editing,
-                                        ...(!editing.id
-                                            ? {
-                                                  setup_mode: "managed",
-                                                  setup_access_mode: "direct",
-                                                  setup_entry_id: "",
-                                                  setup_entry_port: 443,
-                                                  setup_credential_id: "",
-                                                  "tls_settings.cert_mode":
-                                                      "http",
-                                                  setup_family: "ipv4",
-                                                  setup_server_id: "",
-                                                  server_port:
-                                                      editing.server_port ||
-                                                      443,
-                                              }
-                                            : {}),
-                                    })}
-                                    onSave={async (b) => {
-                                        if(serviceChanged)throw new Error("节点所属代理服务已变更，请重新载入后再保存。");
-                                        if(connectionBusy)throw new Error("连接与域名正在保存，请稍后再保存协议与证书。");
-                                        if(editing.id && managedService && Number(b.tls)===1){b.disable_sni=0;}
-                                        const impact =
-                                            editing.id && type === editing.type
-                                                ? nodeChangeImpact(
-                                                      nodeSettingsInitial(
-                                                          editing,
-                                                      ),
-                                                      b,
-                                                  )
-                                                : [];
-                                        if (impact.length) {
-                                            const count = nodeRows.filter(
-                                                (n) =>
-                                                    n.type === type &&
-                                                    n.service_id === editing.id,
-                                            ).length;
-                                            if (
-                                                !window.confirm(
-                                                    `将修改${impact.join("、")}，影响本服务${count ? `及 ${count} 条关联线路` : "的默认线路"}，可能中断连接。确认保存？`,
-                                                )
-                                            )
-                                                throw new Error(
-                                                    "已取消保存，修改仍保留在表单中。",
-                                                );
-                                        }
-                                        b = nodeSettingsPayload(b);
-                                        if (
-                                            b.padding_scheme != null &&
-                                            typeof b.padding_scheme !== "string"
-                                        )
-                                            b.padding_scheme = JSON.stringify(
-                                                b.padding_scheme,
-                                            );
-                                        const clean: Row = {};
-                                        Object.keys(schema.data || {}).forEach(
-                                            (k) => {
-                                                if (
-                                                    !k.includes(".") &&
-                                                    b[k] !== undefined &&
-                                                    (!editing.id ||
-                                                        !serviceLineFields.has(
-                                                            k,
-                                                        ))
-                                                )
-                                                    clean[k] = b[k];
-                                            },
-                                        );
-                                        if (!editing.id) {
-                                            const setup = nodeSetupPayload(b);
-                                            if (setup)
-                                                clean.deployment_setup = setup;
-                                        }
-                                        if (editing.id) clean.id = editing.id;
-                                        clean.zero_rtt_handshake ??=
-                                                editing.zero_rtt_handshake ?? 0;
-                                        const saved = await request(
-                                            admin(`server/${type}/save`),
-                                            clean,
-                                        );
-                                        if(editing.id)reloadConfigurationSource.current=d.data;
-                                        setNodeDirty(false);
-                                        setSavedNodeNotice(
-                                            clean.deployment_setup
-                                                ? "节点、服务器与域名已一并保存。请生成一键部署命令，在服务器执行。"
-                                                : "节点配置已保存。请检查节点最近通信和运行状态；协议、端口或内核变更可能需要同步部署配置。",
-                                        );
-                                        setEditing(!editing.id ? null : {...editing,...b});
-                                        d.reload();
-                                        if(editing.id && managedService && Number(b.server_port)!==Number(editing.server_port)){
-                                            setSavedNodeNotice("监听端口已保存。等待节点应用后将自动验证并同步连接端口；中转线路请确认转发配置。");
-                                            setEditing({...editing,...b,type:editing.type,id:editing.id});
-                                        }
-                                        if (!editing.id) {
-                                            const updated = await request<
-                                                Row[]
-                                            >(admin("server/manage/getNodes"));
-                                            const converted = rows(
-                                                updated.data,
-                                            ).find(
-                                                (r) =>
-                                                    r.type === type &&
-                                                    r.id === saved.data.id,
-                                            );
-                                            if (converted) {
-                                                setManagedLine(converted);
-                                                setCredentialNode({
-                                                    ...converted,
-                                                    _new: !editing.id,
-                                                    _domainConfigured:
-                                                        !!clean.deployment_setup,
-                                                });
-                                            }
-                                        }
-                                    }}
-                                />
-                            </State>
-                        </>
-                    )}
-                    </fieldset>
-                </Modal>
+                <NodeEditorDrawer
+                    editing={editing}
+                    managedLine={managedLine}
+                    nodeList={d}
+                    nodeRows={nodeRows}
+                    groups={groups}
+                    navigation={(busy, dirty) => editorNavigation("service", busy, dirty)}
+                    reopenService={() => { if (managedLine) openSection(managedLine, "service"); }}
+                    onEdit={setEditing}
+                    onSelectService={(line, service) => {
+                        setManagedLine(line);
+                        setEditing(service);
+                    }}
+                    onCreated={(node, domainConfigured) => {
+                        setManagedLine(node);
+                        setCredentialNode({ ...node, _new: true, _domainConfigured: domainConfigured });
+                    }}
+                    onNotice={setSavedNodeNotice}
+                />
             )}
         </>
     );
 }
-
-const nodeLabels: Record<string, string> = {
-    listen_ip: "监听地址",
-    disable_sni: "禁用 SNI",
-    cipher: "加密算法",
-    encryption: "VLESS 加密方式",
-    encryption_settings: "VLESS 加密设置",
-    zero_rtt_handshake: "启用 0-RTT 握手",
-    congestion_control: "拥塞控制算法",
-    udp_relay_mode: "UDP 中继模式",
-    padding_scheme: "填充策略",
-    version: "协议版本",
-    server_name: "TLS 服务器名称（SNI）",
-    insecure: "跳过证书校验",
-    allow_insecure: "跳过证书校验",
-    obfs_password: "混淆密码",
-    networkSettings: "传输设置",
-    tlsSettings: "TLS 设置",
-    ruleSettings: "路由设置",
-    dnsSettings: "DNS 设置",
-    name: "节点名称",
-    host: "连接主机",
-    port: "连接端口",
-    server_port: "监听端口",
-    group_id: "权限组",
-    route_id: "路由规则",
-    rate: "计费倍率",
-    tags: "标签数组",
-    region_code: "国家 / 地区",
-    city_code: "州 / 省或城市",
-    display_label: "线路编号 / 后缀（例如 A）",
-    service_id: "代理服务 ID",
-    protocol: "协议",
-    network: "传输方式",
-    network_settings: "传输设置",
-    tls: "TLS 模式",
-    tls_settings: "TLS 设置",
-    reality_settings: "Reality 设置",
-    security: "加密方式",
-    obfs: "混淆方式",
-    obfs_settings: "混淆设置",
-    show: "展示",
-    sort: "排序",
-    up_mbps: "上传 Mbps",
-    down_mbps: "下载 Mbps",
-    trusted_x_forwarded_for: "信任的 X-Forwarded-For",
-    udp: "启用 UDP",
-};

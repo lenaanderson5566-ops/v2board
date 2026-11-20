@@ -14,7 +14,7 @@ The authenticated administrative config API also accepts `fastai_releases` and
 | Field | Meaning |
 | --- | --- |
 | platform | windows / android / macos / linux |
-| architecture | x64 / arm64 / arm / x86 |
+| architecture | A published ABI, or `universal` for Windows, macOS and Linux (x64, arm64) or Android (arm, arm64, x64). Existing legacy entries may use x86. |
 | channel | stable |
 | latestVersion | Stable semantic version, e.g. 1.0.0 |
 | latestBuild | Positive monotonically increasing build counter |
@@ -23,6 +23,12 @@ The authenticated administrative config API also accepts `fastai_releases` and
 | sha256 | Actual lowercase SHA-256 of the published installation package |
 | publishedAt | UTC timestamp, e.g. 2026-10-06T00:00:00Z |
 | releaseNotes | Optional plain text |
+
+Publish a universal installer once under its platform. The download page selects that file directly. Existing clients still query their running ABI and receive that ABI in the response. When a per-ABI release and a universal release coexist, the update service selects the higher semantic version, then the higher build number. An exact tie uses the per-ABI installer. The higher of the two minimum versions applies to that ABI, and the client access policy continues to enforce its own version floor. An older per-ABI entry can stay in the catalog during migration. Unsupported ABIs never receive a universal fallback.
+
+For an Android universal APK, set `latestBuild` to the manifest's actual versionCode. Use the established application ID and signing certificate and a versionCode higher than every previously distributed split APK. The Windows installer, macOS PKG and Linux `.run` installer each include x64 and arm64 payloads. The `.run` upload format is available for the Linux universal target.
+
+The FastAI downloads page displays terminal installation instructions for a universal Linux release whose link ends in `.run`, or whose matching server upload records a ready `.run` with the published SHA-256. Other extensions and unidentified external links receive the regular download button.
 
 The catalog starts empty. Missing targets return `404 RELEASE_UNAVAILABLE`;
 do not populate it with dummy download URLs or hashes. Validation rejects

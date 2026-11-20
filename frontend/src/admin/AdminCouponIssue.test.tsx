@@ -38,7 +38,7 @@ vi.mock("./UserFilters", () => ({
         </button><button onClick={() => onApply([{ key: "plan_id", condition: "=", value: "7" }])}>应用套餐筛选</button></>
     ),
 }));
-vi.mock("./admin", () => ({ ResourcePage: () => <p>优惠券模板列表</p> }));
+vi.mock("./ResourcePage", () => ({ ResourcePage: () => <p>优惠券模板列表</p> }));
 vi.mock("./admin-resources", () => ({ resources: { coupons: {} } }));
 vi.mock("./AdminCouponPresentation", () => ({ AdminCouponPresentation: () => null }));
 vi.mock("./AdminCouponCampaigns", () => ({ AdminCouponCampaigns: () => <p>发放记录列表</p> }));

@@ -994,6 +994,7 @@
     "architecture": "ชิปของอุปกรณ์",
     "chooseArchitecture": "เลือกชิปของอุปกรณ์",
     "architectureHelp": "หากไม่แน่ใจ โปรดดูข้อมูลระบบของอุปกรณ์ แล้วเลือกตัวติดตั้งที่ตรงกับชิป",
+    "linuxRunInstall": "เปิดเทอร์มินัลในโฟลเดอร์ดาวน์โหลด พิมพ์ sh แล้วเว้นวรรคหนึ่งครั้ง จากนั้นลากไฟล์ .run ที่ดาวน์โหลดมาวางในเทอร์มินัลแล้วกด Enter",
     "architectureUniversal": "ตัวติดตั้งแบบสากล",
     "architectureApple": "Apple Silicon (M1 หรือใหม่กว่า, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

@@ -86,6 +86,36 @@ it("lists only supported architectures and allows an unchanged legacy target", a
     expect(screen.queryByRole("option", { name: "Intel / AMD · x64" })).toBeNull();
 });
 
+it.each([["windows", "exe"], ["android", "apk"], ["macos", "pkg"], ["linux", "run"]] as const)("publishes one universal installer for %s", async (platform, extension) => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<AdminFastaiDownloads initial={[{...release, platform}]} targets={{ [platform]: ["x64", "arm64", "universal"] }} save={save} />);
+    fireEvent.change(screen.getByLabelText("架构"), { target: { value: "universal" } });
+    expect(screen.getByRole("option", { name: /通用安装包/ })).toBeTruthy();
+    const downloadUrl = `https://download.example/FastAI.${extension}`;
+    fireEvent.change(screen.getByLabelText(/安装包 HTTPS 下载地址/), { target: { value: downloadUrl } });
+    fireEvent.change(screen.getByLabelText("安装包 SHA-256"), { target: { value: release.sha256 } });
+    fireEvent.click(screen.getByRole("button", { name: "确认发布 FastAI 下载设置" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith([{...release, platform, architecture: "universal", downloadUrl}]));
+});
+
+it("offers Linux .run uploads only for the universal target", async () => {
+    const api = await import("../shared/api");
+    const { FastaiInstallerPicker } = await import("./FastaiInstallerPicker");
+    const request = vi.spyOn(api, "request").mockResolvedValue({ data: [] });
+    try {
+        const props = { select: vi.fn(), close: vi.fn() };
+        const { rerender } = render(<FastaiInstallerPicker {...props} release={{...release, platform: "linux", architecture: "universal"}} />);
+        const accepted = () => (screen.getByLabelText(/上传本地安装包/) as HTMLInputElement).accept.split(",");
+        expect(accepted()).toContain(".run");
+        rerender(<FastaiInstallerPicker {...props} release={{...release, platform: "linux", architecture: "x64"}} />);
+        expect(accepted()).not.toContain(".run");
+        expect(accepted()).toContain(".deb");
+        rerender(<FastaiInstallerPicker {...props} release={{...release, platform: "macos", architecture: "universal"}} />);
+        expect(accepted()).toContain(".pkg");
+        expect(accepted()).not.toContain(".run");
+    } finally { request.mockRestore(); }
+});
+
 it("locks the release draft during publishing and allows editing after completion", async () => {
     let finish!: () => void;
     const save = vi.fn().mockImplementationOnce(() => new Promise<void>(resolve => { finish = resolve; })).mockResolvedValue(undefined);

@@ -1,8 +1,5 @@
-import {
-    NodeDomainTools,
-    domainStatus,
-    certificateTransitionStatus,
-} from "./NodeDomains";
+import { NodeDomainTools } from "./nodes/NodeDomainTools";
+import { domainStatus, certificateTransitionStatus } from "./nodes/domain-status";
 import { TableViewport } from "../shared/ui";
 import { Pager } from "../shared/ui";
 import { AdminLogTimeZone, logTime as date } from "./admin-log-time";

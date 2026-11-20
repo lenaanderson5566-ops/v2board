@@ -1,7 +1,7 @@
 import { NodeDeploymentProgress } from "./NodeDeploymentProgress";
 import { ProtocolBadge } from "./ProtocolBadge";
 import { nodeDeploymentStage } from "./node-guidance";
-import { NodeDomainBinding } from "./NodeDomains";
+import { NodeDomainBinding } from "./nodes/NodeDomainBinding";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import "./admin-management.css";
 import { admin, query, request, type Row } from "../shared/api";

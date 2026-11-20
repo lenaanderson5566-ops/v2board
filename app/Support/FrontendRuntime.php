@@ -21,7 +21,7 @@ final class FrontendRuntime
             'clientRecommendations' => collect(['android','windows','macos','linux','ios'])->mapWithKeys(fn($os) => [$os => [config('fastai.client_primary_'.$os), config('fastai.client_secondary_'.$os)]])->all(),
             'clientPolicies' => $landing ? [] : (new \App\Services\ClientStrategyService())->frontendPolicies(),
             'clientMirrors' => (new \App\Services\ClientMirrorService())->urls(),
-            'fastaiDownloads' => (new \App\Services\FastaiReleaseService())->publicDownloads(),
+            'fastaiDownloads' => (new \App\Services\FastaiReleaseService())->publicDownloads(includeInstallHints: true),
             'legacyDownloads' => [
                 'windows' => config('fastai.windows_download_url', ''),
                 'macos' => config('fastai.macos_download_url', ''),

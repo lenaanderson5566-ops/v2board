@@ -7,7 +7,7 @@ import { adminOrderPlan } from "./admin-order-labels";
 import { useEffect, useState } from "react";
 import { admin, request, money, date, type Row } from "../shared/api";
 import { useData, Modal, Editor, State, Table } from "../shared/ui";
-import { ResourcePage, type Resource } from "./admin";
+import { ResourcePage, type Resource } from "./ResourcePage";
 import { resources } from "./admin-resources";
 import { AssignOrder } from "./admin-users";
 import { tx } from "../shared/i18n";

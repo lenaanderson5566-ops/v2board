@@ -3,7 +3,7 @@ import { AdminCouponPresentation } from "./AdminCouponPresentation";
 import { useRef, useState } from "react";
 import * as Tabs from "@radix-ui/react-tabs";
 import { Gift, TicketPercent, History, Languages } from "lucide-react";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
 import { AdminSectionHead } from "./admin-section";
 import { AdminCouponIssue } from "./AdminCouponIssue";

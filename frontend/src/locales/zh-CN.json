@@ -992,6 +992,7 @@
     "architecture": "设备芯片",
     "chooseArchitecture": "请选择设备芯片",
     "architectureHelp": "不确定时，请查看设备的系统信息，并选择与芯片匹配的安装包。",
+    "linuxRunInstall": "在下载目录打开终端，输入 sh 和一个空格，将下载的 .run 文件拖入终端，再按回车安装。",
     "architectureUniversal": "通用安装包",
     "architectureApple": "Apple Silicon（M1 及后续芯片，arm64）",
     "architectureIntelMac": "Intel Mac（x64）",

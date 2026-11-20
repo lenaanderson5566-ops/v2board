@@ -994,6 +994,7 @@
     "architecture": "Processeur de l’appareil",
     "chooseArchitecture": "Choisissez le processeur de l’appareil",
     "architectureHelp": "En cas de doute, consultez les informations système de l’appareil. Choisissez le programme d’installation adapté à son processeur.",
+    "linuxRunInstall": "Ouvrez un terminal dans le dossier de téléchargement. Saisissez sh suivi d’une espace, faites glisser le fichier .run dans le terminal et appuyez sur Entrée.",
     "architectureUniversal": "Programme d’installation universel",
     "architectureApple": "Apple Silicon (M1 ou ultérieur, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

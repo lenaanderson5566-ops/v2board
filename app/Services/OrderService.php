@@ -49,7 +49,7 @@ class OrderService
         }
         if (BillingCurrency::account($this->user) !== ($order->currency ?: 'CNY')) throw new \RuntimeException('Order wallet currency mismatch');
         if ($order->type == 9) {
-            $this->user->balance += $order->total_amount + (($order->currency ?: 'CNY') === 'CNY' ? $this->getbounus($order->total_amount) : 0);
+            $this->user->balance += $order->total_amount + self::depositBonus($order);
 
             if (!$this->user->save()) {
                 abort(500, '充值失败');
@@ -440,22 +440,27 @@ class OrderService
         }
     }
 
-    private function getbounus($total_amount) {
-        $deposit_bounus = config('fastai.deposit_bounus', []);
-        if (empty($deposit_bounus) || $deposit_bounus[0] === null) {
+    public static function depositBonus(Order $order): int
+    {
+        if (($order->currency ?: 'CNY') !== 'CNY') {
             return 0;
         }
-        $add = 0;
-        foreach ($deposit_bounus as $tier) {
-            list($amount, $bounus) = explode(':', $tier);
-            $amount = (float)$amount * 100;
-            $bounus = (float)$bounus * 100;
-            $amount = (int)$amount;
-            $bounus = (int)$bounus;
-            if ($total_amount >= $amount) {
-                $add = max($add, $bounus);
+
+        $tiers = config('fastai.deposit_bounus', []);
+        if (!isset($tiers[0])) {
+            return 0;
+        }
+
+        $bonus = 0;
+        foreach ($tiers as $tier) {
+            if ($tier === '' || $tier === null) {
+                continue;
+            }
+            [$minimum, $reward] = explode(':', $tier, 2);
+            if ($order->total_amount >= (int)((float)$minimum * 100)) {
+                $bonus = max($bonus, (int)((float)$reward * 100));
             }
         }
-        return $add;
+        return $bonus;
     }
 }

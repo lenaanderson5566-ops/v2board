@@ -42,7 +42,7 @@ it("does not expose the retired staff role in user editing", () => {
     expect(resources.users.fields.some((field) => field.key === "is_staff")).toBe(false);
 });
 it("shows time first and distinguishes top-ups from commission transfers without a full order-number column", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     const topUp = { id: 1, trade_no: "usd-order", type: 9, period: "deposit", plan_id: 0, currency: "USD", total_amount: 1234, status: 3, user_id: 7, created_at: 1700000000 };
     api.request.mockResolvedValue({ data: [topUp, { ...topUp, id: 2, trade_no: "commission-transfer-order", callback_no: "佣金划转 Commission transfer" }], total: 2 });
     render(<ResourcePage resource={resources.orders}/>);
@@ -240,7 +240,7 @@ beforeEach(() => {
 });
 
 it("restores log filters after leaving and reopening a list", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     api.request.mockResolvedValue({ data: [], total: 0 });
     const view = render(<ResourcePage resource={resources["access-logs-subscriptions"]} />);
     fireEvent.change(screen.getByLabelText("日志关键词"), {
@@ -1095,7 +1095,7 @@ const planTranslationSnapshot = () => ({
     } },
 });
 it("opens the translation check after saving source text without sending it externally", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     const fixture = { id: 7, name: "Basic", content: "原说明", group_id: 1, transfer_enable: 50, device_limit: 4, month_price: 1000 };
     api.request.mockImplementation(async (path: string) => {
         if (path.includes("ops/i18n/plan/fetch")) return { data: planTranslationSnapshot() };
@@ -1159,7 +1159,7 @@ it("consolidates settings and monitoring navigation", () => {
 });
 
 it("renders the backend 24-hour client count", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     api.request.mockResolvedValue({
         data: [
             {
@@ -1271,7 +1271,7 @@ it("restores saved user columns and can reset defaults", () => {
 
 it("opens coupon template editing with issued-rights notice and without batch generation", async () => {
     api.request.mockImplementation(async (path: string) => ({ data: path.includes("coupon/fetch") ? [{ id: 41, name: "Issued coupon", type: 2, value: 10, started_at: 1700000000, ended_at: 2000000000, show: 1, limit_use: 0, code: "issued" }] : [], total: 1 }));
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     render(<ResourcePage resource={resources.coupons} />);
     const edit = await screen.findByRole("button", { name: "编辑" });
     expect(screen.getByRole("switch", { name: "Issued coupon 启用" })).toBeTruthy();
@@ -1318,7 +1318,7 @@ it("keeps a deleted gift-card plan selected and submits its original ID after di
         if (path.includes("giftcard/fetch")) return { data: [fixture], total: 1 };
         return { data: true };
     });
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     render(<ResourcePage resource={resources.giftcards} />);
     await screen.findByText("Existing gift");
     await screen.findByText("套餐信息加载失败 (#99)");
@@ -1338,7 +1338,7 @@ it("preserves unbounded gift-card dates without exposing Unix epoch as a date", 
     api.request.mockImplementation(async (path: string) => path.includes("giftcard/fetch")
         ? { data: [fixture], total: 1 }
         : { data: [] });
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     render(<ResourcePage resource={resources.giftcards} />);
     expect(await screen.findByText("不限开始时间 — 无固定到期")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "编辑" }));
@@ -1359,7 +1359,7 @@ it("validates coupon windows by exact instant, even when the DST end wall time l
         ? { data: [coupon], total: 1 }
         : { data: [] });
     const { configureTimeZone } = await import("../shared/timezone");
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     configureTimeZone("America/New_York", true);
     try {
         render(<ResourcePage resource={resources.coupons} />);
@@ -1379,7 +1379,7 @@ it("preserves unavailable coupon plan restrictions alongside named selections", 
         : path.includes("coupon/fetch")
           ? [{ id: 41, name: "Restricted coupon", type: 2, value: 10, started_at: 1700000000, ended_at: 2000000000, limit_plan_ids: [7, 99] }]
           : true, total: 1 }));
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     render(<ResourcePage resource={resources.coupons} />);
     fireEvent.click(await screen.findByRole("button", { name: "编辑" }));
     const dialog = await screen.findByRole("dialog");
@@ -1590,7 +1590,7 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
 });
 
 it("shares display preferences across resource lists without leaking selected columns", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
     api.request.mockResolvedValue({ data: [], total: 0 });
     const view = render(<ResourcePage resource={resources.orders} />);
@@ -2159,7 +2159,7 @@ it("shows direct referral commission and omits retired multi-level settings from
 });
 
 it("locks duplicate destructive resource actions and unlocks after a failure", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     let reject!: (error: Error) => void;
     api.request.mockImplementation((path: string) => path.includes("/drop") ? new Promise((_, fail) => {reject = fail;}) : Promise.resolve({data:[{id:1,name:"测试组"}]}));
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
@@ -2296,7 +2296,7 @@ it("keeps Telegram settings usable when member records are absent", async () => 
 });
 
 it("shows the returned row count when a management list omits its optional total", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     api.request.mockResolvedValue({ data: [{ id: 1, name: "Group one" }, { id: 2, name: "Group two" }] });
     render(<ResourcePage resource={resources.groups} />);
     await screen.findByText("Group two");
@@ -2307,7 +2307,7 @@ it("shows the returned row count when a management list omits its optional total
     expect(api.request.mock.calls.every(([path, body]) => String(path).includes("server/group/fetch") && body === undefined)).toBe(true);
 });
 it("does not paginate or refetch a complete management list that has more than one page of rows without total metadata", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     api.request.mockResolvedValue({ data: Array.from({ length: 25 }, (_, index) => ({ id: index + 1, name: `Complete group ${index + 1}` })) });
     render(<ResourcePage resource={resources.groups} />);
     await screen.findByText("Complete group 25");
@@ -2325,7 +2325,7 @@ it("does not paginate or refetch a complete management list that has more than o
     expect(api.request.mock.calls).toHaveLength(reads);
 });
 it("returns to the last valid page after a successful refresh removes the final row", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     let removed = false;
     api.request.mockImplementation(async (path: string) => {
         const params = new URLSearchParams(path.split("?")[1]);
@@ -2346,7 +2346,7 @@ it("returns to the last valid page after a successful refresh removes the final 
     expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 1 页");
 });
 it("does not clamp a page based on unknown loading totals or a failed read", async () => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     let fail!: (error: Error) => void;
     let waiting = true;
     api.request.mockImplementation(async (path: string) => {
@@ -2371,7 +2371,7 @@ it("does not clamp a page based on unknown loading totals or a failed read", asy
 });
 
 it.each(["coupons", "giftcards"] as const)("keeps %s searches and refreshes on the current page", async kind => {
-    const { ResourcePage } = await import("./admin");
+    const { ResourcePage } = await import("./ResourcePage");
     const resource = resources[kind];
     const pages: string[] = [];
     let refreshed = false;

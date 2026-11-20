@@ -5,7 +5,7 @@ const request=vi.fn().mockResolvedValue({data:true});
 vi.mock("../shared/api",()=>({admin:(s:string)=>s,request:(...args:any[])=>request(...args)}));
 vi.mock("../shared/ui",()=>({useData:()=>({data:{app:{}},reload:vi.fn()}),State:({children}:any)=><>{children}</>}));
 vi.mock("./AdminClientReleases",()=>({AdminClientReleases:()=> <p>Smart updates</p>}));
-vi.mock("./admin",()=>({ResourcePage:()=> <p>Policy editor</p>}));
+vi.mock("./ResourcePage",()=>({ResourcePage:()=> <p>Policy editor</p>}));
 vi.mock("./admin-resources",()=>({resources:{clients:{}}}));
 import { AdminClients } from "./AdminClients";
 afterEach(()=>{cleanup();vi.clearAllMocks();});

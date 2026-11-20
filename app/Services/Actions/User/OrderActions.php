@@ -72,7 +72,7 @@ class OrderActions
                 'id' => 0,
                 'name' => 'deposit'
             ];
-            $order->bounus = ($order->currency ?: 'CNY') === 'CNY' ? $this->getbounus($order->total_amount) : 0;
+            $order->bounus = OrderService::depositBonus($order);
             $order->get_amount = $order->total_amount + $order->bounus;
 
             return response([
@@ -471,24 +471,5 @@ class OrderActions
         return response([
             'data' => true
         ]);
-    }
-
-    private function getbounus($total_amount) {
-        $deposit_bounus = config('fastai.deposit_bounus', []);
-        if (empty($deposit_bounus) || $deposit_bounus[0] === null) {
-            return 0;
-        }
-        $add = 0;
-        foreach ($deposit_bounus as $tier) {
-            list($amount, $bounus) = explode(':', $tier);
-            $amount = (float)$amount * 100;
-            $bounus = (float)$bounus * 100;
-            $amount = (int)$amount;
-            $bounus = (int)$bounus;
-            if ($total_amount >= $amount) {
-                $add = max($add, $bounus);
-            }
-        }
-        return $add;
     }
 }

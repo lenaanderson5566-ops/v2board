@@ -992,6 +992,7 @@
     "architecture": "기기 칩",
     "chooseArchitecture": "기기 칩 선택",
     "architectureHelp": "확실하지 않으면 기기의 시스템 정보를 확인해 주세요. 기기 칩에 맞는 설치 프로그램을 선택하세요.",
+    "linuxRunInstall": "다운로드 폴더에서 터미널을 여세요. sh와 공백 한 칸을 입력한 다음, 다운로드한 .run 파일을 터미널로 끌어다 놓고 Enter 키를 누르세요.",
     "architectureUniversal": "범용 설치 프로그램",
     "architectureApple": "Apple Silicon(M1 이상, arm64)",
     "architectureIntelMac": "Intel Mac(x64)",

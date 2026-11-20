@@ -68,14 +68,15 @@ try {
 
     App\Models\RiskBlacklistIp::query()->delete();
     App\Models\RiskBlacklistUaHash::query()->delete();
-    $ipResult=json_decode($controller->updateIpBlacklist(Request::create('/','POST',['value'=>'198.51.100.4','remark'=>'keep','is_enabled'=>true]))->getContent(),true)['data'];
-    $uaResult=json_decode($controller->updateUaBlacklist(Request::create('/','POST',['ua_raw'=>'RiskFixture/1.0','is_enabled'=>false]))->getContent(),true)['data'];
+    $blacklists=new App\Http\Controllers\V1\Risk\BlacklistController;
+    $ipResult=json_decode($blacklists->updateIpBlacklist(Request::create('/','POST',['value'=>'198.51.100.4','remark'=>'keep','is_enabled'=>true]))->getContent(),true)['data'];
+    $uaResult=json_decode($blacklists->updateUaBlacklist(Request::create('/','POST',['ua_raw'=>'RiskFixture/1.0','is_enabled'=>false]))->getContent(),true)['data'];
     $assert(count($ipResult)===1 && count($uaResult)===2);
-    $uaRows=json_decode($controller->getUaBlacklists(Request::create('/'))->getContent(),true)['data'];
+    $uaRows=json_decode($blacklists->getUaBlacklists(Request::create('/'))->getContent(),true)['data'];
     $assert(count($uaRows)===1 && $uaRows[0]['value']===hash('sha256','RiskFixture/1.0') && $uaRows[0]['is_enabled']===false);
     DB::enableQueryLog();DB::flushQueryLog();
     try {
-        $ipRows=json_decode($controller->getIpBlacklists(Request::create('/'))->getContent(),true)['data'];
+        $ipRows=json_decode($blacklists->getIpBlacklists(Request::create('/'))->getContent(),true)['data'];
         $blacklistReads=count(array_filter(DB::getQueryLog(),fn($q)=>str_contains($q['query'],'v2_risk_blacklist_')));
     } finally {DB::disableQueryLog();}
     $assert(count($ipRows)===1 && $ipRows[0]['value']==='198.51.100.4' && $ipRows[0]['remark']==='keep');

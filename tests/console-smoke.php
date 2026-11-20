@@ -478,7 +478,10 @@ try {
         $settings = json_decode($call('/api/v1/'.$securePath.'/config/fetch', null, $token)->getContent(), true)['data']['app'];
         $revision = $settings['fastai_releases_revision'];
         $assert($settings['fastai_release_min_version']==='1.0.0'
-            && $settings['fastai_release_targets']['windows']===['x64','arm64'], 'Publication metadata exposes effective inputs');
+            && $settings['fastai_release_targets']['windows']===['x64','arm64','universal']
+            && $settings['fastai_release_targets']['android']===['x64','arm64','arm','universal']
+            && $settings['fastai_release_targets']['macos']===['x64','arm64','universal']
+            && $settings['fastai_release_targets']['linux']===['x64','arm64','universal'], 'Publication metadata exposes effective inputs');
         $saveCatalog = fn (array $payload) => $call('/api/v1/'.$securePath.'/config/save', $payload, $token);
         $assert($saveCatalog(['fastai_releases'=>[]])->getStatusCode()===422, 'Removing all releases still requires a revision');
         $unsupported = $saveCatalog(['fastai_releases'=>[array_replace($legacyRelease,['latestBuild'=>2])], 'fastai_releases_revision'=>$revision]);

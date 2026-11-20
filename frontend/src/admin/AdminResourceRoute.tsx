@@ -1,5 +1,5 @@
 import { lazy, Suspense } from "react";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
 
 const OperationsDetails = lazy(() => import("./OperationsAnalytics").then(module => ({

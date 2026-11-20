@@ -992,6 +992,7 @@
     "architecture": "裝置晶片",
     "chooseArchitecture": "請選擇裝置晶片",
     "architectureHelp": "不確定時，請查看裝置的系統資訊，並選擇與晶片相符的安裝套件。",
+    "linuxRunInstall": "在下載資料夾開啟終端機，輸入 sh 和一個空格，將下載的 .run 檔案拖入終端機，再按 Enter 安裝。",
     "architectureUniversal": "通用安裝套件",
     "architectureApple": "Apple Silicon（M1 及後續晶片，arm64）",
     "architectureIntelMac": "Intel Mac（x64）",

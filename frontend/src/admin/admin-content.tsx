@@ -5,7 +5,7 @@ import { AdminUserActivityLink } from "./AdminUserActivity";
 import { useEffect, useState } from "react";
 import { admin, query, date, type Row } from "../shared/api";
 import { Modal, State, Html, useData } from "../shared/ui";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
 import { Tickets } from "../shared/Tickets";
 import { AdminTicketConversation } from "./AdminTicketConversation";

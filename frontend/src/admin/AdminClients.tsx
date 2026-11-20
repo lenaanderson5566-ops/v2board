@@ -3,7 +3,7 @@ import { admin, request, type Row } from "../shared/api";
 import { State, useData } from "../shared/ui";
 import { supportedClients } from "../shared/import-links";
 import { AdminClientReleases } from "./AdminClientReleases";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
 
 function Recommendations({ saved }: { saved: () => void }) {

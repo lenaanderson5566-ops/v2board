@@ -133,7 +133,8 @@ attribution are in `storage/geoip/SOURCE.txt`; hashes are in `SHA256SUMS.txt`.
 
 ## Module ownership
 
-- `src/admin/admin-resources.tsx` owns resource definitions, and `admin.tsx` owns the shared resource page. The route entry loads settings, payments, node management, plan translations and system monitoring as needed.
+- `src/admin/admin-resources.tsx` owns resource definitions. `src/admin/ResourcePage.tsx` renders the shared resource page. The route entry loads settings, payments, node management, plan translations and system monitoring as needed.
+- `src/admin/admin-nodes.tsx` owns the node list and opens the editor in `src/admin/nodes/NodeEditorDrawer.tsx`. The editor and deployment view use `NodeDomainBinding` for an individual node. The DDNS page uses `NodeDomainTools` for site-wide domain management.
 - `src/admin/admin-fields.ts` owns common field/column constructors; `admin-presentation.ts` owns shared labels and presentation metadata. Keep validation and payload conversion in their existing domain helpers (`admin-linkage`, `payment-fields`, `node-settings`) rather than copying them into pages.
 - `src/user/SubscriptionPurchase.tsx` owns the plan catalog. `PlanSelection.tsx` owns period/coupon confirmation and order submission; `PurchaseSteps.tsx` owns the progress indicator. Checkout and usage pages import the widgets directly. Pricing calculations remain in `billing-flow.ts` and `shared/order-price.ts`.
 - `src/user/usePaymentCheckout.ts` owns payment submission, status checks and recovery. `PaymentCheckout.tsx` renders those states and manages the payment controls.

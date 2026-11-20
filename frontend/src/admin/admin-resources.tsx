@@ -13,7 +13,7 @@ import { adminOrderPeriod, adminOrderType } from "./admin-order-labels";
 import { adminPlanLabel } from "./admin-plan-reference";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
 import { routeActionLabel, routeDetails } from "./route-form";
-import type { Resource } from "./admin";
+import type { Resource } from "./ResourcePage";
 import { isMixedPlan, periodicPlanPrices } from "./admin-plan-products";
 
 const toggle = (key: string, label: string): Field => ({

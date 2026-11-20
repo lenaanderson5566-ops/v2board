@@ -992,6 +992,7 @@
     "architecture": "Chip của thiết bị",
     "chooseArchitecture": "Chọn chip của thiết bị",
     "architectureHelp": "Nếu chưa rõ, hãy xem thông tin hệ thống của thiết bị. Chọn bộ cài đặt phù hợp với chip.",
+    "linuxRunInstall": "Mở thiết bị đầu cuối trong thư mục tải xuống. Nhập sh rồi thêm một dấu cách, kéo tệp .run đã tải vào cửa sổ và nhấn Enter.",
     "architectureUniversal": "Bộ cài đặt đa kiến trúc",
     "architectureApple": "Apple Silicon (M1 trở lên, arm64)",
     "architectureIntelMac": "Intel Mac (x64)",

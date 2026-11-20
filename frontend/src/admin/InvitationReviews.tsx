@@ -16,7 +16,7 @@ import {
     request,
     type Row,
 } from "../shared/api";
-import { ResourcePage } from "./admin";
+import { ResourcePage } from "./ResourcePage";
 import { Modal } from "../shared/ui";
 import { adminPlanLabel } from "./admin-plan-reference";
 

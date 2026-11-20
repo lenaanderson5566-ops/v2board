@@ -375,11 +375,14 @@ test.describe("desktop admin frontend", () => {
         test(`${list} jumps directly to the requested page`, async ({ page, context }) => {
             await consoleFixture(context, "admin", () => []);
             const requests = [];
+            let releaseLastPage;
+            const lastPageReady = new Promise(resolve => { releaseLastPage = resolve; });
             const endpoint = list === "users" ? "user/fetch" : "ticket/fetch";
-            await context.route(`**/api/v1/test-admin/${endpoint}*`, route => {
+            await context.route(`**/api/v1/test-admin/${endpoint}*`, async route => {
                 const params = new URL(route.request().url()).searchParams;
                 const current = Number(params.get("current"));
                 requests.push(current);
+                if (current === Math.ceil(500 / Number(params.get("pageSize")))) await lastPageReady;
                 const row = list === "users"
                     ? { id: current, email: `page-${current}@example.test`, banned: 0 }
                     : { id: current, subject: `工单页 ${current}`, status: 0 };
@@ -388,14 +391,44 @@ test.describe("desktop admin frontend", () => {
             await page.goto(`${consoleOrigin}/admin.html#/${list}`);
             const pager = page.getByRole("navigation", { name: "分页" });
             const input = pager.getByRole("textbox", { name: "跳转页码" });
-            await expect(pager).toContainText("第 1 页");
+            const active = pager.locator('[aria-current="page"]');
+            await expect(active).toHaveText("1");
+            if (list === "users") {
+                const [sizeBox, numberBox, jumpBox] = await Promise.all([
+                    pager.getByLabel("每页显示行数").boundingBox(),
+                    active.boundingBox(),
+                    input.boundingBox(),
+                ]);
+                expect(numberBox.width).toBeGreaterThanOrEqual(32);
+                expect(numberBox.height).toBeGreaterThanOrEqual(32);
+                const controls = [sizeBox, numberBox, jumpBox];
+                const top = Math.max(...controls.map(box => box.y));
+                const bottom = Math.min(...controls.map(box => box.y + box.height));
+                expect(bottom - top).toBeGreaterThan(16);
+            }
             await input.fill("5");
             expect(requests.every(number => number === 1)).toBeTruthy();
             if (list === "users") await input.press("Enter");
             else await pager.getByRole("button", { name: "跳转", exact: true }).click();
-            await expect(pager).toContainText("第 5 页");
+            await expect(active).toHaveText("5");
             await expect(page.getByRole("row").filter({ hasText: list === "users" ? "page-5@example.test" : "工单页 5" })).toBeVisible();
             expect([...new Set(requests)]).toEqual([1, 5]);
+            const lastPage = Math.ceil(500 / Number(await pager.getByLabel("每页显示行数").inputValue()));
+            const last = pager.getByRole("button", { name: `第 ${lastPage} 页`, exact: true });
+            await last.focus();
+            await last.press("Enter");
+            try {
+                await expect(pager).toHaveAttribute("aria-busy", "true");
+                await expect(last).toBeFocused();
+            } finally {
+                releaseLastPage();
+            }
+            await expect(active).toHaveText(String(lastPage));
+            await expect(page.getByRole("row").filter({ hasText: list === "users" ? `page-${lastPage}@example.test` : `工单页 ${lastPage}` })).toBeVisible();
+            await expect(last).toBeFocused();
+            await pager.getByRole("button", { name: "第 1 页", exact: true }).click();
+            await expect(active).toHaveText("1");
+            await expect(page.getByRole("row").filter({ hasText: list === "users" ? "page-1@example.test" : "工单页 1" })).toBeVisible();
         });
     }
 

@@ -2331,7 +2331,7 @@ it("pages and searches a complete management list locally without refetching", a
     fireEvent.change(search, { target: { value: "" } });
     fireEvent.change(within(pager).getByLabelText("每页显示行数"), { target: { value: "10" } });
     expect(pager.textContent).toContain("共 3 页");
-    fireEvent.click(within(pager).getByRole("button", { name: "末页" }));
+    fireEvent.click(within(pager).getByRole("button", { name: "第 3 页" }));
     expect(screen.getByText("Complete group 25")).toBeTruthy();
     expect(screen.queryByText("Complete group 20")).toBeNull();
     expect(api.request.mock.calls).toHaveLength(reads);

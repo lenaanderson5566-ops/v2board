@@ -11,6 +11,31 @@ afterEach(cleanup);
 const input = () => screen.getByRole("textbox", { name: "跳转页码" }) as HTMLInputElement;
 const jump = () => screen.getByRole("button", { name: "跳转" });
 
+const numberedButtons = () => within(screen.getByRole("navigation")).getAllByRole("button")
+    .filter(button => /^\d+$/.test(button.textContent?.trim() ?? ""));
+
+it("keeps page numbers compact, exposes the current page and reaches either end in one action", () => {
+    const onChange = vi.fn();
+    const { rerender } = render(<AdminPager page={25} pageCount={50} onChange={onChange} />);
+    const buttons = numberedButtons();
+    const numbers = buttons.map(button => Number(button.textContent));
+    expect(numbers).toEqual([...new Set(numbers)].sort((a, b) => a - b));
+    expect(numbers).toEqual(expect.arrayContaining([1, 24, 25, 26, 50]));
+    expect(buttons.length).toBeLessThanOrEqual(7);
+    expect(screen.getAllByText("…")).toHaveLength(2);
+    const current = screen.getByRole("button", { current: "page" });
+    expect(current.textContent).toBe("25");
+    fireEvent.click(current);
+    expect(onChange).not.toHaveBeenCalled();
+    fireEvent.click(buttons[0]);
+    fireEvent.click(buttons[buttons.length - 1]);
+    expect(onChange.mock.calls).toEqual([[1], [50]]);
+
+    rerender(<AdminPager page={3} pageCount={4} onChange={onChange} />);
+    expect(numberedButtons().map(button => button.textContent)).toEqual(["1", "2", "3", "4"]);
+    expect(screen.queryByText("…")).toBeNull();
+});
+
 it("accepts a page by Enter or button and never fetches solely from typing", () => {
     const onChange = vi.fn();
     const { rerender } = render(<AdminPager page={1} size={10} total={51} onChange={onChange} />);

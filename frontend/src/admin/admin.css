@@ -409,14 +409,6 @@ body[data-console="admin"] .table-scroll td .actions :is(button, .button):not(.p
 body[data-console="admin"] .table-scroll td .actions :is(button, .button).danger:not(:disabled, [aria-disabled="true"]):hover {
     background: var(--admin-danger-hover);
 }
-body[data-console="admin"] .pager {
-    justify-content: flex-end;
-    padding: 16px;
-    gap: 8px;
-}
-body[data-console="admin"] .pager button {
-    padding: 4px 8px;
-}
 body[data-console="admin"] .overlay {
     z-index: 1100;
     background: #00000073;
@@ -1737,11 +1729,6 @@ body[data-console="admin"] .admin-account-trigger { display: inline-flex; align-
 body[data-console="admin"] .admin-account-email { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 body[data-console="admin"] .admin-page-heading h1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 body[data-console="admin"] label { color: var(--admin-text); }
-body[data-console="admin"] .pager { align-items: center; gap: 16px; flex-wrap: wrap; }
-body[data-console="admin"] .pager > span { margin-inline-end: auto; }
-body[data-console="admin"] .pager .pager-size { display: flex; flex-direction: row; align-items: center; gap: 8px; margin: 0; }
-body[data-console="admin"] .pager .pager-size select { width: auto; min-width: 72px; margin: 0; height: 32px; }
-body[data-console="admin"] .pager-buttons { align-items: center; }
 body[data-console="admin"] button.primary:not(:disabled):hover { background: #5145cd; border-color: #5145cd; color: #fff; }
 body[data-console="admin"] :is(input,select,textarea):focus-visible { outline: none; }
 body[data-console="admin"] .mail-blocklist-intro { display: flex; gap: 12px; padding: 24px; border-bottom: 1px solid var(--border); }
@@ -1769,8 +1756,6 @@ body[data-console="admin"] .mail-blocklist-edit > button { justify-self: end; }
     body[data-console="admin"] .mail-blocklist-create { grid-template-columns: minmax(0,1fr); }
     body[data-console="admin"] :is(.mail-blocklist-intro,.mail-blocklist-create,.mail-blocklist-filters) { padding: 16px; }
     body[data-console="admin"] .mail-blocklist-filters label:first-child { flex-basis: 100%; }
-    body[data-console="admin"] .pager > span { margin-inline-end: 0; }
-    body[data-console="admin"] .pager { justify-content: center; }
 }
 
 body[data-console="admin"] .mail-blocklist-mode { display: flex; gap: 8px; padding: 20px 24px 0; background: #fcfcfd; }

@@ -193,35 +193,84 @@ body[data-console="admin"] .admin-local-search-summary {
     color: var(--muted);
 }
 body[data-console="admin"] .admin-local-search-summary button { min-height: 32px; padding: 4px 8px; }
-body[data-console="admin"] .pager :is(button, select)[aria-disabled="true"] {
-    opacity: .5;
-    cursor: not-allowed;
-}
 body[data-console="admin"] .pager {
-    padding: var(--admin-space);
+    justify-content: flex-start;
+    gap: 8px 16px;
+    padding: 10px var(--admin-space);
     margin: 0;
     border-top: 1px solid var(--border);
-    background: #fff;
+    background: var(--surface);
+    color: var(--muted);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
 }
-body[data-console="admin"] .admin-page-jump,
-body[data-console="admin"] .admin-page-jump label {
-    display: flex;
+body[data-console="admin"] .pager :is(.pager-size, .admin-page-jump label) {
+    display: inline-flex;
+    flex-direction: row;
     align-items: center;
     gap: 6px;
     margin: 0;
+    color: inherit;
+    font-size: inherit;
     white-space: nowrap;
 }
-body[data-console="admin"] .admin-page-jump { flex-wrap: wrap; }
-body[data-console="admin"] .admin-page-jump input {
+body[data-console="admin"] .pager .pager-size select {
+    width: auto;
+    min-width: 64px;
+    height: var(--admin-control-height);
+    margin: 0;
+}
+body[data-console="admin"] .pager-buttons {
+    margin-inline-start: auto;
+    max-width: 100%;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+body[data-console="admin"] .pager-buttons > button {
+    display: inline-grid;
+    place-items: center;
+    min-width: var(--admin-control-height);
+    padding: 4px 6px;
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+    font-variant-numeric: tabular-nums;
+}
+body[data-console="admin"] .pager-buttons > button:not(:disabled, [aria-disabled="true"]):hover {
+    background: var(--admin-surface-soft);
+    border-color: var(--border);
+}
+body[data-console="admin"] .pager-buttons > span[aria-hidden="true"] {
+    padding-inline: 3px;
+}
+body[data-console="admin"] .pager :is(button, select)[aria-disabled="true"]:not([aria-current="page"]) {
+    opacity: .5;
+    cursor: not-allowed;
+}
+body[data-console="admin"] .pager-buttons > button[aria-current="page"] {
+    color: #5145cd;
+    border-color: #c7c2ff;
+    background: #eeecff;
+    font-weight: 600;
+    cursor: default;
+}
+body[data-console="admin"] .admin-page-jump {
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    gap: 4px 6px;
+}
+body[data-console="admin"] .pager .admin-page-jump input {
     width: 7ch;
+    min-width: 0;
     height: var(--admin-control-height);
     margin: 0;
     padding-inline: 6px;
     text-align: center;
     font-variant-numeric: tabular-nums;
 }
-body[data-console="admin"] .admin-page-jump button { min-height: var(--admin-control-height); }
-body[data-console="admin"] .admin-page-jump-error { color: var(--admin-danger); font-size: 12px; }
+body[data-console="admin"] .admin-page-jump button { padding-inline: 10px; }
+body[data-console="admin"] .admin-page-jump-error { grid-column: 1 / -1; color: var(--admin-danger); font-size: 12px; }
 body[data-console="admin"] .state:not(.full) {
     padding: 36px var(--admin-space);
     gap: 10px;
@@ -239,7 +288,9 @@ body[data-console="admin"] :is(.admin-section-head p, .panel-body > p, .admin-lo
     body[data-console="admin"] .table-viewport :is(th, td) { padding: 12px var(--admin-space); }
     body[data-console="admin"] .panel-head > .actions { width: 100%; }
     body[data-console="admin"] .panel-head > .actions:empty { display: none; }
-    body[data-console="admin"] .pager { gap: 12px; }
+    body[data-console="admin"] .pager,
+    body[data-console="admin"] .pager-buttons { justify-content: center; }
+    body[data-console="admin"] .pager-buttons { margin-inline-start: 0; }
     body[data-console="admin"] .pager > span { flex-basis: 100%; text-align: center; }
     body[data-console="admin"] .table-viewport .table-actions { position: static; box-shadow: none; }
 }

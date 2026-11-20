@@ -4,6 +4,13 @@ import { getPageCount } from "../shared/ui/controls";
 
 type AdminPagerProps = ComponentProps<typeof Pager>;
 
+function visiblePages(current: number, pages: number): (number | "left" | "right")[] {
+    if (pages <= 7) return Array.from({ length: pages }, (_, i) => i + 1);
+    if (current <= 4) return [1, 2, 3, 4, 5, "right", pages];
+    if (current >= pages - 3) return [1, "left", pages - 4, pages - 3, pages - 2, pages - 1, pages];
+    return [1, "left", current - 1, current, current + 1, "right", pages];
+}
+
 export function AdminPager(props: AdminPagerProps) {
     const { page, size = 20, loading, totalUnavailable, onChange } = props;
     const pages = getPageCount(props);
@@ -11,6 +18,11 @@ export function AdminPager(props: AdminPagerProps) {
     const current = Math.min(Math.max(1, page), lastPage);
     const correcting = !loading && !totalUnavailable && page !== current;
     const correction = useRef("");
+    // Keep the clicked page mounted while the next response's total is pending.
+    const [previousPages, setPreviousPages] = useState(0);
+    useEffect(() => {
+        if (!loading) setPreviousPages(totalUnavailable ? 0 : pages);
+    }, [loading, pages, totalUnavailable]);
 
     useEffect(() => {
         if (!correcting) {
@@ -25,6 +37,20 @@ export function AdminPager(props: AdminPagerProps) {
     }, [correcting, current, onChange, page]);
 
     const busy = Boolean(loading || correcting);
+    const displayPages = loading && totalUnavailable === true ? previousPages : pages;
+    const displayPage = Math.max(1, Math.min(page, displayPages));
+    const showNumbers = !totalUnavailable || (loading && displayPages > 0);
+    const pageNumbers = showNumbers ? visiblePages(displayPage, displayPages).map(item => {
+        if (typeof item !== "number") return <span key={item} aria-hidden="true">…</span>;
+        const selected = item === displayPage;
+        const blocked = selected || busy || Boolean(totalUnavailable);
+        return <button key={item} type="button" className="pager-number"
+            aria-label={`第 ${item} 页`} aria-current={selected ? "page" : undefined}
+            aria-disabled={blocked || undefined}
+            onClick={() => { if (!blocked) onChange(item); }}>
+            {item}
+        </button>;
+    }) : undefined;
     const summary = totalUnavailable === "unknown"
         ? `第 ${page} 页 · 总数未知`
         : pages === 0 ? (props.total === undefined ? "暂无可浏览的页面" : "共 0 条") : undefined;
@@ -34,6 +60,7 @@ export function AdminPager(props: AdminPagerProps) {
             page={correcting ? current : page}
             loading={busy}
             summary={summary}
+            pageNumbers={pageNumbers}
         >
             {((!totalUnavailable && pages > 1) || (props.preserveFocus && busy && totalUnavailable === true)) && (
                 <PageJump page={page} pages={pages} size={size} blocked={busy || Boolean(totalUnavailable)} onChange={onChange} />

@@ -33,6 +33,7 @@ type PagerProps = PageTotals & {
     onSizeChange?: (size: number) => void;
     children?: ReactNode;
     summary?: ReactNode;
+    pageNumbers?: ReactNode;
 };
 
 export function getPageCount({ total, pageCount, size = 20 }: PageTotals & { size?: number }): number {
@@ -76,7 +77,7 @@ export function Pager(props: PagerProps) {
     }
     return (
         <nav className="pager" aria-label={tx("分页")} aria-busy={loading}>
-            <span>{summary}</span>
+            <span aria-live={props.pageNumbers === undefined ? undefined : "polite"} aria-atomic={props.pageNumbers === undefined ? undefined : true}>{summary}</span>
             {onSizeChange && (
                 <label className="pager-size">
                     {tx("每页")}{" "}
@@ -99,13 +100,13 @@ export function Pager(props: PagerProps) {
                 </label>
             )}
             <div className="pager-buttons">
-                <button
+                {props.pageNumbers === undefined && <button
                     type="button"
                     {...pageButton(1, page <= 1)}
                     aria-label={tx("首页")}
                 >
                     «
-                </button>
+                </button>}
                 <button
                     type="button"
                     {...pageButton(page - 1, page <= 1)}
@@ -113,6 +114,7 @@ export function Pager(props: PagerProps) {
                 >
                     <ChevronLeft size={16} />
                 </button>
+                {props.pageNumbers}
                 <button
                     type="button"
                     {...pageButton(page + 1, page >= pages)}
@@ -120,13 +122,13 @@ export function Pager(props: PagerProps) {
                 >
                     <ChevronRight size={16} />
                 </button>
-                <button
+                {props.pageNumbers === undefined && <button
                     type="button"
                     {...pageButton(pages, page >= pages)}
                     aria-label={tx("末页")}
                 >
                     »
-                </button>
+                </button>}
             </div>
             {children}
         </nav>

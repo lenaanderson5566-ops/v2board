@@ -36,13 +36,13 @@
 ## 节点、服务器与线路
 
 - [V2Box 接入与节点类型](v2box.md)、[节点管理界面](node-management-ui.md)
-- [节点当前 IP](node-current-ip.md)、[地区与城市目录](node-location-catalog.md)
+- [节点当前 IP](node-management-ui.md#节点当前-ip)、[地区与城市目录](node-location-catalog.md)
 - [服务器流量统计与额度](server-traffic-budgets.md)、[流量批次去重](node-traffic-dedup.md)
 - [Lightsail 静态 IP 管理](lightsail-ip-management.md)
 
 ## 客户端、订阅与分发
 
-- [订阅信息与安全提示](subscription-info.md)、[客户端导入语言](client-import-language.md)
+- [订阅信息与安全提示](subscription-info.md)、[客户端导入语言](user-language-preference.md#客户端导入语言)
 - [DNS 策略](dns-client-policy.md)、[sing-box 模板要求](sing-box-template.md)
 - [客户端维护与风控](risk-and-client-updates.md)、[本地客户端镜像](client-mirrors.md)
 - [FastAI 发布与网站登录](FASTAI.md)、[签名服务入口与恢复](fastai-entrypoints.md)
@@ -54,7 +54,7 @@
 - [Azure 套餐自动翻译](plan-auto-translation.md)、[Banner 管理](banner-management.md)
 - [后台工作区与统计口径](admin-workspaces.md)、[后台共用组件](admin-components.md)
 - [后台运行诊断](admin-diagnostics.md)、[性能／告警／功能维护](observability-governance.md)
-- [日志管理与统计](log-management-review.md)、[风控复核与配置检查](risk-review-and-config-checks.md)
+- [日志管理与统计](log-management-review.md)、[风控复核与配置检查](risk-and-client-updates.md#风控复核与配置检查)
 
 ## 接口与生成文件
 

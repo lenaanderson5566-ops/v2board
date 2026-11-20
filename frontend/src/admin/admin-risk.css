@@ -249,3 +249,11 @@
     margin-top: 18px;
 }
 
+.risk-hit-selection {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 7px;
+    margin: 0;
+    white-space: nowrap;
+}

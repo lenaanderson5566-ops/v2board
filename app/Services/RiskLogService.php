@@ -22,18 +22,35 @@ class RiskLogService
     {
         DB::transaction(function () use ($params, $adminId) {
             $hit = RiskRuleHit::query()->lockForUpdate()->findOrFail($params['id']);
-            $payload = $hit->payload ?? [];
-            $review = [
-                'state' => $params['state'],
-                'note' => $params['note'] ?? '',
-                'admin_id' => $adminId,
-                'at' => time(),
-            ];
-            $payload['review'] = $review;
-            $payload['review_history'] = array_merge($payload['review_history'] ?? [], [$review]);
-            $hit->payload = $payload;
-            $hit->save();
+            $this->recordReview($hit, $params, $adminId);
         });
+    }
+
+    public function reviewPendingHits(array $params, $adminId): array
+    {
+        return DB::transaction(function () use ($params, $adminId) {
+            $hits = RiskRuleHit::query()->whereIn('id', $params['ids'])->pendingReview()
+                ->orderBy('id')->lockForUpdate()->get();
+            foreach ($hits as $hit) {
+                $this->recordReview($hit, $params, $adminId);
+            }
+            return ['updated' => $hits->count(), 'skipped' => count($params['ids']) - $hits->count()];
+        }, 3);
+    }
+
+    private function recordReview(RiskRuleHit $hit, array $params, $adminId): void
+    {
+        $payload = $hit->payload ?? [];
+        $review = [
+            'state' => $params['state'],
+            'note' => $params['note'] ?? '',
+            'admin_id' => $adminId,
+            'at' => time(),
+        ];
+        $payload['review'] = $review;
+        $payload['review_history'][] = $review;
+        $hit->payload = $payload;
+        $hit->save();
     }
 
     public static function clearRuleCache(): void

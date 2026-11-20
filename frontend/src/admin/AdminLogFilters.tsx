@@ -118,6 +118,12 @@ export function AdminLogFilters({
                     </select>
                 </label>
             )}
+            {kind === "risk" && <label>风险等级
+                <select value={draft.risk_level || ""} onChange={e => setDraft({ ...draft, risk_level: e.target.value })}>
+                    <option value="">全部</option><option value="high">高风险</option>
+                    <option value="medium">中风险</option><option value="low">低风险</option>
+                </select>
+            </label>}
             <div className="admin-filter-actions">
                 <FilterActions onReset={() => {
                     setDraft({});

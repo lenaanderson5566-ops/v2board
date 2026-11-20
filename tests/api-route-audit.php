@@ -99,7 +99,11 @@ try {
         (new App\Providers\RouteServiceProvider($app))->map();
         $opsPrefix = 'api/v1/'.$adminPath.'/ops/';
         $operations = array_filter($routes->getRoutes(), fn($route) => str_contains($route->getActionName(), '\\V1\\Risk\\'));
-        $assert(count($operations) === 24, 'Unexpected operations route inventory');
+        $assert(count($operations) === 26, 'Unexpected operations route inventory');
+        foreach (['preview', 'execute'] as $action) {
+            $cleanup = $routes->match(Illuminate\Http\Request::create('/'.$opsPrefix.'log/rule-hit/cleanup/'.$action, 'POST'));
+            $assert($cleanup->methods() === ['POST'], 'Risk cleanup must require POST: '.$action);
+        }
         foreach ($operations as $route) {
             $assert(str_starts_with($route->uri(), $opsPrefix), 'Unexpected operations prefix: '.$route->uri());
             $assert(in_array('admin', $route->middleware(), true) && in_array('log', $route->middleware(), true), 'Unprotected operations route: '.$route->uri());

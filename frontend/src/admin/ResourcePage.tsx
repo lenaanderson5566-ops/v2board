@@ -7,6 +7,9 @@ import { Editor, Modal, Panel, Reload, State, Table, useData, type Field } from 
 import { AdminLogTimeZone } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { AdminLogFilters, type AdminLogKind } from "./AdminLogFilters";
+import { AdminChoiceGroup } from "./AdminChoices";
+import { PendingRiskHits, pendingRiskColumns } from "./PendingRiskHits";
+import { RiskHitCleanup } from "./RiskHitCleanup";
 import { ContentComposer } from "./ContentComposer";
 import { mergePageOrder, sortPayload } from "./admin-actions";
 import { linkResource, resourceFields, validateResource } from "./admin-linkage";
@@ -103,34 +106,39 @@ export function ResourcePage({
     const pageSize = onPageSizeChange ? initialPageSize : localPageSize;
     const { kind, logKind, planView } = resource;
     const orderResource = kind === "orders" || kind === "commissions";
-    const viewKey = planView === "credits" ? `${resource.fetch}:credits` : resource.fetch;
-    const columnStorageKey = `admin.columns.${viewKey}`;
+    const viewKey = kind === "access-logs-risk" ? `${resource.fetch}?grouped=1` :
+        planView === "credits" ? `${resource.fetch}:credits` : resource.fetch;
+    const [savedView] = useState(() => {
+        const saved = readListView(viewKey);
+        return saved.context === JSON.stringify(queryParams) && saved.pageSize === pageSize ? saved : {};
+    });
+    const [riskView, setRiskView] = useState<"grouped" | "pending">(
+        savedView.riskView === "pending" ? "pending" : "grouped",
+    );
+    const [riskMessage, setRiskMessage] = useState("");
+    const [showRiskCleanup, setShowRiskCleanup] = useState(false);
+    const pendingRiskHits = kind === "access-logs-risk" && riskView === "pending";
+    const displayColumns = pendingRiskHits ? pendingRiskColumns : resource.columns;
+    const columnStorageKey = `admin.columns.${viewKey}${pendingRiskHits ? ":pending" : ""}`;
     const [showDisplay, setShowDisplay] = useState(false);
     const [columnViews, setColumnViews] = useState<Record<string, string[]>>({});
     let storedColumns: string[] | undefined;
     try {
         const saved = JSON.parse(localStorage.getItem(columnStorageKey) || "null");
         if (Array.isArray(saved)) {
-            const available = new Set(resource.columns.map(([key]) => key));
+            const available = new Set(displayColumns.map(([key]) => key));
             const valid = saved.filter(value => typeof value === "string" && available.has(value));
             // A preference containing only retired columns falls back to the current defaults.
             if (valid.length || saved.length === 0) storedColumns = valid;
         }
     } catch { /* Optional browser preference. */ }
-    const selectedColumns = columnViews[columnStorageKey] ?? storedColumns ?? resource.columns.map(([key]) => key);
+    const selectedColumns = columnViews[columnStorageKey] ?? storedColumns ?? displayColumns.map(([key]) => key);
     const updateColumns = (columns: string[]) => {
         setColumnViews(previous => ({ ...previous, [columnStorageKey]: columns }));
         try { localStorage.setItem(columnStorageKey, JSON.stringify(columns)); } catch { /* Keep in-memory preferences. */ }
     };
     const ownDisplaySettings = kind !== "users";
 
-    const [savedView] = useState(() => {
-        const saved = readListView(viewKey);
-        return saved.context === JSON.stringify(queryParams) &&
-            saved.pageSize === pageSize
-            ? saved
-            : {};
-    });
     const [logFilters, setLogFilters] = useState<Row>(() =>
         savedView.logFilters && typeof savedView.logFilters === "object"
             ? savedView.logFilters
@@ -230,7 +238,7 @@ export function ResourcePage({
     const [showAllPlanProducts, setShowAllPlanProducts] = useState(false);
     const pageContext = JSON.stringify([
         viewKey, queryParams, pageSize, logFilters, searchesServer || localPagination ? search : "",
-        routeUsage, routeFilter, showAllPlanProducts,
+        routeUsage, routeFilter, showAllPlanProducts, riskView,
     ]);
     const [pagination, setPagination] = useState(() => ({
         context: pageContext,
@@ -254,6 +262,7 @@ export function ResourcePage({
             page,
             search,
             logFilters,
+            ...(kind === "access-logs-risk" && {riskView}),
         });
     }, [
         viewKey,
@@ -262,6 +271,8 @@ export function ResourcePage({
         page,
         search,
         logFilters,
+        kind,
+        riskView,
     ]);
     const d = useData<Row[]>(
         query(resource.fetch, {
@@ -270,6 +281,7 @@ export function ResourcePage({
             keyword: resource.serverSearch ? search : undefined,
             ...logFilters,
             ...queryParams,
+            ...(kind === "access-logs-risk" ? (pendingRiskHits ? { review_state: "pending" } : { grouped: 1 }) : {}),
             include_periodic_stats: planView === "periodic" ? 1 : undefined,
             include_credit_stats: planView === "credits" ? 1 : undefined,
             ...(kind === "routes" ? { backend: "v2box" } : {}),
@@ -375,14 +387,21 @@ export function ResourcePage({
     return (
         <>
             {(kind === "access-blacklist" || kind === "access-blacklist-ua") && <p className="muted">仅拦截订阅获取请求，不限制网站登录及节点代理流量。</p>}
+            {kind === "access-logs-risk" && showRiskCleanup && <RiskHitCleanup close={() => setShowRiskCleanup(false)}
+                onDeleted={(deleted, skipped) => {
+                    setShowRiskCleanup(false);
+                    setRiskMessage(`已永久删除 ${deleted} 条，跳过 ${skipped} 条。`);
+                    d.reload();
+                }} />}
             {showDisplay && ownDisplaySettings && <AdminDisplaySettings title={`${resource.title}显示设置`}
-                columns={resource.columns.filter(([key]) => !hiddenColumns.includes(key))} selected={selectedColumns}
-                onChange={updateColumns} onReset={() => updateColumns(resource.columns.map(([key]) => key))} close={() => setShowDisplay(false)} />}
+                columns={displayColumns.filter(([key]) => !hiddenColumns.includes(key))} selected={selectedColumns}
+                onChange={updateColumns} onReset={() => updateColumns(displayColumns.map(([key]) => key))} close={() => setShowDisplay(false)} />}
             <Panel
                 title={resource.title}
                 actions={
                     <>
                         {headerActions}
+                        {kind === "access-logs-risk" && <button type="button" className="danger" onClick={() => setShowRiskCleanup(true)}>一次性清理</button>}
                         {ownDisplaySettings && <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
                         {planView && (
                             <button type="button" aria-pressed={showAllPlanProducts}
@@ -433,6 +452,9 @@ export function ResourcePage({
             >
                 {actionBusy && <div className="admin-refresh-note" role="status" data-saving="true">正在提交操作…</div>}
                 {logKind && <AdminLogTimeZone />}
+                {kind === "access-logs-risk" && <AdminChoiceGroup label="风控命中视图" value={riskView}
+                    options={[{value: "grouped", label: "合并事件"}, {value: "pending", label: "待复核原始记录"}]}
+                    onChange={value => { setRiskView(value); setRiskMessage(""); }} />}
                 {logKind && (
                     <AdminLogFilters
                         key={logKind}
@@ -494,10 +516,11 @@ export function ResourcePage({
                 )}
                 {kind === "access-logs-risk" && (
                     <p className="admin-log-note muted">
-                        近 30 天，同一用户、规则、IP 和处理结果按固定 10
-                        分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。
+                        {pendingRiskHits ? <>按原始记录列出所有规则的待复核命中，可按时间或来源筛选。已复核记录的清理期限可在<a href="#/log-settings">日志保留策略</a>中设置。</> :
+                            <>近 30 天，同一用户、规则、IP 和处理结果按固定 10 分钟窗口合并；总数为合并后的事件数。点击用户查看原始活动。</>}
                     </p>
                 )}
+                {kind === "access-logs-risk" && riskMessage && <p className="pad" role="status">{riskMessage}</p>}
                 {searchable && !searchesServer && search && Array.isArray(d.data) && (
                     <div className="admin-local-search-summary" role="status">
                         <span>{!localPagination && (totalUnknown || d.total > fetchedRows.length)
@@ -512,7 +535,9 @@ export function ResourcePage({
                 <div ref={tableContainer} className="admin-resource-data">
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
-                    <Table
+                    {pendingRiskHits ? <PendingRiskHits key={`${pageContext}:${page}`} hits={visibleRows}
+                        selectedColumns={selectedColumns} disabled={d.loading || Boolean(d.error)}
+                        onReviewed={message => { setRiskMessage(message || "已保存复核。"); d.reload(); }} /> : <Table
                         data={visibleRows}
                         stickyColumn={kind === "users" ? "id" : undefined}
                         columns={resource.columns
@@ -733,7 +758,7 @@ export function ResourcePage({
                                   )
                                 : undefined
                         }
-                    />
+                    />}
                 </State>
                 </div>
                 <AdminPager

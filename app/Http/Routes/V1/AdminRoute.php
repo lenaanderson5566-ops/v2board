@@ -39,6 +39,8 @@ class AdminRoute
                 $router->post('/client/strategy/update', 'V1\Risk\ClientStrategyController@updateClientStrategy');
 
                 $router->post('/log/rule-hit/review', 'V1\Risk\LogController@reviewRuleHit');
+                $router->post('/log/rule-hit/cleanup/preview', 'V1\Risk\LogController@previewRuleHitCleanup')->middleware('throttle:20,1,risk-hit-cleanup-preview:');
+                $router->post('/log/rule-hit/cleanup/execute', 'V1\Risk\LogController@executeRuleHitCleanup')->middleware('throttle:20,1,risk-hit-cleanup-execute:');
                 $router->get('/log/rule-hit/fetch', 'V1\Risk\LogController@getRuleHits');
                 $router->get('/log/user-connection/fetch', 'V1\Risk\LogController@getUserConnectionLogs');
                 $router->get('/log/login/fetch', 'V1\Risk\LogController@getLoginLogs');

@@ -16,7 +16,6 @@ final class RiskStatisticsService
         'subscribe_high_pull_low_traffic_24h',
         'subscribe_client_type_spread_24h',
     ];
-    private const REVIEW_STATE = 'payload->review->state';
 
     public function pendingReview(Builder $query, int $now): Builder
     {
@@ -25,8 +24,7 @@ final class RiskStatisticsService
             ->whereExists(function ($users) {
                 $users->selectRaw('1')->from('v2_user')->whereColumn('v2_user.id', 'v2_risk_rule_hit.user_id')
                     ->whereNull('v2_user.account_deleted_at');
-            })->where(fn ($review) => $review->whereNull(self::REVIEW_STATE)
-                ->orWhereNotIn(self::REVIEW_STATE, ['confirmed', 'false_positive', 'ignored']));
+            })->pendingReview();
     }
 
     public function dashboard(string $window): array

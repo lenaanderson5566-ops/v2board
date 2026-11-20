@@ -14,12 +14,15 @@ use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
 use App\Services\AdminRecurringOrderHistory;
 use App\Services\RiskLogService;
+use App\Services\RiskHitCleanup;
+use App\Services\TimeZones;
 use App\Services\RiskStatisticsService;
 use App\Services\GeoIpService;
 use App\Services\TrafficCreditService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class LogController extends Controller
 {
@@ -149,9 +152,39 @@ class LogController extends Controller
 
     public function reviewRuleHit(Request $request)
     {
-        $p = $request->validate(['id' => 'required|integer|min:1','state' => 'required|in:pending,confirmed,false_positive,ignored','note' => 'nullable|string|max:1000']);
-        app(RiskLogService::class)->reviewHit($p, $request->user['id'] ?? null);
+        $bulk = $request->has('ids');
+        $states = RiskRuleHit::REVIEWED_STATES;
+        if (!$bulk) $states[] = 'pending';
+        $params = $request->validate([
+            'id' => $bulk ? 'missing' : 'required|integer|min:1',
+            'ids' => $bulk ? 'required|array|list|min:1|max:100' : 'missing',
+            'ids.*' => 'required|integer|min:1|distinct',
+            'state' => ['required', Rule::in($states)],
+            'note' => 'nullable|string|max:1000',
+        ]);
+        $service = app(RiskLogService::class);
+        $adminId = $request->user['id'] ?? null;
+        if ($bulk) return response(['data' => $service->reviewPendingHits($params, $adminId)]);
+        $service->reviewHit($params, $adminId);
         return response(['data' => true]);
+    }
+
+    public function previewRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
+    {
+        $tomorrow = now(TimeZones::system())->addDay()->startOfDay()->timestamp;
+        $params = $request->validate([
+            'before' => 'required|integer|min:1|max:'.$tomorrow,
+            'include_pending' => 'sometimes|boolean',
+        ]);
+        return response(['data' => $cleanup->preview(
+            (int) $request->user['id'], (int) $params['before'], $request->boolean('include_pending')
+        )]);
+    }
+
+    public function executeRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
+    {
+        $params = $request->validate(['token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/']]);
+        return response(['data' => $cleanup->execute((int) $request->user['id'], $params['token'])]);
     }
 
     public function getRuleHits(Request $request)
@@ -184,7 +217,16 @@ class LogController extends Controller
             $builder->where('ip', $request->input('ip'));
         }
 
-        if ($request->boolean('grouped')) {
+        $reviewState = $request->validate([
+            'review_state' => ['nullable', Rule::in(['pending', ...RiskRuleHit::REVIEWED_STATES])],
+        ])['review_state'] ?? null;
+        if ($reviewState === 'pending') {
+            $builder->pendingReview();
+        } elseif ($reviewState !== null) {
+            $builder->where('payload->review->state', $reviewState);
+        }
+
+        if ($request->boolean('grouped') && $reviewState === null) {
             // Preserve raw events; group only the display within fixed ten-minute windows.
             $builder->where('hit_at', '>=', time() - 30 * 86400);
             $grouped = $builder->select(['user_id', 'email', 'rule_key', 'ip', 'status', 'risk_level', 'scene'])
@@ -203,9 +245,12 @@ class LogController extends Controller
             return response(['data' => $data,'total' => $total]);
         }
         $total = $builder->count();
-        $data = $builder->orderBy('id', 'desc')
-            ->forPage($current, $pageSize)
-            ->get();
+        if ($reviewState === 'pending') {
+            $builder->orderBy('hit_at')->orderBy('id');
+        } else {
+            $builder->orderByDesc('id');
+        }
+        $data = $builder->forPage($current, $pageSize)->get();
 
         $this->decorateLogRows($data);
         return response([

@@ -4,8 +4,7 @@ import { AdminChoiceGroup } from "./AdminChoices";
 import { adminBusinessInstant, logTime } from "./admin-log-time";
 import { businessTimeZone } from "../shared/timezone";
 import { AdminSubscriptionProtection } from "./AdminSubscriptionProtection";
-import { AdminUserActivityLink } from "./AdminUserActivity";
-import { AdminRiskReview } from "./AdminRiskReview";
+import { PendingRiskHits } from "./PendingRiskHits";
 import { useState } from "react";
 import "./admin-risk.css";
 import { ops, query, request, rows, type Row } from "../shared/api";
@@ -114,20 +113,14 @@ export function RiskOverview() {
 
 function RiskReviewQueue({ onReviewed }: { onReviewed: () => void }) {
     const [page, setPage] = useState(1), [size, setSize] = useState(10);
+    const [message, setMessage] = useState("");
     const d = useData<Row[]>(query(ops("log/rule-hit/fetch"), { review_queue: 1, current: page, page_size: size }));
     const list = rows(d.data);
     return <div className="risk-review-queue">
+        {message && <p role="status">{message}</p>}
         <State {...d} retry={d.reload}>
-            <Table data={list} columns={[
-                ["user_id", "用户（ID / 邮箱）", (r) => <AdminUserActivityLink row={r} />],
-                ["rule_name", "规则"],
-                ["hit_at", "命中时间", (r) => logTime(r.hit_at)],
-                ["review", "人工复核", (r) => <AdminRiskReview key={r.id} row={r} grouped={false} onSaved={() => {
-                    onReviewed();
-                    if (page > 1 && list.length === 1) setPage(page - 1);
-                    else d.reload();
-                }} />],
-            ]} />
+            <PendingRiskHits key={`${page}:${size}`} hits={list} disabled={d.loading || Boolean(d.error)}
+                onReviewed={result => { setMessage(result || "已保存复核。"); d.reload(); onReviewed(); }} />
             <AdminPager page={page} totalUnavailable={d.data == null || Boolean(d.error)} total={d.total} size={size} loading={d.loading} onChange={setPage} onSizeChange={(next) => {
                 setSize(next);
                 setPage(1);

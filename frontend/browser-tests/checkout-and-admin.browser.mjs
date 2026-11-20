@@ -371,6 +371,111 @@ test("mobile admin users prioritize account columns and distinguish subscription
 test.describe("desktop admin frontend", () => {
     test.use({ isMobile: false, hasTouch: false, viewport: { width: 1280, height: 900 } });
 
+    test("reviews only the selected raw risk hits and keeps the rest pending", async ({ page, context }) => {
+        await consoleFixture(context, "admin", () => []);
+        const makeHit = (id, level) => ({
+            id, user_id: id, email: `risk-${id}@example.test`, scene: "subscribe",
+            rule_name: "订阅请求", risk_level: level, hit_at: 1700000000, payload: {},
+        });
+        let pending = [makeHit(71, "low"), makeHit(72, "medium")];
+        const writes = [];
+        await context.route("**/ops/log/rule-hit/fetch*", route => {
+            const query = new URL(route.request().url()).searchParams;
+            const items = query.get("review_state") === "pending" && query.get("grouped") !== "1"
+                ? pending : [{ ...pending[0], id: 99, hit_count: 8 }];
+            return route.fulfill({ json: { data: items, total: items.length } });
+        });
+        await context.route("**/ops/log/rule-hit/review", route => {
+            const body = route.request().postDataJSON();
+            writes.push(body);
+            const count = pending.length;
+            pending = pending.filter(hit => !body.ids.includes(hit.id));
+            return route.fulfill({ json: { data: { updated: count - pending.length, skipped: 0 } } });
+        });
+        await page.goto(`${consoleOrigin}/admin.html#/access-logs-risk`);
+        await page.getByText("待复核原始记录", { exact: true }).click();
+        await page.getByRole("checkbox", { name: "选择本页待复核记录" }).check();
+        const kept = page.getByRole("checkbox", { name: "选择命中记录 #72" });
+        await kept.uncheck();
+        const open = page.getByRole("button", { name: "批量复核", exact: true });
+        await open.click();
+        const dialog = page.getByRole("dialog", { name: "批量复核" });
+        await dialog.getByRole("button", { name: "取消" }).click();
+        expect(writes).toHaveLength(0);
+        await open.click();
+        await dialog.getByLabel("复核结论").selectOption("ignored");
+        await dialog.getByLabel("统一备注").fill("已核对历史事件");
+        await dialog.getByRole("button", { name: "确认复核" }).click();
+        await expect(page.getByRole("checkbox", { name: "选择命中记录 #71" })).toHaveCount(0);
+        await expect(kept).toBeVisible();
+        expect(writes).toEqual([{ ids: [71], state: "ignored", note: "已核对历史事件" }]);
+        await expect(page.getByRole("link", { name: "日志保留策略" })).toHaveAttribute("href", "#/log-settings");
+    });
+
+    test("runs one-time risk log cleanup only for the last confirmed preview", async ({ page, context }) => {
+        await page.clock.setFixedTime(new Date("2026-11-20T07:00:00Z"));
+        const previews = [];
+        const executions = [];
+        const tokens = ["a", "b", "c"].map(char => char.repeat(64));
+        const expiresAt = Date.parse("2026-11-20T07:05:00Z") / 1000;
+        let listReads = 0;
+        await consoleFixture(context, "admin", (path, request) => {
+            if (path.endsWith("/ops/log/rule-hit/fetch")) listReads++;
+            if (path.endsWith("/ops/log/rule-hit/cleanup/preview")) {
+                const body = request.postDataJSON();
+                previews.push(body);
+                const pending = body.include_pending ? 2 : 0;
+                return { matched: 6 + pending, reviewed: 6, pending, limit: 1000,
+                    token: tokens[previews.length - 1], expires_at: expiresAt };
+            }
+            if (path.endsWith("/ops/log/rule-hit/cleanup/execute")) {
+                executions.push(request.postDataJSON());
+                return { deleted: 7, skipped: 1 };
+            }
+            return [];
+        });
+
+        await page.goto(`${consoleOrigin}/admin.html#/access-logs-risk`);
+        const open = page.getByRole("button", { name: "一次性清理", exact: true });
+        const dialog = page.getByRole("dialog", { name: "一次性清理风控命中" });
+        const date = dialog.getByLabel("命中截止日期（含当天）");
+        const includePending = dialog.getByRole("checkbox", { name: "包含待复核记录" });
+        const preview = dialog.getByRole("button", { name: "预览清理" });
+        const confirm = dialog.getByRole("button", { name: "确认永久删除", disabled: false });
+
+        await open.click();
+        await date.fill("2025-02-28");
+        await expect(includePending).not.toBeChecked();
+        await preview.click();
+        await expect(confirm).toBeVisible();
+        await expect(dialog.getByRole("status")).toContainText("已复核 6 条，待复核 0 条。");
+        expect(previews[0].before).toBe(Date.parse("2025-03-01T00:00:00+08:00") / 1000);
+        expect(previews[0].include_pending ?? false).toBe(false);
+        await dialog.getByRole("button", { name: "取消", exact: true }).click();
+        await expect(dialog).toHaveCount(0);
+        expect(executions).toHaveLength(0);
+
+        await open.click();
+        await date.fill("2025-03-01");
+        await preview.click();
+        await expect(confirm).toBeVisible();
+        await includePending.check();
+        await expect(confirm).toHaveCount(0);
+        await preview.click();
+        await expect(confirm).toBeVisible();
+        await expect(dialog.getByRole("status")).toContainText("共匹配 8 条，本次清理 8 条。");
+        await expect(dialog.getByRole("status")).toContainText("已复核 6 条，待复核 2 条。");
+        expect(previews[2]).toEqual({
+            before: Date.parse("2025-03-02T00:00:00+08:00") / 1000, include_pending: true,
+        });
+        expect(executions).toHaveLength(0);
+        const readsBeforeDelete = listReads;
+        await confirm.click();
+        await expect(page.getByText("已永久删除 7 条，跳过 1 条。", { exact: true })).toBeVisible();
+        expect(executions).toEqual([{ token: tokens[2] }]);
+        await expect.poll(() => listReads).toBeGreaterThan(readsBeforeDelete);
+    });
+
     for (const list of ["users", "tickets"]) {
         test(`${list} jumps directly to the requested page`, async ({ page, context }) => {
             await consoleFixture(context, "admin", () => []);

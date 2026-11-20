@@ -785,7 +785,7 @@ export const resources: Record<string, Resource> = {
         kind: "access-logs-risk",
         logKind: "risk",
         title: "风控命中日志",
-        fetch: ops("log/rule-hit/fetch?grouped=1"),
+        fetch: ops("log/rule-hit/fetch"),
         columns: [
             [
                 "user_id",

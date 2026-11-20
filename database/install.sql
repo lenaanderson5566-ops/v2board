@@ -638,6 +638,31 @@ CREATE TABLE IF NOT EXISTS `v2_payment_attempt_event` (
   KEY `v2_payment_attempt_event_created_at_index` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS `v2_risk_cleanup_task` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `admin_id` bigint unsigned NOT NULL,
+  `token_hash` char(64) NOT NULL,
+  `state` varchar(16) NOT NULL,
+  `matched` bigint unsigned NOT NULL DEFAULT 0,
+  `deleted` bigint unsigned NOT NULL DEFAULT 0,
+  `skipped` bigint unsigned NOT NULL DEFAULT 0,
+  `expires_at` int unsigned NOT NULL,
+  `created_at` int unsigned NOT NULL,
+  `updated_at` int unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `risk_cleanup_token` (`token_hash`),
+  KEY `risk_cleanup_admin_state` (`admin_id`,`state`,`id`),
+  KEY `risk_cleanup_state_updated` (`state`,`updated_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS `v2_risk_cleanup_item` (
+  `task_id` bigint unsigned NOT NULL,
+  `risk_hit_id` bigint unsigned NOT NULL,
+  `version` char(64) NOT NULL,
+  PRIMARY KEY (`task_id`,`risk_hit_id`),
+  CONSTRAINT `risk_cleanup_item_task` FOREIGN KEY (`task_id`) REFERENCES `v2_risk_cleanup_task` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `v2_client_diagnostic_report` (
  `id` bigint unsigned NOT NULL AUTO_INCREMENT, `user_id` int unsigned NOT NULL,
  `report_id` char(36) NOT NULL, `report_kind` varchar(16) NOT NULL DEFAULT 'diagnostic', `client_version` varchar(32) NOT NULL, `platform` varchar(16) NOT NULL,

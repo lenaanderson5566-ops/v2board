@@ -46,3 +46,8 @@
         white-space: normal;
     }
 }
+
+@media (max-width: 600px) {
+    .session-recovery { padding: 28px 16px; }
+    .session-recovery button { font-size: var(--user-font-body); }
+}

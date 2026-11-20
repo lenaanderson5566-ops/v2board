@@ -676,23 +676,23 @@ html[dir="rtl"] .metric > strong {
     .user .table-scroll {
         overflow: visible;
     }
-    .user table,
-    .user tbody,
-    .user tr {
+    .user :where(.table-scroll) > table,
+    .user :where(.table-scroll > table) > tbody,
+    .user :where(.table-scroll > table > tbody) > tr {
         display: block;
         width: 100%;
     }
-    .user thead {
+    .user :where(.table-scroll > table) > thead {
         display: none;
     }
-    .user tbody tr {
+    .user :where(.table-scroll > table) > tbody > tr {
         padding: 12px 18px;
         border-bottom: 1px solid #eee;
     }
-    .user tbody tr:last-child {
+    .user :where(.table-scroll > table) > tbody > tr:last-child {
         border: 0;
     }
-    .user table td {
+    .user :where(.table-scroll) > table td {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -703,13 +703,13 @@ html[dir="rtl"] .metric > strong {
         overflow-wrap: anywhere;
         min-width: 0;
     }
-    .user table td[data-label]::before {
+    .user :where(.table-scroll) > table td[data-label]::before {
         content: attr(data-label);
         font-size: 12px;
         color: #888;
         flex-shrink: 0;
     }
-    .user table td > .actions {
+    .user :where(.table-scroll) > table td > .actions {
         width: 100%;
     }
     .bottom-nav {

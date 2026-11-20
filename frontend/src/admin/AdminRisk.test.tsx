@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { RiskOverview } from "./AdminRisk";
 import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
@@ -15,6 +15,7 @@ vi.mock("../shared/api", async (original) => ({
     ...(await original<typeof import("../shared/api")>()), readRequest, request,
 }));
 
+beforeEach(() => { readRequest.mockResolvedValue({ data: null }); });
 afterEach(() => {
     cleanup();
     readRequest.mockReset();
@@ -74,6 +75,12 @@ it("reviews only selected pending originals and keeps the conclusion available f
     await waitFor(() => expect(screen.queryByLabelText("选择命中记录 #1")).toBeNull());
 });
 
+const cleanupRows = (reviewed: number, pending: number) =>
+    Array.from({ length: reviewed + pending }, (_, index) => ({
+        id: index + 1, hit_at: 1700000000 + index, rule_name: `规则 ${index + 1}`,
+        risk_level: "medium", review_state: index < reviewed ? "ignored" : "pending",
+    }));
+
 it.each([
     ["2024-11-02", "2024-11-03T04:00:00Z"], // Havana repeats the following midnight.
     ["2024-03-09", "2024-03-10T05:00:00Z"], // Havana skips the following midnight.
@@ -81,37 +88,47 @@ it.each([
     configureTimeZone("America/Havana", true);
     try {
         const onDeleted = vi.fn();
-        render(<RiskHitCleanup close={vi.fn()} onDeleted={onDeleted} />);
+        await act(async () => { render(<RiskHitCleanup close={vi.fn()} onDeleted={onDeleted} />); });
         const input = screen.getByLabelText("命中截止日期（含当天）");
         const include = screen.getByLabelText("包含待复核记录");
         const previewButton = screen.getByRole("button", { name: "预览清理" });
         expect(previewButton).toHaveProperty("disabled", true);
         expect(include).toHaveProperty("checked", false);
         fireEvent.change(input, { target: { value: day } });
-        const result = { matched: 1203, reviewed: 1000, pending: 0, limit: 1000, token: "preview-one", expires_at: Math.floor(Date.now() / 1000) + 600 };
+        const result = { matched: 1203, reviewed: 1203, pending: 0, limit: 1000, rows: cleanupRows(1000, 0), token: "preview-one", expires_at: Math.floor(Date.now() / 1000) + 600 };
         request.mockResolvedValueOnce({ data: result });
         fireEvent.click(previewButton);
-        await screen.findByText("共匹配 1203 条，本次清理 1000 条。");
+        await screen.findByText("共匹配 1203 条，本次清理范围为全部 1203 条。");
+        expect(screen.getByText(/下方仅展示前 1000 条/)).toBeTruthy();
         expect(request).toHaveBeenLastCalledWith("test-admin/ops/log/rule-hit/cleanup/preview", {
             before: Date.parse(expected) / 1000, include_pending: false,
-        });
+        }, { timeoutMs: 120000 });
+        const records = within(screen.getByRole("region", { name: "本次清理记录" }));
+        expect(records.getByText("#1")).toBeTruthy();
+        expect(records.queryByText("#21")).toBeNull();
+        fireEvent.click(records.getByRole("button", { name: "下一页" }));
+        expect(records.getByText("#21")).toBeTruthy();
+        expect(request).toHaveBeenCalledTimes(1);
         fireEvent.click(include);
         expect(screen.queryByRole("button", { name: "确认永久删除" })).toBeNull();
-        request.mockResolvedValueOnce({ data: { ...result, token: "preview-two", reviewed: 990, pending: 10 } });
+        expect(screen.queryByRole("region", { name: "本次清理记录" })).toBeNull();
+        request.mockResolvedValueOnce({ data: { ...result, token: "preview-two", reviewed: 1193, pending: 10, rows: cleanupRows(990, 10) } });
         fireEvent.click(previewButton);
         const confirm = await screen.findByRole("button", { name: "确认永久删除" });
-        expect(screen.getByText("已复核 990 条，待复核 10 条。")).toBeTruthy();
+        expect(screen.getByText("已复核 1193 条，待复核 10 条。")).toBeTruthy();
         let finish!: () => void;
         request.mockImplementationOnce(() => new Promise(resolve => {
-            finish = () => resolve({ data: { deleted: 998, skipped: 2 } });
+            finish = () => resolve({ data: { id: 18, state: "queued", matched: 1203, deleted: 0, skipped: 0 } });
         }));
         fireEvent.click(confirm);
         fireEvent.click(confirm);
         expect(request).toHaveBeenCalledTimes(3);
         expect(request).toHaveBeenLastCalledWith("test-admin/ops/log/rule-hit/cleanup/execute", { token: "preview-two" });
         expect(screen.getByRole("button", { name: "取消" })).toHaveProperty("disabled", true);
+        readRequest.mockResolvedValueOnce({ data: { id: 18, state: "completed", matched: 1203, deleted: 1201, skipped: 2 } });
         await act(async () => finish());
-        expect(onDeleted).toHaveBeenCalledWith(998, 2);
+        expect(readRequest).toHaveBeenLastCalledWith("test-admin/ops/log/rule-hit/cleanup/status?id=18", undefined, false);
+        expect(onDeleted).toHaveBeenCalledWith(1201, 2);
     } finally {
         configureTimeZone("Asia/Shanghai", true);
     }
@@ -121,11 +138,11 @@ it("expires cleanup previews locally and requires a fresh preview after a reject
     vi.useFakeTimers();
     try {
         const onDeleted = vi.fn();
-        render(<RiskHitCleanup close={vi.fn()} onDeleted={onDeleted} />);
+        await act(async () => { render(<RiskHitCleanup close={vi.fn()} onDeleted={onDeleted} />); });
         fireEvent.change(screen.getByLabelText("命中截止日期（含当天）"), { target: { value: "2023-10-01" } });
         const previewButton = screen.getByRole("button", { name: "预览清理" });
         const confirm = () => screen.queryByRole("button", { name: "确认永久删除" });
-        const result = { matched: 1, reviewed: 1, pending: 0, limit: 1000, token: "short-lived", expires_at: Math.floor(Date.now() / 1000) + 3 };
+        const result = { matched: 1, reviewed: 1, pending: 0, limit: 1000, rows: cleanupRows(1, 0), token: "short-lived", expires_at: Math.floor(Date.now() / 1000) + 3 };
         request.mockResolvedValueOnce({ data: result });
         await act(async () => fireEvent.click(previewButton));
         expect(confirm()).toBeTruthy();
@@ -139,10 +156,60 @@ it("expires cleanup previews locally and requires a fresh preview after a reject
         expect(onDeleted).not.toHaveBeenCalled();
         expect(confirm()).toBeNull();
         expect(screen.getByRole("alert").textContent).toContain("重新预览");
-        request.mockResolvedValueOnce({ data: { matched: 0, reviewed: 0, pending: 0, limit: 1000, token: null, expires_at: null } });
+        request.mockResolvedValueOnce({ data: { matched: 0, reviewed: 0, pending: 0, limit: 1000, rows: [], excluded_pending: 7, token: null, expires_at: null } });
         await act(async () => fireEvent.click(previewButton));
-        expect(screen.getByText("共匹配 0 条，本次清理 0 条。")).toBeTruthy();
+        expect(screen.getByText("共匹配 0 条，本次清理范围为全部 0 条。")).toBeTruthy();
+        expect(screen.getByText(/另有 7 条待复核记录/)).toBeTruthy();
         expect(confirm()).toBeNull();
+    } finally {
+        vi.useRealTimers();
+    }
+});
+
+it("withholds destructive confirmation if the server omits or miscounts the deletion snapshot", async () => {
+    await act(async () => { render(<RiskHitCleanup close={vi.fn()} onDeleted={vi.fn()} />); });
+    fireEvent.change(screen.getByLabelText("命中截止日期（含当天）"), { target: { value: "2023-10-01" } });
+    const result = { matched: 2, reviewed: 2, pending: 0, limit: 1000, token: "unusable", expires_at: Math.floor(Date.now() / 1000) + 300 };
+    for (const rows of [undefined, cleanupRows(1, 0), cleanupRows(1, 1)]) {
+        request.mockResolvedValueOnce({ data: { ...result, rows } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "预览清理" })); });
+        expect(screen.getByRole("alert").textContent).toContain("预览明细不完整");
+        expect(screen.queryByRole("button", { name: "确认永久删除" })).toBeNull();
+    }
+});
+
+it("restores a running cleanup, recovers from lost progress reads and resumes only the remaining work", async () => {
+    vi.useFakeTimers();
+    try {
+        const onDeleted = vi.fn(), close = vi.fn();
+        const task = { id: 32, state: "running", matched: 3500, deleted: 992, skipped: 8 };
+        readRequest.mockResolvedValue({ data: task });
+        await act(async () => { render(<RiskHitCleanup close={close} onDeleted={onDeleted} />); });
+        expect(screen.getByText(/已处理 1000 \/ 3500 条/)).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "预览清理" })).toBeNull();
+        readRequest.mockRejectedValueOnce(new Error("网络中断"));
+        await act(async () => { vi.advanceTimersByTime(2500); });
+        expect(screen.getByRole("alert").textContent).toContain("网络中断");
+        readRequest.mockResolvedValue({ data: { ...task, state: "failed" } });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "重试查询" })); });
+        expect(screen.getByText("清理任务已中断")).toBeTruthy();
+        expect(screen.queryByRole("button", { name: "预览清理" })).toBeNull();
+        request.mockResolvedValueOnce({ data: { ...task, state: "queued" } });
+        readRequest.mockResolvedValue({ data: task });
+        await act(async () => { fireEvent.click(screen.getByRole("button", { name: "继续清理剩余记录" })); });
+        expect(request).toHaveBeenCalledTimes(1);
+        expect(request).toHaveBeenCalledWith("test-admin/ops/log/rule-hit/cleanup/retry", { id: 32 });
+        expect(screen.getByText("后台正在清理")).toBeTruthy();
+        readRequest.mockResolvedValue({ data: { ...task, state: "completed", deleted: 3492 } });
+        await act(async () => { vi.advanceTimersByTime(2500); });
+        expect(onDeleted).toHaveBeenCalledWith(3492, 8);
+        expect(close).toHaveBeenCalledTimes(1);
+
+        cleanup();
+        await act(async () => { render(<RiskHitCleanup close={close} onDeleted={onDeleted} />); });
+        expect(screen.getByText("上次清理已完成")).toBeTruthy();
+        expect(onDeleted).toHaveBeenCalledTimes(1);
+        expect(close).toHaveBeenCalledTimes(1);
     } finally {
         vi.useRealTimers();
     }
@@ -153,18 +220,19 @@ it("allows today's business date and rejects a later one before creating a clean
     vi.setSystemTime(new Date("2025-02-28T20:15:00Z"));
     configureTimeZone("Asia/Shanghai", true);
     try {
-        render(<RiskHitCleanup close={vi.fn()} onDeleted={vi.fn()} />);
+        await act(async () => { render(<RiskHitCleanup close={vi.fn()} onDeleted={vi.fn()} />); });
         const day = screen.getByLabelText("命中截止日期（含当天）");
         expect(day).toHaveProperty("max", "2025-03-01");
         fireEvent.change(day, { target: { value: "2025-03-02" } });
         await act(async () => { fireEvent.submit(day.closest("form")!); });
         expect(request).not.toHaveBeenCalled();
         fireEvent.change(day, { target: { value: "2025-03-01" } });
-        request.mockResolvedValue({ data: { matched: 0, reviewed: 0, pending: 0, limit: 1000, token: null, expires_at: null } });
+        request.mockResolvedValue({ data: { matched: 0, reviewed: 0, pending: 0, limit: 1000, rows: [], excluded_pending: 0, token: null, expires_at: null } });
         await act(async () => { fireEvent.submit(day.closest("form")!); });
         expect(request).toHaveBeenCalledWith("test-admin/ops/log/rule-hit/cleanup/preview", {
             before: Date.parse("2025-03-01T16:00:00Z") / 1000, include_pending: false,
-        });
+        }, { timeoutMs: 120000 });
+        expect(screen.getByText("所选截止日期内没有符合条件的命中记录。")).toBeTruthy();
     } finally {
         vi.useRealTimers();
     }

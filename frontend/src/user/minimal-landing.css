@@ -56,7 +56,7 @@
     .minimal-landing-brand { min-width: 0; font-size: var(--user-font-control); }
     .minimal-brand-mark { flex-shrink: 0; }
     .minimal-landing-main { grid-template-columns: minmax(0, 1fr); gap: 32px; padding: 36px 0 32px; }
-    .minimal-landing-main h1 { max-width: 580px; font-size: clamp(1.75rem, 6vw, var(--user-font-display)); }
+    .minimal-landing-main h1 { max-width: 580px; font-size: var(--user-font-display); }
     .minimal-landing-copy > p { font-size: var(--user-font-body); }
     .minimal-landing-actions { gap: 8px 16px; margin-top: 24px; }
     .minimal-landing a.minimal-landing-enter { max-width: 100%; min-height: 44px; gap: 16px; font-size: var(--user-font-body); }
@@ -78,6 +78,9 @@
     .minimal-panel-index { display: none; }
     .minimal-landing-footer { gap: 8px 16px; }
     .minimal-platforms { line-height: 1.8; }
+}
+@media (max-width: 600px) {
+    .minimal-landing-brand { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .minimal-core-mark { animation: none; }

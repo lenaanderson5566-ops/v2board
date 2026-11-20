@@ -41,6 +41,8 @@ class AdminRoute
                 $router->post('/log/rule-hit/review', 'V1\Risk\LogController@reviewRuleHit');
                 $router->post('/log/rule-hit/cleanup/preview', 'V1\Risk\LogController@previewRuleHitCleanup')->middleware('throttle:20,1,risk-hit-cleanup-preview:');
                 $router->post('/log/rule-hit/cleanup/execute', 'V1\Risk\LogController@executeRuleHitCleanup')->middleware('throttle:20,1,risk-hit-cleanup-execute:');
+                $router->get('/log/rule-hit/cleanup/status', 'V1\Risk\LogController@ruleHitCleanupStatus')->middleware('throttle:120,1,risk-hit-cleanup-status:');
+                $router->post('/log/rule-hit/cleanup/retry', 'V1\Risk\LogController@retryRuleHitCleanup')->middleware('throttle:20,1,risk-hit-cleanup-retry:');
                 $router->get('/log/rule-hit/fetch', 'V1\Risk\LogController@getRuleHits');
                 $router->get('/log/user-connection/fetch', 'V1\Risk\LogController@getUserConnectionLogs');
                 $router->get('/log/login/fetch', 'V1\Risk\LogController@getLoginLogs');

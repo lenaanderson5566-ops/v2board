@@ -389,7 +389,6 @@ export function ResourcePage({
             {(kind === "access-blacklist" || kind === "access-blacklist-ua") && <p className="muted">仅拦截订阅获取请求，不限制网站登录及节点代理流量。</p>}
             {kind === "access-logs-risk" && showRiskCleanup && <RiskHitCleanup close={() => setShowRiskCleanup(false)}
                 onDeleted={(deleted, skipped) => {
-                    setShowRiskCleanup(false);
                     setRiskMessage(`已永久删除 ${deleted} 条，跳过 ${skipped} 条。`);
                     d.reload();
                 }} />}

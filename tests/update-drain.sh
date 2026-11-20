@@ -18,9 +18,15 @@ AUTO_SCHEDULER=0
 site=$!; PIDS+=("$site")
 (cd "$TEMP/other"; exec bash -c 'trap "exit 0" TERM; while :; do sleep 0.1; done' test artisan queue:work) &
 other=$!; PIDS+=("$other")
+(cd "$PROJECT"; exec bash -c 'while [[ ! -f cleanup-finished ]]; do sleep 0.1; done' test artisan risk:process-cleanups) &
+cleanup_job=$!; PIDS+=("$cleanup_job")
 sleep 0.2
+snapshot_site_jobs
+[[ " ${JOB_COMMANDS[*]} " == *" risk:process-cleanups "* ]]
+touch "$PROJECT/cleanup-finished"
 drain_site_jobs
 ! kill -0 "$site" 2>/dev/null
+! kill -0 "$cleanup_job" 2>/dev/null
 kill -0 "$other"
 (cd "$PROJECT"; exec bash -c 'trap "exit 0" TERM; while :; do sleep 0.1; done' test artisan queue:work --force) &
 forced=$!; PIDS+=("$forced")

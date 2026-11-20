@@ -55,6 +55,37 @@
 .banner-controls .banner-dot[aria-pressed="true"] {
     background: #253f33;
 }
+@media (max-width: 600px) {
+    :where(body[data-console="user"]) .banner-controls {
+        gap: 4px;
+        padding: 0;
+    }
+    :where(body[data-console="user"]) .banner-controls > div {
+        gap: 0;
+        overflow-x: auto;
+    }
+    :where(body[data-console="user"]) .banner-controls button,
+    :where(body[data-console="user"]) .banner-controls .banner-dot {
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        outline-offset: -3px;
+    }
+    :where(body[data-console="user"]) .banner-controls .banner-dot[aria-pressed] {
+        border: 0;
+        background: transparent;
+    }
+    :where(body[data-console="user"]) .banner-dot::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--outline);
+    }
+    :where(body[data-console="user"]) .banner-dot[aria-pressed="true"]::after {
+        background: var(--brand);
+    }
+}
 .banner-editor {
     padding: 24px;
     display: grid;

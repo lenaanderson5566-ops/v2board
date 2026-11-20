@@ -394,6 +394,21 @@ textarea {
     }
 }
 @media (max-width: 600px) {
+    #root > .panel > .panel-head h2 {
+        font-size: var(--user-font-section);
+        line-height: 1.35;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    #root > .panel > .pad {
+        font-size: var(--user-font-body);
+        overflow-wrap: anywhere;
+    }
+    #root > .panel > .pad button {
+        min-height: 44px;
+        font-size: inherit;
+        white-space: normal;
+    }
     .language-trigger {
         min-width: 44px;
         gap: 6px;

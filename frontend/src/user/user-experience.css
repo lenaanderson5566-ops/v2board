@@ -696,6 +696,17 @@ body[data-console="user"] .auth-language {
         height: 150px;
     }
 }
+@media (max-width: 600px) {
+    .user-auth .user-auth-layout { margin-block: 24px; }
+    .user-auth-card > .muted { margin-block-end: 16px; }
+    .user-auth-form .auth-field { gap: 6px; font-size: var(--user-font-label); }
+    .user-auth-form .auth-submit { font-size: var(--user-font-body); }
+    .user-auth .mfa-login { margin-block-start: 32px; }
+    body[data-console="user"] .mfa-setup-dialog .mfa-progress { font-size: var(--user-font-caption); }
+    body[data-console="user"] .mfa-security .mfa-code { font-size: var(--user-font-control); }
+    body[data-console="user"] .mfa-security .mfa-saved { min-height: 44px; }
+    body[data-console="user"] .mfa-options h3 { font-size: var(--user-font-card); }
+}
 @media (max-width: 380px) {
     .auth-code-row {
         flex-wrap: wrap;
@@ -1049,6 +1060,10 @@ body:has(.browser-notice) #custom-footer {
     border-top: 1px solid var(--surface-tint);
     padding-top: 24px;
 }
+@media (max-width: 600px) {
+    .suspended-page > .account-entry { min-width: 0; margin-block: 12px; padding: 20px 16px; }
+    .suspended-page .account-entry > p { font-size: var(--user-font-body); margin-block-end: 16px; }
+}
 .account-status-line {
     margin: -6px 0 22px;
 }
@@ -1239,20 +1254,25 @@ body:has(.browser-notice) #custom-footer {
 .checkout-payment { padding: 4px 0; }
 .checkout-section-label { display: block; color: var(--muted, var(--text-secondary)); font-size: var(--user-font-label, 12px); margin-bottom: 22px; }
 .checkout-layout h2 { font-size: var(--user-font-section, 18px); margin: 0 0 16px; line-height: 1.4; overflow-wrap: anywhere; }
-.checkout-summary h2 { font-size: var(--user-font-section, 24px); letter-spacing: -.025em; margin-bottom: 8px; }
+.checkout-summary h2 { font-size: var(--user-font-card, var(--user-font-section, 24px)); letter-spacing: -.025em; margin-bottom: 8px; }
 .checkout-product-quantity { font-size: var(--user-font-section, 22px); font-weight: 600; }
 .checkout-amount { display: grid; gap: 8px; padding-bottom: 26px; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
 .checkout-amount > span { color: var(--muted, var(--text-secondary)); font-size: var(--user-font-label, 13px); }
 .checkout-amount > strong { font-size: var(--user-font-display, clamp(28px, 4vw, 38px)); font-weight: 600; letter-spacing: -.035em; line-height: 1.25; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .checkout-lines { margin: 22px 0; }
-.checkout-lines > div { display: flex; justify-content: space-between; gap: 18px; padding: 8px 0; font-size: 14px; }
+.checkout-lines > div { display: flex; justify-content: space-between; gap: 18px; padding: 8px 0; font-size: var(--user-font-body, 14px); }
 .checkout-lines dt { color: var(--text-secondary); }
 .checkout-lines dd { margin: 0; text-align: end; font-variant-numeric: tabular-nums; min-width: 0; overflow-wrap: anywhere; }
 .checkout-deposit-benefit { display: grid; gap: 8px; font-size: var(--user-font-body, 13px); background: var(--surface-tint); padding: 12px; border-radius: 8px; }
 .checkout-lines .checkout-total { border-top: 1px solid var(--surface-tint); padding-top: 18px; margin-top: 10px; font-size: var(--user-font-section, 20px); font-weight: 600; }
 .checkout-total dt { color: var(--ink); }
+@media (max-width: 600px) {
+    .checkout-total dt { font-size: var(--user-font-body); }
+    .checkout-total dd { font-size: var(--user-font-amount); }
+    .order-reference summary { min-block-size: 44px; padding-block: 12px; }
+}
 .checkout-confirm { display: grid; gap: 16px; margin-top: 24px; }
-.app.user .checkout-confirm .primary { justify-content: center; min-height: 50px; width: 100%; border-radius: 10px; gap: 8px; font-size: 14px; }
+.app.user .checkout-confirm .primary { justify-content: center; min-height: 50px; width: 100%; border-radius: 10px; gap: 8px; font-size: var(--user-font-body, 14px); }
 .checkout-secondary { display: flex; justify-content: space-between; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
 .checkout-secondary { align-items: center; }
 .checkout-secondary-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 16px; }
@@ -1326,24 +1346,65 @@ body:has(.browser-notice) #custom-footer {
 .quick-step:first-child{padding-top:0}.quick-step h3{display:flex;align-items:center;gap:12px;margin:0 0 12px}.quick-step h3>span{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--ink);color: var(--on-brand);font-size:14px;flex-shrink:0}
 .device-options{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-top:16px}.device-options button{min-height:68px;display:flex;align-items:center;justify-content:center;gap:8px;background: var(--surface);border-radius:14px}.device-options button[aria-pressed=true]{border-color:var(--ink);background:var(--surface-tint)}.quick-step .import-download{margin:12px 8px 0 0}.quick-step .import-open{display:inline-flex;width:auto;margin:12px 8px 0 0}.quick-step .import-guide{margin-top:12px}
 @media(max-width:600px){.device-options{grid-template-columns:repeat(2,minmax(0,1fr))}.quick-step .import-download,.quick-step .import-open{width:100%;margin-inline:0}.quick-step{padding:20px 0}.quick-step .client-card{min-width:0}}
-@media (max-width: 600px) {
-    .configuration-quick-start .panel-head { flex-wrap: wrap; gap: 8px; }
-    .configuration-quick-start .panel-head .actions { flex-wrap: wrap; }
-    .configuration-quick-start .panel-head .actions > :is(button, a) { min-height: 44px; }
-    .import-content .quick-step { padding-block: 14px; }
-    .import-content .quick-step h3 { margin-block-end: 8px; }
-    .import-content .device-options {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 6px;
-        margin-block-start: 10px;
+@media (max-width: 800px) {
+    .app.user .configuration-quick-start > .panel-head {
+        flex-wrap: wrap;
+        gap: 6px 12px;
     }
-    .import-content .device-options button {
+    .app.user .configuration-quick-start > .panel-head .actions {
+        width: max-content;
+        max-width: 100%;
+        gap: 6px;
+    }
+    .configuration-quick-start .panel-head .actions > :is(button, .button) {
+        flex: none;
+        max-width: 100%;
         min-height: 44px;
-        min-width: 0;
-        padding: 6px;
-        border-radius: 10px;
+        min-width: 44px;
+        padding: 6px 10px;
+        font-size: var(--user-font-label);
         white-space: normal;
         overflow-wrap: anywhere;
+    }
+}
+@media (max-width: 600px) {
+    .app.user .configuration-quick-start > .panel-head { padding: 10px 14px; }
+    .pad.import-content {
+        container: import-steps / inline-size;
+        padding: 12px 14px;
+    }
+    .import-content .quick-step { padding-block: 12px; }
+    .import-content .quick-step h3 {
+        gap: 8px;
+        margin: 0;
+        font-size: var(--user-font-body);
+        line-height: 1.4;
+    }
+    .import-content .quick-step h3 > span {
+        width: 1.5rem;
+        height: 1.5rem;
+        font-size: var(--user-font-caption);
+    }
+    .import-content .quick-step > p.muted {
+        margin-block: 6px;
+        font-size: var(--user-font-label);
+        line-height: 1.5;
+    }
+    .import-content .device-options {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 4.75rem), 1fr));
+        gap: 6px 4px;
+        margin-block-start: 8px;
+    }
+    .import-content .quick-step .device-options button {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 4px;
+        font-size: var(--user-font-label);
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+    @container import-steps (min-width: 19.5rem) {
+        .import-content .device-options { grid-template-columns: repeat(5, auto); }
     }
     .import-content .device-options button svg { display: none; }
     .import-content .device-options button[aria-pressed="true"] { font-weight: 650; }
@@ -1471,7 +1532,23 @@ body:has(.browser-notice) #custom-footer {
 .invite-money-form .editor { padding: 0; }
 .invite-money-form input, .invite-money-form select { min-height: 46px; border-radius: 10px; }
 .invite-money-form button[type="submit"] { min-height: 46px; border-radius: 12px; width: 100%; }
-@media (max-width: 600px) { .invite-page-content { gap: 14px; } .invite-wallet { flex-direction: column; align-items: stretch; gap: 18px; padding: 20px; } .invite-wallet-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); } .invite-wallet-actions button { width: 100%; } .invite-ledger table th, .invite-ledger table td { padding: 12px 16px; } }
+@media (max-width: 600px) {
+    .invite-page-content { gap: 14px; }
+    .invite-wallet { flex-direction: column; align-items: stretch; gap: 14px; padding: 16px; }
+    .invite-wallet-balance > strong { font-size: var(--user-font-amount); }
+    .invite-wallet-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    .invite-wallet-actions button { width: 100%; }
+    .invite-ledger table th, .invite-ledger table td { padding: 12px 16px; }
+    .invite-hero-heading h2 { font-size: var(--user-font-section); }
+    .email-invite { padding: 16px; }
+    .invite-history-toolbar { flex-wrap: wrap; }
+    .invite-history-toolbar :is(select, button) { min-height: 44px; max-width: 100%; }
+    .invite-history-toolbar select { font-size: var(--user-font-control); }
+    .invite-history li { grid-template-columns: 32px minmax(0, 1fr) fit-content(35%); gap: 8px; padding-block: 12px; }
+    .invite-recipient-avatar { width: 32px; height: 32px; }
+    .invite-recipient-email { font-size: var(--user-font-body); }
+    .email-invite .invite-status { font-size: var(--user-font-caption); white-space: normal; overflow-wrap: anywhere; }
+}
 
 /* Account destinations share the same content width and section hierarchy. */
 .account-security .security-password-card form { max-width: 480px; }
@@ -1489,7 +1566,11 @@ body:has(.browser-notice) #custom-footer {
 .gift-redemption input { width: 100%; min-height: 48px; font-family: ui-monospace, monospace; }
 .gift-redemption .gift-hint { margin: 0 0 8px; font-size: var(--user-font-label, 12px); }
 .gift-redemption .primary { width: 100%; min-height: 48px; justify-content: center; }
-@media(max-width: 600px) { .gift-redemption { padding: 20px; } }
+@media (max-width: 600px) {
+    .gift-redemption { padding: 16px; }
+    .gift-redemption h3 { font-size: var(--user-font-card); }
+    .gift-symbol { margin-bottom: 16px; }
+}
 
 /* Compact checkout keeps the primary action reachable without stacking navigation. */
 .checkout-details-toggle { display: none; }
@@ -1610,4 +1691,47 @@ body:has(.browser-notice) #custom-footer {
     .app.user .article-link > svg {
         flex-shrink: 0;
     }
+    :where(body[data-console="user"]) .rich-text table {
+        display: block;
+        max-inline-size: 100%;
+        overflow-x: auto;
+        font-size: var(--user-font-body);
+        white-space: normal;
+    }
+    :where(body[data-console="user"]) .rich-text :is(th, td) {
+        padding: 8px 12px;
+        text-align: start;
+    }
+    :where(body[data-console="user"]) .rich-text th {
+        font-size: var(--user-font-label);
+        color: var(--text-secondary);
+    }
+}
+
+@media (max-width: 600px) {
+    :where(body[data-console="user"]) .modal > .panel-head {
+        flex-wrap: nowrap;
+        padding: 16px 16px 8px;
+    }
+    :where(body[data-console="user"]) .modal > .panel-head .icon-button {
+        min-inline-size: 44px;
+        min-block-size: 44px;
+    }
+    :where(body[data-console="user"]) .modal :is(.messages, .editor) {
+        padding: 14px 16px;
+    }
+    :where(body[data-console="user"]) .modal .message {
+        padding: 10px 12px;
+        overflow-wrap: anywhere;
+    }
+    :where(body[data-console="user"]) .modal .message p {
+        margin: 4px 0 0;
+        line-height: 1.6;
+    }
+    :where(body[data-console="user"]) .rich-text {
+        line-height: 1.65;
+    }
+    :where(body[data-console="user"]) .rich-text h1 { font-size: var(--user-font-title); }
+    :where(body[data-console="user"]) .rich-text h2 { font-size: var(--user-font-section); }
+    :where(body[data-console="user"]) .rich-text h3 { font-size: var(--user-font-card); }
 }

@@ -622,7 +622,7 @@
         text-align: center;
     }
     .landing-hero h1 {
-        font-size: clamp(1.75rem, 6vw, var(--user-font-display));
+        font-size: var(--user-font-display);
         letter-spacing: -.04em;
         margin: 20px 0;
     }
@@ -754,6 +754,10 @@
     .landing-footer > div a {
         min-height: 44px;
     }
+}
+@media (max-width: 600px) {
+    .studio-brand { min-height: 44px; }
+    .landing-faq summary { font-size: var(--user-font-card); }
 }
 @media (max-width: 360px) {
     .landing-cta {

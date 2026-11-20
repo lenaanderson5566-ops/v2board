@@ -12,6 +12,41 @@
 }
 
 @media (max-width: 600px) {
+    .usage-balance-grid .settings-card {
+        min-height: 0;
+    }
+    .app.user .usage-page .settings-section > header a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        font-size: var(--user-font-label);
+    }
+    .usage-analysis > header {
+        flex-wrap: wrap;
+        margin-bottom: 12px;
+    }
+    .app.user .usage-period button {
+        min-height: 44px;
+        font-size: var(--user-font-label);
+    }
+    .usage-section-title h3,
+    .usage-quota > strong {
+        font-size: var(--user-font-card);
+    }
+    .app.user .reset-section-intro {
+        margin-bottom: 12px;
+        padding-bottom: 12px;
+    }
+    .app.user .reset-switcher {
+        padding-bottom: 10px;
+    }
+    .app.user .reset-switcher button {
+        padding: 6px 12px;
+        font-size: var(--user-font-label);
+    }
+    .app.user .reset-content {
+        padding-top: 12px;
+    }
     .app.user .usage-page .reset-card .reset-history-range {
         margin-block-end: 10px;
     }

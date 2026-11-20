@@ -11,15 +11,16 @@ const narrowViewports = [{ width: 320, height: 740 }, { width: 390, height: 844 
 
 // Serve only the exact build under test. All APIs and the checkout destination
 // are synthetic, so the browser cannot call a real site or payment provider.
-async function consoleFixture(context, mode, api, { authenticated = true, emailDomains = [], title = "FastAI Test" } = {}) {
-    await context.addInitScript(({ origin, mode, emailDomains, title }) => {
+async function consoleFixture(context, mode, api, { authenticated = true, emailDomains = [], title = "FastAI Test", language = "zh-CN", account = {}, bootOptions = {} } = {}) {
+    await context.addInitScript(({ origin, mode, emailDomains, title, language, bootOptions }) => {
         if (location.origin !== origin) return;
         window.FASTAI = {
             mode, title, adminPath: "test-admin", landing: false,
             emailWhitelistEnabled: emailDomains.length > 0, emailWhitelistSuffixes: emailDomains,
+            ...bootOptions,
         };
-        localStorage.setItem("fastai.language", "zh-CN");
-    }, { origin: consoleOrigin, mode, emailDomains, title });
+        localStorage.setItem("fastai.language", language);
+    }, { origin: consoleOrigin, mode, emailDomains, title, language, bootOptions });
     await context.route("**/*", async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -31,8 +32,8 @@ async function consoleFixture(context, mode, api, { authenticated = true, emailD
         }
         if (url.origin !== consoleOrigin) return route.abort("blockedbyclient");
         const path = url.pathname;
-        if (path === "/app" || path === "/admin.html") {
-            return route.fulfill({ path: fileURLToPath(new URL(path === "/app" ? "index.html" : "admin.html", build)) });
+        if (path === "/" || path === "/app" || path === "/admin.html") {
+            return route.fulfill({ path: fileURLToPath(new URL(path === "/admin.html" ? "admin.html" : "index.html", build)) });
         }
         if (/^\/assets\/[\w.-]+$/.test(path)) {
             return route.fulfill({ path: fileURLToPath(new URL(path.slice(1), build)) });
@@ -40,8 +41,8 @@ async function consoleFixture(context, mode, api, { authenticated = true, emailD
         const result = path === "/api/v10/auth/browser-session"
             ? { authenticated, accountId: authenticated ? 7 : null, csrfToken: "synthetic-csrf" }
             : path === "/api/v10/me"
-                ? { id: 7, email: "account@example.test", language: "zh-CN", planId: 1, expiresAt: null,
-                    accountStatus: { state: "active", available: true }, currency: "CNY" }
+                ? { id: 7, email: "account@example.test", language, planId: 1, expiresAt: null,
+                    accountStatus: { state: "active", available: true }, currency: "CNY", ...account }
                 : await api(path, request);
         if (result === undefined) return route.fulfill({ status: 404, json: { message: "Fixture route unavailable" } });
         return route.fulfill({ json: { data: result } });
@@ -70,7 +71,7 @@ test("mobile authentication keeps its type hierarchy and fits narrow screens", a
         await page.setViewportSize(viewport);
         await page.goto(`${consoleOrigin}/app#/login`);
         await expect(title).toBeVisible();
-        await expect(title).toHaveCSS("font-size", "24px");
+        await expect(title).toHaveCSS("font-size", "20px");
         await expect(intro).toHaveCSS("font-size", "14px");
         await expect(email).toHaveCSS("font-size", "16px");
         await expect(password).toHaveCSS("font-size", "16px");
@@ -80,7 +81,323 @@ test("mobile authentication keeps its type hierarchy and fits narrow screens", a
         await expect(domain).toBeVisible();
         await expect(domain).toHaveCSS("font-size", "16px");
         await expectPageWidth(page, viewport.width);
+
+        await page.goto(`${consoleOrigin}/app#/forget`);
+        await expect(page.locator(".auth-title-row h2")).toHaveCSS("font-size", "20px");
+        await expect(email).toBeVisible();
+        await expectPageWidth(page, viewport.width);
     }
+});
+
+for (const style of ["original", "minimal"]) {
+    test(`public ${style} landing keeps its content inside phone viewports`, async ({ page, context }) => {
+        await consoleFixture(context, "user", () => undefined, { authenticated: false, bootOptions: { landing: true, landingStyle: style } });
+        await page.goto(consoleOrigin);
+        const title = page.locator(style === "original" ? ".landing-hero h1" : ".minimal-landing-copy h1");
+        await expect(title).toBeVisible();
+        for (const viewport of narrowViewports) {
+            await page.setViewportSize(viewport);
+            await expect(title).toHaveCSS("font-size", "26px");
+            await expectPageWidth(page, viewport.width);
+        }
+    });
+}
+
+test("member pages and detail dialogs fit both phone widths with loaded data", async ({ context, page }) => {
+    test.setTimeout(90000);
+    const plan = { id: 1, name: "测试周期套餐", description: "<table><thead><tr><th>套餐权益</th></tr></thead><tbody><tr><td>共享额度</td></tr></tbody></table>", currency: "CNY", monthlyPrice: 1800, renewable: true, quotaBytes: 10737418240 };
+    const ticket = { id: 9, subject: "测试工单主题", priority: "normal", status: "closed" };
+    const article = { id: 8, title: "测试帮助文章", category: "设备设置", body: "## 设备说明\n\n测试文章正文\n\n| 系统 | 版本 |\n| --- | --- |\n| Android | 版本较长的客户端 |" };
+    const notice = { id: 3, title: "测试公告", content: article.body, read: true, version: 1 };
+    const offer = { id: 11, name: "测试折扣券", discountPercent: 20, expiresAt: "2099-01-01T00:00:00Z", planIds: [1], billingPeriods: ["monthly"] };
+    const authorizationId = "1".repeat(64);
+    const data = {
+        "/plans": [plan],
+        "/me/subscription": { planId: 1, plan, active: true, expiresAt: "2099-01-01T00:00:00Z", subscriptionUrl: consoleOrigin + "/test-subscription" },
+        "/me/orders": [{ orderNumber, planId: 1, plan, billingPeriod: "monthly", status: "completed", totalAmount: 1800, currency: "CNY" }],
+        "/me/usage-resets": { available: 1, credits: [], history: [] },
+        "/me/traffic-records": [{ recordedAt: new Date().toISOString(), uploadedBytes: 1024, downloadedBytes: 2048, rate: 1, recordTimezone: "UTC" }],
+        "/me/coupon-offers": [{ ...offer, activityTitle: "测试优惠活动", activityDescription: "测试活动说明" }],
+        "/me/coupons": [{ ...offer, status: "available" }],
+        "/me/referrals": { availableCommission: 12345, currency: "CNY" },
+        "/me/commissions": [],
+        "/me/invitations": [],
+        "/me/tickets": [ticket],
+        "/me/tickets/9": { ...ticket, messages: [{ id: 1, mine: true, message: "测试对话内容" }] },
+        "/knowledge-articles": { "设备设置": [article] },
+        "/knowledge-articles/8": article,
+        "/me/notifications": { items: [notice], ticketReplies: [], unread: 0 },
+        "/announcements/3": notice,
+        "/me/notifications/read-receipts": true,
+        "/me/preferences/options": { currency: "CNY", timeZones: ["Asia/Shanghai"], systemTimeZone: "Asia/Shanghai" },
+        "/me/sessions": {},
+        "/me/security/mfa": { enrollmentEnabled: true, emailEnabled: false, totpEnabled: false },
+        "/me/security/passkeys": { enabled: false, credentials: [] },
+        "/me/account-deletion": { enabled: true, blockers: [] },
+        "/me/subscription/access-records": [{ id: 2, status: "success", clientName: "Layout Test Client", requestedAt: "2026-11-17T12:00:00Z" }],
+        [`/me/client-authorizations/${authorizationId}`]: { platform: "android", expiresAt: "2099-01-01T00:00:00Z" },
+        "/me/nodes": [],
+        "/credit-packages": [],
+        "/announcements": [],
+        "/public/banners": [],
+        "/public/settings": {},
+    };
+    await consoleFixture(context, "user", path => data[path.replace(/^\/api\/v10/, "")],
+        { account: { balance: 12345, quotaBytes: plan.quotaBytes, ticketCreation: "allowed" } });
+    const pages = [
+        ["dashboard", ".usage-current-plan .subscription-name"],
+        ["overview", ".usage-current-plan .subscription-name"],
+        ["traffic", ".usage-page .usage-quota"],
+        ["plan", ".plan-card.mobile-active h2"],
+        ["order", ".billing-page .transaction-row"],
+        ["activities", ".activity-offer h3"],
+        ["invite", ".invite-wallet-balance > strong"],
+        ["profile", ".profile-email .preference-readonly"],
+        ["security", ".security-password-card input"],
+        ["security/configuration-updates", ".configuration-record-client"],
+        ["notifications", ".notification-options [role=switch]"],
+        ["knowledge", ".knowledge-articles .article-link"],
+        ["ticket", ".user-ticket-list tbody tr"],
+        ["ticket?ticketId=9", "[role=dialog] .message"],
+        [`client-authorize?authorizationId=${authorizationId}`, ".client-authorization .primary:enabled"],
+    ];
+    for (const [route, selector] of pages) {
+        await test.step(route, async () => {
+            await page.goto(`${consoleOrigin}/app#/${route}`);
+            const content = page.locator(selector).first();
+            await expect(content).toBeVisible();
+            for (const viewport of narrowViewports) {
+                await page.setViewportSize(viewport);
+                await expectPageWidth(page, viewport.width);
+                const box = await content.boundingBox();
+                expect(box.x).toBeGreaterThanOrEqual(-1);
+                expect(box.x + box.width).toBeLessThanOrEqual(viewport.width + 1);
+                if (route === "traffic") await expect(content).toHaveCSS("min-height", "0px");
+                if (route === "plan") await expect(page.getByRole("columnheader", { name: "套餐权益" })).toBeVisible();
+                if (route === "order") await expect(page.locator(".balance-card .balance-amount")).toHaveCSS("font-size", "18px");
+                if (route === "security") await expect(content).toHaveCSS("font-size", "16px");
+                if (route.startsWith("client-authorize")) expect(box.height).toBeGreaterThanOrEqual(44);
+            }
+            if (route === "order") {
+                await page.evaluate(() => document.documentElement.style.fontSize = "125%");
+                await expect(page.locator(".balance-card .balance-amount")).toHaveCSS("font-size", "22.5px");
+                await expectPageWidth(page, 390);
+                await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+            }
+        });
+    }
+    await page.goto(`${consoleOrigin}/app#/knowledge`);
+    await page.getByRole("button", { name: article.title }).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog.getByText("测试文章正文", { exact: true })).toBeVisible();
+    await expect(dialog.getByRole("heading", { name: "设备说明" })).toBeVisible();
+    for (const viewport of narrowViewports) {
+        await page.setViewportSize(viewport);
+        await expect(dialog.getByRole("columnheader", { name: "版本" })).toBeVisible();
+        await expect(dialog.getByRole("columnheader", { name: "版本" })).toHaveCSS("font-size", "13px");
+        await expect(dialog.getByRole("cell", { name: "Android" })).toHaveCSS("font-size", "14px");
+        await expectPageWidth(page, viewport.width);
+        expect(await dialog.evaluate(el => el.scrollWidth <= el.clientWidth)).toBe(true);
+    }
+    await page.keyboard.press("Escape");
+    await page.locator(".announcement-trigger").click();
+    await dialog.getByRole("button", { name: new RegExp(notice.title) }).click();
+    await expect(dialog.getByText("测试文章正文", { exact: true })).toBeVisible();
+    for (const viewport of narrowViewports) {
+        await page.setViewportSize(viewport);
+        await expect(dialog.getByRole("columnheader", { name: "系统" })).toBeVisible();
+        await expectPageWidth(page, viewport.width);
+    }
+    await page.keyboard.press("Escape");
+    await page.goto(`${consoleOrigin}/app#/traffic`);
+    await page.locator(".usage-page .settings-tabs button").nth(1).click();
+    await expect(page.locator(".usage-bars button").first()).toBeVisible();
+    await page.locator(".usage-records summary").click();
+    await expect(page.locator(".usage-records tbody").getByText(/UTC/)).toBeVisible();
+    for (const viewport of narrowViewports) {
+        await page.setViewportSize(viewport);
+        await expectPageWidth(page, viewport.width);
+    }
+    await page.goto(`${consoleOrigin}/app#/ticket/order/${orderNumber}`);
+    await page.getByRole("button", { name: "创建工单" }).click();
+    await expect(dialog.getByText(orderNumber, { exact: true })).toBeVisible();
+    for (const viewport of narrowViewports) {
+        await page.setViewportSize(viewport);
+        await expect(dialog.getByRole("combobox").first()).toHaveCSS("font-size", "16px");
+        await expectPageWidth(page, viewport.width);
+    }
+});
+
+for (const state of ["new", "expired", "banned"]) {
+    test(`account entry displays the ${state} state at phone widths`, async ({ context, page }) => {
+        await consoleFixture(context, "user", path => {
+            if (path === "/api/v10/me/orders") return [];
+            if (path === "/api/v10/me/subscription") return { plan: state === "new" ? null : { id: 1, name: "上期套餐" } };
+            if (path === "/api/v10/me/notifications") return { items: [], ticketReplies: [] };
+        }, { account: { planId: state === "new" ? null : 1, accountStatus: { state, available: false } } });
+        await page.goto(`${consoleOrigin}/app#/dashboard`);
+        const entry = page.locator(`.account-entry-${state}`);
+        await expect(entry.locator("h2")).toBeVisible();
+        if (state === "expired") await expect(entry.locator(".entry-previous")).toContainText("上期套餐");
+        for (const viewport of narrowViewports) {
+            await page.setViewportSize(viewport);
+            await expectPageWidth(page, viewport.width);
+        }
+    });
+}
+
+test("session recovery displays a retry action at phone widths", async ({ context, page }) => {
+    await consoleFixture(context, "user", () => undefined);
+    await context.route("**/api/v10/me", route => route.fulfill({ status: 503, json: { message: "Temporary failure" } }));
+    await page.goto(`${consoleOrigin}/app#/dashboard`);
+    await expect(page.locator(".session-recovery button")).toBeVisible();
+    for (const viewport of narrowViewports) {
+        await page.setViewportSize(viewport);
+        await expect(page.locator("#session-recovery-title")).toHaveCSS("font-size", "20px");
+        await expectPageWidth(page, viewport.width);
+    }
+});
+
+test.describe("embedded browser", () => {
+    test.use({ userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 MicroMessenger/8.0.42" });
+    test("entry guidance and manual address fit both phone widths", async ({ page, context }) => {
+        await consoleFixture(context, "user", () => undefined, { authenticated: false });
+        await page.goto(`${consoleOrigin}/app#/login`);
+        const guide = page.locator(".browser-notice-entry");
+        await expect(guide.locator(".browser-notice-heading")).toBeVisible();
+        await guide.locator(".browser-manual").click();
+        for (const viewport of narrowViewports) {
+            await page.setViewportSize(viewport);
+            await expectPageWidth(page, viewport.width);
+            await expect(guide.getByRole("textbox")).toHaveValue(/\/app#\/login$/);
+        }
+    });
+});
+
+for (const [language, nodesLabel, manageLabel] of [
+    ["zh-CN", "可用节点", "管理订阅"],
+    ["en-US", "Available servers", "Manage subscription"],
+]) {
+    test(`quick start keeps phone actions legible in ${language}`, async ({ page, context }) => {
+        await consoleFixture(context, "user", path => {
+            if (path === "/api/v10/me/subscription") return { subscriptionUrl: consoleOrigin + "/test-subscription" };
+            if (path === "/api/v10/me/nodes" || path === "/api/v10/announcements") return [];
+            if (path === "/api/v10/public/settings") return {};
+            if (path === "/api/v10/me/notifications") return { items: [], ticketReplies: [], unread: 0 };
+        }, { language });
+        await page.goto(`${consoleOrigin}/app#/subscribe`);
+        const quickStart = page.locator(".configuration-quick-start");
+        const nodeButton = quickStart.getByRole("button", { name: nodesLabel, exact: true });
+        const manageButton = quickStart.getByRole("link", { name: manageLabel, exact: true });
+        const systems = quickStart.locator(".device-options").getByRole("button");
+        const ios = systems.filter({ hasText: /^iOS$/ });
+        const systemRows = () => systems.evaluateAll(buttons =>
+            new Set(buttons.map(el => Math.round(el.getBoundingClientRect().top))).size);
+        await ios.click();
+        await expect(ios).toHaveAttribute("aria-pressed", "true");
+        await expect(systems).toHaveCount(5);
+        const viewports = [
+            ...[320, 375, 390, 430].map(width => [width, "20px", "16px"]),
+            [768, "24px", "18px"], [1280, "28px", "15px"],
+        ];
+        for (const [width, titleSize, sectionSize] of viewports) {
+            await page.setViewportSize({ width, height: 844 });
+            await expectPageWidth(page, width);
+            await expect(page.locator(".page-heading h1")).toHaveCSS("font-size", titleSize);
+            await expect(quickStart.locator(".panel-head h2")).toHaveCSS("font-size", sectionSize);
+            if (width > 768) continue;
+            for (const action of [nodeButton, manageButton]) {
+                const metrics = await action.evaluate(el => {
+                    const label = document.createRange();
+                    label.selectNodeContents(el);
+                    const rects = Array.from(label.getClientRects());
+                    const box = el.getBoundingClientRect();
+                    return {
+                        lines: new Set(rects.map(rect => Math.round(rect.top))).size,
+                        fits: rects.every(rect => rect.left >= box.left && rect.right <= box.right),
+                        height: box.height,
+                    };
+                });
+                expect(metrics.lines).toBe(1);
+                expect(metrics.fits).toBe(true);
+                expect(metrics.height).toBeGreaterThanOrEqual(44);
+            }
+            expect(await systems.evaluateAll(buttons =>
+                buttons.every(el => el.getBoundingClientRect().height >= 44 && el.scrollWidth <= el.clientWidth)
+            )).toBe(true);
+            if (width === 320) expect(await systemRows()).toBeGreaterThan(1);
+            if (width === 390) {
+                expect(await systemRows()).toBe(1);
+                await page.evaluate(() => document.documentElement.style.fontSize = "125%");
+                expect(await systemRows()).toBeGreaterThan(1);
+                const labelsFit = await systems.evaluateAll(buttons => buttons.every(el => {
+                    const range = document.createRange();
+                    range.selectNodeContents(el.firstChild);
+                    const rects = Array.from(range.getClientRects());
+                    const box = el.getBoundingClientRect();
+                    return rects.length === 1 && rects[0].left >= box.left && rects[0].right <= box.right;
+                }));
+                expect(labelsFit).toBe(true);
+                await expectPageWidth(page, width);
+                await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+            }
+        }
+        await nodeButton.click();
+        await expect(page.getByRole("region", { name: nodesLabel })).toBeFocused();
+        await expect(manageButton).toHaveAttribute("href", "#/plan");
+    });
+}
+
+test("user navigation keeps phone labels compact and touch targets accessible", async ({ page, context }) => {
+    await consoleFixture(context, "user", path => {
+        if (path === "/api/v10/me/subscription") return { subscriptionUrl: consoleOrigin + "/test-subscription" };
+        if (path === "/api/v10/me/nodes" || path === "/api/v10/announcements" || path === "/api/v10/knowledge-articles") return [];
+        if (path === "/api/v10/public/settings") return {};
+        if (path === "/api/v10/me/notifications") return { items: [], ticketReplies: [], unread: 0 };
+    });
+    await page.goto(`${consoleOrigin}/app#/subscribe`);
+    await expect(page.locator(".configuration-quick-start .device-options")).toBeVisible();
+    const toggle = page.getByRole("button", { name: "打开导航", exact: true });
+    await toggle.click();
+    const sidebar = page.locator("#user-primary-navigation");
+    const menu = sidebar.locator("nav");
+    const current = menu.locator('[aria-current="page"]');
+    const help = menu.getByRole("link", { name: "帮助中心" });
+    const group = menu.locator(".nav-group > small").first();
+
+    await expect(current).toHaveAttribute("href", "#/subscribe");
+    await expect(current).toHaveCSS("font-weight", "600");
+    expect(await current.evaluate(el => getComputedStyle(el).backgroundColor))
+        .not.toBe(await help.evaluate(el => getComputedStyle(el).backgroundColor));
+    for (const width of [320, 390, 768]) {
+        await page.setViewportSize({ width, height: 844 });
+        await expect(sidebar).toHaveAttribute("aria-modal", "true");
+        await expect(current).toHaveCSS("font-size", width <= 600 ? "13px" : "14px");
+        await expect(group).toHaveCSS("font-size", "12px");
+        expect(await menu.getByRole("link").evaluateAll(links =>
+            links.every(el => el.getBoundingClientRect().height >= 44 && el.scrollWidth <= el.clientWidth),
+        )).toBe(true);
+        await expectPageWidth(page, width);
+        if (width === 390) {
+            await page.screenshot({ path: test.info().outputPath("user-mobile-navigation-390.png"), animations: "disabled" });
+            await page.evaluate(() => document.documentElement.style.fontSize = "125%");
+            await expect(current).toHaveCSS("font-size", "16.25px");
+            await expect(group).toHaveCSS("font-size", "15px");
+            expect(await menu.getByRole("link").evaluateAll(links => links.every(el => el.scrollWidth <= el.clientWidth))).toBe(true);
+            await expectPageWidth(page, width);
+            await page.evaluate(() => document.documentElement.style.removeProperty("font-size"));
+        }
+    }
+    await help.click();
+    await expect(page).toHaveURL(/#\/knowledge$/);
+    await expect(toggle).toHaveAttribute("aria-expanded", "false");
+    await toggle.click();
+    await expect(current).toHaveAttribute("href", "#/knowledge");
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await expect(sidebar).not.toHaveAttribute("aria-modal", "true");
+    await expect(current).toBeInViewport();
+    await expect(current).toHaveCSS("font-size", "13px");
+    await expect(group).toHaveCSS("font-size", "10px");
 });
 
 test.describe("desktop user frontend", () => {
@@ -256,7 +573,7 @@ test("mobile checkout opens a gateway, returns to the paid order and submits onl
     await expect(plan).toBeVisible();
     for (const viewport of narrowViewports) {
         await page.setViewportSize(viewport);
-        await expect(page.locator(".checkout-heading h1")).toHaveCSS("font-size", "24px");
+        await expect(page.locator(".checkout-heading h1")).toHaveCSS("font-size", "20px");
         await expect(page.locator(".checkout-heading p")).toHaveCSS("font-size", "14px");
         expect(await plan.evaluate(heading => heading.scrollWidth <= heading.clientWidth)).toBe(true);
         await expectPageWidth(page, viewport.width);
@@ -412,25 +729,47 @@ test.describe("desktop admin frontend", () => {
         await expect(page.getByRole("link", { name: "日志保留策略" })).toHaveAttribute("href", "#/log-settings");
     });
 
-    test("runs one-time risk log cleanup only for the last confirmed preview", async ({ page, context }) => {
+    test("confirms the full risk cleanup once and restores its progress after reopening", async ({ page, context }) => {
         await page.clock.setFixedTime(new Date("2026-11-20T07:00:00Z"));
         const previews = [];
         const executions = [];
         const tokens = ["a", "b", "c"].map(char => char.repeat(64));
+        let issuedTokens = 0;
         const expiresAt = Date.parse("2026-11-20T07:05:00Z") / 1000;
+        const hits = Array.from({ length: 1008 }, (_, index) => ({
+            id: 710 + index,
+            rule_name: `合成清理规则 ${index + 1}`,
+            hit_at: Date.parse(index < 2 ? "2025-02-24T09:00:00+08:00" : "2025-02-27T09:00:00+08:00") / 1000,
+            review_state: index < 2 ? "pending" : "ignored",
+            risk_level: index < 2 ? "low" : "medium",
+        }));
         let listReads = 0;
+        const taskQueries = [];
+        let task = null;
+        let finishTask = false;
         await consoleFixture(context, "admin", (path, request) => {
             if (path.endsWith("/ops/log/rule-hit/fetch")) listReads++;
             if (path.endsWith("/ops/log/rule-hit/cleanup/preview")) {
                 const body = request.postDataJSON();
                 previews.push(body);
-                const pending = body.include_pending ? 2 : 0;
-                return { matched: 6 + pending, reviewed: 6, pending, limit: 1000,
-                    token: tokens[previews.length - 1], expires_at: expiresAt };
+                const dated = hits.filter(hit => hit.hit_at < body.before);
+                const rows = dated.filter(hit => body.include_pending || hit.review_state !== "pending");
+                const pending = rows.filter(hit => hit.review_state === "pending").length;
+                return { matched: rows.length, reviewed: rows.length - pending, pending, limit: 1000, rows: rows.slice(0, 1000),
+                    excluded_pending: !rows.length && !body.include_pending ? dated.length : null,
+                    token: rows.length ? tokens[issuedTokens++] : null, expires_at: rows.length ? expiresAt : null };
             }
             if (path.endsWith("/ops/log/rule-hit/cleanup/execute")) {
                 executions.push(request.postDataJSON());
-                return { deleted: 7, skipped: 1 };
+                task = { id: 52, state: "queued", matched: hits.length, deleted: 0, skipped: 0 };
+                return task;
+            }
+            if (path.endsWith("/ops/log/rule-hit/cleanup/status")) {
+                const taskId = new URL(request.url()).searchParams.get("id");
+                taskQueries.push(taskId);
+                if (taskId && taskId !== String(task?.id)) return undefined;
+                if (task) task = { ...task, state: finishTask ? "completed" : "running", deleted: finishTask ? hits.length - 1 : 999, skipped: 1 };
+                return task;
             }
             return [];
         });
@@ -442,15 +781,32 @@ test.describe("desktop admin frontend", () => {
         const includePending = dialog.getByRole("checkbox", { name: "包含待复核记录" });
         const preview = dialog.getByRole("button", { name: "预览清理" });
         const confirm = dialog.getByRole("button", { name: "确认永久删除", disabled: false });
+        const hitRow = name => dialog.getByRole("row").filter({ has: page.getByRole("cell", { name, exact: true }) });
+        const reviewedRow = hitRow("合成清理规则 3");
+        const pendingRow = hitRow("合成清理规则 1");
 
         await open.click();
+        await date.fill("2025-02-22");
+        await preview.click();
+        await expect(dialog.getByText("共匹配 0 条，本次清理范围为全部 0 条。", { exact: true })).toBeVisible();
+        await expect(dialog.getByText("所选截止日期内没有符合条件的命中记录。")).toBeVisible();
+        await expect(dialog.getByRole("region", { name: "本次清理记录" })).toHaveCount(0);
+        await expect(confirm).toHaveCount(0);
+        await date.fill("2025-02-24");
+        await preview.click();
+        await expect(dialog.getByText(/另有 2 条待复核记录/)).toBeVisible();
+        await expect(pendingRow).toHaveCount(0);
+        await expect(confirm).toHaveCount(0);
         await date.fill("2025-02-28");
         await expect(includePending).not.toBeChecked();
         await preview.click();
         await expect(confirm).toBeVisible();
-        await expect(dialog.getByRole("status")).toContainText("已复核 6 条，待复核 0 条。");
-        expect(previews[0].before).toBe(Date.parse("2025-03-01T00:00:00+08:00") / 1000);
-        expect(previews[0].include_pending ?? false).toBe(false);
+        await expect(dialog.getByText("已复核 1006 条，待复核 0 条。", { exact: true })).toBeVisible();
+        await expect(reviewedRow).toContainText("712");
+        await expect(reviewedRow).toContainText("已忽略");
+        await expect(pendingRow).toHaveCount(0);
+        expect(previews.at(-1).before).toBe(Date.parse("2025-03-01T00:00:00+08:00") / 1000);
+        expect(previews.at(-1).include_pending ?? false).toBe(false);
         await dialog.getByRole("button", { name: "取消", exact: true }).click();
         await expect(dialog).toHaveCount(0);
         expect(executions).toHaveLength(0);
@@ -461,19 +817,41 @@ test.describe("desktop admin frontend", () => {
         await expect(confirm).toBeVisible();
         await includePending.check();
         await expect(confirm).toHaveCount(0);
+        await expect(reviewedRow).toHaveCount(0);
         await preview.click();
         await expect(confirm).toBeVisible();
-        await expect(dialog.getByRole("status")).toContainText("共匹配 8 条，本次清理 8 条。");
-        await expect(dialog.getByRole("status")).toContainText("已复核 6 条，待复核 2 条。");
-        expect(previews[2]).toEqual({
+        await expect(dialog.getByText("共匹配 1008 条，本次清理范围为全部 1008 条。", { exact: true })).toBeVisible();
+        await expect(dialog.getByText("已复核 1006 条，待复核 2 条。", { exact: true })).toBeVisible();
+        await expect(dialog.getByText(/仅展示前 1000 条供核对/)).toBeVisible();
+        await expect(pendingRow).toContainText("710");
+        await expect(pendingRow).toContainText("待复核");
+        await expect(reviewedRow).toBeVisible();
+        const sample = dialog.getByRole("region", { name: "本次清理记录" });
+        await sample.getByRole("button", { name: "第 50 页", exact: true }).click();
+        await expect(hitRow("合成清理规则 1000")).toBeVisible();
+        await expect(hitRow("合成清理规则 1001")).toHaveCount(0);
+        expect(previews.at(-1)).toEqual({
             before: Date.parse("2025-03-02T00:00:00+08:00") / 1000, include_pending: true,
         });
         expect(executions).toHaveLength(0);
         const readsBeforeDelete = listReads;
         await confirm.click();
-        await expect(page.getByText("已永久删除 7 条，跳过 1 条。", { exact: true })).toBeVisible();
+        await expect(dialog.getByRole("status")).toContainText("已处理 1000 / 1008 条");
+        await dialog.locator("form").getByRole("button", { name: "关闭", exact: true }).click();
+        await expect(dialog).toHaveCount(0);
+        const readsBeforeReopen = taskQueries.length;
+        await open.click();
+        await expect(dialog.getByText("后台正在清理", { exact: true })).toBeVisible();
+        await expect(dialog.getByRole("status")).toContainText("已处理 1000 / 1008 条");
+        expect(taskQueries.slice(readsBeforeReopen)).toContain(null);
+        await expect(confirm).toHaveCount(0);
+        finishTask = true;
+        await expect(page.getByText("已永久删除 1007 条，跳过 1 条。", { exact: true })).toBeVisible({ timeout: 10000 });
+        expect(taskQueries).toContain("52");
         expect(executions).toEqual([{ token: tokens[2] }]);
         await expect.poll(() => listReads).toBeGreaterThan(readsBeforeDelete);
+        await open.click();
+        await expect(dialog.getByRole("heading", { name: "上次清理已完成" })).toBeVisible();
     });
 
     for (const list of ["users", "tickets"]) {
@@ -1292,4 +1670,24 @@ test("mobile registration settings save a pause and keep account security in its
     await expect(pageGroup).toHaveText("系统设置 / 账户与注册");
     await expect(page.getByLabel("后台入口路径")).toHaveValue("test-admin");
     await expect(modes).toHaveCount(0);
+});
+
+test("mobile workspace startup failure keeps its message readable and reload reachable", async ({ page, context }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await consoleFixture(context, "user", () => undefined, { language: "de-DE" });
+    await page.route(`${consoleOrigin}/assets/UserWorkspace-*.js`, route => route.abort("failed"));
+    await page.goto(`${consoleOrigin}/app#/dashboard`);
+
+    const fallback = page.locator("#root > .panel");
+    const heading = fallback.getByRole("heading", { name: "Diese Seite konnte nicht geladen werden" });
+    const message = fallback.getByText("Aktion fehlgeschlagen. Laden Sie die Seite neu und versuchen Sie es erneut.");
+    const reload = fallback.getByRole("button", { name: "Seite neu laden" });
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveCSS("font-size", "16px");
+    expect(await heading.evaluate(el => el.getBoundingClientRect().height > parseFloat(getComputedStyle(el).lineHeight) + 1)).toBe(true);
+    await expect(message).toBeVisible();
+    await expect(message).toHaveCSS("font-size", "14px");
+    await expect(reload).toBeVisible();
+    expect((await reload.boundingBox()).height).toBeGreaterThanOrEqual(44);
+    await expectPageWidth(page, 320);
 });

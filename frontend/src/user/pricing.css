@@ -103,12 +103,6 @@
     padding-inline-start: 26px;
     color: var(--brand);
 }
-@media (max-width: 600px) {
-    .app.user .pricing-summary {
-        min-height: auto;
-    }
-}
-
 .app.user .pricing-toolbar {
     display: flex;
     align-items: center;
@@ -228,7 +222,7 @@
         margin-bottom: 8px;
     }
     .app.user .pricing-card-heading h2 {
-        font-size: var(--user-font-section, 22px);
+        font-size: var(--user-font-card, var(--user-font-section, 22px));
     }
     .app.user .pricing-plans .plan-feature-list li {
         font-size: var(--user-font-body, 14px);
@@ -296,13 +290,15 @@
 .app.user .pricing-summary .plan-price {
     overflow-wrap: anywhere;
 }
-@media (max-width: 700px) {
+@media (600px < width <= 700px) {
     .app.user main:has(.subscription-catalog) {
         padding-top: 20px;
     }
     .app.user main:has(.subscription-catalog) .page-heading {
         margin-bottom: 20px;
     }
+}
+@media (max-width: 700px) {
     .app.user .subscription-catalog .pending-order {
         flex-direction: row;
         flex-wrap: wrap;
@@ -390,7 +386,7 @@
     }
 }
 .purchase-body h3 {
-    font-size: var(--user-font-section, 15px);
+    font-size: var(--user-font-card, var(--user-font-section, 15px));
     margin: 0 0 12px;
 }
 .purchase-choices,
@@ -507,7 +503,7 @@
     color: var(--text-secondary);
 }
 .purchase-footer-total strong {
-    font-size: var(--user-font-title, 24px);
+    font-size: var(--user-font-amount, var(--user-font-title, 24px));
     font-variant-numeric: tabular-nums;
     overflow-wrap: anywhere;
 }
@@ -523,6 +519,21 @@
     white-space: normal;
 }
 @media (max-width: 600px) {
+    .app.user .pricing-plans .plan-card {
+        padding: 16px;
+    }
+    .app.user .pricing-summary {
+        padding-block: 12px;
+    }
+    .app.user :is(.pricing-help, .pricing-empty-actions) > a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+    }
+    .compact-selection .purchase-fee-note summary {
+        min-block-size: 44px;
+        padding-block: 12px;
+    }
     .overlay .modal:has(> .purchase-selection) {
         max-height: calc(100dvh - 24px);
     }

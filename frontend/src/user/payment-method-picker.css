@@ -174,11 +174,23 @@
     cursor: default;
     opacity: .7;
 }
+@media (max-width: 600px) {
+    .payment-method-picker.payment-options {
+        gap: 8px;
+    }
+    .payment-method-picker .payment-method-option,
+    .payment-method-picker.payment-options button.payment-crypto-heading {
+        min-height: 48px;
+        padding: 8px 12px;
+    }
+    .payment-method-picker .payment-network-option {
+        min-height: 44px;
+    }
+}
 @media (max-width: 400px) {
     .payment-method-picker .payment-method-option,
     .payment-method-picker.payment-options button.payment-crypto-heading {
         gap: 8px;
-        padding-inline: 12px;
     }
     .payment-method-picker .payment-network-tag {
         max-inline-size: 100%;

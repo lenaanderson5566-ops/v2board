@@ -53,3 +53,13 @@ body[data-console="user"] {
         --user-font-display: 2rem;
     }
 }
+
+@media (max-width: 600px) {
+    body[data-console="user"] {
+        --user-font-card: 0.9375rem;
+        --user-font-amount: 1.125rem;
+        --user-font-section: 1rem;
+        --user-font-title: 1.25rem;
+        --user-font-display: 1.625rem;
+    }
+}

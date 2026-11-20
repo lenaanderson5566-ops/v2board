@@ -66,8 +66,21 @@ try{
  $cleanup = app(App\Services\RiskHitCleanup::class);
  $preview = fn ($params, $actor = 123) => json_decode($controller->previewRuleHitCleanup(Request::create('/', 'POST',
      $params + ['user'=>['id'=>$actor]]), $cleanup)->getContent(), true)['data'];
- $execute = fn ($token, $actor = 123) => json_decode($controller->executeRuleHitCleanup(Request::create('/', 'POST',
-     ['token'=>$token,'user'=>['id'=>$actor]]), $cleanup)->getContent(), true)['data'];
+ $execute = function ($token, $actor = 123) use ($controller, $cleanup) {
+     $response = $controller->executeRuleHitCleanup(Request::create('/', 'POST', ['token'=>$token,'user'=>['id'=>$actor]]), $cleanup);
+     $data = json_decode($response->getContent(), true)['data'];
+     $expected = in_array($data['state'], ['queued','running'], true) ? 202 : 200;
+     if ($response->getStatusCode() !== $expected) throw new RuntimeException('Unexpected confirmation status');
+     return $data;
+ };
+ $finish = function ($token) use ($execute, $cleanup) {
+     $task = $execute($token);
+     if ($task['state'] !== 'queued' || $task['deleted'] !== 0) throw new RuntimeException('Confirmation did not queue a task');
+     while ($cleanup->processBatch($task['id'])) {}
+     $status = $cleanup->status(123, $task['id']);
+     if ($status['state'] !== 'completed' || $status['matched'] !== $status['deleted'] + $status['skipped']) throw new RuntimeException('Bad task progress');
+     return ['deleted'=>$status['deleted'], 'skipped'=>$status['skipped']];
+ };
  $rejectToken = function ($token, $actor = 123) use ($execute) {
      try { $execute($token, $actor); throw new RuntimeException('Invalid preview was consumed'); }
      catch (Symfony\Component\HttpKernel\Exception\HttpException $error) {
@@ -84,28 +97,43 @@ try{
  $snapshot = $preview($filter);
  if ($snapshot['matched']!==3 || $snapshot['reviewed']!==3 || $snapshot['pending']!==0 ||
      $snapshot['limit']!==1000 || !is_string($snapshot['token'])) throw new RuntimeException('Default preview scope incorrect');
+ if (array_column($snapshot['rows'], 'id') !== [$plain->id,$edited->id,$missing->id]
+     || $snapshot['excluded_pending'] !== null || $snapshot['rows'][0] !== [
+         'id'=>$plain->id, 'hit_at'=>100, 'rule_name'=>RiskLogService::ruleName($plain->rule_key),
+         'review_state'=>'confirmed', 'risk_level'=>'low'
+     ]) throw new RuntimeException('Preview rows differ from the eligible batch or expose extra fields');
  $rejectToken($snapshot['token'], 124);
  $new = $create(99, $done);
  DB::table('v2_risk_rule_hit')->where('id',$edited->id)->update(['payload'=>json_encode(
      $done + ['review_history'=>[['state'=>'confirmed','note'=>'reviewed again']]]
  )]);
  $missing->delete();
- if ($execute($snapshot['token'])!==['deleted'=>1,'skipped'=>2] || $plain->fresh() ||
+ if ($finish($snapshot['token'])!==['deleted'=>1,'skipped'=>2] || $plain->fresh() ||
      !$edited->fresh() || !$new->fresh() || !$pending->fresh() || !$boundary->fresh()) {
      throw new RuntimeException('Execution expanded beyond its unchanged preview');
  }
- $rejectToken($snapshot['token']);
+ if ($execute($snapshot['token']) !== $cleanup->status(123) || $cleanup->status(124) !== null) throw new RuntimeException('Confirmation replay or cross-admin lookup changed task');
  $firstToken = $preview($filter)['token'];
  $mixed = $preview($filter + ['include_pending'=>true]);
  $rejectToken($firstToken);
  if ($mixed['matched']!==3 || $mixed['reviewed']!==2 || $mixed['pending']!==1) throw new RuntimeException('Mixed counts incorrect');
  app(RiskLogService::class)->reviewHit(['id'=>$pending->id,'state'=>'ignored'], 321);
- if ($execute($mixed['token'])!==['deleted'=>2,'skipped'=>1] || !$pending->fresh()) throw new RuntimeException('Concurrent review lost');
+ if ($finish($mixed['token'])!==['deleted'=>2,'skipped'=>1] || !$pending->fresh()) throw new RuntimeException('Concurrent review lost');
  $included = $create(102, ['review'=>['state'=>'pending']]);
  $token = $preview($filter + ['include_pending'=>true])['token'];
- if ($execute($token)!==['deleted'=>2,'skipped'=>0] || $included->fresh()) throw new RuntimeException('Explicit pending cleanup failed');
+ if ($finish($token)!==['deleted'=>2,'skipped'=>0] || $included->fresh()) throw new RuntimeException('Explicit pending cleanup failed');
  $empty = $preview($filter);
- if ($empty['matched']!==0 || $empty['token']!==null || $empty['expires_at']!==null) throw new RuntimeException('Empty cleanup was actionable');
+ if ($empty['matched']!==0 || $empty['token']!==null || $empty['expires_at']!==null
+     || $empty['rows']!==[] || $empty['excluded_pending']!==0) throw new RuntimeException('Empty cleanup was actionable');
+ $legacy = $create(100, []);
+ $otherPending = $create(103, ['review'=>['state'=>'pending']]);
+ $filtered = $preview($filter);
+ if ($filtered['matched']!==0 || $filtered['rows']!==[] || $filtered['token']!==null
+     || $filtered['excluded_pending']!==2) throw new RuntimeException('Missing pending-only empty-state explanation');
+ $includedPreview = $preview($filter + ['include_pending'=>true]);
+ if (array_column($includedPreview['rows'],'id')!==[$legacy->id,$otherPending->id]
+     || array_column($includedPreview['rows'],'review_state')!==['pending','pending']
+     || $includedPreview['excluded_pending']!==null) throw new RuntimeException('Included pending hits missing from preview');
  $retention = app(App\Services\LogRetentionService::class)->settings();
  $cutoff = now('Asia/Kathmandu')->addDay()->startOfDay()->timestamp;
  $future = $create(now()->timestamp+60, $done);
@@ -117,15 +145,34 @@ try{
  try { $rejectToken($today['token']); } finally { Illuminate\Support\Carbon::setTestNow(); }
  $bulkFixture = ['scene'=>'login','rule_key'=>'cleanup_limit','risk_level'=>'low','hit_at'=>10,
      'payload'=>json_encode($done),'created_at'=>10,'updated_at'=>10];
- foreach (array_chunk(array_fill(0, 1001, $bulkFixture), 100) as $chunk) DB::table('v2_risk_rule_hit')->insert($chunk);
+ foreach (array_chunk(array_fill(0, 2001, $bulkFixture), 100) as $chunk) DB::table('v2_risk_rule_hit')->insert($chunk);
  $limited = $preview(['before'=>20]);
- if ($limited['matched']!==1001 || $limited['reviewed']!==1000 || $limited['pending']!==0
-     || $execute($limited['token'])!==['deleted'=>1000,'skipped'=>0] || $preview(['before'=>20])['matched']!==1
-     || app(App\Services\LogRetentionService::class)->settings()!==$retention) throw new RuntimeException('One-off cleanup exceeded batch or changed retention');
- foreach (['preview','execute'] as $action) {
-     $req = Request::create('/api/v1/'.AdminRoute::prefix().'/ops/log/rule-hit/cleanup/'.$action,'POST');
+ $task = $execute($limited['token']);
+ if ($limited['matched']!==2001 || $limited['reviewed']!==2001 || $limited['pending']!==0 || count($limited['rows'])!==1000 ||
+     $task['matched']!==2001 || !$cleanup->processBatch($task['id'])) throw new RuntimeException('Full cleanup stopped at the sample limit');
+ $progress = $cleanup->status(123, $task['id']);
+ if ($progress['deleted']!==1000 || $progress['state']!=='running') throw new RuntimeException('Batch did not checkpoint progress');
+ $late = $create(9, $done);
+ $cleanup->markFailed($task['id']);
+ if ($cleanup->processBatch($task['id']) || $cleanup->status(123)['state']!=='failed') throw new RuntimeException('Task failure lost');
+ $create(1, $done);
+ $newer = $preview(['before'=>2]);
+ if ($finish($newer['token'])!==['deleted'=>1,'skipped'=>0] || $cleanup->status(123)['id']!==$task['id']) {
+     throw new RuntimeException('A newer completion hid a recoverable task');
+ }
+ try { $cleanup->retry(124, $task['id']); throw new RuntimeException('Cross-admin retry allowed'); }
+ catch (Symfony\Component\HttpKernel\Exception\HttpException $e) { if ($e->getStatusCode() !== 404) throw $e; }
+ $retry = $controller->retryRuleHitCleanup(Request::create('/', 'POST', ['id'=>$task['id'],'user'=>['id'=>123]]), $cleanup);
+ if ($retry->getStatusCode()!==202 || json_decode($retry->getContent(), true)['data']['state']!=='queued'
+     || Illuminate\Support\Facades\Artisan::call('risk:process-cleanups')!==0
+     || $cleanup->status(123, $task['id'])['deleted']!==2001 || $cleanup->status(123, $task['id'])['state']!=='completed'
+     || !$late->fresh() || $preview(['before'=>20])['matched']!==1
+     || app(App\Services\LogRetentionService::class)->settings()!==$retention) throw new RuntimeException('Resume changed the snapshot or retention');
+ if (RiskRuleHit::query()->whereIntegerInRaw('id',array_column($limited['rows'],'id'))->exists()) throw new RuntimeException('Cleanup did not consume the displayed snapshot');
+ foreach (['preview'=>'POST','execute'=>'POST','status'=>'GET','retry'=>'POST'] as $action=>$method) {
+     $req = Request::create('/api/v1/'.AdminRoute::prefix().'/ops/log/rule-hit/cleanup/'.$action,$method);
      $req->headers->set('Accept','application/json');
      if (app(Illuminate\Contracts\Http\Kernel::class)->handle($req)->getStatusCode()!==403) throw new RuntimeException('Unauthorized cleanup');
  }
- echo "PASS: review history and batch review; bounded, scoped, single-use cleanup previews, expiry, changed rows and authorization\n";
+ echo "PASS: review history, scoped full cleanup, pending counts and sample, changed rows, authorization and multi-batch scheduled recovery\n";
 }finally{DB::rollBack();}

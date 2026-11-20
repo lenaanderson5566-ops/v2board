@@ -40,3 +40,11 @@ body[data-console="user"] .configuration-updates .configuration-request-status {
     tr:has(.configuration-request-reason) .configuration-record-result { justify-self:stretch; }
     .configuration-record-client small,.configuration-record-source small { display:inline; margin-inline-start:6px; }
 }
+@media (max-width: 600px) {
+    .configuration-updates-back {
+        min-height: 44px;
+        margin-block-end: 8px;
+        font-size: var(--user-font-label);
+    }
+    .configuration-updates-empty { padding-block: 16px; }
+}

@@ -184,7 +184,28 @@ class LogController extends Controller
     public function executeRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
     {
         $params = $request->validate(['token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/']]);
-        return response(['data' => $cleanup->execute((int) $request->user['id'], $params['token'])]);
+        $task = $cleanup->execute((int) $request->user['id'], $params['token']);
+        return $this->cleanupTaskResponse($task);
+    }
+
+    public function ruleHitCleanupStatus(Request $request, RiskHitCleanup $cleanup)
+    {
+        $params = $request->validate(['id' => 'sometimes|required|integer|min:1']);
+        $id = isset($params['id']) ? (int) $params['id'] : null;
+        return response(['data' => $cleanup->status((int) $request->user['id'], $id)]);
+    }
+
+    public function retryRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
+    {
+        $params = $request->validate(['id' => 'required|integer|min:1']);
+        $task = $cleanup->retry((int) $request->user['id'], (int) $params['id']);
+        return $this->cleanupTaskResponse($task);
+    }
+
+    private function cleanupTaskResponse(array $task)
+    {
+        $pending = in_array($task['state'], ['queued', 'running'], true);
+        return response(['data' => $task], $pending ? 202 : 200);
     }
 
     public function getRuleHits(Request $request)

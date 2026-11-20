@@ -48,6 +48,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('check:ticket')->everyMinute();
         // reset
         $schedule->command('logs:prune')->everyFiveMinutes()->withoutOverlapping(5)->runInBackground();
+        $schedule->command('risk:process-cleanups')->everyMinute()->withoutOverlapping(5)->runInBackground();
         // send
         // horizon metrics
         $schedule->command('horizon:snapshot')->everyFiveMinutes();

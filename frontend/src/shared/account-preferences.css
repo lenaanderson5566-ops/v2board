@@ -49,5 +49,9 @@
 .app.user .account-preferences .preference-control select:not([size]) { font-size: var(--user-font-control, 14px); }
 .app.user .account-preferences .preference-readonly { display: block; background: var(--surface-soft); overflow-wrap: anywhere; user-select: text; }
 @media (max-width: 600px) {
-    .app.user .account-preferences .preference-row { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .app.user .account-preferences .preference-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+    .app.user .account-preferences .settings-card .settings-row + .settings-row { padding-block-start: 16px; margin-block-start: 16px; }
+    .app.user .account-preferences :is(.preference-title, .preference-readonly) { font-size: var(--user-font-body); }
+    .app.user .account-preferences .settings-row p, .account-preferences .analytics-setting-details { font-size: var(--user-font-label); }
+    .account-preferences .analytics-setting-details summary { min-height: 44px; padding-block: 12px; }
 }

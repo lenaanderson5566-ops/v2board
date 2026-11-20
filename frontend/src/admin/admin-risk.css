@@ -257,6 +257,3 @@
     margin: 0;
     white-space: nowrap;
 }
-
-.risk-cleanup-records { min-width: 0; }
-.risk-cleanup-records .table-viewport { max-height: 32vh; overflow: auto; }

@@ -99,13 +99,16 @@ try {
         (new App\Providers\RouteServiceProvider($app))->map();
         $opsPrefix = 'api/v1/'.$adminPath.'/ops/';
         $operations = array_filter($routes->getRoutes(), fn($route) => str_contains($route->getActionName(), '\\V1\\Risk\\'));
-        $assert(count($operations) === 28, 'Unexpected operations route inventory');
-        foreach (['preview', 'execute', 'retry'] as $action) {
-            $cleanup = $routes->match(Illuminate\Http\Request::create('/'.$opsPrefix.'log/rule-hit/cleanup/'.$action, 'POST'));
-            $assert($cleanup->methods() === ['POST'], 'Risk cleanup must require POST: '.$action);
+        $assert(count($operations) === 24, 'Unexpected operations route inventory');
+        foreach (['preview'=>'POST', 'execute'=>'POST', 'status'=>'GET', 'retry'=>'POST'] as $action=>$method) {
+            $uri = '/'.$opsPrefix.'log/rule-hit/cleanup/'.$action;
+            try {
+                $routes->match(Illuminate\Http\Request::create($uri, $method));
+                $assert(false, 'Retired risk cleanup endpoint is still routed: '.$uri);
+            } catch (Symfony\Component\HttpKernel\Exception\NotFoundHttpException $e) {
+                $assert(true, 'Retired risk cleanup endpoint is absent');
+            }
         }
-        $progress = $routes->match(Illuminate\Http\Request::create('/'.$opsPrefix.'log/rule-hit/cleanup/status', 'GET'));
-        $assert(!array_diff($progress->methods(), ['GET', 'HEAD']), 'Cleanup progress must be read-only');
         foreach ($operations as $route) {
             $assert(str_starts_with($route->uri(), $opsPrefix), 'Unexpected operations prefix: '.$route->uri());
             $assert(in_array('admin', $route->middleware(), true) && in_array('log', $route->middleware(), true), 'Unprotected operations route: '.$route->uri());

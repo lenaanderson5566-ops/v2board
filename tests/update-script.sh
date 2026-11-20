@@ -95,6 +95,12 @@ cat > "$TMP/php" <<'MOCK'
 set -e
 printf '%s\n' "$*" >> "${MOCK_LOG:-calls.log}"
 if [[ "$1" == '-r' ]]; then
+    if [[ "$2" == *'$migration->assertReady()'* ]]; then
+        if [[ "${UNFINISHED_RISK_CLEANUP:-}" == preflight || ( "${UNFINISHED_RISK_CLEANUP:-}" == during-maintenance && -e storage/framework/down ) ]]; then
+            echo 'Risk cleanup task #7 is queued.' >&2; exit 1
+        fi
+        exit 0
+    fi
     if [[ "$2" == *'json_decode'* ]]; then exec "$REAL_PHP" "$@"; fi
     echo "${MANUAL_USERS:-0}"; exit
 fi
@@ -301,7 +307,11 @@ awk '/migrate --path=database\/migrations\/2026_10_13_000001_create_payment_call
      END { exit !(callbacks && attempts && summary > attempts && raw > summary && raw > callbacks) }' calls.log
 grep -q 'Missing raw payment diagnostic column' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_17_000001_add_order_subscription_expiry_snapshot.php --force --no-interaction' calls.log
-grep -q 'migrate --path=database/migrations/2026_11_20_000001_create_risk_cleanup_tasks.php --force --no-interaction' calls.log
+if grep -q 'migrate --path=database/migrations/2026_11_20_000001_create_risk_cleanup_tasks.php ' calls.log; then
+    echo 'Upgrade recreated retired cleanup tables'; exit 1
+fi
+grep -q 'migrate --path=database/migrations/2026_11_20_000002_retire_risk_cleanup_tasks.php --force --no-interaction' calls.log
+grep -q 'Retired risk cleanup table still present' calls.log
 grep -q 'Missing order subscription expiry column' calls.log
 grep -q 'Missing plan translation source column' calls.log
 grep -q 'migrate --path=database/migrations/2026_10_12_000001_canonicalize_subscription_clients.php --force --no-interaction' calls.log
@@ -315,6 +325,17 @@ export FAIL_LOCK=1; reject --jobs-stopped; unset FAIL_LOCK
 new_site manual
 export MANUAL_USERS=1; reject --jobs-stopped; unset MANUAL_USERS
 [[ $(git rev-parse HEAD) == "$OLD" ]]
+new_site unfinished-risk-cleanup
+export UNFINISHED_RISK_CLEANUP=preflight
+reject --check
+grep -q 'Risk cleanup task #7 is queued' "$TMP/output"
+[[ $(git rev-parse HEAD) == "$OLD" && ! -e storage/framework/down ]]
+export UNFINISHED_RISK_CLEANUP=during-maintenance
+reject --jobs-stopped
+unset UNFINISHED_RISK_CLEANUP
+grep -q 'Risk cleanup task #7 is queued' "$TMP/output"
+[[ $(git rev-parse HEAD) == "$OLD" && -e storage/framework/down ]]
+if grep -q 'artisan migrate ' calls.log; then echo 'Migration started with unfinished cleanup'; exit 1; fi
 new_site jobs
 ARGS+=(--database-backup '')
 bash "$SOURCE" "${ARGS[@]}" > "$TMP/output" 2>&1

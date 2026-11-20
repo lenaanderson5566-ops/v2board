@@ -14,8 +14,6 @@ use App\Models\UserOnlineSnapshot;
 use App\Models\RiskSetting;
 use App\Services\AdminRecurringOrderHistory;
 use App\Services\RiskLogService;
-use App\Services\RiskHitCleanup;
-use App\Services\TimeZones;
 use App\Services\RiskStatisticsService;
 use App\Services\GeoIpService;
 use App\Services\TrafficCreditService;
@@ -167,45 +165,6 @@ class LogController extends Controller
         if ($bulk) return response(['data' => $service->reviewPendingHits($params, $adminId)]);
         $service->reviewHit($params, $adminId);
         return response(['data' => true]);
-    }
-
-    public function previewRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
-    {
-        $tomorrow = now(TimeZones::system())->addDay()->startOfDay()->timestamp;
-        $params = $request->validate([
-            'before' => 'required|integer|min:1|max:'.$tomorrow,
-            'include_pending' => 'sometimes|boolean',
-        ]);
-        return response(['data' => $cleanup->preview(
-            (int) $request->user['id'], (int) $params['before'], $request->boolean('include_pending')
-        )]);
-    }
-
-    public function executeRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
-    {
-        $params = $request->validate(['token' => ['required', 'string', 'regex:/\A[a-f0-9]{64}\z/']]);
-        $task = $cleanup->execute((int) $request->user['id'], $params['token']);
-        return $this->cleanupTaskResponse($task);
-    }
-
-    public function ruleHitCleanupStatus(Request $request, RiskHitCleanup $cleanup)
-    {
-        $params = $request->validate(['id' => 'sometimes|required|integer|min:1']);
-        $id = isset($params['id']) ? (int) $params['id'] : null;
-        return response(['data' => $cleanup->status((int) $request->user['id'], $id)]);
-    }
-
-    public function retryRuleHitCleanup(Request $request, RiskHitCleanup $cleanup)
-    {
-        $params = $request->validate(['id' => 'required|integer|min:1']);
-        $task = $cleanup->retry((int) $request->user['id'], (int) $params['id']);
-        return $this->cleanupTaskResponse($task);
-    }
-
-    private function cleanupTaskResponse(array $task)
-    {
-        $pending = in_array($task['state'], ['queued', 'running'], true);
-        return response(['data' => $task], $pending ? 202 : 200);
     }
 
     public function getRuleHits(Request $request)

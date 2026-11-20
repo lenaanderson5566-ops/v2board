@@ -9,7 +9,6 @@ import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { AdminLogFilters, type AdminLogKind } from "./AdminLogFilters";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { PendingRiskHits, pendingRiskColumns } from "./PendingRiskHits";
-import { RiskHitCleanup } from "./RiskHitCleanup";
 import { ContentComposer } from "./ContentComposer";
 import { mergePageOrder, sortPayload } from "./admin-actions";
 import { linkResource, resourceFields, validateResource } from "./admin-linkage";
@@ -116,7 +115,6 @@ export function ResourcePage({
         savedView.riskView === "pending" ? "pending" : "grouped",
     );
     const [riskMessage, setRiskMessage] = useState("");
-    const [showRiskCleanup, setShowRiskCleanup] = useState(false);
     const pendingRiskHits = kind === "access-logs-risk" && riskView === "pending";
     const displayColumns = pendingRiskHits ? pendingRiskColumns : resource.columns;
     const columnStorageKey = `admin.columns.${viewKey}${pendingRiskHits ? ":pending" : ""}`;
@@ -387,11 +385,6 @@ export function ResourcePage({
     return (
         <>
             {(kind === "access-blacklist" || kind === "access-blacklist-ua") && <p className="muted">仅拦截订阅获取请求，不限制网站登录及节点代理流量。</p>}
-            {kind === "access-logs-risk" && showRiskCleanup && <RiskHitCleanup close={() => setShowRiskCleanup(false)}
-                onDeleted={(deleted, skipped) => {
-                    setRiskMessage(`已永久删除 ${deleted} 条，跳过 ${skipped} 条。`);
-                    d.reload();
-                }} />}
             {showDisplay && ownDisplaySettings && <AdminDisplaySettings title={`${resource.title}显示设置`}
                 columns={displayColumns.filter(([key]) => !hiddenColumns.includes(key))} selected={selectedColumns}
                 onChange={updateColumns} onReset={() => updateColumns(displayColumns.map(([key]) => key))} close={() => setShowDisplay(false)} />}
@@ -400,7 +393,6 @@ export function ResourcePage({
                 actions={
                     <>
                         {headerActions}
-                        {kind === "access-logs-risk" && <button type="button" className="danger" onClick={() => setShowRiskCleanup(true)}>一次性清理</button>}
                         {ownDisplaySettings && <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
                         {planView && (
                             <button type="button" aria-pressed={showAllPlanProducts}

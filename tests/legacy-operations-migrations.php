@@ -60,7 +60,52 @@ $assert(DB::table('v2_subscribe_log')->where('user_id',1)->count()===1
     && DB::table('v2_subscribe_log')->whereNull('user_id')->count()===1
     && Schema::hasIndex('v2_subscribe_log','v2_subscribe_log_created_id_idx'),
     'Existing audit records and indexes are preserved and anonymous blocks can be recorded');
-echo "Legacy operations migrations: missing tables, existing policies, partial indexes and retries passed\n";
+$retireCleanup = require database_path('migrations/2026_11_20_000002_retire_risk_cleanup_tasks.php');
+$createCleanup = require database_path('migrations/2026_11_20_000001_create_risk_cleanup_tasks.php');
+$taskTable = 'v2_risk_cleanup_task';
+$itemTable = 'v2_risk_cleanup_item';
+$installSql = file_get_contents(database_path('install.sql'));
+foreach ([$taskTable, $itemTable] as $table) {
+    $assert(!str_contains($installSql, $table), 'Fresh install still includes '.$table);
+}
+$retireCleanup->up();
+$retireCleanup->up();
+$assert(!Schema::hasTable($taskTable) && !Schema::hasTable($itemTable), 'Upgrade skipping the cleanup release created tables');
+
+$createCleanup->up();
+$evidence = ['review' => ['state' => 'confirmed', 'admin_id' => 12], 'threshold' => 3];
+$hitId = DB::table('v2_risk_rule_hit')->insertGetId([
+    'scene' => 'login', 'rule_key' => 'test-retirement', 'payload' => json_encode($evidence),
+]);
+$taskId = DB::table($taskTable)->insertGetId([
+    'admin_id' => 12, 'state' => 'queued', 'token_hash' => hash('sha256', 'test-retirement'),
+    'expires_at' => 0, 'created_at' => 1, 'updated_at' => 1,
+]);
+DB::table($itemTable)->insert(['task_id' => $taskId, 'risk_hit_id' => $hitId, 'version' => hash('sha256', 'test-version')]);
+foreach (['queued', 'running', 'failed'] as $state) {
+    DB::table($taskTable)->where('id', $taskId)->update(['state' => $state]);
+    try {
+        $retireCleanup->up();
+        throw new RuntimeException('Retirement discarded an unfinished task');
+    } catch (RuntimeException $error) {
+        $assert(str_contains($error->getMessage(), "task #$taskId is $state"), $error->getMessage());
+    }
+    $assert(DB::table($taskTable)->where('id', $taskId)->value('state') === $state
+        && DB::table($itemTable)->where('risk_hit_id', $hitId)->exists(), 'Blocked retirement lost the cleanup snapshot');
+}
+DB::table($taskTable)->where('id', $taskId)->update(['state' => 'completed']);
+foreach (['preview', 'superseded'] as $state) {
+    DB::table($taskTable)->insert([
+        'admin_id' => 12, 'state' => $state, 'token_hash' => hash('sha256', $state),
+        'expires_at' => 99, 'created_at' => 1, 'updated_at' => 1,
+    ]);
+}
+$retireCleanup->up();
+$retireCleanup->up();
+$assert(!Schema::hasTable($taskTable) && !Schema::hasTable($itemTable), 'Retired cleanup tables still exist');
+$assert(json_decode(DB::table('v2_risk_rule_hit')->where('id', $hitId)->value('payload'), true) == $evidence,
+    'Retiring the cleanup tool changed the original hit or review');
+echo "Legacy operations migrations: missing tables, existing policies, partial indexes, cleanup retirement and retries passed\n";
 
 } finally {
     DB::purge('legacy_ops_test');

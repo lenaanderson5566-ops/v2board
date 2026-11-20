@@ -1,7 +1,8 @@
+import { AdminPager } from "./AdminPager";
 import { NodeDomainTools } from "./nodes/NodeDomainTools";
 import { domainStatus, certificateTransitionStatus } from "./nodes/domain-status";
 import { TableViewport } from "../shared/ui";
-import { Pager } from "../shared/ui";
+
 import { AdminLogTimeZone, logTime as date } from "./admin-log-time";
 import { useMemo, useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
@@ -37,6 +38,7 @@ const labels: Record<string, string> = {
 
 export function AdminDDNS() {
     const [pageSize, setPageSize] = useState(20);
+    const [credentialPage, setCredentialPage] = useState(1);
     const [domainPage, setDomainPage] = useState(1),
         [domainQuery, setDomainQuery] = useState("");
     const pending = useRef(false);
@@ -151,7 +153,7 @@ export function AdminDDNS() {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {credentials.map((c) => (
+                                    {credentials.slice((credentialPage - 1) * 20, credentialPage * 20).map((c) => (
                                         <tr key={c.id}>
                                             <td>{c.name}</td>
                                             <td>
@@ -190,6 +192,11 @@ export function AdminDDNS() {
                                 </tbody>
                             </table>
                         </TableViewport>
+                        {(credentials.length > 20 || credentialPage > 1) && (
+                            <AdminPager page={credentialPage} size={20} total={credentials.length}
+                                loading={data.loading} totalUnavailable={data.data == null || Boolean(data.error)}
+                                onChange={setCredentialPage} />
+                        )}
                         <h3>解析状态</h3>
                         <p className="muted">
                             节点域名在 <a href="#/nodes">节点管理</a>{" "}
@@ -272,9 +279,11 @@ export function AdminDDNS() {
                                 </tbody>
                             </table>
                         </TableViewport>
-                        <Pager
-                            page={currentDomainPage}
+                        <AdminPager
+                            page={domainPage}
                             total={matching.length}
+                            totalUnavailable={data.data == null || Boolean(data.error)}
+                            loading={data.loading}
                             size={20}
                             onChange={setDomainPage}
                         />
@@ -335,8 +344,9 @@ export function AdminDDNS() {
                             </table>
                         </TableViewport>
                     </State>
-                    <Pager
+                    <AdminPager
                         page={page}
+                        totalUnavailable={events.data == null || Boolean(events.error)}
                         total={events.total}
                         size={pageSize}
                         loading={events.loading}

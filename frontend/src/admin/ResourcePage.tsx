@@ -1,13 +1,14 @@
+import { AdminPager } from "./AdminPager";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import { Plus, Search } from "lucide-react";
 import { admin, date, download, query, request, rows, type Row } from "../shared/api";
 import { languageCodes } from "../shared/language-options";
-import { Editor, Modal, Pager, Panel, Reload, State, Table, useData, type Field } from "../shared/ui";
+import { Editor, Modal, Panel, Reload, State, Table, useData, type Field } from "../shared/ui";
 import { AdminLogTimeZone } from "./admin-log-time";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { AdminLogFilters, type AdminLogKind } from "./AdminLogFilters";
 import { ContentComposer } from "./ContentComposer";
-import { sortPayload } from "./admin-actions";
+import { mergePageOrder, sortPayload } from "./admin-actions";
 import { linkResource, resourceFields, validateResource } from "./admin-linkage";
 import { formPresentation } from "./admin-presentation";
 import { AdminSwitch } from "./admin-switch";
@@ -50,6 +51,7 @@ type ResourceKind =
 
 export interface Resource {
     kind?: ResourceKind;
+    pagination?: "local";
     planView?: PlanView;
     logKind?: AdminLogKind;
     title: string;
@@ -222,7 +224,14 @@ export function ResourcePage({
         [error, setError] = useState("");
     const searchesByEmail = Boolean(logKind || kind === "online");
     const searchesServer = Boolean(resource.serverSearch || searchesByEmail);
-    const pageContext = JSON.stringify([viewKey, queryParams, pageSize, logFilters, searchesServer ? search : ""]);
+    const localPagination = resource.pagination === "local";
+    const [routeUsage, setRouteUsage] = useState("");
+    const [routeFilter, setRouteFilter] = useState("");
+    const [showAllPlanProducts, setShowAllPlanProducts] = useState(false);
+    const pageContext = JSON.stringify([
+        viewKey, queryParams, pageSize, logFilters, searchesServer || localPagination ? search : "",
+        routeUsage, routeFilter, showAllPlanProducts,
+    ]);
     const [pagination, setPagination] = useState(() => ({
         context: pageContext,
         page: Number.isInteger(savedView.page) && savedView.page > 0 ? savedView.page : 1,
@@ -234,9 +243,6 @@ export function ResourcePage({
     const tableContainer = useRef<HTMLDivElement>(null);
     const listSearchInput = useRef<HTMLInputElement>(null);
     const sortFocus = useRef<{ key: string; target: Element | null } | null>(null);
-    const [routeUsage, setRouteUsage] = useState("");
-    const [routeFilter, setRouteFilter] = useState("");
-    const [showAllPlanProducts, setShowAllPlanProducts] = useState(false);
     const [editorState, setEditorState] = useState({ busy: false, dirty: false });
     const [planTextChanged, setPlanTextChanged] = useState(false);
     const [translationPlan, setTranslationPlan] = useState<Row | null>(null);
@@ -259,10 +265,7 @@ export function ResourcePage({
     ]);
     const d = useData<Row[]>(
         query(resource.fetch, {
-            current: page,
-            page: page,
-            pageSize,
-            page_size: pageSize,
+            ...(!localPagination && { current: page, page, pageSize, page_size: pageSize }),
             email: searchesByEmail ? search : undefined,
             keyword: resource.serverSearch ? search : undefined,
             ...logFilters,
@@ -286,12 +289,6 @@ export function ResourcePage({
         Array.from(tableContainer.current?.querySelectorAll<HTMLButtonElement>(".table-sort") || [])
             .find(button => button.dataset.sortKey === pending.key)?.focus();
     }, [d.loading, d.error, d.data, pageContext]);
-    const total = d.total || (Array.isArray(d.data) ? d.data.length : 0);
-    useEffect(() => {
-        if (d.loading || d.error || !Array.isArray(d.data)) return;
-        const last = d.total > 0 ? Math.max(1, Math.ceil(d.total / pageSize)) : 1;
-        if (page > last) setPage(last);
-    }, [d.loading, d.error, d.data, d.total, pageSize, page]);
     useEffect(() => {
         if (kind !== "clients") return;
         const timer = window.setInterval(() => {
@@ -372,6 +369,9 @@ export function ResourcePage({
                     .includes(search.toLowerCase()),
             ),
     );
+    const total = localPagination ? list.length : d.total;
+    const totalUnknown = !localPagination && !d.totalKnown;
+    const visibleRows = localPagination ? list.slice((page - 1) * pageSize, page * pageSize) : list;
     return (
         <>
             {(kind === "access-blacklist" || kind === "access-blacklist-ua") && <p className="muted">仅拦截订阅获取请求，不限制网站登录及节点代理流量。</p>}
@@ -464,7 +464,7 @@ export function ResourcePage({
                     </p>
                 )}
                 {typeof toolbar === "function" ? toolbar({
-                    total: d.loading || d.error || d.data == null ? null : total,
+                    total: d.loading || d.error || d.data == null || totalUnknown ? null : total,
                     error: d.error,
                 }) : toolbar}
                 {kind === "routes" && (
@@ -485,7 +485,7 @@ export function ResourcePage({
                         <dl>
                             <div><dt>上报用户</dt><dd>{d.meta?.users ?? "—"}</dd></div>
                             <div><dt>独立 IP</dt><dd>{d.meta?.ips ?? "—"}</dd></div>
-                            <div><dt>上报记录</dt><dd>{d.data == null ? "—" : d.total}</dd></div>
+                            <div><dt>上报记录</dt><dd>{totalUnknown ? "—" : d.total}</dd></div>
                         </dl>
                         <p className="muted">按节点有效上报窗口统计，受流量阈值影响。记录按用户、节点和 IP 区分，不等于实时连接数或设备数。
                             {d.meta?.updated_at && <span> 查询时间 {date(d.meta.updated_at)}</span>}
@@ -500,7 +500,7 @@ export function ResourcePage({
                 )}
                 {searchable && !searchesServer && search && Array.isArray(d.data) && (
                     <div className="admin-local-search-summary" role="status">
-                        <span>{d.total > fetchedRows.length
+                        <span>{!localPagination && (totalUnknown || d.total > fetchedRows.length)
                             ? `仅筛选当前第 ${page} 页：匹配 ${list.length} 条。其他页可翻页后继续筛选。`
                             : `当前列表匹配 ${list.length} 条。`}</span>
                         <button type="button" onClick={() => {
@@ -513,7 +513,7 @@ export function ResourcePage({
                 <State {...d} retry={d.reload}>
                     {error && <div className="alert">{error}</div>}
                     <Table
-                        data={list}
+                        data={visibleRows}
                         stickyColumn={kind === "users" ? "id" : undefined}
                         columns={resource.columns
                             .filter(([key]) => !hiddenColumns.includes(key) && (!ownDisplaySettings || selectedColumns.includes(key)))
@@ -604,7 +604,7 @@ export function ResourcePage({
                                               resource.sort!,
                                               sortPayload(
                                                   resource.sortKind!,
-                                                  items,
+                                                  localPagination ? mergePageOrder(fetchedRows, items) : items,
                                               ),
                                           );
                                           d.reload();
@@ -736,22 +736,20 @@ export function ResourcePage({
                     />
                 </State>
                 </div>
-                    {(kind === "users" || total > 0 || (!d.loading && !d.error)) && (
-                        <Pager
-                            preserveFocus={kind === "users"}
-                            totalUnavailable={d.data == null}
-                            page={page}
-                            total={d.total || list.length}
-                            size={d.total > 0 ? pageSize : Math.max(pageSize, list.length)}
-                            loading={d.loading}
-                            onSizeChange={d.total > 0 || kind === "users" ? (size) => {
-                                setPage(1);
-                                if (onPageSizeChange) onPageSizeChange(size);
-                                else setLocalPageSize(size);
-                            } : undefined}
-                            onChange={setPage}
-                        />
-                    )}
+                <AdminPager
+                    preserveFocus={kind === "users"}
+                    totalUnavailable={d.data == null || Boolean(d.error) || (totalUnknown && "unknown")}
+                    page={page}
+                    total={total}
+                    size={pageSize}
+                    loading={d.loading}
+                    onSizeChange={(size) => {
+                        setPage(1);
+                        if (onPageSizeChange) onPageSizeChange(size);
+                        else setLocalPageSize(size);
+                    }}
+                    onChange={setPage}
+                />
             </Panel>
             {editing && (
                 <Modal

@@ -1,6 +1,7 @@
+import { AdminPager } from "./AdminPager";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { TableViewport } from "../shared/ui";
-import { Pager, FilterActions } from "../shared/ui";
+import { FilterActions } from "../shared/ui";
 import { useState } from "react";
 import { admin, date, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
@@ -195,13 +196,14 @@ export function InvitationEmails() {
                     )}
                 </TableViewport>
             </State>
-            <Pager
+            <AdminPager
                 size={pageSize}
                 onSizeChange={(size) => {
                     setPageSize(size);
                     setPage(1);
                 }}
                 page={page}
+                totalUnavailable={rows.data == null || Boolean(rows.error)}
                 total={rows.total}
                 loading={rows.loading}
                 onChange={setPage}

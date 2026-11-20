@@ -1,7 +1,8 @@
+import { AdminPager } from "./AdminPager";
 import "./admin-mail-campaigns.css";
 import { formatPercent } from "../shared/number-format";
 import { logTime as date } from "./admin-log-time";
-import { Html, Modal, Pager, State, useData } from "../shared/ui";
+import { Html, Modal, State, useData } from "../shared/ui";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { useRetryCountdown } from "../shared/use-retry-countdown";
@@ -79,8 +80,9 @@ export function AdminMailCampaigns() {
                     暂无群发记录，历史单封邮件日志不会反推为群发记录。
                 </p>
             )}
-            <Pager
+            <AdminPager
                 page={page}
+                totalUnavailable={list.data == null || Boolean(list.error)}
                 total={list.total}
                 size={pageSize}
                 loading={list.loading || retryIn > 0}

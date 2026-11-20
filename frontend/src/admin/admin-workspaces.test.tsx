@@ -2306,23 +2306,68 @@ it("shows the returned row count when a management list omits its optional total
     await waitFor(() => expect(api.request.mock.calls.length).toBeGreaterThan(before));
     expect(api.request.mock.calls.every(([path, body]) => String(path).includes("server/group/fetch") && body === undefined)).toBe(true);
 });
-it("does not paginate or refetch a complete management list that has more than one page of rows without total metadata", async () => {
+it("pages and searches a complete management list locally without refetching", async () => {
     const { ResourcePage } = await import("./ResourcePage");
     api.request.mockResolvedValue({ data: Array.from({ length: 25 }, (_, index) => ({ id: index + 1, name: `Complete group ${index + 1}` })) });
     render(<ResourcePage resource={resources.groups} />);
-    await screen.findByText("Complete group 25");
-    expect(screen.getByText("Complete group 1")).toBeTruthy();
+    await screen.findByText("Complete group 1");
+    expect(screen.queryByText("Complete group 25")).toBeNull();
     const pager = screen.getByRole("navigation", { name: "分页" });
     expect(pager.textContent).toContain("共 25 条");
-    expect(pager.textContent).toContain("共 1 页");
-    expect(screen.queryByLabelText("每页显示行数")).toBeNull();
+    expect(pager.textContent).toContain("共 2 页");
     const reads = api.request.mock.calls.length;
-    for (const name of ["下一页", "末页"]) {
-        const button = within(pager).getByRole("button", { name });
-        expect((button as HTMLButtonElement).disabled).toBe(true);
-        fireEvent.click(button);
-    }
+    const jump = within(pager).getByRole("textbox", { name: "跳转页码" });
+    fireEvent.change(jump, { target: { value: "2" } });
+    fireEvent.keyDown(jump, { key: "Enter" });
+    expect(screen.getByText("Complete group 25")).toBeTruthy();
+    expect(screen.queryByText("Complete group 1")).toBeNull();
+    expect(pager.textContent).toContain("第 2 页");
+
+    const search = screen.getByRole("textbox", { name: "搜索列表" });
+    fireEvent.change(search, { target: { value: "Complete group 1" } });
+    expect(screen.getByText("Complete group 1")).toBeTruthy();
+    expect(screen.getByText("Complete group 19")).toBeTruthy();
+    expect(pager.textContent).toContain("共 11 条 · 第 1 页");
+    fireEvent.change(search, { target: { value: "" } });
+    fireEvent.change(within(pager).getByLabelText("每页显示行数"), { target: { value: "10" } });
+    expect(pager.textContent).toContain("共 3 页");
+    fireEvent.click(within(pager).getByRole("button", { name: "末页" }));
+    expect(screen.getByText("Complete group 25")).toBeTruthy();
+    expect(screen.queryByText("Complete group 20")).toBeNull();
     expect(api.request.mock.calls).toHaveLength(reads);
+});
+it("keeps a readable partial page when a paginated server response omits its total", async () => {
+    const { ResourcePage } = await import("./ResourcePage");
+    api.request.mockImplementation(async (path: string) => {
+        const page = new URLSearchParams(path.split("?")[1]).get("current");
+        return page === "2" ? { data: [{ id: 21, name: "Partial page" }] }
+            : { data: [{ id: 1, name: "First page" }], total: 21 };
+    });
+    render(<ResourcePage resource={{ ...resources.giftcards, columns: [["name", "名称"]], fields: [] }} />);
+    await screen.findByText("First page");
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    await screen.findByText("Partial page");
+    const pager = screen.getByRole("navigation", { name: "分页" });
+    expect(pager.textContent).toContain("第 2 页 · 总数未知");
+    expect(within(pager).queryByRole("textbox", { name: "跳转页码" })).toBeNull();
+    expect(within(pager).getByRole<HTMLButtonElement>("button", { name: "末页" }).disabled).toBe(true);
+    fireEvent.click(within(pager).getByRole("button", { name: "上一页" }));
+    await screen.findByText("First page");
+});
+it("sends the full knowledge order when reordering articles on a later page", async () => {
+    const { ResourcePage } = await import("./ResourcePage");
+    const articles = Array.from({ length: 22 }, (_, i) => ({ id: i + 1, title: `Article ${i + 1}` }));
+    const resource = resources.knowledge;
+    api.request.mockImplementation(async (path: string) => ({
+        data: path.startsWith(resource.fetch) ? articles : [],
+    }));
+    render(<ResourcePage resource={resource} />);
+    await screen.findByRole("cell", { name: "Article 1" });
+    fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+    const handle = screen.getByRole("button", { name: /Article 22$/ });
+    fireEvent.keyDown(handle, { key: "ArrowUp" });
+    const ids = articles.slice(0, 20).map(row => row.id).concat(22, 21);
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith(resource.sort, { knowledge_ids: ids }));
 });
 it("returns to the last valid page after a successful refresh removes the final row", async () => {
     const { ResourcePage } = await import("./ResourcePage");
@@ -2333,7 +2378,7 @@ it("returns to the last valid page after a successful refresh removes the final 
         return { data: page === 2 ? removed ? [] : [{ id: 21, name: "Last group" }]
             : Array.from({ length: 20 }, (_, index) => ({ id: index + 1, name: `Group ${index + 1}` })), total: removed ? 20 : 21 };
     });
-    render(<ResourcePage resource={resources.groups} />);
+    render(<ResourcePage resource={{ ...resources.giftcards, columns: [["name", "名称"]], fields: [] }} />);
     await screen.findByText("Group 20");
     fireEvent.click(screen.getByRole("button", { name: "下一页" }));
     await screen.findByText("Last group");
@@ -2354,7 +2399,7 @@ it("does not clamp a page based on unknown loading totals or a failed read", asy
         if (page === "2" && waiting) return new Promise((_, reject) => { fail = reject; });
         return { data: [{ id: page === "2" ? 21 : 1, name: page === "2" ? "Last group" : "First group" }], total: 21 };
     });
-    render(<ResourcePage resource={resources.groups} />);
+    render(<ResourcePage resource={{ ...resources.giftcards, columns: [["name", "名称"]], fields: [] }} />);
     await screen.findByText("First group");
     fireEvent.click(screen.getByRole("button", { name: "下一页" }));
     await waitFor(() => expect(fail).toBeTypeOf("function"));

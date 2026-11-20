@@ -19,6 +19,22 @@ import {trafficPayload} from "./ServerTrafficFields";
 const machine={id:7,name:"Physical machine",family:"ipv4",enabled:true};
 const quota={id:1,networkServerId:7,name:"Physical machine",limitBytes:1073741824,usedBytes:1073741824,blocked:true,countingMode:"both",resetDay:1,periodStart:"2026-10-01T00:00:00Z",periodEnd:"2026-11-01T00:00:00Z",nodes:[{type:"v2box",id:7}]};
 function integrated(){api.request.mockImplementation(async(path:string)=>String(path).includes("network/traffic?")?{data:{budget:quota,nodes:quota.nodes,history:[{dayAt:1792800000,uploadBytes:10,downloadBytes:20}]}}:String(path).includes("traffic-budget/fetch")?{data:[quota]}:{data:{id:7}});}
+it("jumps across the full local server inventory and returns to a valid page when it shrinks",async()=>{
+ integrated();
+ const servers=Array.from({length:25},(_,index)=>({...machine,id:index+1,name:`Inventory ${index+1}`}));
+ const inventory=(items:typeof servers)=><NetworkServers data={{servers:items,assignments:[],credentials:[]}} reload={()=>{}}/>;
+ const view=render(inventory(servers));
+ const input=await screen.findByRole("textbox",{name:"跳转页码"});
+ fireEvent.change(input,{target:{value:"2"}});
+ fireEvent.keyDown(input,{key:"Enter"});
+ expect(screen.getByText("Inventory 25")).toBeTruthy();
+ expect(screen.queryByText("Inventory 1")).toBeNull();
+ view.rerender(inventory(servers.slice(0,2)));
+ expect(screen.getByText("Inventory 1")).toBeTruthy();
+ expect(screen.queryByRole("textbox",{name:"跳转页码"})).toBeNull();
+ view.rerender(inventory(servers));
+ expect(screen.getByText("Inventory 1")).toBeTruthy();
+});
 it("saves server metadata and quota together without resetting or manually selecting nodes",async()=>{
  integrated();render(<NetworkServers data={{servers:[machine],assignments:[],credentials:[]}} reload={()=>{}}/>);
  await screen.findByText("已达额度");fireEvent.click(screen.getByRole("button",{name:"管理"}));

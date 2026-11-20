@@ -1,3 +1,4 @@
+import { AdminPager } from "./AdminPager";
 import { formatNumber, formatPercent } from "../shared/number-format";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { adminBusinessInstant, logTime } from "./admin-log-time";
@@ -13,7 +14,6 @@ import {
     State,
     Panel,
     Metric,
-    Pager,
     Table,
     Editor,
     Modal,
@@ -128,7 +128,7 @@ function RiskReviewQueue({ onReviewed }: { onReviewed: () => void }) {
                     else d.reload();
                 }} />],
             ]} />
-            <Pager page={page} total={d.total} size={size} loading={d.loading} onChange={setPage} onSizeChange={(next) => {
+            <AdminPager page={page} totalUnavailable={d.data == null || Boolean(d.error)} total={d.total} size={size} loading={d.loading} onChange={setPage} onSizeChange={(next) => {
                 setSize(next);
                 setPage(1);
             }} />

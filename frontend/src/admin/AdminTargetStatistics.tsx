@@ -1,8 +1,9 @@
+import { AdminPager } from "./AdminPager";
 import { finiteNumber, formatNumber } from "../shared/number-format";
 import { adminInstant } from "./admin-log-time";
 import { useState } from "react";
 import { admin, bytes, query, request, type Row } from "../shared/api";
-import { Panel, State, Table, Pager, useData } from "../shared/ui";
+import { Panel, State, Table, useData } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminSwitch } from "./admin-switch";
@@ -415,8 +416,9 @@ export function AdminTargetStatistics() {
                                 ],
                             ]}
                         />
-                        <Pager
+                        <AdminPager
                             page={page}
+                            totalUnavailable={report.data == null || Boolean(report.error)}
                             total={data.total || 0}
                             size={25}
                             loading={report.loading}

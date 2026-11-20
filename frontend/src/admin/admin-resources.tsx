@@ -40,6 +40,7 @@ const price = (key: string, label: string): Field => ({
 });
 const planResource = {
     kind: "plans",
+    pagination: "local",
     fetch: admin("plan/fetch"),
     sort: admin("plan/sort"),
     sortKind: "plans",
@@ -137,6 +138,7 @@ export const resources: Record<string, Resource> = {
     },
     groups: {
         kind: "groups",
+        pagination: "local",
         title: "节点权限组",
         fetch: admin("server/group/fetch"),
         save: admin("server/group/save"),
@@ -152,6 +154,7 @@ export const resources: Record<string, Resource> = {
     },
     routes: {
         kind: "routes",
+        pagination: "local",
         title: "路由管理",
         fetch: admin("server/route/fetch"),
         save: admin("server/route/save"),
@@ -370,6 +373,7 @@ export const resources: Record<string, Resource> = {
     },
     notices: {
         kind: "notices",
+        pagination: "local",
         title: "公告管理",
         fetch: admin("notice/fetch"),
         save: admin("notice/save"),
@@ -385,6 +389,7 @@ export const resources: Record<string, Resource> = {
     },
     knowledge: {
         kind: "knowledge",
+        pagination: "local",
         title: "知识库管理",
         fetch: admin("knowledge/fetch"),
         sort: admin("knowledge/sort"),
@@ -536,6 +541,7 @@ export const resources: Record<string, Resource> = {
     },
     clients: {
         kind: "clients",
+        pagination: "local",
         title: "客户端策略",
         fetch: ops("client/strategy/fetch"),
         save: ops("client/strategy/update"),
@@ -617,6 +623,7 @@ export const resources: Record<string, Resource> = {
     },
     "access-blacklist": {
         kind: "access-blacklist",
+        pagination: "local",
         title: "订阅 IP 黑名单",
         fetch: ops("risk/blacklist/ip/fetch"),
         save: ops("risk/blacklist/ip/update"),
@@ -638,6 +645,7 @@ export const resources: Record<string, Resource> = {
     },
     "access-blacklist-ua": {
         kind: "access-blacklist-ua",
+        pagination: "local",
         title: "订阅 UA 黑名单",
         fetch: ops("risk/blacklist/ua/fetch"),
         save: ops("risk/blacklist/ua/update"),

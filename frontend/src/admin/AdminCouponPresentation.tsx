@@ -1,8 +1,9 @@
+import { AdminPager } from "./AdminPager";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { useState } from "react";
 import { admin, request } from "../shared/api";
 import { languages } from "../shared/i18n";
-import { State, useData, Pager } from "../shared/ui";
+import { State, useData } from "../shared/ui";
 import { useAdminOperation } from "./admin-operation";
 import { AdminOperationNotice } from "./admin-section";
 type Variant = {
@@ -98,13 +99,14 @@ export function AdminCouponPresentation() {
                             ))}
                         </select>
                     </label>
-                    <Pager
+                    <AdminPager
                         loading={data.loading}
                         onSizeChange={(size) => {
                             setPageSize(size);
                             setPage(1);
                         }}
                         page={page}
+                        totalUnavailable={data.data == null || Boolean(data.error)}
                         total={data.total}
                         size={pageSize}
                         onChange={setPage}

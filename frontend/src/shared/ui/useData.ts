@@ -22,20 +22,20 @@ export function useData<T = Row>(
         [error, setError] = useState(""),
         [loading, setLoading] = useState(true),
         [version, setVersion] = useState(0),
-        [total, setTotal] = useState(0);
+        [total, setTotal] = useState<number | undefined>();
     useEffect(() => {
         let live = true;
         setResultKey(queryKey);
         if (resultKey !== queryKey) {
             setData(null);
-            setTotal(0);
+            setTotal(undefined);
             setMeta(undefined);
         }
         if (!path) {
             setLoading(false);
             setData(null);
             setError("");
-            setTotal(0);
+            setTotal(undefined);
             setMeta(undefined);
             return;
         }
@@ -71,7 +71,7 @@ export function useData<T = Row>(
                 if (live) {
                     setRetryAt(0);
                     setData(r.data);
-                    setTotal(r.total || 0);
+                    setTotal(r.total);
                     setMeta(r.meta);
                 }
             })
@@ -116,7 +116,8 @@ export function useData<T = Row>(
         data: path && resultKey === queryKey ? data : null,
         error: path && resultKey === queryKey ? error : "",
         loading: !!path && (resultKey !== queryKey || loading),
-        total: path && resultKey === queryKey ? total : 0,
+        total: path && resultKey === queryKey ? total ?? 0 : 0,
+        totalKnown: Boolean(path && resultKey === queryKey && total != null),
         meta: path && resultKey === queryKey ? meta : undefined,
         reload,
         retryAt,

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { admin, request, rows, type Row } from "../shared/api";
-import { Modal, State, Panel, Table, Reload, useData } from "../shared/ui";
+import { Modal, State, Panel, Reload, useData } from "../shared/ui";
+import { AdminPagedTable } from "./AdminPagedTable";
 import { moveItem, sortPayload, type SortKind } from "./admin-actions";
 export function SortButton({
     items,
@@ -142,7 +143,7 @@ export function QueueDetails() {
                 actions={<Reload onClick={workload.reload} loading={workload.loading} />}
             >
                 <State {...workload} retry={workload.reload}>
-                    <Table
+                    <AdminPagedTable
                         data={rows(workload.data)}
                         columns={[
                             ["name", "队列"],
@@ -158,7 +159,7 @@ export function QueueDetails() {
                 actions={<Reload onClick={masters.reload} loading={masters.loading} />}
             >
                 <State {...masters} retry={masters.reload}>
-                    <Table
+                    <AdminPagedTable
                         data={rows(masters.data)}
                         columns={[
                             ["name", "主进程"],

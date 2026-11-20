@@ -8,7 +8,6 @@ import {
     Modal,
     Panel,
     State,
-    Table,
     useData,
 } from "../shared/ui";
 import {
@@ -21,6 +20,7 @@ import { tx } from "../shared/i18n";
 import { SortButton } from "./admin-tools";
 import { PaymentChannelFailures } from "./PaymentCallbackHistory";
 import { AdminRowMenu } from "./AdminRowMenu";
+import { AdminPagedTable } from "./AdminPagedTable";
 import {
     paymentFields,
     paymentInitial,
@@ -76,7 +76,7 @@ export function Payments() {
                     <State {...methods} retry={methods.reload}>{null}</State>
                 </div>}
                 <State {...d} retry={d.reload}>
-                    <Table
+                    <AdminPagedTable
                         data={d.data || []}
                         columns={[
                             ["id", "ID"],

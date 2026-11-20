@@ -3,7 +3,7 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 145144,
+      "startupGzipBytes": 145146,
       "startupBytes": 478090,
       "startupFileCount": 17,
       "largestStartupAssets": [
@@ -18,9 +18,9 @@
           "gzipBytes": 55127
         },
         {
-          "file": "assets/app-e0Vg5tkB.js",
+          "file": "assets/app-DLSIa2Az.js",
           "bytes": 12738,
-          "gzipBytes": 5337
+          "gzipBytes": 5338
         },
         {
           "file": "assets/runtime-config-CLtwJ-Je.js",
@@ -38,52 +38,52 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 145144,
+          "gzipBytes": 145146,
           "bytes": 478090,
           "fileCount": 17
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 214105,
-          "bytes": 795255,
+          "gzipBytes": 214094,
+          "bytes": 795227,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 227424,
-          "bytes": 840104,
+          "gzipBytes": 227431,
+          "bytes": 840118,
           "fileCount": 34
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 217401,
-          "bytes": 761762,
+          "gzipBytes": 217390,
+          "bytes": 761734,
           "fileCount": 25
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 230720,
-          "bytes": 806611,
+          "gzipBytes": 230727,
+          "bytes": 806625,
           "fileCount": 34
         }
       ],
-      "totalBytes": 3569640,
-      "fileCount": 352
+      "totalBytes": 3569681,
+      "fileCount": 351
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 318835,
-      "startupBytes": 1060503,
+      "startupGzipBytes": 318974,
+      "startupBytes": 1061196,
       "startupFileCount": 27,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-Dban4zsG.js",
-          "bytes": 323788,
-          "gzipBytes": 93052
+          "file": "assets/AdminApp-DSMadV1p.js",
+          "bytes": 323874,
+          "gzipBytes": 93098
         },
         {
           "file": "assets/render-app-DdF0szAl.js",
@@ -101,14 +101,14 @@
           "gzipBytes": 47483
         },
         {
-          "file": "assets/AdminApp-CSjpQHKN.css",
-          "bytes": 79432,
-          "gzipBytes": 13428
+          "file": "assets/AdminApp-Dxbn3-Zh.css",
+          "bytes": 79997,
+          "gzipBytes": 13505
         }
       ],
       "budget": 460800,
-      "totalBytes": 5140530,
-      "fileCount": 135
+      "totalBytes": 5146595,
+      "fileCount": 136
     }
   ],
   "warnings": []

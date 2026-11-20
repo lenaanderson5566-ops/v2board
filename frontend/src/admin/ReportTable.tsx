@@ -1,19 +1,20 @@
+import { AdminPager } from "./AdminPager";
 import { useState, type ReactNode } from "react";
-import { Empty, Pager, TableViewport } from "../shared/ui";
+import { Empty, TableViewport } from "../shared/ui";
 
 export function ReportTable({
     headers,
     rows,
-    pageSize,
+    pageSize = 20,
 }: {
     headers: string[];
     rows: ReactNode[][];
     pageSize?: number;
 }) {
-    const [page, setPage] = useState(0);
-    const size = pageSize || Math.max(rows.length, 1);
-    const pages = Math.max(1, Math.ceil(rows.length / size));
-    const current = Math.min(page, pages - 1);
+    const [page, setPage] = useState(1);
+    const pages = Math.max(1, Math.ceil(rows.length / pageSize));
+    const current = Math.min(page, pages);
+    if (page !== current) setPage(current);
     return rows.length ? (
         <>
             <TableViewport>
@@ -29,7 +30,7 @@ export function ReportTable({
                     </thead>
                     <tbody>
                         {rows
-                            .slice(current * size, (current + 1) * size)
+                            .slice((current - 1) * pageSize, current * pageSize)
                             .map((r, i) => (
                                 <tr key={i}>
                                     {r.map((v, j) => (
@@ -41,11 +42,11 @@ export function ReportTable({
                 </table>
             </TableViewport>
             {pages > 1 && (
-                <Pager
-                    page={current + 1}
-                    size={size}
+                <AdminPager
+                    page={current}
+                    size={pageSize}
                     total={rows.length}
-                    onChange={(next) => setPage(next - 1)}
+                    onChange={setPage}
                 />
             )}
         </>

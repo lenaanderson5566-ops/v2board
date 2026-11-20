@@ -783,6 +783,25 @@ it("shows runtime dots in services without subscription visibility controls", as
     expect(await screen.findByRole("dialog")).toBeTruthy();
 });
 
+it("jumps within the node list and searches nodes across all pages", async () => {
+    const nodes = Array.from({ length: 23 }, (_, i) => ({
+        id: i + 1, name: `线路-${i + 1}`, type: "v2box", group_id: [],
+    }));
+    api.request.mockImplementation(async (path: string) => path.endsWith("server/manage/getNodes")
+        ? { data: nodes } : adminPageFixture(path));
+    render(<Nodes />);
+    const jump = await screen.findByRole("textbox", { name: "跳转页码" });
+    expect(screen.queryByRole("button", { name: "线路-23" })).toBeNull();
+    fireEvent.change(jump, { target: { value: "2" } });
+    fireEvent.keyDown(jump, { key: "Enter" });
+    expect(screen.getByRole("button", { name: "线路-23" })).toBeTruthy();
+    fireEvent.change(screen.getByPlaceholderText("ID、名称、域名、IP 或协议"), { target: { value: "线路-11" } });
+    expect(screen.getByRole("button", { name: "线路-11" })).toBeTruthy();
+    expect(screen.queryByRole("textbox", { name: "跳转页码" })).toBeNull();
+    fireEvent.change(screen.getByPlaceholderText("ID、名称、域名、IP 或协议"), { target: { value: "" } });
+    expect(screen.getByRole("navigation", { name: "分页" }).textContent).toContain("第 1 页");
+});
+
 it("prevents duplicate node copies and restores actions after a failed request", async () => {
     let reject!: (reason: Error) => void;
     api.request.mockImplementation((path: string) => {

@@ -16,6 +16,23 @@ import { Payments } from "./admin-payments";
 
 afterEach(() => { cleanup(); vi.clearAllMocks(); });
 
+it("saves all channel IDs when reordering a later page", async () => {
+    const channels = Array.from({ length: 23 }, (_, i) => ({ id: i + 1, name: `渠道 ${i + 1}`, payment: "PaytaroQR", enable: 1 }));
+    api.request.mockImplementation(async (path: string) => {
+        if (path.endsWith("/fetch")) return { data: channels };
+        if (path.endsWith("/getPaymentMethods")) return { data: ["PaytaroQR"] };
+        if (path.endsWith("/sort")) return { data: true };
+        throw new Error(`Unexpected endpoint: ${path}`);
+    });
+    render(<Payments />);
+    fireEvent.click(await screen.findByRole("button", { name: "下一页" }));
+    const handle = await screen.findByRole("button", { name: "排序 渠道 21" });
+    fireEvent.keyDown(handle, { key: "ArrowDown" });
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/payment/sort", {
+        ids: [...channels.slice(0, 20).map(c => c.id), 22, 21, 23],
+    }));
+});
+
 it("opens the selected channel's failure records and links to the affected order", async () => {
     api.request.mockImplementation(async (path: string) => {
         if (path.endsWith("/fetch")) return { data: [{ id: 7, name: "WeChat", payment: "EPayQrcode", enable: 1, recent_failure_count: 1 }] };

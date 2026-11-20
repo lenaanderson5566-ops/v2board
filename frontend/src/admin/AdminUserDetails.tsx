@@ -1,3 +1,4 @@
+import { AdminPager } from "./AdminPager";
 import { formatMultiplier } from "../shared/number-format";
 import { useEffect, useRef, useState } from "react";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
@@ -9,7 +10,7 @@ import { admin, query, bytes, money, type Row } from "../shared/api";
 import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
 import { calendarDay, instantDate, validZone } from "../shared/timezone";
 import { StatusBadge } from "../shared/StatusBadge";
-import { Modal, State, Table, Pager, useData } from "../shared/ui";
+import { Modal, State, Table, useData } from "../shared/ui";
 export function AdminUserDetails({row, close}: {row:Row; close:()=>void}) {
     const [{ value: tab, focusPanel }, setTab] = useState({ value: "activity", focusPanel: false });
     return <Modal title={`用户详情 · ${adminUserLabel({user_id:row.id,email:row.email})}`} variant="drawer" wide className="user-details-drawer" close={close}>
@@ -39,7 +40,7 @@ function UserInvitations({row}: {row:Row}) {
             ["banned","状态",r=>Number(r.banned)===1 ? "已封禁" : "正常"],
             ["created_at","注册时间",r=>date(r.created_at)]
         ]}/>
-        <Pager page={page} total={d.total} size={pageSize} loading={d.loading} onChange={setPage} onSizeChange={size=>{setPageSize(size);setPage(1);}}/>
+        <AdminPager page={page} totalUnavailable={d.data == null || Boolean(d.error)} total={d.total} size={pageSize} loading={d.loading} onChange={setPage} onSizeChange={size=>{setPageSize(size);setPage(1);}}/>
     </State></div>;
 }
 function UserOrders({ row }: { row: Row }) {
@@ -86,8 +87,9 @@ function UserOrders({ row }: { row: Row }) {
                         <button onClick={() => setSelected(r)}>订单详情</button>
                     )}
                 />
-                <Pager
+                <AdminPager
                     page={page}
+                    totalUnavailable={d.data == null || Boolean(d.error)}
                     total={d.total}
                     size={pageSize}
                     loading={d.loading}
@@ -166,7 +168,7 @@ function UserCredits({ row, focusOnOpen }: { row: Row; focusOnOpen: boolean }) {
                     {creditStates.find(option => option.value === r.status)?.label ?? "未知"}
                 </StatusBadge>],
             ]}/>
-            <Pager page={page} total={d.total} size={pageSize} loading={d.loading} onChange={next => {
+            <AdminPager page={page} totalUnavailable={d.data == null || Boolean(d.error)} total={d.total} size={pageSize} loading={d.loading} onChange={next => {
                 setPage(next);
                 setOrderId(null);
             }} onSizeChange={size => {
@@ -207,8 +209,9 @@ function UserTraffic({ row }: { row: Row }) {
                         ["server_rate", "倍率", (record) => formatMultiplier(record.server_rate)],
                     ]}
                 />
-                <Pager
+                <AdminPager
                     page={page}
+                    totalUnavailable={d.data == null || Boolean(d.error)}
                     total={d.total}
                     size={pageSize}
                     loading={d.loading}

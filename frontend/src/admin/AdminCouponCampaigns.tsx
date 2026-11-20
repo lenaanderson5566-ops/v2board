@@ -1,7 +1,8 @@
+import { AdminPager } from "./AdminPager";
 import { formatPercent } from "../shared/number-format";
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
-import { Empty, Modal, Pager, Reload, State, TableViewport, useData } from "../shared/ui";
+import { Empty, Modal, Reload, State, TableViewport, useData } from "../shared/ui";
 import { adminInstant as formatInstant } from "./admin-log-time";
 import { useAdminOperation } from "./admin-operation";
 import { AdminOperationNotice } from "./admin-section";
@@ -112,13 +113,14 @@ export function AdminCouponCampaigns() {
                     )}
                 </TableViewport>
             </State>
-            <Pager
+            <AdminPager
                 loading={list.loading}
                 onSizeChange={(size) => {
                     setPageSize(size);
                     setPage(1);
                 }}
                 page={page}
+                totalUnavailable={list.data == null || Boolean(list.error)}
                 total={list.total}
                 size={pageSize}
                 onChange={setPage}
@@ -259,13 +261,14 @@ function CouponRecipients({ id }: { id: number }) {
                     <Empty text={emptyText} />
                 )}
             </State>
-            <Pager
+            <AdminPager
                 loading={data.loading}
                 onSizeChange={(size) => {
                     setPageSize(size);
                     setPage(1);
                 }}
                 page={page}
+                totalUnavailable={data.data == null || Boolean(data.error)}
                 total={data.total}
                 size={pageSize}
                 onChange={setPage}

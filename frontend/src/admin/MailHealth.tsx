@@ -1,6 +1,7 @@
+import { AdminPager } from "./AdminPager";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { TableViewport } from "../shared/ui";
-import { Pager } from "../shared/ui";
+
 import { useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { useData, State } from "../shared/ui";
@@ -121,8 +122,9 @@ export function MailHealth() {
                         </table>
                     </TableViewport>
                 </State>
-                <Pager
+                <AdminPager
                     page={page}
+                    totalUnavailable={suppressed.data == null || Boolean(suppressed.error)}
                     total={suppressed.total}
                     size={pageSize}
                     loading={suppressed.loading}

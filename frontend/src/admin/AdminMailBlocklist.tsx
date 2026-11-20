@@ -1,9 +1,10 @@
+import { AdminPager } from "./AdminPager";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { Table, TableViewport } from "../shared/ui";
 import { AdminChoiceGroup } from "./AdminChoices";
 import { AdminRowMenu } from "./AdminRowMenu";
 import { MailX, Plus, Search } from "lucide-react";
-import { Pager, Empty } from "../shared/ui";
+import { Empty } from "../shared/ui";
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
@@ -370,13 +371,14 @@ export function AdminMailBlocklist() {
                     {!list.data?.length && <Empty text="暂无匹配的禁发记录" />}
                 </TableViewport>
             </State>
-            <Pager
+            <AdminPager
                 size={pageSize}
                 onSizeChange={(size) => {
                     setPageSize(size);
                     setPage(1);
                 }}
                 page={page}
+                totalUnavailable={list.data == null || Boolean(list.error)}
                 total={list.total}
                 loading={list.loading}
                 onChange={setPage}
@@ -441,8 +443,9 @@ export function AdminMailBlocklist() {
                                     ]} />
                                 ) : <Empty text="暂无禁发操作记录" />}
                             </State>
-                            <Pager
+                            <AdminPager
                                 page={historyPage}
+                                totalUnavailable={audit.data == null || Boolean(audit.error)}
                                 total={audit.total}
                                 size={historySize}
                                 loading={audit.loading}

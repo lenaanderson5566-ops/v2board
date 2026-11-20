@@ -15,7 +15,8 @@ import {
 import { AdminSwitch } from "./admin-switch";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { admin, request, rows, bytes, type Row } from "../shared/api";
-import { Modal, Panel, Table, State, useData } from "../shared/ui";
+import { Modal, Panel, State, useData } from "../shared/ui";
+import { AdminPagedTable } from "./AdminPagedTable";
 import { logTime } from "./admin-log-time";
 
 export function NetworkServers({
@@ -221,7 +222,7 @@ export function NetworkServers({
                         IP 上报与共享入口。 <a href="#/nodes">配置节点</a> ·{" "}
                         <a href="#/node-domains">管理根域名与解析</a>
                     </p>
-                    <Table
+                    <AdminPagedTable
                         data={servers}
                         columns={[
                             [

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { admin, date, query, request, type Row } from "../shared/api";
-import { Modal, State, Table, useData } from "../shared/ui";
+import { Modal, State, useData } from "../shared/ui";
+import { AdminPagedTable } from "./AdminPagedTable";
 
 const confirmations = {
     issue: "首次生成后，此节点将立即拒绝全局密钥；轮换时旧独立密钥保留 30 分钟。确认继续？",
@@ -64,7 +65,8 @@ export function NodeCredentials({
                                   ? "尚未迁移，仍允许全局密钥"
                                   : "全局认证已关闭，需要生成独立凭据"}
                         </p>
-                        <Table
+                        <AdminPagedTable
+                            key={`${node.type}:${node.id}`}
                             data={report.data.keys || []}
                             columns={[
                                 ["fingerprint", "指纹"],
@@ -151,12 +153,9 @@ export function NodeCredentials({
                                     {report.data.legacyNodes?.length || 0}{" "}
                                     个节点
                                 </summary>
-                                {(report.data.legacyNodes || []).map(
-                                    (n: Row) => (
-                                        <p key={`${n.type}:${n.id}`}>
-                                            {n.name} · {n.type} #{n.id}
-                                        </p>
-                                    ),
+                                {!!report.data.legacyNodes?.length && (
+                                    <AdminPagedTable data={report.data.legacyNodes}
+                                        columns={[["name", "节点名称"], ["type", "类型"], ["id", "ID"]]} />
                                 )}
                                 <button
                                     type="button"

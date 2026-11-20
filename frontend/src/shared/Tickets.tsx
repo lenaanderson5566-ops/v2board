@@ -31,6 +31,7 @@ export function Tickets({
     queryParams = {},
     toolbar,
     pagination,
+    PagerComponent = Pager,
     pageSize = 20,
     onPageSizeChange,
     heading,
@@ -42,6 +43,7 @@ export function Tickets({
     queryParams?: Row;
     toolbar?: ReactNode;
     pagination?: { page: number; onChange: (page: number) => void };
+    PagerComponent?: typeof Pager;
     pageSize?: number;
     onPageSizeChange?: (size:number)=>void;
     heading?: string;
@@ -71,7 +73,7 @@ export function Tickets({
                 ? query(`${prefix}/ticket/fetch`, { id })
                 : "",
         );
-    const lastPage = isAdmin && !d.loading && !d.error && Array.isArray(d.data)
+    const lastPage = isAdmin && d.totalKnown && !d.loading && !d.error && Array.isArray(d.data)
         ? Math.max(1, Math.ceil(d.total / pageSize))
         : page;
     const recoveringPage = page > lastPage;
@@ -79,12 +81,12 @@ export function Tickets({
         if (recoveringPage) setPage(lastPage);
     }, [recoveringPage, lastPage, setPage]);
     const pager = (
-        <Pager
+        <PagerComponent
             page={recoveringPage ? lastPage : page}
             total={d.total}
             size={pageSize}
             loading={d.loading || recoveringPage}
-            totalUnavailable={isAdmin && d.data == null}
+            totalUnavailable={isAdmin && (d.data == null || Boolean(d.error) || (!d.totalKnown && "unknown"))}
             preserveFocus={isAdmin}
             onSizeChange={onPageSizeChange ? size => {
                 setPage(1);

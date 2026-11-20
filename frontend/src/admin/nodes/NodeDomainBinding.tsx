@@ -1,5 +1,6 @@
 import { NodeDnsObservation } from "../NodeDnsObservation";
 import { NodeAddressSummary } from "../NodeAddressSummary";
+import { AdminPagedTable } from "../AdminPagedTable";
 import { ManualNodeAddress } from "../ManualNodeAddress";
 import { relayStreamConfig, relayCertificateIssue } from "../node-relay";
 import { useEffect, useRef, useState } from "react";
@@ -160,7 +161,7 @@ export function NodeDomainBinding({
     }
     async function reviewOriginCleanup(confirmCleanup = false) {
         if (pending.current || !binding) return;
-        if (confirmCleanup && (!originCleanup || !window.confirm("确认安排清理预览中可清理的旧回源解析？24 小时后才会删除，仍被节点或证书引用的记录会保留。请先验证入口转发及客户端连接正常。"))) return;
+        if (confirmCleanup && (!originCleanup || !window.confirm(`确认安排清理全部 ${originCleanup.rows.filter((r: Row) => r.action === "schedule").length} 条可清理的旧回源解析？24 小时后才会删除，仍被节点或证书引用的记录会保留。请先验证入口转发及客户端连接正常。`))) return;
         pending.current = true;
         setBusy(true); setError(""); setNotice("");
         if (!confirmCleanup) setOriginCleanup(null);
@@ -285,7 +286,7 @@ export function NodeDomainBinding({
                                     <p className="muted">仅在更换回源域名后使用。先确认入口转发已使用当前回源，且客户端连接正常；预览不会改动任何解析。确认清理后仍保留 24 小时，不会重启节点或更改证书。</p>
                                     <button disabled={busy || manualBusy || formDirty || manualDirty} onClick={()=>void reviewOriginCleanup()}>预览旧回源解析</button>
                                     {originCleanup && <>
-                                        <Table data={originCleanup.rows || []} columns={[
+                                        <AdminPagedTable key={originCleanup.proof} data={originCleanup.rows || []} columns={[
                                             ["domain","旧域名"],["type","类型"],["ip","当前 IP"],
                                             ["reason","处理说明"],
                                         ]}/>

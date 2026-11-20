@@ -1,6 +1,7 @@
+import { AdminPager } from "./AdminPager";
 import { useRef, useState } from "react";
 import { admin, request } from "../shared/api";
-import { Modal, Pager, TableViewport, State, useData } from "../shared/ui";
+import { Modal, TableViewport, State, useData } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 
 type Client = {code:string; name:string; defaultName:string; builtinAliases:string[]; aliases:string[]; priority:number};
@@ -55,7 +56,7 @@ export function AdminClientDictionary() {
                     {items.slice((currentPage-1)*20,currentPage*20).map(item=><tr key={item.code}><td>{item.name}<small className="muted"> · {item.code}</small></td><td>{item.builtinAliases.join(" / ")}</td><td>{item.aliases.join(" / ") || "—"}</td><td>{item.priority}</td><td><button onClick={()=>{setInitialEdit(JSON.stringify({name:item.name,aliasText:item.aliases.join("\n"),priority:item.priority}));setEdit({...item,aliasText:item.aliases.join("\n")});setError("");setPreview(null);}}>编辑</button></td></tr>)}
                 </tbody></table></TableViewport>
                 {!items.length && <p>没有匹配的客户端</p>}
-                <Pager page={currentPage} total={items.length} size={20} loading={data.loading} onChange={setPage}/>
+                <AdminPager page={page} totalUnavailable={data.data == null || Boolean(data.error)} total={items.length} size={20} loading={data.loading} onChange={setPage}/>
             </State>
             {!edit && tester}
             {!edit && error && <p role="alert">{error}</p>}

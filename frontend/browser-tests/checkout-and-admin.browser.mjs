@@ -371,6 +371,34 @@ test("mobile admin users prioritize account columns and distinguish subscription
 test.describe("desktop admin frontend", () => {
     test.use({ isMobile: false, hasTouch: false, viewport: { width: 1280, height: 900 } });
 
+    for (const list of ["users", "tickets"]) {
+        test(`${list} jumps directly to the requested page`, async ({ page, context }) => {
+            await consoleFixture(context, "admin", () => []);
+            const requests = [];
+            const endpoint = list === "users" ? "user/fetch" : "ticket/fetch";
+            await context.route(`**/api/v1/test-admin/${endpoint}*`, route => {
+                const params = new URL(route.request().url()).searchParams;
+                const current = Number(params.get("current"));
+                requests.push(current);
+                const row = list === "users"
+                    ? { id: current, email: `page-${current}@example.test`, banned: 0 }
+                    : { id: current, subject: `工单页 ${current}`, status: 0 };
+                return route.fulfill({ json: { data: [row], total: 500 } });
+            });
+            await page.goto(`${consoleOrigin}/admin.html#/${list}`);
+            const pager = page.getByRole("navigation", { name: "分页" });
+            const input = pager.getByRole("textbox", { name: "跳转页码" });
+            await expect(pager).toContainText("第 1 页");
+            await input.fill("5");
+            expect(requests.every(number => number === 1)).toBeTruthy();
+            if (list === "users") await input.press("Enter");
+            else await pager.getByRole("button", { name: "跳转", exact: true }).click();
+            await expect(pager).toContainText("第 5 页");
+            await expect(page.getByRole("row").filter({ hasText: list === "users" ? "page-5@example.test" : "工单页 5" })).toBeVisible();
+            expect([...new Set(requests)]).toEqual([1, 5]);
+        });
+    }
+
     test("desktop traffic trends fit 90 days and distinguish missing coverage from zero sessions", async ({ page, context }) => {
         const dateAt = index => new Date(Date.UTC(2026, 7, 21 + index)).toISOString().slice(0, 10);
         const history = Array.from({ length: 90 }, (_, index) => ({

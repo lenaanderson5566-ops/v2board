@@ -2,6 +2,7 @@ import { formatDuration, formatPercent } from "../shared/number-format";
 import { useRef, useState } from "react";
 import { admin, bytes, request, type Row } from "../shared/api";
 import { Modal, Panel, State, Table, useData } from "../shared/ui";
+import { AdminPagedTable } from "./AdminPagedTable";
 import { adminInstant } from "./admin-log-time";
 
 const fields = [
@@ -195,7 +196,7 @@ export function AdminObservability() {
                             为分桶估计。慢查询仅记录次数与耗时，不保存 SQL
                             或参数；展示慢请求最多的 50 个接口。
                         </p>
-                        <Table
+                        <AdminPagedTable
                             data={metrics.routes}
                             columns={[
                                 ["route", "接口"],

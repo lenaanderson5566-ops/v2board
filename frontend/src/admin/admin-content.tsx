@@ -9,6 +9,7 @@ import { ResourcePage } from "./ResourcePage";
 import { resources } from "./admin-resources";
 import { Tickets } from "../shared/Tickets";
 import { AdminTicketConversation } from "./AdminTicketConversation";
+import { AdminPager } from "./AdminPager";
 
 const ticketQueues = [
     { value: "pending", label: "待回复", status: "0", reply: "0" },
@@ -63,6 +64,7 @@ export function AdminTickets({ route }: { route: string }) {
         />
         <Tickets
             isAdmin
+            PagerComponent={AdminPager}
             renderAdminConversation={(props) => <AdminTicketConversation key={props.id} {...props} />}
             queryParams={params}
             pagination={{ page, onChange: setPage }}

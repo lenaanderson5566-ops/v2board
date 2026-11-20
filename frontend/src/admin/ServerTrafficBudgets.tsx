@@ -1,6 +1,7 @@
+import { AdminPagedTable } from "./AdminPagedTable";
 import { useRef, useState } from "react";
 import { admin, request, rows, bytes, type Row } from "../shared/api";
-import { useData, State, Table, Modal, Panel } from "../shared/ui";
+import { useData, State, Modal, Panel } from "../shared/ui";
 export function ServerTrafficBudgets({
     nodes,
     close,
@@ -40,7 +41,7 @@ export function ServerTrafficBudgets({
                 表示不限额，达限后停止连接，提高限额后自动恢复。
             </p>
             <State {...d}>
-                <Table
+                <AdminPagedTable
                     data={rows(d.data).filter(b=>!legacyOnly || !b.networkServerId)}
                     columns={[
                         ["name", "服务器"],

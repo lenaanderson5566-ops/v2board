@@ -1,10 +1,11 @@
+import { AdminPager } from "./AdminPager";
 import { formatDuration } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminChoiceGroup } from "./AdminChoices";
-import { Pager, FilterActions } from "../shared/ui";
+import { FilterActions } from "../shared/ui";
 import { AdminMailCampaigns } from "./AdminMailCampaigns";
 import { MailHealth } from "./MailHealth";
 import { useEffect, useId, useRef, useState } from "react";
@@ -497,13 +498,14 @@ export function AdminMailLogs() {
                                 <p className="admin-log-empty" role="status">暂无匹配邮件日志</p>
                             )}
                         </State>
-                        {logs.total > 0 && <Pager
+                        {(logs.total > 0 || page > 1) && <AdminPager
                             size={pageSize}
                             onSizeChange={(size) => {
                                 setPageSize(size);
                                 setPage(1);
                             }}
                             page={page}
+                            totalUnavailable={logs.data == null || Boolean(logs.error)}
                             total={logs.total}
                             loading={logs.loading}
                             onChange={setPage}

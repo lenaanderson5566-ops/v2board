@@ -203,6 +203,25 @@ body[data-console="admin"] .pager {
     border-top: 1px solid var(--border);
     background: #fff;
 }
+body[data-console="admin"] .admin-page-jump,
+body[data-console="admin"] .admin-page-jump label {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    white-space: nowrap;
+}
+body[data-console="admin"] .admin-page-jump { flex-wrap: wrap; }
+body[data-console="admin"] .admin-page-jump input {
+    width: 7ch;
+    height: var(--admin-control-height);
+    margin: 0;
+    padding-inline: 6px;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+}
+body[data-console="admin"] .admin-page-jump button { min-height: var(--admin-control-height); }
+body[data-console="admin"] .admin-page-jump-error { color: var(--admin-danger); font-size: 12px; }
 body[data-console="admin"] .state:not(.full) {
     padding: 36px var(--admin-space);
     gap: 10px;

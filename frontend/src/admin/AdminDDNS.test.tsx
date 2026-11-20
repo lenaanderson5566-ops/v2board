@@ -372,6 +372,25 @@ it("historical cleanup offers deletion only for reviewed unreferenced candidates
     ).toBe(false);
 });
 
+it("jumps between DNS provider pages and refetches the last page if the zone shrinks", async () => {
+    api.request.mockImplementation(async (_path, { page }) => ({
+        data: {
+            rows: page === 2 ? [{ domain: "last.a.test", type: "A", content: "192.0.2.1" }] : [],
+            pages: page === 1 ? 4 : 2,
+        },
+    }));
+    render(<NodeDomainTools credentials={[{ id: 1, root_domain: "a.test" }]} onChanged={() => {}} />);
+    fireEvent.change(screen.getByLabelText("原根域名"), { target: { value: "1" } });
+    fireEvent.click(screen.getByRole("button", { name: "检查历史解析" }));
+    // The provider can return no A/AAAA records on a page while later pages still exist.
+    const pager = within(await screen.findByRole("navigation", { name: "分页" }));
+    fireEvent.change(pager.getByRole("textbox", { name: "跳转页码" }), { target: { value: "4" } });
+    fireEvent.click(pager.getByRole("button", { name: "跳转" }));
+    expect(await screen.findByText("last.a.test")).toBeTruthy();
+    expect(api.request.mock.calls.map(([, query]) => query.page)).toEqual([1, 4, 2]);
+    expect(pager.getByRole("button", { name: "下一页" })).toHaveProperty("disabled", true);
+});
+
 it("shows pending certificate verification without offering another activation", async () => {
     managedSetup("pending");
     render(<NodeDomainBinding node={{ id: 3, type: "v2box" }} />);

@@ -1,6 +1,7 @@
+import { AdminPagedTable } from "./AdminPagedTable";
 import { useMemo, useState } from "react";
 import { admin, rows, type Row } from "../shared/api";
-import { Table, Modal, State, useData } from "../shared/ui";
+import { Modal, State, useData } from "../shared/ui";
 import { NodeDeployment } from "./NodeDeployment";
 import { NodeConnectionEditor } from "./NodeConnections";
 import { NodeDictionaryProvider } from "./node-dictionary";
@@ -91,7 +92,7 @@ export function ServerForwarding({ server, data, reload=()=>{} }: { server: Row;
             <p className="muted">
                 集中维护本机入口转发，配置与节点共用。逐条检查入口端口和回源目标，复制配置到本服务器，检查并加载后完成连接验证；发布状态不能替代实际连接测试。
             </p>
-            <Table
+            <AdminPagedTable key={server.id}
                 data={records}
                 columns={[
                     ["name", "线路 / 服务"],

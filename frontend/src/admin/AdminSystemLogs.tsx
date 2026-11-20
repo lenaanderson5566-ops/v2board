@@ -1,9 +1,10 @@
+import { AdminPager } from "./AdminPager";
 import { formatDuration } from "../shared/number-format";
 import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
 import { AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
-import { Pager } from "../shared/ui";
+
 import { dateTimeFieldInstant, dateTimeFieldValue } from "../shared/date-time-field";
 import { inputTimeZone } from "../shared/timezone";
 import { useState } from "react";
@@ -230,8 +231,9 @@ export function AdminSystemLogs() {
                         <p className="admin-log-empty" role="status">暂无匹配日志</p>
                     )}
                 </State>
-                {logs.total > 0 && <Pager
+                {(logs.total > 0 || page > 1) && <AdminPager
                     page={page}
+                    totalUnavailable={logs.data == null || Boolean(logs.error)}
                     total={logs.total}
                     size={pageSize}
                     loading={logs.loading}

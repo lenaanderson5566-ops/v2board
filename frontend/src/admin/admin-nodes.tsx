@@ -13,7 +13,8 @@ import { NodeDeployment } from "./NodeDeployment";
 import { NodeEditorDrawer } from "./nodes/NodeEditorDrawer";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { NodeDiagnostics, nodeRuntimeLabels, nodeIssueLabels } from "./AdminDiagnostics";
-import { sortPayload } from "./admin-actions";
+import { mergePageOrder, sortPayload } from "./admin-actions";
+import { AdminPager } from "./AdminPager";
 import { AdminSwitch } from "./admin-switch";
 import { SortButton } from "./admin-tools";
 
@@ -103,6 +104,8 @@ function NodesContent({
     const [credentialNode, setCredentialNode] = useState<Row | null>(null);
     const [statusFilter, setStatusFilter] = useState("");
     const [nodeSearch, setNodeSearch] = useState("");
+    const [page, setPage] = useState(1);
+    const [pageSize, setPageSize] = useState(20);
     const [onlyIssues, setOnlyIssues] = useState(false);
     const [onlyMaintenance, setOnlyMaintenance] = useState(false);
     const [quotaFilter, setQuotaFilter] = useState(false);
@@ -237,6 +240,12 @@ function NodesContent({
                 .toLowerCase()
                 .includes(nodeSearch.trim().toLowerCase()),
     );
+
+    const currentPage = Math.min(page, Math.max(1, Math.ceil(filteredNodes.length / pageSize)));
+    const offset = (currentPage - 1) * pageSize;
+    useEffect(() => {
+        if (d.data && !d.loading && !d.error && currentPage !== page) setPage(currentPage);
+    }, [currentPage, page, d.data, d.loading, d.error]);
 
     const allColumns: ComponentProps<typeof Table>["columns"] = [
         ["id", "ID"],
@@ -567,9 +576,7 @@ function NodesContent({
                                 <input
                                     placeholder="ID、名称、域名、IP 或协议"
                                     value={nodeSearch}
-                                    onChange={(e) =>
-                                        setNodeSearch(e.target.value)
-                                    }
+                                    onChange={(e) => { setNodeSearch(e.target.value); setPage(1); }}
                                 />
                             </label>
                             {
@@ -578,9 +585,7 @@ function NodesContent({
                                         筛选运行状态
                                         <select
                                             value={statusFilter}
-                                            onChange={(e) =>
-                                                setStatusFilter(e.target.value)
-                                            }
+                                            onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                                         >
                                             <option value="">全部状态</option>
                                             {Object.entries(
@@ -596,9 +601,7 @@ function NodesContent({
                                         <input
                                             type="checkbox"
                                             checked={quotaFilter}
-                                            onChange={(e) =>
-                                                setQuotaFilter(e.target.checked)
-                                            }
+                                            onChange={(e) => { setQuotaFilter(e.target.checked); setPage(1); }}
                                         />
                                         仅显示额度受限服务
                                     </label>
@@ -606,9 +609,7 @@ function NodesContent({
                                         <input
                                             type="checkbox"
                                             checked={onlyIssues}
-                                            onChange={(e) =>
-                                                setOnlyIssues(e.target.checked)
-                                            }
+                                            onChange={(e) => { setOnlyIssues(e.target.checked); setPage(1); }}
                                         />
                                         仅显示异常服务
                                     </label>
@@ -616,23 +617,18 @@ function NodesContent({
                                         <input
                                             type="checkbox"
                                             checked={onlyMaintenance}
-                                            onChange={(e) =>
-                                                setOnlyMaintenance(
-                                                    e.target.checked,
-                                                )
-                                            }
+                                            onChange={(e) => { setOnlyMaintenance(e.target.checked); setPage(1); }}
                                         />
                                         仅显示维护中服务
                                     </label>
                                 </>
                             }
                             <span className="muted">
-                                显示 {filteredNodes.length} / {nodeRows.length}{" "}
-                                {"个节点"}
+                                {filteredNodes.length === nodeRows.length ? `共 ${nodeRows.length} 个节点` : `筛选出 ${filteredNodes.length} 个，共 ${nodeRows.length} 个节点`}
                             </span>
                         </div>
                         <Table
-                            data={filteredNodes}
+                            data={filteredNodes.slice(offset, offset + pageSize)}
                             columns={columns.filter(([key]) =>
                                 selectedColumns.includes(key),
                             )}
@@ -640,7 +636,7 @@ function NodesContent({
                                 try {
                                     await request(
                                         admin("server/manage/sort"),
-                                        sortPayload("nodes", items),
+                                        sortPayload("nodes", mergePageOrder(nodeRows, items)),
                                     );
                                     d.reload();
                                 } catch (e) {
@@ -697,6 +693,11 @@ function NodesContent({
                                 </>
                             )}
                         />
+                        {(filteredNodes.length > 20 || pageSize !== 20) && (
+                            <AdminPager page={currentPage} size={pageSize} total={filteredNodes.length}
+                                loading={d.loading} onChange={setPage}
+                                onSizeChange={size => { setPageSize(size); setPage(1); }} />
+                        )}
                     </State>
                 </Panel>
             )}

@@ -1,6 +1,8 @@
 import { useRef, useState } from "react";
 import { admin, request, type Row } from "../../shared/api";
 import { Panel, Table } from "../../shared/ui";
+import { AdminPager } from "../AdminPager";
+import { AdminPagedTable } from "../AdminPagedTable";
 import { logTime } from "../admin-log-time";
 import { domainStatus } from "./domain-status";
 
@@ -37,14 +39,23 @@ export function NodeDomainTools({
             setBusy(false);
         }
     }
-    async function inspect(p: number) {
-        const r = await act("inspect", {
-            credential_id: Number(from),
-            page: p,
-        });
-        if (r) {
-            setScan(r);
-            setPage(p);
+    async function inspect(pageToLoad: number) {
+        for (;;) {
+            const result = await act("inspect", {
+                credential_id: Number(from),
+                page: pageToLoad,
+            });
+            if (!result) return;
+            // Cloudflare can report fewer pages after records are removed.
+            // The panel accepts page numbers up to 10000.
+            const pages = Math.min(10000, Math.max(0, Number(result.pages) || 0));
+            if (pages > 0 && pageToLoad > pages) {
+                pageToLoad = pages;
+                continue;
+            }
+            setScan({ ...result, pages });
+            setPage(pages ? pageToLoad : 1);
+            return;
         }
     }
     return (
@@ -129,7 +140,7 @@ export function NodeDomainTools({
                 {error && <p role="alert">{error}</p>}
                 {plan && (
                     <>
-                        <Table
+                        <AdminPagedTable key={`plan-${plan.proof}`}
                             data={plan.rows}
                             columns={[
                                 ["node_id", "节点 ID"],
@@ -184,7 +195,7 @@ export function NodeDomainTools({
                             </button>
                         )}
                         {plan.results && (
-                            <Table
+                            <AdminPagedTable key={`result-${plan.proof}`}
                                 data={plan.results}
                                 columns={[
                                     ["id", "绑定编号"],
@@ -204,7 +215,7 @@ export function NodeDomainTools({
                 {cleanup && (
                     <>
                         <h3>待清理解析</h3>
-                        <Table
+                        <AdminPagedTable
                             data={cleanup}
                             columns={[
                                 ["domain", "域名"],
@@ -300,23 +311,12 @@ export function NodeDomainTools({
                                 ],
                             ]}
                         />
-                        <div className="actions">
-                            <button
-                                disabled={busy || page <= 1}
-                                onClick={() => inspect(page - 1)}
-                            >
-                                上一页
-                            </button>
-                            <span>
-                                {page} / {scan.pages}
-                            </span>
-                            <button
-                                disabled={busy || page >= scan.pages}
-                                onClick={() => inspect(page + 1)}
-                            >
-                                下一页
-                            </button>
-                        </div>
+                        <AdminPager
+                            page={page}
+                            pageCount={scan.pages}
+                            loading={busy}
+                            onChange={inspect}
+                        />
                     </>
                 )}
             </div>

@@ -71,7 +71,10 @@ it("preserves the old language preference during startup recovery", () => {
     expect(document.querySelector("#root section")?.getAttribute("dir")).toBe("rtl");
     expect(localStorage.getItem("fastai.language")).toBeNull();
 });
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+});
 it("keeps integrated deployment relative and directs only API paths to a configured backend", () => {
     expect(apiUrl("/api/v10/me", "")).toBe("/api/v10/me");
     expect(apiUrl("/api/v10/me", "https://api.example.com/")).toBe(
@@ -124,6 +127,15 @@ it("loads standalone user configuration without credentials and strips administr
 it("rejects using a user configuration to start the admin entry", async () => {
     window.FASTAI = { mode: "user" } as any;
     await expect(initializeRuntime("admin")).rejects.toThrow(/do not match/);
+});
+it("uses the configured URL for a standalone deployment", async () => {
+    const url = "https://config.example.test/sites/service.json";
+    vi.stubEnv("VITE_CONFIG_URL", url);
+    const fetcher = vi.fn().mockResolvedValue(Response.json({ mode: "admin", adminPath: "test-admin" }));
+    vi.stubGlobal("fetch", fetcher);
+    await initializeRuntime("admin");
+    expect(fetcher).toHaveBeenCalledWith(url, expect.objectContaining({ credentials: "omit" }));
+    expect(window.FASTAI.adminPath).toBe("test-admin");
 });
 it("offers safe startup recovery without relying on React or showing internal error details", () => {
     localStorage.setItem("fastai.language", "en-US");

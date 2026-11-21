@@ -16,7 +16,7 @@ const mocks = vi.hoisted(() => ({
     },
 }));
 vi.mock("../shared/api", () => mocks);
-vi.mock("../shared/BannerStrip", () => ({ BannerStrip: () => null }));
+vi.mock("./BannerStrip", () => ({ BannerStrip: () => null }));
 vi.mock("../shared/LanguagePicker", () => ({
     LanguagePicker: () => <span>Language</span>,
 }));

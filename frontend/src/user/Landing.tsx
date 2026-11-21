@@ -1,6 +1,6 @@
 import { PrivacyFooterLinks } from "./AnalyticsPrivacy";
 import { useAnalyticsPage } from "./product-analytics";
-import { BannerStrip } from "../shared/BannerStrip";
+import { BannerStrip } from "./BannerStrip";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {

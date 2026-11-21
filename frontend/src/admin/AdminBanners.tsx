@@ -11,8 +11,8 @@ import {
     bannerImages,
     presetBanner,
     presetMobileBanner,
-} from "../shared/BannerStrip";
-import "../shared/banners.css";
+} from "../shared/banners";
+import "./admin-banners.css";
 const preset = presetBanner;
 const positions: Record<string, string> = {
     dashboard: "用户首页",

@@ -15,11 +15,15 @@ npm test
 npm run build
 ```
 
-构建包含 TypeScript `--noEmit`、Vite 和前后台资源拆分，会写副本的 `public/console`。专题命令以 `frontend/package.json` 为准；浏览器认证、支付、安全或节点变化同时运行对应后端模块。契约生成与校验见 [项目结构](project-structure.md) 和 [V10 审计](api-v10/audit.md)，不能因测试包含旧接口名或历史漏洞而删除拒绝断言。
+构建先对项目执行 TypeScript `--noEmit`，再按变更范围编译用户端和后台，更新副本的 `public/console`。需要复核可从头构建时运行 `npm run build -- --force`。专题命令以 `frontend/package.json` 为准；浏览器认证、支付、安全或节点变化同时运行对应后端模块。契约生成与校验见 [项目结构](project-structure.md) 和 [V10 审计](api-v10/audit.md)，不能因测试包含旧接口名或历史漏洞而删除拒绝断言。
 
 CI 使用 Node 24 和锁文件执行前端全量测试/构建，将当次产物及隐藏 `.vite` 清单交给后端页面/资源验证，不自动发布。push/PR、默认 `master` 分支对 schedule/Dependabot 的生效条件及生产安装检查见 [测试组织](test-organization.md)，远端结果以对应 Actions run 为准。
 
 发布前检查 manifest 每处文件引用、动态依赖、JSON worker、十四语言、JavaScript/JSON worker 的 ASCII 约束、前后台复制一致性及用户图不含后台源码；检查构建不包含合成账号、报价或订单。记录 gzip/原始入口体积及主要成本，但静态诊断不能代替低端真机的 LCP/INP/CLS。`update.sh` 使用已提交 `public/console`，生产无需 Node 构建。隔离产物与源码/锁一起发布；若 alternate work-tree 只暂存发布资源而保留本地运行版本，不能自动还原有意保留的工作区差异。部署细节见 [前端部署](frontend-deployment.md)。
+
+构建隔离检查按端比较 HTML 入口、资源目录、可达清单条目和独立包。只修改一端时，另一端的这些文件应逐字节一致；修改共享样式时两端均应重新编译。浏览器回归还从站点子目录加载两份独立包，验证两端分别向各自的包根目录读取运行配置并打开登录页。干净检出可先用 `npm run package:frontends` 从已提交产物提取独立包。
+
+样式分端后，浏览器回归确认用户首页横幅可以切换且手机按钮保持触控尺寸。后台桌面横幅列表与编辑表单保留原布局，切换德语浏览器引导预览时后台导航仍使用中文。
 
 ## 浏览器环境与夹具
 

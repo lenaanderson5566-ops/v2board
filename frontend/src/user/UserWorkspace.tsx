@@ -1,5 +1,6 @@
 import "../shared/style.css";
 import "../shared/console.css";
+import "./workspace.css";
 import "./user-experience.css";
 import "./product.css";
 import {

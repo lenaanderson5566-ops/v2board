@@ -53,13 +53,13 @@ vi.mock("../shared/ui/useData", () => ({
         reload: vi.fn(),
     }),
 }));
+import { BannerStrip } from "./BannerStrip";
 import {
-    BannerStrip,
     bannerUrl,
     bannerImages,
     presetBanner,
     presetMobileBanner,
-} from "../shared/BannerStrip";
+} from "../shared/banners";
 import { BannerEditor } from "../admin/AdminBanners";
 afterEach(() => {
     cleanup();

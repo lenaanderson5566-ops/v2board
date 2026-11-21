@@ -87,9 +87,11 @@ jobs:
       - run: npm test -- --maxWorkers=4 --testTimeout=20000
       - name: Install Chromium for browser regression
         run: npx playwright install --with-deps chromium
+      - name: Extract standalone packages from the committed build
+        run: npm run package:frontends
       - name: Test the committed console in Chromium
         run: npm run test:browser
-      - run: npm run build
+      - run: npm run build -- --force
 
   backend:
     name: Backend critical regressions

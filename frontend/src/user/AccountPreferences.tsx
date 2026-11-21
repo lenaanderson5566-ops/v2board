@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next";
 import { changeLanguage, languages, locale, tx } from "../shared/i18n";
 import { p } from "./profile-copy";
 import { request, boot, type Row } from "../shared/api";
-import "../shared/account-preferences.css";
+import "./account-preferences.css";
 export function AccountPreferences({ user }: { user: Row }) {
     useTranslation();
     const [busy, setBusy] = useState(false);

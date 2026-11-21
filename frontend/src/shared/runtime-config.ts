@@ -48,7 +48,7 @@ export async function initializeRuntime(mode: "user" | "admin"): Promise<void> {
         const configUrl =
             import.meta.env.VITE_CONFIG_URL ||
             (import.meta.env.PROD
-                ? new URL(`../${mode}-config.json`, import.meta.url).href
+                ? new URL(`${mode}-config.json`, document.baseURI).href
                 : `/${mode}-config.json`);
         const response = await fetch(configUrl, {
             credentials: "omit",

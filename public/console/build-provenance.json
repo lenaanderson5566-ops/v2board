@@ -1,6 +1,9 @@
 {
-  "version": 1,
+  "version": 2,
   "defaultEnvironment": true,
-  "inputSha256": "7344a8a2b6d56293bb3d9c49c9d09bc694defd9772c90e4d36045eabc17f9aa7",
-  "outputSha256": "587ce4343e36a8d7d164f50ed04e7b3b80c9163700de373a6af87d73b91d1f36"
+  "inputSha256": {
+    "user": "034cb85cca8b09d4c4ea947dc811e20f311be463c612a81d4c19db27f6ca829e",
+    "admin": "1f0135f09679150272a889d4663e92a8feab03e706b17e29f4c78b64b3c6feba"
+  },
+  "outputSha256": "325212d5336cbda3d52d9d17ee522a141a0f095fab368a9ddf78cdbbdc682a56"
 }

@@ -24,6 +24,28 @@ it("rejects dependencies across private applications and from shared into either
         boundaryViolation("/src/admin/AdminApp.tsx", "/src/shared/ui.tsx"),
     ).toBe(false);
 });
+it("accepts the standalone admin entry and rejects user-only code in its source or output", () => {
+    const hook = userBundleIsolation().generateBundle as Function;
+    const adminSource = "/src/admin/AdminApp.tsx";
+    const userSource = "/src/user/UserWorkspace.tsx";
+    function run(facade: string, sources: string[], outputModules: string[]) {
+        const entry = {
+            type: "chunk", isEntry: true, fileName: "admin.js", facadeModuleId: facade,
+            modules: Object.fromEntries(outputModules.map(id => [id, {}])),
+            imports: [], dynamicImports: [],
+        };
+        hook.call({
+            getModuleIds: () => sources,
+            getModuleInfo: () => null,
+            error(message: string) { throw new Error(message); },
+        }, {}, { "admin.js": entry });
+    }
+    expect(() => run("/frontend/admin.html", [adminSource], [adminSource])).not.toThrow();
+    expect(() => run("/frontend/admin.html", [userSource], [adminSource])).toThrow("User source entered the admin build");
+    expect(() => run("/frontend/admin.html", [adminSource], [userSource])).toThrow("User source entered the admin build");
+    expect(() => run("/frontend/unknown.html", [], [])).toThrow("Missing independent frontend entry");
+});
+
 it("rejects backend chunks reached through user page navigation", () => {
     const hook = userBundleIsolation().generateBundle as Function;
     const bundle = {

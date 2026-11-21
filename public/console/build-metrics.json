@@ -3,34 +3,34 @@
   "modes": [
     {
       "mode": "user",
-      "startupGzipBytes": 145228,
-      "startupBytes": 478669,
-      "startupFileCount": 17,
+      "startupGzipBytes": 141991,
+      "startupBytes": 475082,
+      "startupFileCount": 9,
       "largestStartupAssets": [
         {
-          "file": "assets/render-app-DdF0szAl.js",
-          "bytes": 210010,
-          "gzipBytes": 65529
+          "file": "assets/user/render-app-C_xsGMkD.js",
+          "bytes": 209975,
+          "gzipBytes": 65517
         },
         {
-          "file": "assets/api-gOvlB8fp.js",
-          "bytes": 208545,
-          "gzipBytes": 55127
+          "file": "assets/user/copy-D8PYeE_i.js",
+          "bytes": 206874,
+          "gzipBytes": 54572
         },
         {
-          "file": "assets/app-BL08C3Vf.js",
-          "bytes": 12738,
-          "gzipBytes": 5336
+          "file": "assets/user/app-BW6WpsmW.js",
+          "bytes": 22428,
+          "gzipBytes": 8379
         },
         {
-          "file": "assets/runtime-config-CLtwJ-Je.js",
-          "bytes": 9683,
-          "gzipBytes": 4311
+          "file": "assets/user/index-CpPlaVzK.js",
+          "bytes": 10007,
+          "gzipBytes": 4489
         },
         {
-          "file": "assets/BrowserNoticeView-BbjsIfqt.js",
-          "bytes": 8059,
-          "gzipBytes": 3340
+          "file": "assets/user/app-DEO9hiGC.css",
+          "bytes": 13891,
+          "gzipBytes": 3600
         }
       ],
       "budget": 163840,
@@ -38,77 +38,77 @@
         {
           "view": "browserGuide",
           "language": null,
-          "gzipBytes": 145228,
-          "bytes": 478669,
-          "fileCount": 17
+          "gzipBytes": 141991,
+          "bytes": 475082,
+          "fileCount": 9
         },
         {
           "view": "login",
           "language": "zh-CN",
-          "gzipBytes": 215297,
-          "bytes": 803005,
-          "fileCount": 25
+          "gzipBytes": 208348,
+          "bytes": 795308,
+          "fileCount": 12
         },
         {
           "view": "landing",
           "language": "zh-CN",
-          "gzipBytes": 228789,
-          "bytes": 848697,
-          "fileCount": 34
+          "gzipBytes": 220941,
+          "bytes": 838973,
+          "fileCount": 19
         },
         {
           "view": "login",
           "language": "en-US",
-          "gzipBytes": 218593,
-          "bytes": 769512,
-          "fileCount": 25
+          "gzipBytes": 211644,
+          "bytes": 761815,
+          "fileCount": 12
         },
         {
           "view": "landing",
           "language": "en-US",
-          "gzipBytes": 232085,
-          "bytes": 815204,
-          "fileCount": 34
+          "gzipBytes": 224237,
+          "bytes": 805480,
+          "fileCount": 19
         }
       ],
-      "totalBytes": 3580339,
-      "fileCount": 351
+      "totalBytes": 3557137,
+      "fileCount": 319
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 319076,
-      "startupBytes": 1061984,
-      "startupFileCount": 27,
+      "startupGzipBytes": 295669,
+      "startupBytes": 980652,
+      "startupFileCount": 7,
       "largestStartupAssets": [
         {
-          "file": "assets/AdminApp-Cg9zJiQ8.js",
-          "bytes": 323845,
-          "gzipBytes": 93061
+          "file": "assets/admin/AdminApp-CI-QQlbE.js",
+          "bytes": 495055,
+          "gzipBytes": 159322
         },
         {
-          "file": "assets/render-app-DdF0szAl.js",
-          "bytes": 210010,
-          "gzipBytes": 65529
+          "file": "assets/admin/render-app-BzrmDX2J.js",
+          "bytes": 209906,
+          "gzipBytes": 65493
         },
         {
-          "file": "assets/api-gOvlB8fp.js",
-          "bytes": 208545,
-          "gzipBytes": 55127
+          "file": "assets/admin/ErrorBoundary-C0l21ZzL.js",
+          "bytes": 146931,
+          "gzipBytes": 43926
         },
         {
-          "file": "assets/admin-status-C8x3kqi8.js",
-          "bytes": 116132,
-          "gzipBytes": 47484
+          "file": "assets/admin/AdminApp-B2on3I_J.css",
+          "bytes": 115252,
+          "gzipBytes": 20591
         },
         {
-          "file": "assets/AdminApp-Bodx-IhB.css",
-          "bytes": 80580,
-          "gzipBytes": 13617
+          "file": "assets/admin/admin-BaVXfURl.js",
+          "bytes": 10022,
+          "gzipBytes": 4504
         }
       ],
       "budget": 460800,
-      "totalBytes": 5153710,
-      "fileCount": 135
+      "totalBytes": 5043359,
+      "fileCount": 98
     }
   ],
   "warnings": []

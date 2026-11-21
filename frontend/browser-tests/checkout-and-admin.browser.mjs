@@ -11,16 +11,16 @@ const narrowViewports = [{ width: 320, height: 740 }, { width: 390, height: 844 
 
 // Serve only the exact build under test. All APIs and the checkout destination
 // are synthetic, so the browser cannot call a real site or payment provider.
-async function consoleFixture(context, mode, api, { authenticated = true, emailDomains = [], title = "FastAI Test", language = "zh-CN", account = {}, bootOptions = {} } = {}) {
-    await context.addInitScript(({ origin, mode, emailDomains, title, language, bootOptions }) => {
+async function consoleFixture(context, mode, api, { authenticated = true, emailDomains = [], title = "FastAI Test", language = "zh-CN", account = {}, bootOptions = {}, injectRuntime = true } = {}) {
+    await context.addInitScript(({ origin, mode, emailDomains, title, language, bootOptions, injectRuntime }) => {
         if (location.origin !== origin) return;
-        window.FASTAI = {
+        if (injectRuntime) window.FASTAI = {
             mode, title, adminPath: "test-admin", landing: false,
             emailWhitelistEnabled: emailDomains.length > 0, emailWhitelistSuffixes: emailDomains,
             ...bootOptions,
         };
         localStorage.setItem("fastai.language", language);
-    }, { origin: consoleOrigin, mode, emailDomains, title, language, bootOptions });
+    }, { origin: consoleOrigin, mode, emailDomains, title, language, bootOptions, injectRuntime });
     await context.route("**/*", async route => {
         const request = route.request();
         const url = new URL(request.url());
@@ -35,7 +35,7 @@ async function consoleFixture(context, mode, api, { authenticated = true, emailD
         if (path === "/" || path === "/app" || path === "/admin.html") {
             return route.fulfill({ path: fileURLToPath(new URL(path === "/admin.html" ? "admin.html" : "index.html", build)) });
         }
-        if (/^\/assets\/[\w.-]+$/.test(path)) {
+        if (/^\/assets\/(?:user\/|admin\/)?[\w.-]+$/.test(path)) {
             return route.fulfill({ path: fileURLToPath(new URL(path.slice(1), build)) });
         }
         const result = path === "/api/v10/auth/browser-session"
@@ -57,6 +57,79 @@ async function expectPageWidth(page, width) {
     expect(bounds.viewport).toBe(width);
     expect(bounds.content).toBeLessThanOrEqual(width);
 }
+
+for (const mode of ["user", "admin"]) {
+    test(`standalone ${mode} loads its configuration and assets from its mount directory`, async ({ page, context }) => {
+        const mount = "/sites/example/portal/";
+        const files = new URL(`../dist/${mode}/`, import.meta.url);
+        const configs = [];
+        await consoleFixture(context, mode, path => {
+            if (path === "/api/v10/public/settings") return {};
+        }, { authenticated: false, injectRuntime: false });
+        await page.route(url => url.origin === consoleOrigin && url.pathname.startsWith(mount), route => {
+            const name = new URL(route.request().url()).pathname.slice(mount.length);
+            if (name === `${mode}-config.json`) {
+                configs.push(name);
+                return route.fulfill({ json: { mode, title: "Subdirectory Test", landing: false, adminPath: "test-admin" } });
+            }
+            if (name === "" || name === "index.html" || new RegExp(`^assets/${mode}/[\\w.-]+$`).test(name)) {
+                return route.fulfill({ path: fileURLToPath(new URL(name || "index.html", files)) });
+            }
+            return route.fulfill({ status: 404 });
+        });
+        await page.goto(`${consoleOrigin}${mount}#/login`);
+        await expect(page.locator(mode === "user" ? ".user-auth-form" : ".workspace-access")).toBeVisible();
+        expect(configs).toEqual([`${mode}-config.json`]);
+        expect(await page.evaluate(() => window.FASTAI.title)).toBe("Subdirectory Test");
+    });
+}
+
+test("mobile landing keeps carousel images and controls after separating banner styles", async ({ page, context }) => {
+    const images = ["/test-banners/one.gif", "/test-banners/two.gif"];
+    await consoleFixture(context, "user", path => {
+        if (path === "/api/v10/public/banners") return images.map((imageUrl, index) => ({
+            id: index + 1, title: `横幅 ${index + 1}`, imageUrl,
+        }));
+    }, { authenticated: false, bootOptions: { landing: true, landingStyle: "original" } });
+    await page.route("**/test-banners/*.gif", route => route.fulfill({
+        contentType: "image/gif",
+        body: Buffer.from("R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", "base64"),
+    }));
+    await page.goto(consoleOrigin);
+    const first = page.getByRole("img", { name: "横幅 1" });
+    await expect(first).toBeVisible();
+    await expect(first).toHaveCSS("object-fit", "cover");
+    const second = page.locator(".banner-dot").nth(1);
+    await expect(second).toHaveCSS("width", "44px");
+    await expect(second).toHaveCSS("height", "44px");
+    await second.click();
+    await expect(page.getByRole("img", { name: "横幅 2" })).toBeVisible();
+    await expect(second).toHaveAttribute("aria-pressed", "true");
+});
+
+test("desktop banner management and translated browser previews keep their own styles and language", async ({ page, context }) => {
+    await page.setViewportSize({ width: 1280, height: 900 });
+    await consoleFixture(context, "admin", path => {
+        if (path === "/api/v1/test-admin/banner/fetch") return [
+            { id: 1, title: "编辑用横幅", image_url: "", placements: ["dashboard"], languages: [], show: true, sort: 0 },
+        ];
+        if (path === "/api/v1/test-admin/config/fetch") return { safe: { browser_policy_wechat: "guide" } };
+        if (path === "/api/v1/test-admin/console/configSchema") return {};
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/banners`);
+    const item = page.locator(".banner-item");
+    await expect(item).toHaveCSS("display", "flex");
+    await item.getByRole("button", { name: "编辑 / 预览" }).click();
+    const form = page.locator(".banner-editor");
+    await expect(form).toHaveCSS("display", "grid");
+    await expect(form.getByLabel("标题 / 图片替代文本")).toHaveValue("编辑用横幅");
+
+    await page.goto(`${consoleOrigin}/admin.html#/browser-settings`);
+    await page.getByLabel("预览平台").selectOption("wechat");
+    await page.getByLabel("预览语言").selectOption("de-DE");
+    await expect(page.locator(".browser-preview").getByRole("heading", { name: "Im Browser fortfahren" })).toBeVisible();
+    await expect(page.locator("html")).toHaveAttribute("lang", "zh-CN");
+});
 
 test("mobile authentication keeps its type hierarchy and fits narrow screens", async ({ page, context }) => {
     await consoleFixture(context, "user", path => {
@@ -1551,7 +1624,7 @@ test("mobile registration settings save a pause and keep account security in its
 test("mobile workspace startup failure keeps its message readable and reload reachable", async ({ page, context }) => {
     await page.setViewportSize({ width: 320, height: 740 });
     await consoleFixture(context, "user", () => undefined, { language: "de-DE" });
-    await page.route(`${consoleOrigin}/assets/UserWorkspace-*.js`, route => route.abort("failed"));
+    await page.route(url => url.origin === consoleOrigin && /^\/assets\/(?:user\/)?UserWorkspace-[\w-]+\.js$/.test(url.pathname), route => route.abort("failed"));
     await page.goto(`${consoleOrigin}/app#/dashboard`);
 
     const fallback = page.locator("#root > .panel");

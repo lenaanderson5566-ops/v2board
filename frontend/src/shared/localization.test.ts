@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import ts from "typescript";
 import { gzipSync } from "node:zlib";
 import { fileURLToPath } from "node:url";
-import { startupCatalogs } from "../../locale-startup";
+import { startupCatalogPlugin, startupCatalogs } from "../../locale-startup";
 const catalogLoads = vi.hoisted(() => ({ german: 0, thai: 0, failThai: false }));
 vi.mock("../locales/de-DE.json", async (original) => {
     const catalog = await original<{ default: typeof import("../locales/de-DE.json") }>();
@@ -66,6 +66,24 @@ const catalogs = Object.fromEntries(
 const placeholders = (v: string) =>
     [...v.matchAll(/{{\s*(\w+)\s*}}/g)].map((m) => m[1]).sort();
 describe("small public entry catalogs", () => {
+    it.each([
+        ["build", "admin.html", false],
+        ["build", "index.html", true],
+        ["serve", "admin.html", true],
+        ["build", { user: "index.html", admin: "admin.html" }, true],
+    ] as const)("loads the public guide only for the matching build or dev server: %s %j", (command, input, publicGuide) => {
+        const root = fileURLToPath(new URL("../../", import.meta.url));
+        const plugin = startupCatalogPlugin();
+        const watch = vi.fn<(path: string) => void>();
+        (plugin.configResolved as Function)({ root, command, build: { rollupOptions: { input } } });
+        const code = (plugin.load as Function).call({ addWatchFile: watch }, "\0virtual:startup-catalogs");
+        expect(code.includes("browserEntryTitle")).toBe(publicGuide);
+        if (publicGuide) {
+            expect(watch).toHaveBeenCalledWith(expect.stringMatching(/AnalyticsPrivacy\.tsx$/));
+        } else {
+            expect(watch).not.toHaveBeenCalled();
+        }
+    });
     it("derives every startup value from its single full catalog source", () => {
         const core = startupCatalogs(fileURLToPath(new URL("../../", import.meta.url)));
         expect(Object.keys(core).sort()).toEqual(languages.map(language => language.code).sort());

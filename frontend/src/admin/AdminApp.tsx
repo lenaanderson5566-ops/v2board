@@ -4,6 +4,7 @@ import {
 } from "../shared/browser-session";
 import "../shared/style.css";
 import "../shared/console.css";
+import "./workspace.css";
 import "./admin.css";
 import "./admin-surfaces.css";
 import { useEffect, useRef, useState } from "react";

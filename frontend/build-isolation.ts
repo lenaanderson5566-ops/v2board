@@ -70,8 +70,20 @@ export function userBundleIsolation(): Plugin {
                         "/index.html",
                     ),
             );
-            if (!entry || entry.type !== "chunk")
-                this.error("Missing independent user entry");
+            if (!entry || entry.type !== "chunk") {
+                const admin = entries[0];
+                if (entries.length !== 1 || admin?.type !== "chunk" || !normalize(admin.facadeModuleId || "").endsWith("/admin.html")) {
+                    this.error("Missing independent frontend entry");
+                }
+                const checkAdminSource = (id: string) => {
+                    if (normalize(id).includes("/src/user/")) this.error("User source entered the admin build: " + id);
+                };
+                for (const id of this.getModuleIds()) checkAdminSource(id);
+                for (const chunk of Object.values(bundle)) {
+                    if (chunk.type === "chunk") Object.keys(chunk.modules).forEach(checkAdminSource);
+                }
+                return;
+            }
             const sourceSeen = new Set<string>();
             const source = (id: string) => {
                 if (sourceSeen.has(id)) return;

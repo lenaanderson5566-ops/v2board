@@ -22,13 +22,19 @@ npm run test
 npm run build
 ```
 
-发布时使用默认 Vite 生产配置构建，并将完整 `public/console`（含 `.vite` 清单与 `build-provenance.json`）随源码提交。从 `frontend` 执行 `node scripts/build-console.mjs --verify` 可只读核对现有产物与源码指纹。构建来源记录只在完整构建后生成。GitHub Actions 在 Linux 重建前检查提交中的产物，允许 Windows 与 Linux 检出的文本换行差异。
+发布时使用默认 Vite 生产配置构建，并将完整 `public/console`（含 `.vite` 清单与 `build-provenance.json`）随源码提交。用户端和后台分别编译，资源分布在 `assets/user` 与 `assets/admin`。普通 `npm run build` 根据两端各自的源码指纹判断重建范围。只改后台页面时复用用户端产物，只改用户端页面时复用后台产物。共享组件、构建配置、正式语言包和依赖锁文件变化时同时构建两端。
+
+页面专用样式放在各自的 `src/user` 和 `src/admin`，基础控件样式继续共用。用户端公开引导使用从源文件提取的小词库，后台页面在渲染前加载当前会话语言的完整词库。修改用户隐私链接或公开引导的专用样式只影响用户端构建。
+
+没有影响前端构建的变更时，构建会复用两端产物。如果需要从头编译两端，运行 `npm run build -- --force`。从 `frontend` 执行 `node scripts/build-console.mjs --verify` 可只读核对两端源码与完整发布目录的指纹。GitHub Actions 在 Linux 强制重建前校验已提交的产物，校验允许 Windows 和 Linux 检出的文本换行差异。
 
 得到三份产物：
 
 - `public/console`：Laravel 当前部署使用，包含两端入口和完整生产清单。
 - `frontend/dist/user`：用户端独立发布包，只包含用户入口可达的资源。
 - `frontend/dist/admin`：后台独立发布包，包含后台样式、字体及编辑器资源。
+
+从现有构建单独提取后台包可运行 `npm run package:frontends -- admin`。将参数换为 `user` 可提取用户包，省略参数会提取两端。
 
 独立发布包均以 `index.html` 为首页，各自包含需要的公共资源，不依赖另一应用的发布目录。用户发布包不包含后台 JS、后台样式、后台字体或后台配置。`npm run package:frontends` 可从已有生产清单重新生成独立包。
 

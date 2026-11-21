@@ -1,7 +1,28 @@
 import { gzipSync } from "node:zlib";
 
+export function manifestFiles(manifest, roots, dynamic = true) {
+    const seen = new Set();
+    const files = new Set();
+    function visit(key) {
+        if (seen.has(key)) return;
+        seen.add(key);
+        const item = manifest[key];
+        if (!item) throw new Error(`Missing manifest resource ${key}`);
+        [item.file, ...(item.css || []), ...(item.assets || [])].forEach(file => files.add(file));
+        (item.imports || []).forEach(visit);
+        if (dynamic) (item.dynamicImports || []).forEach(visit);
+    }
+    roots.forEach(visit);
+    return files;
+}
+
+export function metricsReport(modes) {
+    const warnings = modes.filter(mode => mode.startupGzipBytes > mode.budget)
+        .map(({ mode, budget }) => `${mode === "user" ? "用户端" : "管理端"}启动资源超过 gzip 预算 ${budget / 1024} KiB。`);
+    return { version: 1, modes, warnings };
+}
+
 export function buildMetrics(manifest, read) {
-    const warnings = [];
     const assets = new Map();
     const asset = (file) => {
         if (!assets.has(file)) {
@@ -14,33 +35,12 @@ export function buildMetrics(manifest, read) {
         ["user", "index.html", 160 * 1024],
         ["admin", "admin.html", 450 * 1024],
     ].map(([mode, entry, budget]) => {
-        function collect(roots, dynamic) {
-            const seen = new Set(),
-                files = new Set();
-            function visit(key) {
-                if (seen.has(key)) return;
-                seen.add(key);
-                const item = manifest[key];
-                if (!item) throw new Error(`Missing manifest resource ${key}`);
-                [
-                    item.file,
-                    ...(item.css || []),
-                    ...(item.assets || []),
-                ].forEach((file) => files.add(file));
-                [
-                    ...(item.imports || []),
-                    ...(dynamic ? item.dynamicImports || [] : []),
-                ].forEach(visit);
-            }
-            roots.forEach(visit);
-            return files;
-        }
-        const all = collect([entry], true);
+        const all = manifestFiles(manifest, [entry]);
         const startupRoots = [entry, ...(manifest[entry].dynamicImports || [])];
-        const startup = collect(startupRoots, false);
+        const startup = manifestFiles(manifest, startupRoots, false);
         const startupAssets = [...startup].map(asset);
         const startupGzipBytes = startupAssets.reduce((sum, asset) => sum + asset.gzipBytes, 0);
-        const named = name => Object.keys(manifest).filter(key => manifest[key].name === name);
+        const named = name => Object.keys(manifest).filter(key => manifest[key].name === name && all.has(manifest[key].file));
         const workspace = named("UserWorkspace");
         // A smaller gate bundle alone does not describe the first usable page.
         // Count its workspace, page and selected full catalog too, including
@@ -56,7 +56,7 @@ export function buildMetrics(manifest, read) {
                 ];
             }),
         ].map(({ view, language, roots }) => {
-            const files = [...collect([...startupRoots, ...roots], false)]
+            const files = [...manifestFiles(manifest, [...startupRoots, ...roots], false)]
                 .filter(file => /\.(?:js|css)$/.test(file));
             return {
                 view, language,
@@ -65,10 +65,6 @@ export function buildMetrics(manifest, read) {
                 fileCount: files.length,
             };
         }) : undefined;
-        if (startupGzipBytes > budget)
-            warnings.push(
-                `${mode === "user" ? "用户端" : "管理端"}启动资源超过 gzip 预算 ${budget / 1024} KiB。`,
-            );
         return {
             mode,
             startupGzipBytes,
@@ -86,5 +82,5 @@ export function buildMetrics(manifest, read) {
             fileCount: all.size,
         };
     });
-    return { version: 1, modes, warnings };
+    return metricsReport(modes);
 }

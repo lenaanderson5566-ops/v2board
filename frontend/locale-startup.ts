@@ -51,13 +51,24 @@ export function startupCatalogs(root: string, watch: (path: string) => void = ()
 export function startupCatalogPlugin(): Plugin {
     const name = "virtual:startup-catalogs", resolved = "\0" + name;
     let root = "";
+    let adminOnly = false;
     return {
         name: "small-startup-catalogs",
-        configResolved(config) { root = config.root; },
+        configResolved(config) {
+            root = config.root;
+            const input = config.build.rollupOptions.input;
+            adminOnly = config.command === "build" && typeof input === "string" &&
+                resolve(root, input) === resolve(root, "admin.html");
+        },
         resolveId(id) { if (id === name) return resolved; },
         load(id) {
             if (id !== resolved) return;
-            return "export default " + JSON.stringify(startupCatalogs(root, path => this.addWatchFile(path))) + ";";
+            // Admin loads its complete session language before rendering. Empty
+            // stores preserve that load order without embedding the public guide.
+            const resources = adminOnly
+                ? { "en-US": { translation: {} }, "zh-CN": { translation: {} } }
+                : startupCatalogs(root, path => this.addWatchFile(path));
+            return "export default " + JSON.stringify(resources) + ";";
         },
     };
 }

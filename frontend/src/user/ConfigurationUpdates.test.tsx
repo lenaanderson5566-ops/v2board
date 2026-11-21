@@ -11,7 +11,7 @@ vi.mock("react-i18next", () => ({ useTranslation: () => ({}) }));
 vi.mock("../shared/experience-copy", () => ({ e: (key: string) => key }));
 vi.mock("./product-analytics", () => ({ useAnalyticsPage: () => undefined }));
 vi.mock("./FastaiDownload", () => ({ FastaiDownload: () => null }));
-vi.mock("../shared/BannerStrip", () => ({ BannerStrip: () => null }));
+vi.mock("./BannerStrip", () => ({ BannerStrip: () => null }));
 vi.mock("./AccountSecurity", () => ({ AccountSecurity: () => <p>Security settings</p> }));
 vi.mock("./user", () => Object.fromEntries(["UserDashboard", "Subscribe", "Plans", "Orders", "Knowledge", "Tickets", "Invite", "Profile", "Notifications", "Traffic"].map(name => [name, () => null])));
 import { ConfigurationUpdates } from "./ConfigurationUpdates";

@@ -27,7 +27,7 @@ export default defineConfig({
     // Avoid charset guessing for executable scripts.
     esbuild: { charset: "ascii" },
     build: {
-        outDir: "../public/console",
+        outDir: "dist/preview",
         emptyOutDir: true,
         manifest: true,
         rollupOptions: { input: { user: "index.html", admin: "admin.html" } },

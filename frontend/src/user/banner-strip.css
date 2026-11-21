@@ -1,0 +1,102 @@
+.banner-strip {
+    width: 100%;
+    overflow: hidden;
+    border-radius: 14px;
+    margin: 0 0 16px;
+    background: transparent;
+}
+.banner-strip picture,
+.banner-strip a {
+    display: block;
+}
+.banner-strip picture {
+    aspect-ratio: 6 / 1;
+    min-height: 128px;
+    max-height: 180px;
+    overflow: hidden;
+}
+.banner-strip img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+}
+.banner-landing {
+    max-width: 1200px;
+    margin: 16px auto 24px;
+}
+.banner-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 8px;
+}
+.banner-controls > div {
+    display: flex;
+    gap: 8px;
+}
+.banner-controls button {
+    padding: 0;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    box-shadow: none;
+}
+.banner-controls .banner-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #c9d0cb;
+}
+.banner-controls .banner-dot[aria-pressed="true"] {
+    background: #253f33;
+}
+@media (max-width: 600px) {
+    :where(body[data-console="user"]) .banner-controls {
+        gap: 4px;
+        padding: 0;
+    }
+    :where(body[data-console="user"]) .banner-controls > div {
+        gap: 0;
+        overflow-x: auto;
+    }
+    :where(body[data-console="user"]) .banner-controls button,
+    :where(body[data-console="user"]) .banner-controls .banner-dot {
+        flex: 0 0 44px;
+        width: 44px;
+        height: 44px;
+        outline-offset: -3px;
+    }
+    :where(body[data-console="user"]) .banner-controls .banner-dot[aria-pressed] {
+        border: 0;
+        background: transparent;
+    }
+    :where(body[data-console="user"]) .banner-dot::after {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--outline);
+    }
+    :where(body[data-console="user"]) .banner-dot[aria-pressed="true"]::after {
+        background: var(--brand);
+    }
+}
+@media (max-width: 700px) {
+    .banner-strip {
+        border-radius: 12px;
+        margin-bottom: 16px;
+    }
+    .banner-strip picture {
+        aspect-ratio: 3 / 1;
+        min-height: 0;
+        max-height: 140px;
+    }
+    .banner-landing {
+        margin: 16px auto 24px;
+    }
+}

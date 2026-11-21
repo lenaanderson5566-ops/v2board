@@ -3,7 +3,7 @@ import { useAnalyticsPage } from "./product-analytics";
 import { lazy, Suspense } from "react";
 import { WorkspaceSkeleton } from "../shared/WorkspaceSkeleton";
 import { FastaiDownload } from "./FastaiDownload";
-import { BannerStrip } from "../shared/BannerStrip";
+import { BannerStrip } from "./BannerStrip";
 import {
     UserDashboard,
     Subscribe,

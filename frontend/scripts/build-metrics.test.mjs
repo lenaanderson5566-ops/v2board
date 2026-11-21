@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { gzipSync } from "node:zlib";
-import { buildMetrics } from "./build-metrics.mjs";
+import { buildMetrics, metricsReport } from "./build-metrics.mjs";
 
 it("deduplicates shared and cyclic imports and excludes lazy pages from startup", () => {
     const manifest = {
@@ -54,7 +54,8 @@ it("ranks the largest startup resources without counting a lazy-only asset", () 
 it("includes the selected full catalog and workspace CSS in first usable view estimates", () => {
     const manifest = {
         "index.html": { file: "user.js", dynamicImports: ["app"] },
-        "admin.html": { file: "admin.js" },
+        "admin.html": { file: "admin.js", dynamicImports: ["admin:landing"] },
+        "admin:landing": { name: "Landing", file: "admin-landing.js" },
         app: { file: "app.js", imports: ["shared"], dynamicImports: ["workspace", "src/locales/zh-CN.json", "src/locales/en-US.json"] },
         shared: { file: "shared.js" },
         workspace: { name: "UserWorkspace", file: "workspace.js", imports: ["shared"], css: ["workspace.css"], assets: ["optional-invite.jpg"], dynamicImports: ["landing", "unused"] },
@@ -73,4 +74,12 @@ it("includes the selected full catalog and workspace CSS in first usable view es
             { view: "landing", language, fileCount: 8, bytes: 8 * content.length, gzipBytes: 8 * gzipSync(content).length },
         ]),
     ]);
+});
+
+it("reports only the included frontend's budget warnings", () => {
+    const user = { mode: "user", budget: 1024, startupGzipBytes: 100 };
+    const admin = { mode: "admin", budget: 2048, startupGzipBytes: 4096 };
+    expect(metricsReport([user]).warnings).toEqual([]);
+    expect(metricsReport([user, admin]).warnings).toEqual(metricsReport([admin]).warnings);
+    expect(metricsReport([admin]).warnings[0]).toContain("管理端");
 });

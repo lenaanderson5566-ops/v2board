@@ -1,13 +1,14 @@
 <?php
 namespace App\Http\Routes\V1;
 
+use App\Support\AdminPath;
 use Illuminate\Contracts\Routing\Registrar;
 
 class AdminRoute
 {
     public static function prefix(): string
     {
-        return config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+        return AdminPath::resolve();
     }
 
     public function map(Registrar $router)

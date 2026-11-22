@@ -9,16 +9,14 @@ The subscription catalog opens a dedicated unified checkout page. Period, wallet
 | Order detail | GET `/api/v10/me/orders/{orderNumber}` | Render persisted amounts, currency, order kind and timestamps. Retain checkout state during refresh; reset on a different order. |
 | Payment methods | GET `/api/v10/payment-methods?orderNumber=…` | Use enabled methods in backend sort order; display configured names without guessing provider capabilities. |
 | Start payment | POST `/api/v10/me/orders/{orderNumber}/payments` | Prevent duplicate requests. Handle confirmed, pending, redirect and QR responses independently. Only order status proves completion. |
-| Check status | GET `/api/v10/me/orders/{orderNumber}/status` | Poll while waiting or processing; pause in hidden tabs and stop after 60 attempts. Provide manual retry. |
+| Check status | GET `/api/v10/me/orders/{orderNumber}/status` | Check every five seconds while waiting or processing. Pause in hidden tabs and stop after 60 checks. The user can check again manually. |
 | Cancel | POST `/api/v10/me/orders/{orderNumber}/cancellation` | Require confirmation; backend allows unpaid orders only and returns deducted account balance atomically. Never promise external refunds. |
 
 Fee preview uses the server quote from `PaymentQuote::make`: convert the order base into the channel payment currency, then add round(converted base × percentage / 100) plus the fixed fee in that payment currency. The fee is also converted back to order currency for accounting. CNY and USD amounts are integer minor units; never infer currency from the UI language or a global symbol.
 
 Once issued, the same order/channel reuses its saved quote even after fee or exchange-rate changes. Choosing a different channel can create a separate snapshot. Confirmed initiation echoes `expectedPaymentAmount` and `expectedPaymentCurrency`; Both same-currency and cross-currency expectations are checked. A 409 requires refreshing the quote and obtaining confirmation again, not automatically retrying payment.
 
-The product summary reconstructs the original order price from persisted amounts,
-not current catalog prices. Subscription, credit, reset and deposit orders keep
-their existing completion destinations. Deposit bonuses use server detail fields.
+The product summary reconstructs the original order price from persisted amounts. Order status 1 means payment was recorded and provisioning is pending. Status 3 marks completion. The receipt for a completed subscription opens Quick Start, a credit purchase opens Usage, and a deposit opens Billing. Deposit bonuses use server detail fields.
 
 UI states: initial loading, method loading/error/empty, ready, submitting, waiting
 for payment, QR, card dialog, processing, completed, cancelled, discounted and
@@ -34,6 +32,8 @@ The help and cancellation actions share a row in pending checkout.
 
 
 ## Unified subscription checkout
+
+Selecting a billing period shows the plans with a configured price for that period, including zero-price periods. A current, active plan with a positive quota and an available recurring price can still be renewed by its holder when the plan allows renewal, even if it is hidden from the catalog. One-time credit packages and usage resets have separate purchase flows. A paid reset preserves the subscription expiry.
 
 `plan/{planId}?period=…` resumes the configured selection on refresh; optional `replace` identifies an owned, cancellable unpaid order. No arbitrary return URL is accepted. Catalog selections carry the current cycle into the same page without a modal. Reset purchases keep their existing separate entry.
 

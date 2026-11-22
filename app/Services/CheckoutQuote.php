@@ -4,6 +4,7 @@ namespace App\Services;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Billing\CheckoutPaymentMethods;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 
@@ -44,7 +45,7 @@ final class CheckoutQuote
     {
         [$totals,$payment] = self::totals($order,$user,(int)$request->input('quote_method',0));
         $draft = clone $order; $draft->total_amount = $totals['total_amount'];
-        $methods = $draft->total_amount > 0 ? json_decode(app(Actions\User\OrderActions::class)->getPaymentMethod($request,$draft)->getContent(),true)['data'] : [];
+        $methods = $draft->total_amount > 0 ? CheckoutPaymentMethods::forOrder($draft) : [];
         $expires = time()+300;
         $token = ($totals['total_amount'] === 0 || $totals['payment_method_id'] > 0)
             ? Crypt::encryptString(json_encode(['selection'=>self::selection($request),'totals'=>$totals,'channel'=>self::channelIdentity($payment),'expires'=>$expires],JSON_THROW_ON_ERROR)) : null;

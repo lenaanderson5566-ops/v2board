@@ -458,31 +458,6 @@
     border: 0;
     margin: 18px 0 0;
 }
-.coupon-picker-compact .coupon-picker-label {
-    display: flex;
-    flex-direction: row;
-    gap: 8px;
-    align-items: center;
-    font-weight: 600;
-    margin-bottom: 10px;
-}
-.coupon-picker-compact select {
-    width: 100%;
-    min-width: 0;
-    min-height: 44px;
-    font-size: var(--user-font-control, 13px);
-    text-overflow: ellipsis;
-}
-.coupon-selected-detail {
-    display: block;
-    color: var(--text-secondary);
-    margin-top: 6px;
-    font-size: var(--user-font-caption, 11px);
-}
-.coupon-picker-compact .coupon-picker-links {
-    margin-top: 8px;
-    font-size: var(--user-font-label, 12px);
-}
 .purchase-selection .purchase-footer {
     flex: 0 0 auto;
     display: grid;

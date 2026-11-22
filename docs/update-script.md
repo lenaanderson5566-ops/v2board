@@ -171,6 +171,10 @@ bash /tmp/fastai-update.sh \
 新增并定向执行 `2026_10_02_000005_create_traffic_credits.php`：创建独立流量额度余额、订单数量/配置快照及到账审计表，并迁移老永久流量用户的剩余配额。必须暂停本站队列和调度、备份数据库后运行。额度转换后不能仅回滚代码；须使用一致的数据库/代码备份并核对新交易。详细规则、暂缓迁移的旧待支付订单及核对 SQL 见 [traffic-credits.md](traffic-credits.md)。
 
 
+## 已退役支付渠道
+
+若仍配置了 `Epusdt` 或 `BEasyPaymentUSDT`，升级前先与服务商核对待支付及已付款未入账的订单。这两个渠道的实现已移除，升级后无法再处理旧回调。`update.sh` 通过 `2026_10_07_000001_disable_retired_payment_methods.php` 停用已有配置，保留历史订单和配置供对账。后台禁止重新启用这两个渠道。回滚此迁移也不会自动启用它们。
+
 ## HTTP runtime
 
 网站使用 Nginx/Apache + PHP-FPM，入口为 `public/index.php`。Webman/Adapterman 入口 `webman.php`、`start.php` 和专用 `cli-php.ini` 已移除；安装脚本不再安装 Adapterman，保存后台设置也不再读取或终止缓存中的 Webman PID。Horizon 队列、定时任务和 `pm2.yaml` 的队列配置保持不变。

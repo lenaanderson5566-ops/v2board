@@ -14,22 +14,22 @@
 - [项目目录、依赖与契约生成](project-structure.md)
 - [用户端、后台与独立部署](frontend-deployment.md)、[用户端主题](frontend-theme.md)
 - [测试组织与隔离执行](test-organization.md)、[前后台验收](frontend-validation.md)
-- [安全修复与部署验收边界](security-review.md)、[关键配置复查](critical-config-review.md)
+- [安全修复与部署验收边界](security-review.md)
 
 ## 账户、登录与用户入口
 
-- [账户进入状态](account-entry-states.md)、[账户体验与服务通知](account-experience.md)
+- [账户进入状态与快速开始](account-entry-states.md)、[账户体验与服务通知](account-experience.md)
 - [认证安全](authentication-security.md)、[浏览器 Cookie 会话](browser-sessions.md)、[MFA 与 Passkey](mfa.md)
 - [注册策略](registration-policy.md)、[邮件邀请](email-invitations.md)
-- [用户导航与快速开始](user-setup-navigation.md)、[用户语言偏好](user-language-preference.md)
+- [用户语言偏好](user-language-preference.md)
 - [业务与界面时区](timezones.md)、[iOS 下载账号](apple-accounts.md)
 - [Telegram 绑定与群资格](telegram-community.md)
 
 ## 套餐、支付与额度
 
-- [订阅购买流程](subscription-checkout.md)、[结算界面与恢复](payment-checkout-ui.md)
+- [订阅结算与支付恢复](payment-checkout-ui.md)
 - [人民币／美元计费与优惠券](billing-currencies-coupons.md)、[支付类别／币种／网络](payment-categories.md)
-- [订单支付快照](order-payment-history.md)、[MGate 支付](mgate-payment.md)、[已移除支付渠道](retired-payments.md)
+- [订单支付快照与诊断](billing-currencies-coupons.md#订单支付快照)、[MGate 支付](mgate-payment.md)、[已退役支付渠道](update-script.md#已退役支付渠道)
 - [优惠券活动与多语言](coupon-activities.md)、[按用户范围发券](coupon-campaigns.md)
 - [独立流量额度与老用户迁移](traffic-credits.md)、[账单／使用情况／重置](usage-resets.md)
 

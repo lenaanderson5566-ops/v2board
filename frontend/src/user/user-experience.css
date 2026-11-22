@@ -1,8 +1,6 @@
 /* User workspace and account flows. Kept separate from the legacy admin. */
 .user-auth {
     min-height: 100dvh;
-    background: var(--surface-soft);
-    color: var(--ink);
     padding: 32px clamp(20px, 5vw, 72px);
 }
 .auth-home {
@@ -387,9 +385,6 @@ body[data-console="user"] .auth-language {
 .app.user .main > header .breadcrumb { min-width: 0; }
 .app.user .main > header .breadcrumb strong { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .account-security { width: 100%; padding: 0; }
-.security-back { display: inline-flex; align-items: center; gap: 7px; font-size: var(--user-font-label, 13px); color: var(--text-secondary); margin-bottom: 24px; text-decoration: none; }
-.security-heading { display: flex; align-items: center; gap: 10px; }
-.security-heading h2 { margin: 0; font-size: var(--user-font-section, 22px); font-weight: 600; }
 .account-security > p { line-height: 1.7; margin: 14px 0 28px; }
 .account-security form { display: grid; gap: 18px; }
 .account-security label { display: grid; gap: 8px; font-size: var(--user-font-body, 14px); }
@@ -398,72 +393,6 @@ body[data-console="user"] .auth-language {
 .security-password input { width: 100%; padding-inline-end: 52px; }
 .security-password .icon-button { position: absolute; inset-inline-end: 4px; top: 2px; width: 44px; height: 44px; border: 0; background: transparent; }
 .account-security .primary { justify-self: start; min-height: 44px; padding-inline: 24px; border-radius: 24px; }
-.account-security-link { display: flex; align-items: center; gap: 12px; padding: 4px 0 24px; font-size: var(--user-font-label, 13px); }
-.app.user .dashboard-welcome {
-    display: flex;
-    gap: 24px;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 28px;
-}
-.app.user .dashboard-welcome h2 {
-    font-size: 24px;
-    line-height: 1.4;
-    letter-spacing: -0.5px;
-    margin: 0 0 8px;
-}
-.app.user .dashboard-welcome p {
-    font-size: 14px;
-    margin: 0;
-}
-.subscription-facts {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin: 24px 0 0;
-    padding-top: 20px;
-    border-top: 1px solid var(--surface-tint);
-}
-.subscription-facts dt {
-    color: var(--text-secondary);
-    font-size: var(--user-font-label, 12px);
-}
-.subscription-facts dd {
-    margin: 6px 0 0;
-    font-size: 14px;
-}
-.subscription-details {
-    margin: 24px 0;
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: var(--surface);
-}
-.subscription-details > summary {
-    padding: 18px 22px;
-    font-size: 14px;
-    cursor: pointer;
-    min-height: 56px;
-}
-.subscription-details[open] {
-    padding-bottom: 8px;
-}
-.subscription-details > .panel {
-    margin: 0 12px 12px;
-}
-.import-tabs {
-    display: flex;
-    gap: 6px;
-    margin: 18px 0 10px;
-}
-.import-tabs button {
-    flex: 1;
-    font-size: var(--user-font-body, 13px);
-}
-.import-tabs [aria-pressed="true"] {
-    background: var(--surface-tint);
-    border-color: var(--outline);
-    color: var(--brand-hover);
-}
 .import-guide {
     display: flex;
     align-items: center;
@@ -528,16 +457,6 @@ body[data-console="user"] .auth-language {
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.5s ease infinite;
 }
-.refreshing-content {
-    position: relative;
-}
-.refresh-status {
-    display: inline-block;
-    font-size: var(--user-font-caption, 11px);
-    color: var(--text-secondary);
-    padding: 3px 0;
-    margin-bottom: 4px;
-}
 .sr-only {
     position: absolute;
     width: 1px;
@@ -563,7 +482,6 @@ body[data-console="user"] .auth-language {
 }
 @media (max-width: 800px) {
     .user-auth {
-        padding: 20px;
         font-size: var(--user-font-body);
         overflow-wrap: anywhere;
     }
@@ -634,7 +552,6 @@ body[data-console="user"] .auth-language {
         inset-inline-end: 20px;
     }
     .app.user .main > header {
-        padding: 12px 16px;
         min-height: 66px;
     }
     .app.user .main > header .breadcrumb > span,
@@ -644,18 +561,9 @@ body[data-console="user"] .auth-language {
     .app.user .main > header .actions {
         gap: 8px;
     }
-    .app.user .dashboard-welcome {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 12px;
-        margin: 4px 0 24px;
-    }
     .app.user .page-heading .eyebrow,
     .app.user .page-heading .today {
         display: none;
-    }
-    .app.user .page-heading {
-        margin-bottom: 20px;
     }
     .app.user main {
         padding-bottom: calc(96px + env(safe-area-inset-bottom));
@@ -676,9 +584,6 @@ body[data-console="user"] .auth-language {
     .app.user .modal {
         max-height: calc(100dvh - 24px);
         border-radius: 20px;
-    }
-    .app.user .client-grid {
-        grid-template-columns: 1fr;
     }
     .workspace-skeleton {
         padding: 14px;
@@ -720,78 +625,6 @@ body[data-console="user"] .auth-language {
 body:has(.browser-notice) #custom-footer {
     display: none;
 }
-.app.user .dashboard-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 24px;
-    margin-bottom: 32px;
-}
-.app.user .dashboard-grid > .panel,
-.app.user .quota-card {
-    border: 1px solid var(--surface-tint);
-    border-radius: 26px;
-    box-shadow: 0 12px 32px -26px var(--text-secondary);
-    background: var(--surface);
-    margin: 0;
-}
-.app.user .dashboard-grid .panel-head {
-    border: 0;
-    padding: 24px 28px 0;
-}
-.app.user .dashboard-grid .panel-head h2 {
-    color: var(--text-secondary);
-    font-size: 15px;
-    font-weight: 600;
-}
-.app.user .dashboard-grid .pad {
-    padding: 20px 28px 26px;
-}
-.app.user .dashboard-grid .pad > h3 {
-    font-size: 27px;
-    line-height: 1.3;
-    margin: 0 0 20px;
-    letter-spacing: -0.6px;
-}
-.app.user .dashboard-grid .panel-head .button {
-    border: 0;
-    background: var(--surface-soft);
-    border-radius: 20px;
-}
-.app.user .dashboard-grid .actions.space {
-    margin: 0 0 24px;
-}
-.app.user .dashboard-grid .subscription-facts {
-    border-top: 1px solid var(--surface-tint);
-    padding-top: 18px;
-    margin: 0;
-}
-.app.user .quota-card {
-    padding: 28px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.app.user .quota-card h3 {
-    font-size: 16px;
-    color: var(--text-secondary);
-    margin: 0 0 18px;
-    font-weight: 600;
-}
-.quota-value {
-    display: flex;
-    align-items: baseline;
-    gap: 9px;
-    color: var(--ink);
-}
-.quota-value strong {
-    font-size: 42px;
-    line-height: 1.1;
-    letter-spacing: -1.5px;
-    font-weight: 650;
-}
-.quota-value span {
-    font-size: 21px;
-}
 .quota-progress {
     height: 12px;
     margin: 24px 0 16px;
@@ -804,15 +637,6 @@ body:has(.browser-notice) #custom-footer {
     height: 100%;
     border-radius: inherit;
     background: var(--usage-progress);
-}
-.quota-card p {
-    color: var(--text-secondary);
-    margin: 0 0 8px;
-    font-size: var(--user-font-body, 13px);
-}
-.quota-card small {
-    color: var(--text-secondary);
-    font-size: var(--user-font-body, 13px);
 }
 .usage-analysis {
     padding: 8px 0 28px;
@@ -966,12 +790,6 @@ body:has(.browser-notice) #custom-footer {
     border-bottom: 1px solid var(--surface-tint);
     font-size: var(--user-font-body, 14px);
 }
-.dashboard-secondary {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 24px;
-    margin-bottom: 24px;
-}
 .account-entry {
     padding: 36px;
     border: 1px solid var(--surface-tint);
@@ -1064,20 +882,6 @@ body:has(.browser-notice) #custom-footer {
     .suspended-page > .account-entry { min-width: 0; margin-block: 12px; padding: 20px 16px; }
     .suspended-page .account-entry > p { font-size: var(--user-font-body); margin-block-end: 16px; }
 }
-.account-status-line {
-    margin: -6px 0 22px;
-}
-.account-status-line p {
-    padding: 14px 18px;
-    background: var(--warning-soft);
-    border-radius: 14px;
-    color: var(--warning);
-    font-size: 14px;
-    line-height: 1.8;
-}
-.account-status-line a {
-    text-decoration: underline;
-}
 @media (max-width: 800px) {
     .account-entry {
         padding: 24px;
@@ -1097,32 +901,7 @@ body:has(.browser-notice) #custom-footer {
         padding: 20px;
     }
 }
-.app.user .dashboard-secondary .panel {
-    margin: 0;
-    border: 0;
-    box-shadow: none;
-    background: transparent;
-}
-.app.user .dashboard-secondary .panel-head {
-    padding: 0 0 12px;
-    border: 0;
-}
-.app.user .dashboard-secondary .pad {
-    padding: 12px 0;
-}
 @media (max-width: 800px) {
-    .app.user .dashboard-grid,
-    .dashboard-secondary {
-        grid-template-columns: 1fr;
-        gap: 16px;
-    }
-    .app.user .dashboard-grid .panel-head {
-        padding: 22px 22px 0;
-    }
-    .app.user .dashboard-grid .pad,
-    .app.user .quota-card {
-        padding: 22px;
-    }
     .usage-analysis > header {
         gap: 8px;
     }
@@ -1148,12 +927,6 @@ body:has(.browser-notice) #custom-footer {
         margin-inline-start: 50px;
     }
 }
-.app.user .dashboard-welcome {
-    margin-bottom: 20px;
-}
-.app.user .split + .metrics {
-    margin-top: 24px;
-}
 @media (max-width: 800px) {
     .app.user .panel-head {
         align-items: center;
@@ -1169,9 +942,6 @@ body:has(.browser-notice) #custom-footer {
         overflow-wrap: anywhere;
         font-size: var(--user-font-label);
     }
-    .app.user .subscription-facts {
-        margin-top: 20px;
-    }
 }
 .help-guides details { border-bottom: 1px solid var(--surface-tint); padding: 14px 0; }
 .help-guides details:first-child { padding-top: 0; }
@@ -1179,17 +949,13 @@ body:has(.browser-notice) #custom-footer {
 .help-guides summary { cursor: pointer; font-weight: 500; min-height: 32px; }
 .help-guides p { color: var(--text-secondary); line-height: 1.8; margin: 8px 0; }
 .support-context { padding-inline: 0; }
-.order-support-link { margin-bottom: 16px; }
-.invite-intro { background: var(--surface); border: 1px solid var(--surface-tint); border-radius: 20px; padding: clamp(24px, 5vw, 48px); margin-bottom: 24px; text-align: center; }
-.invite-symbol { width: 64px; height: 64px; margin: 0 auto 20px; border-radius: 18px; display: grid; place-items: center; background: var(--surface-soft); }
+.invite-intro { border: 1px solid var(--surface-tint); border-radius: 20px; margin-bottom: 24px; }
 .invite-intro h2 { font-size: var(--user-font-title, 24px); margin: 0 0 14px; }
 .invite-intro p { max-width: 480px; margin: 0 auto 24px; line-height: 1.7; }
-.invite-intro .actions { justify-content: center; flex-wrap: wrap; }
+.invite-intro .actions { flex-wrap: wrap; }
 .invite-intro button, .invite-actions button { border-radius: 24px; padding-inline: 22px; }
 .modal:has(.email-invite) { width: min(560px, calc(100vw - 24px)); }
 .email-invite { padding: 20px 24px 28px; }
-.invite-banner { height: 120px; display: grid; place-items: center; border-radius: 16px; background: linear-gradient(130deg, var(--surface-soft), var(--surface-tint)); color: var(--text-secondary); margin-bottom: 24px; }
-.invite-reward { padding: 12px; background: var(--surface-tint); border: 1px solid var(--line); border-radius: 12px; font-size: var(--user-font-body, 13px); text-align: center; }
 .email-invite h3 { text-align: center; font-size: var(--user-font-section, 22px); margin: 24px 0 12px; }
 .email-invite > .muted { text-align: center; line-height: 1.7; }
 .email-invite form { display: grid; gap: 18px; margin-top: 24px; }
@@ -1203,7 +969,6 @@ body:has(.browser-notice) #custom-footer {
 .invite-recipient-avatar { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; background: var(--surface-tint); }
 .invite-recipient-email { font-size: 14px; overflow-wrap: anywhere; }
 .invite-status { white-space: nowrap; font-size: var(--user-font-body, 13px); color: var(--text-secondary); }
-.account-security-link { flex-wrap: wrap; }
 .account-popover { max-height: calc(100dvh - 100px); overflow-y: auto; }
 .purchase-steps { display: flex; list-style: none; padding: 0; gap: 28px; margin: 8px 0 24px; }
 .purchase-steps li { display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: var(--user-font-label, 13px); }
@@ -1211,9 +976,6 @@ body:has(.browser-notice) #custom-footer {
 .purchase-steps .current { color: var(--ink); font-weight: 600; }
 .purchase-steps .current > span { background: var(--ink); color: var(--on-brand); border-color: var(--ink); }
 .purchase-steps .complete { color: var(--success); }
-.purchase-intro { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
-.purchase-intro p { margin: 0; }
-.purchase-intro a { white-space: nowrap; font-size: var(--user-font-label, 13px); }
 .pending-order { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface-soft); margin-bottom: 24px; }
 .pending-order p { margin: 6px 0 0; color: var(--text-secondary); }
 .pending-order-summary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; min-width: 0; }
@@ -1223,7 +985,6 @@ body:has(.browser-notice) #custom-footer {
 .app.user .pending-order-cancel { padding: 8px 0; border: 0; background: transparent; color: var(--text-secondary); box-shadow: none; white-space: nowrap; }
 .app.user .pending-order-cancel:hover { color: var(--ink); text-decoration: underline; }
 @media (max-width: 700px) { .pending-order-actions { width: 100%; justify-content: flex-end; } .pending-order-actions .button { flex: 1; } }
-.plan-card { display: flex; flex-direction: column; align-items: stretch; }
 .plan-card > .primary { margin-top: auto; min-height: 44px; justify-content: center; }
 .purchase-selection { padding: 24px; }
 .purchase-selection fieldset { min-width: 0; border: 0; padding: 0; margin: 0; }
@@ -1236,9 +997,7 @@ body:has(.browser-notice) #custom-footer {
 .period-options label strong { width: 100%; padding-inline-start: 26px; }
 .period-options .selected { border-color: var(--text-secondary); background: var(--surface-soft); }
 .period-options input { width: 16px; height: 16px; min-width: 16px; min-height: 16px; margin: 0; flex-shrink: 0; accent-color: var(--ink); }
-.coupon-disclosure { margin-top: 22px; font-size: 14px; }
-.coupon-disclosure summary, .order-reference summary { cursor: pointer; padding: 8px 0; }
-.coupon-disclosure label { display: grid; gap: 8px; margin-top: 10px; }
+.order-reference summary { cursor: pointer; padding: 8px 0; }
 .purchase-primary { width: 100%; justify-content: center; min-height: 46px; }
 .order-view, .checkout-page { width: 100%; min-width: 0; }
 .checkout-page { padding: 0; }
@@ -1309,7 +1068,6 @@ body:has(.browser-notice) #custom-footer {
     .purchase-selection { padding: 20px 16px; }
     .pending-order { flex-wrap: wrap; }
     .pending-order .button { width: 100%; justify-content: center; }
-    .purchase-intro { align-items: flex-start; }
 }
 @media (max-width: 480px) {
     .email-invite { padding: 16px 12px 24px; }
@@ -1411,7 +1169,6 @@ body:has(.browser-notice) #custom-footer {
 }
 .quick-actions{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:10px;margin-top:16px}.quick-step .quick-actions .import-download,.quick-step .quick-actions .import-open,.quick-actions button{width:100%;margin:0;min-height:48px;justify-content:center}
 @media(max-width:600px){.quick-actions{grid-auto-flow:row;grid-template-columns:1fr}}
-.subscription-security{margin-top:32px;padding-top:24px;border-top:1px solid var(--line)}.subscription-security h2{font-size:var(--user-font-section, 18px)}.subscription-security>button{margin-top:12px}
 
 .auth-policy {
     background: var(--surface-soft);
@@ -1452,30 +1209,23 @@ body:has(.browser-notice) #custom-footer {
 .paid-traffic-reset { margin-top: 16px; padding: 20px; }
 .paid-traffic-reset .settings-row { gap: 12px; flex-wrap: wrap; }
 .paid-traffic-reset .muted { margin-bottom: 0; }
-
-.invite-intro { background: var(--surface-tint); padding: 28px; }
 .invite-hero-art { display: block; object-fit: cover; border-radius: 18px; margin: 0 auto 18px; }
 .invite-intro p { margin-bottom: 12px; }
 .invite-intro .actions { margin-top: 20px; }
-.invite-banner { height: 110px; background: var(--surface-tint); margin-bottom: 16px; }
-.invite-banner img { object-fit: cover; border-radius: 16px; }
-@media (max-width: 600px) { .invite-intro { padding: 20px 16px; } .invite-hero-art { width: 135px; height: 90px; } }
-
-.invite-intro { text-align: start; }
-.invite-hero-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
-.invite-hero-heading p { margin: 0; max-width: 540px; }
+@media (max-width: 600px) { .invite-hero-art { width: 135px; height: 90px; } }
+.invite-hero-heading { display: flex; align-items: center; justify-content: space-between; }
+.invite-hero-heading p { margin: 0; }
 .invite-hero-heading .invite-hero-art { flex: none; margin: 0; }
-.invite-benefits { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin: 24px 0; }
-.invite-benefit { padding: 20px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; }
-.invite-benefit > span { display: block; color: var(--text-secondary); font-size: var(--user-font-label, 14px); }
-.invite-benefit strong { display: block; margin: 8px 0; font-size: clamp(24px, 3vw, 32px); color: var(--brand); }
-.invite-benefit p { font-size: var(--user-font-body, 14px); margin: 0; }
+.invite-benefits { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.invite-benefit { border-radius: 16px; }
+.invite-benefit > span { display: block; color: var(--text-secondary); }
+.invite-benefit strong { margin: 8px 0; font-size: clamp(24px, 3vw, 32px); color: var(--brand); }
+.invite-benefit p { margin: 0; }
 .invite-intro .actions { justify-content: flex-start; }
 .invite-intro .invite-validity { margin: 16px 0 0; font-size: var(--user-font-caption, 12px); }
 @media (max-width: 600px) { .invite-hero-heading { gap: 12px; } .invite-hero-heading .invite-hero-art { width: 90px; height: 72px; } .invite-benefits { margin: 18px 0; gap: 10px; } .invite-benefit { padding: 16px; } }
 
 .invite-intro .actions button, .invite-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 24px; border-radius: 12px; font-weight: 600; }
-.invite-intro .invite-secondary { background: transparent; border-color: var(--line); color: var(--text-secondary); }
 .invite-intro .actions button:focus-visible, .invite-actions button:focus-visible { outline: 3px solid var(--outline); outline-offset: 3px; }
 .invite-actions { border-top: 1px solid var(--line); padding-top: 18px; }
 .invite-actions > .primary { order: -1; flex: 1; }
@@ -1503,7 +1253,6 @@ body:has(.browser-notice) #custom-footer {
 .invite-center-form .invite-actions > .primary { order: 0; flex: none; min-width: 130px; }
 .invite-center-form .invite-conditions { margin: 14px 0 0; font-size: var(--user-font-caption, 12px); text-align: center; }
 .invite-intro .invite-validity { text-align: center; }
-.invite-page-content .metrics { gap: 12px; }
 .invite-page-content .metric { padding: 14px 18px; border-radius: 14px; }
 .invite-page-content .metric strong { font-size: var(--user-font-section, 20px); margin-top: 6px; }
 .invite-page-content .panel { border-radius: 16px; overflow: hidden; }
@@ -1551,7 +1300,6 @@ body:has(.browser-notice) #custom-footer {
 }
 
 /* Account destinations share the same content width and section hierarchy. */
-.account-security .security-password-card form { max-width: 480px; }
 .app.user .account-security .security-password-card > p { margin: 0 0 24px; }
 .account-security .settings-card > button { margin-top: 16px; }
 .gift-dialog .modal { width: min(480px, calc(100vw - 32px)); }

@@ -35,7 +35,7 @@
     display: grid;
     gap: 7px;
     margin: 18px 0;
-    max-width: 300px;
+    max-width: none;
 }
 .admin-deployment-card {
     border: 1px solid var(--border, #e2e8f0);
@@ -126,9 +126,6 @@
     outline: 2px solid #2563eb;
     outline-offset: 2px;
 }
-.admin-deployment-mode {
-    max-width: none;
-}
 .admin-deployment-expiry {
     font-size: 12px;
     color: var(--muted);
@@ -154,9 +151,7 @@
 .node-deployment-drawer .admin-deployment-card {
     min-width: 0;
     overflow-wrap: anywhere;
-    margin: 16px 0;
     background: transparent;
-    border-radius: 8px;
 }
 .node-deployment-drawer .admin-deployment-tools {
     border-radius: 8px;

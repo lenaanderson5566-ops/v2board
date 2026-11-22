@@ -20,7 +20,7 @@ Optional analytics accepts legacy `payment_open` and other retired click events 
 
 <!-- operation-table -->
 
-V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Nodes use the V10 machine endpoints below. The V2 configuration route and V1 UniProxy routes are retired. V10 subscription paths and resource shapes are unchanged; node identities use `v2box` exclusively. See [V2Box integration](../v2box.md).
+V2Box support: administrative `server/v2box/{save,update,copy,drop}` routes use the existing admin prefix. Nodes use the V10 machine endpoints below. The V2 configuration route and V1 UniProxy routes are retired. V10 subscription paths and resource shapes are unchanged; node identities use `v2box` exclusively. See [V2Box integration](../../docs/v2box.md).
 
 Naive is a V2Box-only protocol value on the same routes/table. V10 subscriptions export sing-box Naive outbounds or General naive+https links; native node protocol strings may now contain `naive`. No new endpoint or authentication contract is introduced. HTTPS/HTTP2 with validated certificates is required; see the V2Box integration guide and `tests/naive.php`.
 

@@ -1,6 +1,5 @@
 :root {
     font-family: "DM Sans", "Noto Sans SC", system-ui, sans-serif;
-    color: #202020;
     background: #f5f7f8;
     font-synthesis: none;
     --accent: #303030;
@@ -106,7 +105,6 @@ textarea {
     line-height: 1.8;
 }
 .eyebrow {
-    font-size: 10px;
     font-weight: 700;
     letter-spacing: 2px;
     color: #718a83;
@@ -120,7 +118,6 @@ aside {
     background: white;
     border-right: 1px solid var(--border);
     position: fixed;
-    inset: 0 auto 0 0;
     display: flex;
     flex-direction: column;
     z-index: 20;
@@ -249,12 +246,6 @@ nav a:hover {
     color: #555555;
     font-weight: 500;
 }
-.online-indicator {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #5cab87;
-}
 .main > header .muted,
 #page-header .muted {
     font-size: 10px;
@@ -268,80 +259,15 @@ main {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 30px;
 }
 .page-heading h1 {
     font-size: 25px;
     margin: 8px 0 0;
-    font-weight: 600;
     letter-spacing: -0.8px;
 }
 .today {
     color: #91a1a8;
     font-size: 11px;
-}
-.hero {
-    background: #f7f7f7;
-    border: 1px solid #e8e8e8;
-    border-radius: 14px;
-    padding: 37px 34px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    overflow: hidden;
-    margin-bottom: 24px;
-    min-height: 235px;
-}
-.hero h2 {
-    font-size: 28px;
-    font-weight: 500;
-    letter-spacing: -1px;
-    margin: 14px 0;
-}
-.hero p {
-    color: #6f8b80;
-    font-size: 12px;
-    margin: 0 0 25px;
-}
-.hero .eyebrow {
-    color: #81a094;
-}
-.orbit {
-    width: 185px;
-    height: 185px;
-    border: 1px solid #ccded3;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    position: relative;
-    margin-right: 28px;
-    flex-shrink: 0;
-}
-.orbit:before,
-.orbit:after {
-    content: "";
-    position: absolute;
-    width: 140px;
-    height: 140px;
-    border: 1px solid #ccded3;
-    border-radius: 50%;
-    transform: rotate(40deg) scaleX(1.8);
-}
-.orbit:after {
-    transform: rotate(-40deg) scaleX(1.8);
-}
-.orbit-inner {
-    font-size: 56px;
-    font-style: italic;
-    color: #303030;
-    z-index: 1;
-}
-.orbit-inner span {
-    font-size: 8px;
-    letter-spacing: 3px;
-    display: block;
-    font-style: normal;
-    margin-top: 8px;
 }
 .metrics {
     display: grid;
@@ -351,7 +277,6 @@ main {
 }
 .metric {
     border: 1px solid var(--border);
-    background: #fff;
     padding: 25px;
     border-radius: 12px;
     overflow: hidden;
@@ -365,7 +290,6 @@ main {
     font-size: 25px;
     margin: 16px 0 8px;
     font-weight: 600;
-    letter-spacing: -0.8px;
     overflow-wrap: anywhere;
 }
 .metric small {
@@ -385,7 +309,6 @@ main {
     margin-bottom: 24px;
 }
 .panel-head {
-    padding: 20px 24px;
     border-bottom: 1px solid #edf0f2;
     display: flex;
     justify-content: space-between;
@@ -393,8 +316,6 @@ main {
     align-items: center;
 }
 .panel-head h2 {
-    font-size: 14px;
-    font-weight: 600;
     margin: 0;
     white-space: nowrap;
 }
@@ -590,7 +511,6 @@ label small {
     inset: 0;
     z-index: 100;
     background: #20202066;
-    backdrop-filter: blur(3px);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -612,9 +532,6 @@ label small {
     z-index: 2;
 }
 .pager {
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
     gap: 9px;
     padding: 18px;
     font-size: 11px;
@@ -630,38 +547,6 @@ label small {
     border: 0;
     width: 180px !important;
     box-shadow: none !important;
-}
-.stats-list {
-    padding: 8px 24px;
-}
-.stats-list > div {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-    font-size: 11px;
-    padding: 16px 0;
-    border-bottom: 1px solid #edf0f2;
-    overflow-wrap: anywhere;
-}
-.stats-list span {
-    color: #90a1a7;
-}
-.stats-list strong {
-    font-weight: 500;
-    text-align: right;
-    max-width: 70%;
-}
-.bar-cell {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-    width: 180px;
-}
-.bar-cell i {
-    height: 5px;
-    background: #8abca7;
-    border-radius: 8px;
 }
 .messages {
     padding: 24px;
@@ -704,73 +589,6 @@ label small {
 #custom-footer:empty {
     display: none;
 }
-.auth-layout {
-    display: grid;
-    grid-template-columns: 45% 55%;
-    min-height: 100vh;
-    background: white;
-}
-.auth-brand {
-    background: #f7f7f7;
-    padding: 0 30px 30px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-}
-.auth-brand .brand {
-    padding: 32px 10px;
-}
-.auth-brand > div {
-    padding: 20px 35px;
-}
-.auth-brand h1 {
-    font-size: 37px;
-    line-height: 1.6;
-    font-weight: 500;
-    letter-spacing: -1px;
-}
-.auth-brand p {
-    font-size: 13px;
-    color: #777777;
-    line-height: 2;
-}
-.auth-brand > small {
-    font-size: 10px;
-    letter-spacing: 5px;
-    color: #8ca599;
-    padding-left: 45px;
-}
-.auth-orbits {
-    padding: 50px;
-    display: grid;
-    place-items: center;
-    color: #9dc5b5;
-}
-.auth-form {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 40px;
-}
-.auth-box {
-    width: 380px;
-}
-.auth-box h2 {
-    font-size: 28px;
-    font-weight: 600;
-    letter-spacing: -1px;
-    margin: 14px 0;
-}
-.auth-box .editor {
-    padding: 20px 0;
-}
-.auth-box .field-grid {
-    grid-template-columns: 1fr;
-}
-.auth-box .primary {
-    width: 100%;
-    padding: 13px;
-}
 .auth-links {
     display: flex;
     justify-content: space-between;
@@ -792,19 +610,6 @@ label small {
 @media (max-width: 1150px) {
     .split {
         grid-template-columns: 1fr;
-    }
-    .orbit {
-        width: 130px;
-        height: 130px;
-        margin-right: 0;
-    }
-    .orbit:before,
-    .orbit:after {
-        width: 100px;
-        height: 100px;
-    }
-    .hero h2 {
-        font-size: 24px;
     }
     .metric {
         padding: 20px;
@@ -846,23 +651,11 @@ label small {
     .today {
         display: none;
     }
-    .metrics {
-        gap: 10px;
-    }
     .metric {
         padding: 14px;
     }
     .metric > strong {
         font-size: 18px;
-    }
-    .hero {
-        padding: 25px;
-    }
-    .hero h2 {
-        font-size: 21px;
-    }
-    .orbit {
-        display: none;
     }
     .page-heading h1 {
         font-size: 22px;
@@ -870,19 +663,6 @@ label small {
     .panel-head {
         padding: 17px;
         flex-wrap: wrap;
-    }
-    .auth-layout {
-        grid-template-columns: 1fr;
-    }
-    .auth-brand {
-        display: none;
-    }
-    .auth-form {
-        padding: 28px;
-    }
-    .auth-box {
-        width: 100%;
-        max-width: 380px;
     }
     .field-grid {
         grid-template-columns: 1fr;
@@ -916,9 +696,6 @@ label small {
     }
     .editor {
         padding: 18px;
-    }
-    .hero .eyebrow {
-        font-size: 8px;
     }
 }
 

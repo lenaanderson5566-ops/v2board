@@ -1,6 +1,7 @@
 <?php
 namespace App\Services;
 
+use App\Support\AdminPath;
 use Illuminate\Support\Facades\Cache;
 
 /** Bounded sampled aggregates. No SQL, bindings, URLs, user IDs or request bodies. */
@@ -44,7 +45,7 @@ final class RequestPerformance
             else return;
         }
         if (str_contains($label,'system/observability')) return;
-        $admin=config('fastai.secure_path',config('fastai.frontend_admin_path',hash('crc32b',config('app.key'))));
+        $admin=AdminPath::resolve();
         $label=str_replace('api/v1/'.trim($admin,'/').'/','admin/',$label);
         $method=in_array($request->method(),['GET','POST','PATCH','PUT','DELETE','HEAD','OPTIONS'],true) ? $request->method() : 'OTHER';
         $this->record($method.' '.substr($label,0,180),$status,(microtime(true)-$this->started)*1000,$this->queries,$this->settings['slow_request_ms']);

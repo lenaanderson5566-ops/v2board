@@ -6,7 +6,7 @@ final class FrontendRuntime
     public static function config(string $mode, ?bool $landing = null): array
     {
         if (!in_array($mode, ['user', 'admin'], true)) throw new \InvalidArgumentException('Invalid frontend mode');
-        $securePath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+        $securePath = AdminPath::resolve();
         $config = [
             'mode' => $mode,
             'systemTimeZone' => \App\Services\TimeZones::system(),

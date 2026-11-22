@@ -4,17 +4,20 @@
     gap: 22px;
 }
 .plan-card {
-    background: white;
-    border: 1px solid var(--border);
-    padding: 30px;
-    border-radius: 12px;
     display: flex;
     flex-direction: column;
+    align-items: stretch;
+    padding: 28px;
+    border: 1px solid #e8e8e8;
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: none;
 }
 .plan-card h2 {
     font-size: 22px;
 }
 .plan-price {
+    color: #222;
     font-size: 30px;
     font-weight: 600;
     margin: 12px 0 30px;
@@ -23,11 +26,6 @@
     font-size: 12px;
     color: #96a5ac;
     font-weight: 400;
-}
-.plan-feature {
-    font-size: 12px;
-    margin-bottom: 15px;
-    color: #6c8189;
 }
 .plan-card .primary {
     margin-top: auto;
@@ -39,8 +37,9 @@
     width: 100%;
     padding: 18px 0;
     border: 0;
+    border-color: #eee;
     border-radius: 0;
-    border-bottom: 1px solid #eef1f2;
+    border-bottom: 1px solid #eee;
     justify-content: space-between;
 }
 @media (max-width: 1150px) {
@@ -52,26 +51,10 @@
     .plans {
         grid-template-columns: 1fr;
     }
-    .plan-card {
-        padding: 25px;
-    }
-}
-.plan-card {
-    background: #fff;
-    border-color: #e8e8e8;
-    border-radius: 18px;
-    padding: 28px;
-    box-shadow: none;
 }
 .plan-card:hover {
     border-color: #bcbcbc;
     box-shadow: 0 6px 24px #00000005;
-}
-.plan-price {
-    color: #222;
-}
-.plan-feature {
-    color: #777;
 }
 .plan-card .plan-feature-list {
     list-style: none;
@@ -79,9 +62,6 @@
     margin: 18px 0;
     display: grid;
     gap: 12px;
-}
-.article-link {
-    border-color: #eee;
 }
 .article-link:hover {
     background: #f7f7f7;
@@ -95,12 +75,6 @@
 .import-content > p {
     margin-top: 0;
     line-height: 1.6;
-}
-.client-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin: 20px 0;
 }
 .client-card {
     display: flex;
@@ -174,19 +148,11 @@
     border-radius: 10px;
     padding: 12px;
 }
-.subscription-input {
-    font-family: ui-monospace, monospace;
-    font-size: 11px;
-    margin-bottom: 10px;
-}
 .bottom-nav {
     display: none;
 }
 .drawer-close {
     display: none;
-}
-.subscription-input {
-    unicode-bidi: plaintext;
 }
 @media (max-width: 800px) {
     .drawer-close {
@@ -268,10 +234,6 @@
         white-space: nowrap;
         max-width: 100%;
     }
-    .client-grid {
-        grid-template-columns: 1fr;
-        gap: 8px;
-    }
     .client-card {
         min-height: 64px;
         padding: 12px;
@@ -294,8 +256,8 @@
 .client-focus {display:flex;align-items:center;gap:14px;padding:18px;border:1px solid var(--border, #e4e7e4);border-radius:16px;}
 .client-focus strong,.client-focus small {display:block;}
 .client-focus small {margin-top:4px;opacity:.65;font-size:12px;}
-.client-switches {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 16px;}
-.client-switches .client-text-link {display:inline-flex;align-items:center;gap:5px;padding:4px 0;border:0;background:transparent;box-shadow:none;font-size:13px;color:inherit;opacity:.75;}
+.client-switches {display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:10px 0 16px;}
+.client-switches .client-text-link {display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:4px 0;border:0;background:transparent;box-shadow:none;font-size:13px;color:inherit;opacity:.75;}
 .client-switches .client-text-link:hover {opacity:1;text-decoration:underline;}
 .client-picker-list {display:grid;gap:10px;}
 .client-picker-list .client-card {width:100%;text-align:start;}
@@ -304,7 +266,6 @@
  .client-picker-modal .modal {width:100%;max-height:85dvh;border-radius:20px 20px 0 0;margin:0;}
 }
 
-.client-switches {align-items:center;}
 .client-switches .client-alternative {
  display:inline-flex;align-items:center;gap:8px;max-width:100%;min-height:44px;
  padding:9px 13px;border:1px solid var(--border);border-radius:12px;
@@ -316,7 +277,6 @@
 .client-alternative-name {font-size:13px;font-weight:600;min-width:0;overflow-wrap:anywhere;}
 .client-switches .client-alternative:hover {background:color-mix(in srgb, currentColor 7%, transparent);border-color:color-mix(in srgb, currentColor 24%, transparent);}
 .client-switches .client-alternative:focus-visible {outline:2px solid var(--accent);outline-offset:3px;}
-.client-switches .client-text-link {min-height:44px;}
 @media(max-width:480px){
  .client-switches {gap:6px 12px;}
  .client-switches .client-alternative {flex:1 1 auto;}

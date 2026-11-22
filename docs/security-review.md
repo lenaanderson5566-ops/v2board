@@ -24,7 +24,7 @@
 | 浏览器与原生会话 | 分作用域 HttpOnly Cookie、CSRF、精确 Origin、实时撤销与封禁检查；浏览器响应无 Bearer，原生保留自身协议；旧 localStorage 交换已退役。 | [浏览器会话](browser-sessions.md)、[MFA](mfa.md) |
 | 权限和资源归属 | 无效/伪造凭据拒绝，订单、工单、会话与账户按所有者隔离，拒绝后记录不变；管理员用户信息显式投影，不返回密码材料。 | [V10 验证](api-v10/audit.md) |
 | 退役与兼容入口 | 员工 API 返回 404，不恢复专用实现或角色字段；角色迁移不提升权限、不删除账户。旧管理入口拒绝 URL 凭据，兼容范围以保留清单为准。 | [保留接口](api-v10/retained-endpoints.md)、[升级流程](update-script.md) |
-| 资金与回调 | 订单归属、渠道及不可变金额/币种快照、原始报文验签、到账事件、并发幂等和延迟回调；负价拒绝，合法零价保留。 | [多币种计费](billing-currencies-coupons.md)、[订单快照](order-payment-history.md) |
+| 资金与回调 | 订单归属、渠道及不可变金额/币种快照、原始报文验签、到账事件、并发幂等和延迟回调；负价拒绝，合法零价保留。 | [多币种计费](billing-currencies-coupons.md)、[订单快照](billing-currencies-coupons.md#订单支付快照) |
 | 订阅与独立额度 | 恰好到期、耗尽、清理未运行、缓存及渲染中状态变化均检查；有效独立额度可在周期套餐到期后继续授权。公开安全提示不得携带真实凭据、模板或 provider，原生保留结构化错误。 | [订阅提示](subscription-info.md)、[独立额度](traffic-credits.md) |
 | 节点与机器认证 | 节点密钥、订阅凭据和账户 JWT 是独立边界；普通账户 JWT 不能调用机器接口。配置先准备后切换，失败恢复及授权重放保护保持生效。 | [V2Box](v2box.md)、[节点管理](node-management-ui.md) |
 | 文件与内容 | 下载归属、范围和大小限制；API 异常隐藏路径/堆栈，敏感响应 no-store；富文本过滤、危险链接及跟踪图片限制。工单只渲染文本，不解析图片或 HTML。 | [本地镜像](client-mirrors.md)、[邮件](product-mail.md) |

@@ -92,6 +92,20 @@ $originalFastai = config('fastai');
 $router = app('router');
 $originalRoutes = $router->getRoutes();
 try {
+    $baseSettings = $originalFastai ?? [];
+    unset($baseSettings['secure_path'], $baseSettings['frontend_admin_path']);
+    foreach ([
+        [[], hash('crc32b', config('app.key'))],
+        [['frontend_admin_path'=>'legacy-admin'], 'legacy-admin'],
+        [['secure_path'=>'active-admin', 'frontend_admin_path'=>'legacy-admin'], 'active-admin'],
+        [['secure_path'=>'', 'frontend_admin_path'=>'legacy-admin'], ''],
+        [['secure_path'=>false, 'frontend_admin_path'=>'legacy-admin'], false],
+        [['secure_path'=>null, 'frontend_admin_path'=>'legacy-admin'], null],
+    ] as [$settings, $expected]) {
+        config(['fastai'=>$settings + $baseSettings]);
+        $assert(App\Support\AdminPath::resolve() === $expected, 'Admin entry path selection changed');
+    }
+    config(['fastai'=>$originalFastai]);
     foreach ([['audit-admin', 'custom-operations', ''], ['ops', 'ops', '/api/v1/client/subscribe'], ['audit-admin', '/audit-admin/ops/', '/custom-subscription']] as [$adminPath, $oldPath, $subscriptionPath]) {
         config(['fastai.secure_path'=>$adminPath, 'fastai.ops_api_path'=>$oldPath, 'fastai.subscribe_path'=>$subscriptionPath]);
         $routes = new Illuminate\Routing\RouteCollection();

@@ -24,10 +24,6 @@
     height: 16px;
     flex: none;
 }
-.content-composer .toolbar {
-    align-items: end;
-    flex-wrap: wrap;
-}
 .content-composer > details,
 .content-composer fieldset > details {
     margin: 16px 0;
@@ -66,6 +62,7 @@
 }
 .content-composer .toolbar {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     align-items: flex-end;
 }

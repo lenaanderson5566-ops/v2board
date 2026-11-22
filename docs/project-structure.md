@@ -22,11 +22,15 @@ Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序�
 
 ## API 契约
 
+`App\Support\AdminPath::resolve()` 统一为后台网页、API、运行配置和运维命令读取入口路径。优先读取 `fastai.secure_path`，其次读取 `fastai.frontend_admin_path`，两者均未配置时使用应用密钥的 CRC32B 派生值。`RouteServiceProvider` 显式注册仍在使用的 V1 后台、历史支付回调和认证模块。
+
 `api/v10/openapi.json` 是 V10 契约的模块清单与全局元数据入口；唯一可编辑定义位于 `api/v10/modules/*.json`，按业务归属维护路径与 schema，公共响应、响应头、参数及基础类型集中在 `common.json`。发布文件、PHP 字段投影和前端映射/类型均由 `python scripts/generate-v10.py` 生成。`--check` 只检查漂移，不写文件。具体元数据与七项输出见 [V10 维护说明](api-v10/README.md)。路由、控制器、请求校验和业务逻辑仍显式维护，生成结果不能代替真实路由及行为测试。
 
 ## 服务与前端组件
 
 邮件投递、限流、模板、活动、退订和反馈服务集中在 `app/Services/Mail/`，命名空间为 `App\Services\Mail`。共享业务 Action 保留 `app/Services/Actions/`，队列入口保留 `app/Jobs/`；Job 类名、构造参数、序列化属性和队列名称保持兼容，命令主名与旧别名的规则见上节。
+
+`SiteSettings` 负责合并、校验并保存已通过请求验证的站点设置，配置文件与写锁由 `SiteConfiguration` 管理。`MailSettings` 负责邮件设置投影、密钥轮换与合并后的校验。`V2boxSaveRules` 为 V2Box 表单与保存接口提供校验规则。`CheckoutPaymentMethods` 返回可用渠道和报价数据，结算预览和支付方式接口共用该查询。
 
 `frontend/src/shared/ui.tsx` 保留公共导出，实现在 `shared/ui/` 内按 `layout`、`data`、`Modal`、`Editor`、`controls` 和 `Table` 拆分。弹窗堆栈及关闭 Context 只在 Modal 模块初始化一次，避免拆分后多弹窗失去协调。管理员专用状态文案集中在现有 `admin-status.tsx`，不进入用户翻译扫描范围。
 
@@ -62,8 +66,6 @@ PHP 依赖按实际运行职责划分：`linfo/linfo` 已移除；`laravel/tinke
 
 
 ## 代码巡检与优化边界
-
-逐文件扫描覆盖 app 下 404 个 PHP 文件、frontend/src 下 196 个实现文件及其测试，并检查开发脚本、配置、路由和数据库脚本。扫描包括文件规模、异常吞没、重复读取、类型逃逸与引用；语法、类型和测试工具提供全局检查，人工沿调用链重点核对确认的问题。扫描覆盖不等于所有业务分支已人工逐行证明正确。
 
 - 安装命令拒绝已有环境或非空目标数据库，使用完整 SQL 导入并传播失败状态，避免手工分号切割破坏 SQL 字符串；环境文件一次写入并正确转义，密码输入隐藏。安装失败可能保留已创建结构和环境文件，不把 MySQL DDL 描述为可事务回滚。
 - GeoIP 是可选展示依赖，缺失或损坏时返回空位置，不阻断日志与会话；保留原位置数据结构。

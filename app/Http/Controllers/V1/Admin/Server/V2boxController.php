@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\V1\Admin\Server;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\V2boxSaveRules;
 use App\Models\ServerV2box;
-use App\Services\Actions\UpdateDefaultNodeLine;
-use App\Services\Actions\UpdateManualNodeAddress;
 use Illuminate\Http\Request;
 use ParagonIE_Sodium_Compat as SodiumCompat;
 use App\Utils\Helper;
@@ -13,54 +12,6 @@ use App\Utils\Helper;
 class V2boxController extends Controller
 {
     protected $model = ServerV2box::class;
-
-    public static function saveRules(): array
-    {
-        return array_replace([
-            'group_id' => 'present|array|max:100',
-            'group_id.*' => 'integer|min:1|distinct',
-            'route_id' => 'nullable|array',
-            'route_id.*' => 'integer|min:1|distinct',
-            'name' => 'required',
-            'service_id' => 'nullable|integer|min:1',
-            'host' => 'required',
-            'listen_ip' => 'nullable',
-            'port' => 'required',
-            'server_port' => 'required|integer|between:1,65535',
-            'protocol' => self::RULES['protocol'],
-            'tls' => 'required|in:0,1,2',
-            'tls_settings' => 'nullable|array',
-            'flow' => 'nullable|in:xtls-rprx-vision',
-            'network' => 'required|in:tcp,ws,grpc,httpupgrade',
-            'network_settings' => 'nullable|array',
-            'trusted_x_forwarded_for' => 'nullable|array',
-            'encryption' => 'nullable',
-            'encryption_settings' => 'nullable|array',
-            'disable_sni' => 'required|in:0,1',
-            'udp_relay_mode' => 'nullable',
-            'zero_rtt_handshake' => 'required|in:0,1',
-            'congestion_control' => 'nullable',
-            'cipher' => 'nullable',
-            'up_mbps' => 'nullable|numeric',
-            'down_mbps' => 'nullable|numeric',
-            'obfs' => 'nullable',
-            'obfs_password' => 'nullable',
-            'padding_scheme' => 'nullable',
-            'tags' => 'nullable|array',
-            'region_code' => 'nullable|string|size:2|in:' . implode(',', \App\Services\NodeDisplayService::regionCodes()),
-            'city_code' => 'nullable|string|max:64|regex:/^[a-z0-9][a-z0-9-]*$/',
-            'display_label' => 'nullable|string|max:64',
-            'rate' => UpdateDefaultNodeLine::RATE_RULE,
-            'show' => 'nullable|in:0,1',
-            'sort' => 'nullable'
-        ], array_filter(self::RULES, fn($key) => !str_contains($key, '.'), ARRAY_FILTER_USE_KEY));
-    }
-
-    public static function formRules(): array
-    {
-        return array_filter(self::saveRules(), fn($key) => !str_contains($key, '.')
-            && !in_array($key, ['encryption', 'encryption_settings', 'trusted_x_forwarded_for'], true), ARRAY_FILTER_USE_KEY);
-    }
 
     private function persist(Request $request)
     {
@@ -72,11 +23,7 @@ class V2boxController extends Controller
         $setup=null; $pendingIdentity=null; $identityBinding=null;
         if ($request->has('deployment_setup')) {
             abort_if($request->input('id') || $request->input('service_id'),422,'一体化部署配置仅用于新增独立节点');
-            $validated=\Illuminate\Support\Facades\Validator::make($request->all(),['deployment_setup'=>'required|array:credential_id,prefix,family,server_id,entry_id,entry_port',
-                'deployment_setup.credential_id'=>'required|integer|min:1','deployment_setup.prefix'=>'nullable|string|max:63',
-                'deployment_setup.family'=>'required|in:ipv4,ipv6,dual','deployment_setup.server_id'=>'nullable|integer|min:1',
-                'deployment_setup.entry_id'=>'required_with:deployment_setup.entry_port|nullable|integer|min:1','deployment_setup.entry_port'=>'required_with:deployment_setup.entry_id|nullable|integer|between:1,65535',
-                'server_port'=>'required|integer|between:1,65535'])->validate();
+            $validated = V2boxSaveRules::validateDeployment($request);
             $setup=$validated['deployment_setup'];
             $root=\Illuminate\Support\Facades\DB::table('v2_ddns_credential')->find($setup['credential_id']);
             abort_unless($root && $root->root_domain,422,'请先在域名与解析中维护并验证 Cloudflare 根域名');
@@ -132,9 +79,7 @@ class V2boxController extends Controller
             }
         }
         $request->merge(\App\Services\NodeDisplayService::normalizeInput($request->all()));
-        $rules = self::saveRules();
-        $rules['port'] = [$rules['port'], UpdateManualNodeAddress::validatePort(...)];
-        $params = $request->validate($rules, \App\Services\NodeDisplayService::validationMessages());
+        $params = V2boxSaveRules::validateNormalized($request);
         if (!empty($params['tls_settings']['dns_credential_id'])) {
             abort_unless((int)$params['tls']===1,422,'证书 DNS 凭据仅用于普通 TLS');
             $params['tls_settings']=\App\Services\NodeCertificateCredential::normalize($params['tls_settings']);
@@ -319,49 +264,9 @@ class V2boxController extends Controller
         ]);
     }
 
-    public const RULES = [
-        'protocol' => 'required|in:shadowsocks,vmess,vless,trojan,tuic,hysteria2,anytls,naive',
-        'network' => 'required|in:tcp,ws,grpc,httpupgrade',
-        'encryption' => 'nullable|in:none',
-        'encryption_settings' => 'nullable|array|max:0',
-        'trusted_x_forwarded_for' => 'nullable|array|max:0',
-        'tls_settings.ech' => 'nullable|in:0',
-        'tls_settings.reject_unknown_sni' => 'nullable|in:0',
-        'tls_settings.xver' => 'nullable|in:0',
-        'tls_settings.mldsa65Seed' => 'nullable|size:0',
-        'tls_settings.server_names' => 'nullable|array|max:1',
-        'network_settings.acceptProxyProtocol' => 'nullable|in:0',
-        'cipher' => 'nullable|in:aes-128-gcm,aes-192-gcm,aes-256-gcm,chacha20-ietf-poly1305,xchacha20-ietf-poly1305,2022-blake3-aes-128-gcm,2022-blake3-aes-256-gcm',
-    ];
-
     public function save(Request $request)
     {
-        $request->validate(self::RULES + ['sing_box'=>'prohibited','source_type'=>'prohibited','source_id'=>'prohibited']);
-        if (in_array($request->input('protocol'), ['shadowsocks', 'tuic', 'hysteria2', 'anytls', 'naive'], true)) {
-            $request->validate(['network' => 'required|in:tcp']);
-        }
-        if ((int) $request->input('tls') === 2) {
-            $request->validate(['protocol' => 'required|in:vless']);
-        }
-        if ($request->input('protocol') === 'naive') {
-            $request->validate([
-                'tls' => 'required|in:1',
-                'disable_sni' => 'required|in:0',
-                'tls_settings.cert_mode' => 'required|in:http,dns,file',
-                'tls_settings.server_name' => $request->has('deployment_setup') ? 'nullable|string|max:253' : 'required|string|max:253',
-                'tls_settings.allow_insecure' => 'nullable|in:0',
-                'tls_settings.allowInsecure' => 'nullable|in:0',
-                'tls_settings.cert_file' => 'nullable|required_if:tls_settings.cert_mode,file|string',
-                'tls_settings.key_file' => 'nullable|required_if:tls_settings.cert_mode,file|string',
-                'flow' => 'nullable|size:0',
-            ]);
-        }
-        $network = $request->input('network');
-        $allowed = ['acceptProxyProtocol'];
-        if ($network === 'grpc') $allowed[] = 'serviceName';
-        if (in_array($network, ['ws', 'httpupgrade'], true)) $allowed = array_merge($allowed, ['path', 'host', 'headers']);
-        if ($network === 'ws') $allowed = array_merge($allowed, ['maxEarlyData', 'earlyDataHeaderName']);
-        $request->validate(['network_settings' => 'nullable|array:' . implode(',', $allowed)]);
+        V2boxSaveRules::validateProtocol($request);
         return $this->persist($request);
     }
 }

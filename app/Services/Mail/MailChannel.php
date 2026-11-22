@@ -17,21 +17,4 @@ class MailChannel
             \Illuminate\Support\Facades\Mail::forgetMailers();
         }
     }
-    public static function settings(): array
-    {
-        $result=['email_public_url'=>config('fastai.email_public_url',config('app.url')), 'email_announcement_separate'=>(int)config('fastai.email_announcement_separate',0),'email_announcements_enabled'=>(int)config('fastai.email_announcements_enabled',1)];
-        $secrets=['password','mailgun_api_key','resend_api_key','ses_access_key','ses_secret_key'];
-        $defaults=['provider'=>'smtp','port'=>587,'encryption'=>'tls','mailgun_region'=>'us','ses_region'=>'us-east-1','ses_auth'=>'role'];
-        foreach (self::FIELDS as $field) {
-            if ($field==='password_encrypted') continue;
-            $result['email_announcement_'.$field]=in_array($field,$secrets,true) ? '' : config('fastai.email_announcement_'.$field,$defaults[$field] ?? '');
-        }
-        foreach (['smtp'=>'password','mailgun'=>'mailgun_api_key','resend'=>'resend_api_key','ses'=>'ses_secret_key'] as $provider=>$field) $result['email_announcement_'.$provider.'_key_configured']=(bool)config('fastai.email_announcement_'.$field);
-        foreach (['mailgun','resend'] as $provider) {
-            $result['email_'.$provider.'_webhook_key']='';
-            $result['email_'.$provider.'_webhook_key_configured']=(bool)config('fastai.email_'.$provider.'_webhook_key');
-        }
-        $result['email_ses_topic_arn']=config('fastai.email_ses_topic_arn','');
-        return $result;
-    }
 }

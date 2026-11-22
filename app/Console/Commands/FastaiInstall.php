@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\AdminPath;
 use Illuminate\Console\Command;
 use Illuminate\Encryption\Encrypter;
 use App\Models\User;
@@ -35,7 +36,7 @@ class FastaiInstall extends Command
         try {
             $this->info('FastAI');
             if (\File::exists(base_path() . '/.env')) {
-                $securePath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+                $securePath = AdminPath::resolve();
                 $this->info("访问 http(s)://你的站点/{$securePath} 进入管理面板，你可以在用户中心修改你的密码。");
                 abort(500, '检测到已有 .env，拒绝重复安装；旧站请使用 update.sh 升级。');
             }
@@ -86,8 +87,8 @@ class FastaiInstall extends Command
             $this->info("管理员邮箱：{$email}");
             $this->info("管理员密码：{$password}");
 
-            $defaultSecurePath = hash('crc32b', config('app.key'));
-            $this->info("访问 http(s)://你的站点/{$defaultSecurePath} 进入管理面板，你可以在用户中心修改你的密码。");
+            $securePath = AdminPath::resolve();
+            $this->info("访问 http(s)://你的站点/{$securePath} 进入管理面板，你可以在用户中心修改你的密码。");
             return self::SUCCESS;
         } catch (\Throwable $e) {
             $this->error($e->getMessage());

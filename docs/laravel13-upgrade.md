@@ -18,17 +18,16 @@
 - 项目不使用 HasUuids、默认依赖注入日期或数据库密码令牌构造器；原有 UUID 和认证流程继续使用。
 - Banner 上传原本就不允许 SVG，继续只允许指定的位图格式。
 - 测试依赖更新至 PHPUnit 12（开发环境 PHP 8.4+）、Collision 8.9，当前 PHPUnit 仅运行纯单元测试；框架及 HTTP 集成检查归入 tests/suites.json 的独立测试脚本。
-- 本次不新增数据库迁移。
 - Tinker 3 仅作为开发依赖保留；生产 `--no-dev` 安装不提供 `artisan tinker`，部署和健康检查不依赖该命令。未使用的 Linfo 已移除；Horizon/Carbon 的包发现及既有业务依赖保留。
 - 框架使用的主要 Symfony 组件为 8，YAML 等独立库保留既有主版本；生产 PHP 最低要求为 8.4。更换开发/生产安装配置后须重新生成自动加载与包发现清单，不能复用残留开发 Provider。
 - cache.serializable_classes=false：缓存只恢复数组和标量，不恢复任意 PHP 对象；节点在线状态、登录会话和验证码继续使用原有数据格式。
 - 框架会话显式保留 PHP 序列化格式，避免此次升级强制失效旧会话；V10 自定义浏览器会话的 CSRF、Origin 和 HttpOnly 规则继续执行。
-- 应用 CSRF 包装类改为继承 PreventRequestForgery，保留原有中间件注册范围，支付回调和节点 API 不启用额外浏览器校验。
+- 浏览器 API 由 `App\Http\Middleware\BrowserSession` 按路由和客户端类型执行 Origin 与 CSRF 校验。支付回调和节点 API 沿用各自的验证流程。
 - 原有 upsert 使用明确的唯一键；模型 boot 回调不在启动过程中递归实例化模型。
 
 ## 部署失败后保留维护模式
 
-升级脚本要求本站后台进程能够自动重启。先在宝塔 Supervisor 开启本站 Horizon/队列和调度器的 autorestart，并确认 PHP 路径与站点 PHP-FPM 一致。若出现 restart-jobs 失败，检查对应进程日志并修复启动，不必重复安装依赖；确认运行正常、重启本站 PHP-FPM 后再执行 php artisan up 恢复访问。不要在任务仍未恢复时自动解除维护模式。
+使用升级脚本的自动模式时，先在本站进程管理器（如宝塔 Supervisor）启用 Horizon/队列和调度器的自动重启，并确认 PHP 路径与站点 PHP-FPM 一致。若 `restart-jobs` 失败，检查对应进程日志并修复启动。确认后台进程正常并重启本站 PHP-FPM 后，再执行 `php artisan up` 恢复访问。使用 `--jobs-stopped` 手动模式时，按[升级脚本的恢复步骤](update-script.md)恢复进程和访问。
 
 ## 依赖与测试
 
@@ -40,10 +39,7 @@
 
 旧 `audit.ignore` 项 `PKSA-y2cr-5h3j-g3ys` 已移除。发布前须对最终锁文件分别执行生产和全依赖的 Composer audit，并记录实际结果；历史审计无公告或废弃包的输出不代表当前锁文件已验证，也不是持续安全保证。静态测试只检查旧例外不再存在，不能替代公告审计。
 
-`framework-upgrade` 同时支持独立的开发/生产安装树：校验实际直接依赖版本与锁一致、加载的 Laravel 至少为 13.39 且与已安装版本一致，验证生产树无 Tinker/Linfo、开发树保留 Tinker，并保留邮件、代理、调度、旧任务及迁移检查。本轮开发安装 32 个模块通过，最终框架专项复验 143 项；生产安装及发现缓存更新成功，生产框架专项 137 项与部署验证 4 项通过。生产额外尝试的 `console-smoke` 因其夹具依赖开发用 Mockery 而停止，未计入通过；同一模块在开发安装通过，不向生产补装开发依赖。审计与详细执行来源见 [测试组织](test-organization.md)，后文历史数量不作为本轮通过证明。
-
-
-本地验证：PHP 8.4.26、MySQL 8、Redis 7。框架 19 项、缓存前缀/锁/反序列化限制 5 项、日志 43 项，以及 V10、登录会话、权限、节点、独立路由、DDNS、邮件、支付、后台、Banner、注册策略、额度到期与流量重置全部通过。PHPUnit 12 严格检查通过（2 tests、2 assertions，无 risky 或 warning）。升级脚本 25 个隔离场景和本站队列排空检查通过，平台要求及生产 install dry-run 通过。测试未发送真实邮件或支付请求。
+`framework-upgrade` 支持独立的开发和生产安装树，检查直接依赖与锁文件一致、Laravel 至少为 13.39 且与安装版本一致，并验证邮件、代理、调度、旧任务和迁移的兼容性。生产安装排除 Tinker 和 Linfo，开发安装保留 Tinker。首页和后台入口的 `console-smoke` 使用开发测试依赖，在隔离的开发安装中运行。执行入口见[测试组织](test-organization.md)。
 
 ## 本次实际采用的特性
 
@@ -70,4 +66,4 @@ Lightsail 静态 IP 任务使用 Laravel 13 队列属性 Connection、Queue、Tr
 
 Laravel 9–12 的过渡部署步骤不再单独保留，完整历史可通过 Git 查阅。仍适用的兼容边界为：保留可信代理白名单、SMTP 地址控制字符校验、安全日志脱敏、原缓存前缀与锁命名空间，以及已有会话和额度日期语义。当前框架、Carbon 和 PHP 依赖以 composer.lock 及平台预检为准，不沿用旧版约束或历史临时安全审计参数。
 
-历史 PHPUnit 验证数量仅表示当时结果。当前断言工具测试位于 tests/Unit/AssertionsTest.php；首页与后台入口由 tests/console-smoke.php 验证，框架升级和缓存兼容仍使用上述专项脚本。
+PHPUnit 的断言工具测试位于 `tests/Unit/AssertionsTest.php`。

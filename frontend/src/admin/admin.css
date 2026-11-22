@@ -233,7 +233,6 @@ body[data-console="admin"] .panel {
     background: #fff;
     border: 1px solid var(--border);
     border-radius: var(--admin-radius);
-    box-shadow: 0 2px 8px #0f172a04;
     margin: 0 0 24px;
     overflow: visible;
 }
@@ -247,10 +246,7 @@ body[data-console="admin"] .panel-head {
     border-radius: var(--admin-radius) var(--admin-radius) 0 0;
 }
 body[data-console="admin"] .panel-head h2 {
-    font-size: 18px;
-    font-weight: 600;
     margin: 0;
-    color: var(--admin-text);
 }
 body[data-console="admin"]
     .admin-content[data-page="users"]
@@ -453,29 +449,6 @@ body[data-console="admin"] .overlay.admin-drawer .modal > .panel-head {
     top: 0;
     z-index: 5;
 }
-body[data-console="admin"] .form {
-    gap: 16px;
-}
-body[data-console="admin"] .form label {
-    font-size: 14px;
-    color: var(--admin-text);
-    gap: 8px;
-}
-body[data-console="admin"] .form-actions {
-    border-top: 1px solid #e8e8e8;
-    background: #fff;
-    position: sticky;
-    bottom: 0;
-    padding: 12px 16px;
-    z-index: 3;
-}
-body[data-console="admin"] .modal .form {
-    grid-template-columns: 1fr;
-}
-body[data-console="admin"] .modal .form-actions {
-    grid-column: 1/-1;
-    justify-content: flex-end;
-}
 body[data-console="admin"] .option-group {
     border-radius: 4px;
 }
@@ -483,34 +456,6 @@ body[data-console="admin"] .option-item.selected {
     color: var(--accent);
     background: #f2efff;
     border-color: #bdb5f3;
-}
-body[data-console="admin"] .settings-panel .form {
-    display: block;
-    padding: 0;
-}
-body[data-console="admin"] .settings-panel .form > label {
-    display: grid;
-    grid-template-columns: minmax(9rem, 12rem) minmax(0, 1fr);
-    gap: 4px var(--admin-space);
-    padding: 16px 24px;
-    border-bottom: 1px solid #e8e8e8;
-    align-items: start;
-}
-body[data-console="admin"] .settings-panel .form > label > small {
-    grid-column: 2;
-    max-width: 32rem;
-    color: #6c757d;
-}
-body[data-console="admin"]
-    .settings-panel
-    .form
-    > label
-    > :not(span):not(small) {
-    grid-column: 2;
-    grid-row: 1;
-}
-body[data-console="admin"] .settings-panel .form-actions {
-    justify-content: flex-end;
 }
 body[data-console="admin"] .editor {
     padding: var(--admin-space);
@@ -558,7 +503,7 @@ body[data-console="admin"] .settings-panel .field-grid > label > .input-control 
     min-width: 0;
     align-self: stretch;
 }
-body[data-console="admin"] .settings-panel :is(.field-grid, .form) > label:not(.wide) > :is(.input-control, .password-control, select, input:not([type="checkbox"]):not([type="radio"])) {
+body[data-console="admin"] .settings-panel .field-grid > label:not(.wide) > :is(.input-control, .password-control, select, input:not([type="checkbox"]):not([type="radio"])) {
     width: 100%;
     max-width: 32rem;
     min-width: 0;
@@ -609,22 +554,6 @@ body[data-console="admin"] .users-page > .panel .table-scroll :is(th, td).table-
 body[data-console="admin"] .users-page > .panel .table-scroll td.table-actions > .actions {
     width: max-content;
     flex-wrap: nowrap;
-}
-body[data-console="admin"] .users-page .row-menu-content {
-    position: absolute;
-    right: 0;
-    z-index: 20;
-    padding: 4px 0;
-    border-radius: 3px;
-    background: #fff;
-    box-shadow: 0 2px 8px #00000026;
-    min-width: 180px;
-}
-body[data-console="admin"] .users-page .row-menu-content button {
-    display: block;
-    text-align: left;
-    width: 100%;
-    padding: 8px 16px;
 }
 body[data-console="admin"] .admin-context-menu {
     position: fixed;
@@ -800,10 +729,6 @@ body[data-console="admin"] .alert {
     }
     body[data-console="admin"] .legacy-ranks {
         grid-template-columns: 1fr;
-    }
-    body[data-console="admin"] .settings-panel .form > label {
-        display: flex;
-        padding: 16px;
     }
     body[data-console="admin"] .settings-panel .field-grid > :is(label, .field-group-row) {
         display: flex;
@@ -1016,7 +941,6 @@ body[data-console="admin"] .admin-account-menu .admin-account-item {
     text-align: start;
     color: var(--admin-text);
     border: 0;
-    border-radius: 0;
     background: transparent;
     box-shadow: none;
 }
@@ -1055,7 +979,6 @@ body[data-console="admin"] .user-toolbar > form.actions {
     max-width: 100%;
 }
 body[data-console="admin"] .user-toolbar > form.actions input {
-    flex: 1 1 180px;
     min-width: 0;
 }
 
@@ -1160,7 +1083,9 @@ body[data-console="admin"] .node-management-tools input:not([type="checkbox"]) {
 }
 body[data-console="admin"] .node-management-tools .node-quota-filter {
     display: flex;
+    flex-direction: row;
     align-items: center;
+    gap: 8px;
     padding-bottom: 10px;
 }
 body[data-console="admin"] .node-management-tools > .muted {
@@ -1168,11 +1093,6 @@ body[data-console="admin"] .node-management-tools > .muted {
     padding-bottom: 10px;
 }
 
-body[data-console="admin"] .node-management-tools .node-quota-filter {
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-}
 body[data-console="admin"] .node-management-tools .node-quota-filter input {
     width: 16px;
     height: 16px;
@@ -1268,7 +1188,6 @@ body[data-console="admin"] .admin-row-popover {
     overflow-y: auto;
     padding: 8px;
     border: 1px solid var(--border, #ddd);
-    border-radius: var(--admin-dialog-radius);
     background: var(--surface, white);
     box-shadow: var(--admin-popover-shadow);
 }
@@ -1461,7 +1380,6 @@ body[data-console="admin"] .admin-source-link:hover {
 }
 body[data-console="admin"] .admin-operation-notice {
     display: flex;
-    align-items: flex-start;
     gap: 8px;
     padding: 12px 14px;
     margin-bottom: 16px;
@@ -1469,12 +1387,7 @@ body[data-console="admin"] .admin-operation-notice {
     border-radius: 8px;
     color: #166044;
     background: #effaf4;
-    line-height: 1.6;
     overflow-wrap: anywhere;
-}
-body[data-console="admin"] .admin-operation-notice svg {
-    flex-shrink: 0;
-    margin-top: 2px;
 }
 body[data-console="admin"] .admin-operation-notice.error {
     color: #a32323;
@@ -1531,9 +1444,6 @@ body[data-console="admin"] .admin-account-menu .admin-account-item {
     padding: 12px 16px;
     border: 1px solid var(--line);
     border-radius: 10px;
-}
-.invitation-trigger {
-    font-weight: 600;
 }
 .invitation-review-form {
     padding: 20px;

@@ -1,6 +1,6 @@
 <?php
+use App\Support\AdminPath;
 use Illuminate\Http\Request;
-$securePath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
 $renderConsole = function (string $mode, bool $landing = false) {
     $manifestPath = public_path('console/.vite/manifest.json');
     abort_unless(is_file($manifestPath), 503, '请先在 frontend 目录执行 npm ci && npm run build');
@@ -22,7 +22,7 @@ Route::get('/app', function (Request $request) use ($renderConsole) {
     }
     return $renderConsole('user');
 });
-Route::get('/' . $securePath, function () use ($renderConsole) { return $renderConsole('admin'); });
+Route::get('/' . AdminPath::resolve(), function () use ($renderConsole) { return $renderConsole('admin'); });
 if (!empty(config('fastai.subscribe_path')) && trim(config('fastai.subscribe_path'), '/') !== 'api/v1/client/subscribe') {
     Route::get(config('fastai.subscribe_path'), [\App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
 }

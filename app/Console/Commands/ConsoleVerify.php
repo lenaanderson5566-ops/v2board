@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\AdminPath;
 use Illuminate\Console\Command;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -35,7 +36,7 @@ class ConsoleVerify extends Command
             if (config('fastai.safe_mode_enable', 0) && config('fastai.app_url') && !parse_url(config('fastai.app_url'), PHP_URL_HOST)) {
                 throw new \RuntimeException('Safe mode app_url must be a full URL including https://.');
             }
-            $admin = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+            $admin = AdminPath::resolve();
             foreach (['/' => 'user', '/app' => 'user', '/' . $admin => 'admin'] as $path => $mode) {
                 $request = Request::create('https://' . $host . $path, 'GET');
                 app()->instance('request', $request);

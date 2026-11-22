@@ -8,6 +8,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\User;
+use App\Services\Billing\CheckoutPaymentMethods;
 use App\Services\OrderService;
 use App\Services\PaymentService;
 use App\Services\PaymentAttemptHistory;
@@ -414,40 +415,15 @@ class OrderActions
         ]);
     }
 
-    public function getPaymentMethod(?Request $request = null, ?Order $previewOrder = null)
+    public function getPaymentMethod(?Request $request = null)
     {
         $request ??= request();
-        $order = $previewOrder ?? ($request->input('trade_no') ? Order::where('trade_no', $request->input('trade_no'))->where('user_id', $request->user['id'])->firstOrFail() : null);
-        $methods = Payment::select([
-            'currency',
-            'uuid',
-            'id',
-            'name',
-            'payment',
-            'icon',
-            'handling_fee_fixed',
-            'handling_fee_percent',
-            'config'
-        ])
-            ->where('enable', 1)
-            ->whereNotIn(DB::raw('LOWER(payment)'), PaymentService::unavailableForCheckout())
-            ->orderBy('sort', 'ASC')
-            ->get()
-            ->map(function ($method) use ($order) {
-                $saved = $order?->payment_snapshot['channels'][(string)$method->id] ?? null;
-                if ($saved && (($saved['uuid'] ?? null) !== $method->uuid || ($saved['provider'] ?? null) !== $method->payment)) return null;
-                $fields = \App\Services\PaymentPresentation::fields($method->config ?? []);
-                // Provider credentials must never be exposed by the public resource.
-                if ($order && $order->total_amount > 0) {
-                    try { $quote = \App\Services\PaymentQuote::make($order, $method); } catch (\Symfony\Component\HttpKernel\Exception\HttpException $e) { if (!in_array($e->getStatusCode(),[422,503],true)) throw $e; return null; }
-                    $fields += ['quoted_amount'=>$quote['payment_amount'], 'quoted_currency'=>$quote['payment_currency'], 'quoted_fee'=>$quote['handling_amount'], 'rate_time'=>$quote['fx']['quotedAt'] ?? null];
-                }
-                return array_merge($method->makeHidden(['config','uuid'])->toArray(), $fields);
-            })->filter()->values();
+        $tradeNo = $request->input('trade_no');
+        $order = $tradeNo ? Order::where('trade_no', $tradeNo)
+            ->where('user_id', $request->user['id'])
+            ->firstOrFail() : null;
 
-        return response([
-            'data' => $methods
-        ]);
+        return response(['data' => CheckoutPaymentMethods::forOrder($order)]);
     }
 
     public function cancel(Request $request)

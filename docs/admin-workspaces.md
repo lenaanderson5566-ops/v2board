@@ -66,4 +66,4 @@
 
 连接采样间隔由 `system/logRetention` 的 `connection_log_interval` 配置，范围 60–86400 秒，默认 3600 秒。与风控页面共用配置。
 
-节点管理、支付诊断与通用按钮的交互细节分别见[节点管理](node-management-ui.md)、[后台诊断](admin-diagnostics.md)和[后台组件](admin-components.md)。
+节点与系统健康检查见[后台运行诊断](admin-diagnostics.md)，订单下单与回调排查见[支付诊断](billing-currencies-coupons.md#支付诊断)。节点和通用操作分别见[节点管理](node-management-ui.md)和[后台组件](admin-components.md)。

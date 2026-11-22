@@ -158,7 +158,6 @@ aside nav a:hover {
 .breadcrumb strong {
     color: #3c3c3c;
 }
-.main > header .online-indicator,
 .main > header > .actions > .muted {
     display: none;
 }
@@ -185,32 +184,6 @@ main {
     color: #777;
     font-size: 10px;
     letter-spacing: 1.3px;
-}
-.hero,
-.admin .hero {
-    background: #fafafa;
-    border: 1px solid #ededed;
-    border-radius: 18px;
-    min-height: 190px;
-    padding: 32px;
-}
-.hero h2 {
-    font-size: 32px;
-    line-height: 1.2;
-    letter-spacing: -1.1px;
-    font-weight: 500;
-    max-width: 650px;
-}
-.hero p {
-    color: #777;
-    font-size: 14px;
-    line-height: 1.7;
-}
-.hero .eyebrow {
-    display: none;
-}
-.orbit {
-    display: none;
 }
 .metrics {
     gap: 16px;
@@ -333,42 +306,6 @@ table td {
     inset-inline-end: 24px;
     z-index: 2;
 }
-.auth-layout {
-    background: #fff;
-    min-height: 100dvh;
-}
-.auth-brand {
-    background: #f8f8f8;
-    color: #202020;
-    border-inline-end: 1px solid #efefef;
-}
-.auth-brand p,
-.auth-brand > small {
-    color: #777;
-}
-.auth-brand h1 {
-    font-size: 46px;
-    font-weight: 500;
-    letter-spacing: -1.7px;
-}
-.auth-orbits {
-    display: none;
-}
-.auth-box h2 {
-    font-size: 30px;
-    letter-spacing: -1px;
-    font-weight: 500;
-}
-.auth-box .eyebrow {
-    display: none;
-}
-.auth-box .primary {
-    border-radius: 24px;
-    min-height: 46px;
-}
-.auth-box input {
-    min-height: 48px;
-}
 .auth-links {
     color: #555;
 }
@@ -391,12 +328,6 @@ table td {
 .section-tabs .selected {
     background: #ededed;
     color: #222;
-}
-.bar-cell i {
-    background: #999;
-}
-.auth-brand .eyebrow {
-    display: none;
 }
 .muted {
     color: #737373;
@@ -456,22 +387,6 @@ html[dir="rtl"] .metric > strong {
     }
     .page-heading h1 {
         font-size: 25px;
-    }
-    .hero,
-    .admin .hero {
-        padding: 24px;
-        min-height: 180px;
-        border-radius: 18px;
-    }
-    .hero h2 {
-        font-size: 29px;
-        letter-spacing: -0.8px;
-        line-height: 1.25;
-        margin-top: 0;
-    }
-    .hero p {
-        font-size: 13px;
-        margin-bottom: 20px;
     }
     button,
     .button {
@@ -567,9 +482,6 @@ html[dir="rtl"] .metric > strong {
     }
     .modal .editor .primary {
         width: 100%;
-    }
-    .auth-form {
-        padding: 90px 24px 32px;
     }
     .auth-language {
         inset-block-start: 18px;
@@ -716,22 +628,4 @@ fieldset.field-grid {
 .editor button:focus-visible {
     outline: 2px solid #555;
     outline-offset: 3px;
-}
-.detail-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-}
-.detail-grid dt {
-    color: #777;
-    font-size: 12px;
-}
-.detail-grid dd {
-    margin: 6px 0;
-    overflow-wrap: anywhere;
-}
-@media (max-width: 650px) {
-    .detail-grid {
-        grid-template-columns: 1fr;
-    }
 }

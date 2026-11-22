@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Http\Routes\V1\AdminRoute;
+use App\Http\Routes\V1\GuestRoute;
+use App\Http\Routes\V1\PassportRoute;
 use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Route;
 
@@ -74,9 +77,9 @@ class RouteServiceProvider extends ServiceProvider
             'middleware' => 'api',
             'namespace' => $this->namespace
         ], function ($router) {
-            foreach (glob(app_path('Http//Routes//V1') . '/*.php') as $file) {
-                $this->app->make('App\\Http\\Routes\\V1\\' . basename($file, '.php'))->map($router);
-            }
+            $this->app->make(AdminRoute::class)->map($router);
+            $this->app->make(GuestRoute::class)->map($router);
+            $this->app->make(PassportRoute::class)->map($router);
         });
     }
 }

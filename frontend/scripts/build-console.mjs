@@ -25,6 +25,8 @@ const sharedInputs = [
     "frontend/scripts",
     "frontend/src",
     "public/payment-icons",
+];
+const adminInputs = [
     "resources/client/anytls-padding-presets.json",
     "resources/client/node-countries.json",
     "resources/client/node-locations.json",
@@ -67,6 +69,7 @@ function inputDigests() {
     return Object.fromEntries(modes.map(mode => {
         const other = mode === "user" ? "admin" : "user";
         const ownFiles = files.filter(file => !file.startsWith(`frontend/src/${other}/`));
+        if (mode === "admin") ownFiles.push(...adminInputs);
         return [mode, digest(root, [...ownFiles, `frontend/${entries[mode]}`])];
     }));
 }
@@ -169,9 +172,8 @@ if (option === "--verify") {
             .some(file => existsSync(resolve(frontend, file)));
     const changed = modes.filter(mode => option === "--force" || locallyConfigured || !verifiedOutput ||
         record.inputSha256[mode] !== inputSha256[mode]);
-    const missingPackages = modes.filter(mode => !existsSync(resolve(frontend, "dist", mode, "index.html")));
     if (!changed.length) {
-        if (missingPackages.length) packageFrontends(missingPackages);
+        packageFrontends(modes, output, { reuseCurrent: true, verifiedMetrics: readJson(resolve(output, "build-metrics.json")) });
         console.log("Console inputs are unchanged. Reused user and admin builds.");
     } else {
         const cache = resolve(frontend, "node_modules/.cache");
@@ -227,7 +229,7 @@ if (option === "--verify") {
             if (verifiedOutput && record.outputSha256 !== outputDigest(output)) {
                 throw new Error("Console output changed during the build. Retry when the other build finishes.");
             }
-            packageFrontends(modes.filter(mode => changed.includes(mode) || missingPackages.includes(mode)), staged);
+            packageFrontends(modes, staged, { reuseCurrent: true });
             const next = { version: 2, defaultEnvironment, inputSha256, outputSha256: outputDigest(staged) };
             writeFileSync(resolve(staged, provenance), `${JSON.stringify(next, null, 2)}\n`);
             publish(staged, previous);

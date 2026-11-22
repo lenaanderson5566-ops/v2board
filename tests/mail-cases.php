@@ -278,14 +278,28 @@ $evil=$snsSign($sns);$evil['SigningCertURL']='https://127.0.0.1/cert.pem';$rejec
 $evil=$snsSign($sns);$evil['TopicArn']='arn:aws:sns:us-east-1:999999999999:mail-events';$reject(fn()=>$webhook->receive('ses',$mgRequest($evil)),403);
 $assert(DB::table('v2_mail_event')->where('provider','ses')->count()===1,'Rejected SNS wrote event');
 
-// Save actual config via fake filesystem; ensure encryption marker is persisted, no plaintext output.
-$fileRoot=Illuminate\Support\Facades\File::getFacadeRoot();$artisanRoot=Illuminate\Support\Facades\Artisan::getFacadeRoot();$savedConfig='';
-Illuminate\Support\Facades\File::shouldReceive('replace')->once()->andReturnUsing(function($path,$content,$mode) use(&$savedConfig) {$savedConfig=$content;});
-Illuminate\Support\Facades\Artisan::shouldReceive('call')->with('config:cache')->once()->andReturn(0);
-$saveRequest=new class extends App\Http\Requests\Admin\ConfigSave { public function validated($key=null,$default=null) {return ['email_provider'=>'smtp','email_password'=>'NEW_SMTP_PRIVATE'];} };
-(new App\Http\Controllers\V1\Admin\ConfigController)->save($saveRequest);
-$assert(str_contains($savedConfig,"'email_password_encrypted' => true") && !str_contains($savedConfig,'NEW_SMTP_PRIVATE'),'SMTP encryption marker not saved');
-Illuminate\Support\Facades\File::swap($fileRoot);Illuminate\Support\Facades\Artisan::swap($artisanRoot);
+// Exercise the real settings write and readback in an isolated configuration directory.
+$settingsFixture=sys_get_temp_dir().'/mail-settings-'.bin2hex(random_bytes(8));
+if (!mkdir($settingsFixture,0700)) throw new RuntimeException('Cannot create mail settings fixture');
+$originalConfigPath=$app->configPath();
+$originalCachePath=$_SERVER['APP_CONFIG_CACHE'] ?? null;
+$artisanRoot=Illuminate\Support\Facades\Artisan::getFacadeRoot();
+try {
+    $app->useConfigPath($settingsFixture);
+    $_SERVER['APP_CONFIG_CACHE']=$settingsFixture.'/cache.php';
+    $assert($app->getCachedConfigPath()===$settingsFixture.'/cache.php','Mail settings fixture must use an isolated cache');
+    Illuminate\Support\Facades\Artisan::shouldReceive('call')->with('config:cache')->once()->andReturn(0);
+    $saveRequest=new class extends App\Http\Requests\Admin\ConfigSave { public function validated($key=null,$default=null) {return ['email_provider'=>'smtp','email_password'=>'NEW_SMTP_PRIVATE'];} };
+    (new App\Http\Controllers\V1\Admin\ConfigController)->save($saveRequest);
+    $savedConfig=file_get_contents($settingsFixture.'/fastai.php');
+    $assert(str_contains($savedConfig,"'email_password_encrypted' => true") && !str_contains($savedConfig,'NEW_SMTP_PRIVATE'),'SMTP encryption marker not saved');
+} finally {
+    Illuminate\Support\Facades\Artisan::swap($artisanRoot);
+    $app->useConfigPath($originalConfigPath);
+    if ($originalCachePath===null) unset($_SERVER['APP_CONFIG_CACHE']);
+    else $_SERVER['APP_CONFIG_CACHE']=$originalCachePath;
+    (new Illuminate\Filesystem\Filesystem)->deleteDirectory($settingsFixture);
+}
 $assert(isset(App\Http\Requests\Admin\ConfigSave::allRules()['email_announcement_provider']),'Announcement config not validated');
 echo "PASS mail streams, opt-in, unsubscribe, signed feedback, dedupe, SSRF rejection and suppression review\n";
 
@@ -481,11 +495,18 @@ $list=$controller->fetch(Illuminate\Http\Request::create('/','GET',['email'=>$ad
 $body=json_decode($list->getContent(),true);
 $assert($body['total']===1 && $body['data'][0]['note']===$note && !isset($body['data'][0]['email_encrypted']),'Admin list or privacy fields incorrect');
 $assert($list->headers->get('Cache-Control')==='no-store, private','Sensitive list is cacheable');
+$account=App\Models\User::create(['email'=>$address,'banned'=>0,'announcement_email'=>1]);
+$blockedTicketId=DB::table('v2_ticket')->insertGetId(['user_id'=>$account->id]);
 $fakeHttp();$blockedMail=new class {public int $calls=0;public function forgetMailers(){} public function send(...$args){$this->calls++;throw new RuntimeException('Unexpected SMTP send');}};Mail::swap($blockedMail);
 foreach(['smtp','mailgun','ses','resend'] as $provider){
  config(['fastai.email_provider'=>$provider,'fastai.email_announcement_separate'=>0]);
  foreach(App\Services\Mail\ProductMail::TYPES as $type){
-  $result=(new App\Jobs\SendEmailJob(['email'=>$address,'template_name'=>$type]))->handle();
+  $params=['email'=>$address,'template_name'=>$type];
+  if ($type==='ticketReply') {
+   $params['user_id']=$account->id;
+   $params['template_value']=['ticket_id'=>$blockedTicketId];
+  }
+  $result=(new App\Jobs\SendEmailJob($params))->handle();
   $assert(!empty($result['skipped']) && $result['reason']==='manual_blocklist','Mail type bypassed block: '.$provider.'/'.$type);
   $log=App\Models\MailLog::find($result['log_id']);
   $assert($log->status==='skipped' && $log->error_code==='MAIL_MANUALLY_BLOCKED' && $log->subject==='' && !$log->message_id,'Blocked mail marked accepted or leaked content');
@@ -496,13 +517,13 @@ foreach([new App\Services\Mail\MailgunSender,new App\Services\Mail\SesSender,new
  try{$sender->send($address,[],'test');throw new RuntimeException('Direct sender bypassed block');}
  catch(App\Exceptions\MailSendException $e){$assert($e->safeCode==='MAIL_MANUALLY_BLOCKED','Wrong direct sender rejection');}
 }
-$account=App\Models\User::create(['email'=>$address,'banned'=>0,'announcement_email'=>1]);
 $q=App\Models\User::where('id',$account->id);
 $assert(MailCampaign::preview($q,'service',1)['manual_blocklist']===1 && MailCampaign::preview($q,'marketing',1)['eligible']===0,'Campaign preview ignored block');
 $assert(!$account->fresh()->banned,'Mail restriction banned account');
 try { MailBlocklist::add($address,'existing account',1); throw new RuntimeException('Existing account accepted into blocklist'); }
 catch (Illuminate\Validation\ValidationException $e) { $checks++; }
 // Reactivation below exercises an unregistered address; the historical account fixture is no longer needed.
+DB::table('v2_ticket')->where('id',$blockedTicketId)->delete();
 $account->delete();
 MailBlocklist::change($hash,1,'note','reviewed note',2);
 $reject(fn()=>MailBlocklist::change($hash,1,'release',null,1),409);

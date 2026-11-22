@@ -1,5 +1,6 @@
 <?php
 use App\Support\AdminPath;
+use App\Support\SubscriptionPath;
 use Illuminate\Http\Request;
 $renderConsole = function (string $mode, bool $landing = false) {
     $manifestPath = public_path('console/.vite/manifest.json');
@@ -23,6 +24,6 @@ Route::get('/app', function (Request $request) use ($renderConsole) {
     return $renderConsole('user');
 });
 Route::get('/' . AdminPath::resolve(), function () use ($renderConsole) { return $renderConsole('admin'); });
-if (!empty(config('fastai.subscribe_path')) && trim(config('fastai.subscribe_path'), '/') !== 'api/v1/client/subscribe') {
-    Route::get(config('fastai.subscribe_path'), [\App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
+if (($subscriptionPath = SubscriptionPath::resolve()) !== null) {
+    Route::get($subscriptionPath, [\App\Http\Controllers\CustomSubscriptionController::class, 'subscribe'])->middleware('client');
 }

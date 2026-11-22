@@ -958,6 +958,11 @@ try {
         ."\$app->useBootstrapPath(".var_export($customFixture.'/bootstrap',true).");\nreturn \$app;\n";
     file_put_contents($customFixture.'/bootstrap/app.php',$customShim);
     $customCache=$customFixture.'/bootstrap/cache/config.php';
+    $originalCacheOverride=$_SERVER['APP_CONFIG_CACHE'] ?? null;
+    $fileState=static function (string $path): ?array {
+        clearstatcache(true,$path);
+        return is_file($path) ? [file_get_contents($path),fileperms($path) & 0777] : null;
+    };
     $customProbe=<<<'PHP'
 require 'tests/support/autoload.php';
 set_exception_handler(static function(Throwable $error) { fwrite(STDERR,get_class($error).' at '.basename($error->getFile()).':'.$error->getLine()); exit(1); });
@@ -1014,6 +1019,8 @@ PHP;
         'unknown_extension'=>['null'=>null,'false'=>false,'zero'=>0,'empty'=>[],'nested'=>['values'=>[null,false,0,[]]]],
     ];
     try {
+        $_SERVER['APP_CONFIG_CACHE']=$customCache;
+        $assert($app->getCachedConfigPath()===$customCache,'Settings rollback checks must use the disposable cache');
         foreach (['legacy-only','canonical-only','both'] as $layout) {
             foreach (['fastai.php','v2board.php'] as $file) if (is_file($customFixture.'/config/'.$file)) unlink($customFixture.'/config/'.$file);
             if (is_file($customCache)) unlink($customCache);
@@ -1028,10 +1035,42 @@ PHP;
             $compiledCustom=require $customCache;
             config(['fastai'=>$compiledCustom['fastai']]);
             $app->useConfigPath($customFixture.'/config');
+            $savePayload=['app_description'=>'Changed description '.$layout,'email_password'=>'','allow_new_period'=>1];
             try {
-                // Assert the controller requests cache rebuilding, then run it in a real fresh process.
-                Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')->andReturn(0);
-                $customResponse=$call('/api/v1/'.$securePath.'/config/save',['app_description'=>'Changed description '.$layout,'email_password'=>'','allow_new_period'=>1],$token);
+                if ($layout==='both') {
+                    unlink($customCache);
+                } else {
+                    chmod($customCache,0640);
+                }
+                $previousFiles=[];
+                foreach ([$customFixture.'/config/fastai.php',$customFixture.'/config/v2board.php',$customCache] as $path) {
+                    $previousFiles[$path]=$fileState($path);
+                }
+                $cacheAttempted=false;
+                Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')
+                    ->andReturnUsing(function () use ($layout,$customCache,&$cacheAttempted) {
+                        $cacheAttempted=true;
+                        if ($layout==='legacy-only') {
+                            unlink($customCache);
+                            throw new RuntimeException('internal-cache-test-marker');
+                        }
+                        file_put_contents($customCache,'incomplete cache');
+                        chmod($customCache,0600);
+                        return 1;
+                    });
+                $failedSave=$call('/api/v1/'.$securePath.'/config/save',$savePayload,$token);
+                $failureBody=json_decode($failedSave->getContent(),true,512,JSON_THROW_ON_ERROR);
+                $assert($cacheAttempted && $failedSave->getStatusCode()===500 && array_keys($failureBody)===['message']
+                    && !str_contains($failureBody['message'],'internal-cache-test-marker'),
+                    'Cache rebuild failure must return a safe error: '.$layout);
+                foreach ($previousFiles as $path=>$before) {
+                    $assert($fileState($path)===$before,'Failed save changed contents, permissions or existence of '.basename($path).': '.$layout);
+                }
+                // A fresh process rebuilds the real cache without replacing this test's transaction-bound container.
+                Illuminate\Support\Facades\Artisan::swap($customArtisan);
+                Illuminate\Support\Facades\Artisan::partialMock()->shouldReceive('call')->once()->with('config:cache')
+                    ->andReturnUsing(fn () => $customRun([],true)['cacheReady'] ? 0 : 1);
+                $customResponse=$call('/api/v1/'.$securePath.'/config/save',$savePayload,$token);
             } finally {
                 Illuminate\Support\Facades\Artisan::swap($customArtisan);
                 $app->useConfigPath($customSourceConfigPath);
@@ -1050,10 +1089,12 @@ PHP;
                 && $customPaymentConnection->table('v2_payment')->where('id',$customPaymentId)->value('config')===$customPaymentBefore,
                 'Site settings save changed payment-channel credentials: '.$layout);
             $assert($legacyCustomHash===null || hash_file('sha256',$customFixture.'/config/v2board.php')===$legacyCustomHash,'Site settings save changed the legacy file: '.$layout);
-            $assert($customRun($expectedCustom,true)['cacheReady']===true,'Saved custom settings could not rebuild the real cache: '.$layout);
+            $assert(is_file($customCache),'Retry did not rebuild the real cache: '.$layout);
             foreach ($customRun($expectedCustom,false) as $boundary=>$valid) $assert($valid===true,'Saved custom settings fresh bootstrap failed '.$layout.': '.$boundary);
         }
     } finally {
+        if ($originalCacheOverride===null) unset($_SERVER['APP_CONFIG_CACHE']);
+        else $_SERVER['APP_CONFIG_CACHE']=$originalCacheOverride;
         Illuminate\Support\Facades\Artisan::swap($customArtisan);
         $app->useConfigPath($customSourceConfigPath);
         config(['fastai'=>$customOriginalSettings]);

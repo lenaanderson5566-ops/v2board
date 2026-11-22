@@ -1,9 +1,14 @@
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { expect, it } from "vitest";
+
+function write(file, content) {
+    mkdirSync(dirname(file), { recursive: true });
+    writeFileSync(file, content);
+}
 
 it("repackages one frontend from a staged manifest and preserves the other deployment", () => {
     const root = mkdtempSync(join(tmpdir(), "fastai-package-test-"));
@@ -11,10 +16,6 @@ it("repackages one frontend from a staged manifest and preserves the other deplo
     const source = join(root, "public", "console");
     const dist = join(frontend, "dist");
     const script = join(frontend, "scripts", "package-frontends.mjs");
-    function write(file, content) {
-        mkdirSync(dirname(file), { recursive: true });
-        writeFileSync(file, content);
-    }
     const report = directory => JSON.parse(readFileSync(join(directory, "build-metrics.json"), "utf8"));
     try {
         mkdirSync(dirname(script), { recursive: true });
@@ -69,3 +70,100 @@ it("repackages one frontend from a staged manifest and preserves the other deplo
         rmSync(root, { recursive: true, force: true });
     }
 });
+
+it("repairs standalone packages from current assets and rebuilds only affected frontends", () => {
+    // Node resolves the installed Vite from the parent frontend. All outputs live in the fixture.
+    const cache = fileURLToPath(new URL("../node_modules/.cache/", import.meta.url));
+    mkdirSync(cache, { recursive: true });
+    const root = mkdtempSync(join(cache, "fastai-build-test-"));
+    const frontend = join(root, "frontend");
+    const consoleRoot = join(root, "public", "console");
+    const dist = join(frontend, "dist");
+    const script = join(frontend, "scripts", "build-console.mjs");
+    const env = { ...process.env, NODE_ENV: "production" };
+    for (const key of Object.keys(env)) if (key.startsWith("VITE_")) delete env[key];
+    const build = () => execFileSync(process.execPath, [script], { cwd: frontend, env, encoding: "utf8" });
+    const record = () => JSON.parse(readFileSync(join(consoleRoot, "build-provenance.json"), "utf8"));
+    const userEntry = join(dist, "user", "index.html");
+    try {
+        mkdirSync(dirname(script), { recursive: true });
+        for (const name of ["build-console.mjs", "package-frontends.mjs", "build-metrics.mjs"]) {
+            copyFileSync(new URL(name, import.meta.url), join(dirname(script), name));
+        }
+        write(join(frontend, "package.json"), '{"type":"module"}');
+        for (const name of ["package-lock.json", "tsconfig.json"]) write(join(frontend, name), "{}");
+        for (const name of ["locale-startup.ts", "build-isolation.ts"]) write(join(frontend, name), "");
+        write(join(frontend, "vite.config.ts"), 'export default { base: "./", build: { manifest: true } };');
+        write(join(root, "public/payment-icons/card.svg"), "<svg/>");
+        write(join(root, "resources/payment-catalog.json"), "{}");
+        for (const name of ["anytls-padding-presets", "node-countries", "node-locations", "node-route-presets"]) {
+            write(join(root, `resources/client/${name}.json`), '["original"]');
+        }
+        for (const [mode, entry] of [["user", "index.html"], ["admin", "admin.html"]]) {
+            write(join(frontend, entry), `<script type="module" src="/src/${mode}/main.ts"></script>`);
+            const data = mode === "admin" ? 'import data from "../../../resources/client/node-locations.json";' : 'const data = ["user"];';
+            write(join(frontend, `src/${mode}/main.ts`), `${data} import { text } from "../shared"; document.body.textContent = text + data;`);
+        }
+        const shared = join(frontend, "src/shared.ts");
+        write(shared, 'export const text = "shared";');
+        build();
+        const original = record();
+        const userHtml = readFileSync(userEntry);
+        const userAssets = join(consoleRoot, "assets/user");
+        const snapshot = () => readdirSync(userAssets).sort().map(name => [name, readFileSync(join(userAssets, name))]);
+        const originalAssets = snapshot();
+        write(join(dist, "user/_headers"), "user hosting headers");
+        utimesSync(userEntry, 1000000000, 1000000000);
+        const userMtime = statSync(userEntry).mtimeMs;
+
+        write(join(root, "resources/client/node-locations.json"), '["revised"]');
+        const adminBuild = build();
+        expect(adminBuild).toContain("Building admin console.");
+        expect(adminBuild).toContain("Reusing user console build.");
+        expect(adminBuild).not.toContain("Packaged user:");
+        expect(record().inputSha256.user).toBe(original.inputSha256.user);
+        expect(record().inputSha256.admin).not.toBe(original.inputSha256.admin);
+        expect(readFileSync(userEntry)).toEqual(userHtml);
+        expect(snapshot()).toEqual(originalAssets);
+        expect(statSync(userEntry).mtimeMs).toBe(userMtime);
+
+        const admin = join(dist, "admin");
+        const adminAsset = join("assets/admin", readdirSync(join(admin, "assets/admin"))[0]);
+        const config = join(admin, "admin-config.json");
+        write(config, "site runtime config");
+        write(join(admin, ".well-known/hosting"), "site rule");
+        write(join(admin, "user-config.json"), "config from a different package");
+        write(join(admin, "index.html"), "previous release");
+        const repairedEntry = build();
+        expect(repairedEntry).not.toContain("Building ");
+        expect(repairedEntry).toContain("Packaged admin:");
+        expect(readFileSync(join(admin, "index.html"))).toEqual(readFileSync(join(consoleRoot, "admin.html")));
+        rmSync(join(admin, adminAsset));
+        write(join(admin, "assets/admin/retired.js"), "old chunk");
+        expect(build()).toContain("Packaged admin:");
+        expect(readFileSync(join(admin, adminAsset))).toEqual(readFileSync(join(consoleRoot, adminAsset)));
+        expect(existsSync(join(admin, "assets/admin/retired.js"))).toBe(false);
+        write(join(admin, adminAsset), Buffer.alloc(statSync(join(admin, adminAsset)).size));
+        expect(build()).toContain("Packaged admin:");
+        expect(readFileSync(join(admin, adminAsset))).toEqual(readFileSync(join(consoleRoot, adminAsset)));
+        expect(readFileSync(config, "utf8")).toBe("site runtime config");
+        expect(readFileSync(join(admin, ".well-known/hosting"), "utf8")).toBe("site rule");
+        expect(existsSync(join(admin, "user-config.json"))).toBe(false);
+        expect(readFileSync(join(dist, "user/_headers"), "utf8")).toBe("user hosting headers");
+        expect(statSync(userEntry).mtimeMs).toBe(userMtime);
+        expect(build()).not.toContain("Packaged ");
+
+        write(shared, 'export const text = "updated";');
+        const sharedBuild = build();
+        expect(sharedBuild).toContain("Building user console.");
+        expect(sharedBuild).toContain("Building admin console.");
+        expect(record().inputSha256.user).not.toBe(original.inputSha256.user);
+
+        write(join(root, "public/payment-icons/card.svg"), '<svg width="10"/>');
+        const iconBuild = build();
+        expect(iconBuild).toContain("Building user console.");
+        expect(iconBuild).toContain("Building admin console.");
+    } finally {
+        rmSync(root, { recursive: true, force: true });
+    }
+}, 30000);

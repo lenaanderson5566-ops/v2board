@@ -24,9 +24,9 @@ npm run build
 
 发布时使用默认 Vite 生产配置构建，并将完整 `public/console`（含 `.vite` 清单与 `build-provenance.json`）随源码提交。用户端和后台分别编译，资源分布在 `assets/user` 与 `assets/admin`。普通 `npm run build` 根据两端各自的源码指纹判断重建范围。只改后台页面时复用用户端产物，只改用户端页面时复用后台产物。共享组件、构建配置、正式语言包和依赖锁文件变化时同时构建两端。
 
-页面专用样式放在各自的 `src/user` 和 `src/admin`，基础控件样式继续共用。用户端公开引导使用从源文件提取的小词库，后台页面在渲染前加载当前会话语言的完整词库。修改用户隐私链接或公开引导的专用样式只影响用户端构建。
+页面专用样式放在各自的 `src/user` 和 `src/admin`，基础控件样式继续共用。用户端公开引导使用从源文件提取的小词库，后台页面在渲染前加载当前会话语言的完整词库。修改用户隐私链接或公开引导的专用样式只影响用户端构建。节点地区字典、节点预设及支付目录 JSON 由后台打包，更新时只编译后台。两端使用的支付图标仍计入共享输入。
 
-没有影响前端构建的变更时，构建会复用两端产物。如果需要从头编译两端，运行 `npm run build -- --force`。从 `frontend` 执行 `node scripts/build-console.mjs --verify` 可只读核对两端源码与完整发布目录的指纹。GitHub Actions 在 Linux 强制重建前校验已提交的产物，校验允许 Windows 和 Linux 检出的文本换行差异。
+已有构建可复用时，`npm run build` 会按端核对独立包的首页、清单引用的全部资源和构建报告。从 Git 拉取更新或独立包缺少文件时，命令从已验证的 `public/console` 刷新受影响的包，保留 `_headers` 等由站点维护的根目录文件。提取优先使用发布目录中该端的运行配置，其次沿用独立包内已导出的配置。从头编译两端可运行 `npm run build -- --force`。从 `frontend` 执行 `node scripts/build-console.mjs --verify` 可只读核对两端源码与完整发布目录的指纹。GitHub Actions 在 Linux 强制重建前校验已提交的产物，校验允许 Windows 和 Linux 检出的文本换行差异。
 
 得到三份产物：
 

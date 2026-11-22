@@ -148,6 +148,49 @@ try {
             $assert(in_array('client', $route->gatherMiddleware(), true), 'Custom subscriptions must retain client authentication');
         }
     }
+    $customAction = App\Http\Controllers\CustomSubscriptionController::class.'@subscribe';
+    $defaultUrl = 'https://subscriptions.example.test/api/v10/subscriptions/audit-token';
+    config(['fastai.secure_path'=>'audit-admin', 'fastai.subscribe_url'=>'https://subscriptions.example.test', 'fastai.show_subscribe_method'=>0]);
+    foreach ([
+        ['/', '/', 'Closure'],
+        ['/app/', '/app', 'Closure'],
+        ['/app%2F', '/app', 'Closure'],
+        ['/audit-admin', '/audit-admin', 'Closure'],
+        ['/api/v10/public/settings', '/api/v10/public/settings', App\Http\Controllers\V10\GuestCommController::class.'@getPublicSettings'],
+        ['/api/v10/subscriptions/example', '/api/v10/subscriptions/example', App\Http\Controllers\V10\ClientClientController::class.'@getSubscriptionsSubscriptionToken'],
+        ['/{page}', '/app', 'Closure'],
+        ['/api/v10/subscriptions', '/api/v10/subscriptions', $customAction],
+        ['/custom/subscription/', '/custom/subscription', $customAction],
+        ['/api/feeds/member', '/api/feeds/member', $customAction],
+    ] as [$configured, $probe, $expectedAction]) {
+        config(['fastai.subscribe_path'=>$configured]);
+        $routes = new Illuminate\Routing\RouteCollection();
+        $router->setRoutes($routes);
+        (new App\Providers\RouteServiceProvider($app))->map();
+        foreach (['GET','HEAD'] as $method) {
+            $route = $routes->match(Illuminate\Http\Request::create($probe, $method));
+            $assert($route->getActionName() === $expectedAction, 'Subscription alias displaced the expected '.$method.' route '.$probe);
+        }
+        $assert(($routes->getByAction($customAction) !== null) === ($expectedAction === $customAction), 'Unexpected custom subscription route for '.$configured);
+        $expectedUrl = $expectedAction === $customAction && $probe !== '/api/v10/subscriptions'
+            ? 'https://subscriptions.example.test'.$probe.'?token=audit-token' : $defaultUrl;
+        $assert(App\Utils\Helper::getSubscribeUrl('audit-token') === $expectedUrl, 'Generated subscription URL disagrees with the registered route');
+    }
+    foreach ([
+        [['subscribe_path'=>'/app'], 'subscribe_path'],
+        [['secure_path'=>'renamed-admin','subscribe_path'=>'/renamed-admin'], 'secure_path'],
+        [['secure_path'=>'renamed-admin','subscribe_path'=>'/api/v1/renamed-admin/ops/risk/summary/fetch'], 'secure_path'],
+    ] as [$merged, $field]) {
+        try {
+            App\Support\SubscriptionPath::validateSettings($merged + ['secure_path'=>'audit-admin'], [$field=>$merged[$field]]);
+            $assert(false, 'A conflicting subscription or admin path was accepted on save');
+        } catch (Illuminate\Validation\ValidationException $error) {
+            $assert(isset($error->errors()[$field]), 'The collision must be reported on the edited field');
+        }
+    }
+    // Moving both paths together can free the old admin URL; historical conflicts do not block unrelated edits.
+    App\Support\SubscriptionPath::validateSettings(['secure_path'=>'renamed-admin','subscribe_path'=>'/audit-admin'], ['secure_path'=>'renamed-admin','subscribe_path'=>'/audit-admin']);
+    App\Support\SubscriptionPath::validateSettings(['secure_path'=>'audit-admin','subscribe_path'=>'/app'], ['app_name'=>'Example']);
 } finally {
     $router->setRoutes($originalRoutes);
     config(['fastai'=>$originalFastai]);

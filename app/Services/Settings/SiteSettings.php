@@ -14,11 +14,15 @@ use App\Services\PasskeyService;
 use App\Services\TimeZones;
 use App\Support\FrontendConfig;
 use App\Support\SiteConfiguration;
+use App\Support\SubscriptionPath;
+use Illuminate\Container\Container;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Facade;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
+use RuntimeException;
 use Throwable;
 
 final class SiteSettings
@@ -96,6 +100,7 @@ final class SiteSettings
                 $config[$flag] = $changes[$flag];
             }
         }
+        SubscriptionPath::validateSettings($config, $changes);
         if (!empty($config['passkey_enable']) && (array_key_exists('passkey_enable', $changes) || array_key_exists('app_url', $changes))) {
             $passkeys = app(PasskeyService::class);
             abort_unless($passkeys->available(), 409, '请先通过更新流程安装 Passkey 数据表和依赖。');
@@ -106,18 +111,115 @@ final class SiteSettings
             $config['fastai_entrypoints_version'] = max((int) ($config['fastai_entrypoints_version'] ?? 1) + 1, (int) floor(microtime(true) * 1000));
         }
 
-        $export = var_export($config, true);
-        $permissionSource = is_file($path) ? $path : SiteConfiguration::readPath();
-        $mode = is_file($permissionSource) ? fileperms($permissionSource) & 0777 : 0640;
-        try {
-            File::replace($path, "<?php\n return $export ;", $mode);
-        } catch (Throwable) {
-            abort(500, '修改失败');
-        }
-        if (function_exists('opcache_get_status') && opcache_get_status(false) !== false && opcache_reset() === false) {
-            abort(500, '缓存清除失败，请卸载或检查opcache配置状态');
-        }
-        Artisan::call('config:cache');
+        self::publish($path, $config);
         return $config;
+    }
+
+    private static function publish(string $path, array $config): void
+    {
+        $application = app();
+        $cachePath = $application->getCachedConfigPath();
+        try {
+            $previous = self::snapshot($path);
+            $previousCache = self::snapshot($cachePath);
+            $mode = $previous['mode'] ?? self::snapshot(SiteConfiguration::readPath())['mode'] ?? 0640;
+        } catch (Throwable) {
+            abort(500, '无法备份当前站点配置或配置缓存，设置未保存。');
+        }
+
+        $content = '<?php return '.var_export($config, true).';'.PHP_EOL;
+        $stage = 'write';
+        try {
+            File::replace($path, $content, $mode);
+            if (File::get($path) !== $content) {
+                throw new RuntimeException('Configuration file does not match the saved settings.');
+            }
+            $stage = 'cache';
+            self::invalidateOpcodeCache($path);
+            self::invalidateOpcodeCache($cachePath);
+            try {
+                $status = Artisan::call('config:cache');
+            } finally {
+                // The cache command bootstraps a fresh application to read the file.
+                if (Container::getInstance() !== $application || Facade::getFacadeApplication() !== $application) {
+                    Container::setInstance($application);
+                    Facade::clearResolvedInstances();
+                    Facade::setFacadeApplication($application);
+                }
+            }
+            if ($status !== 0) {
+                throw new RuntimeException('Configuration cache command failed.');
+            }
+            self::invalidateOpcodeCache($cachePath);
+        } catch (Throwable $error) {
+            $restored = true;
+            foreach ([[$path, $previous], [$cachePath, $previousCache]] as [$file, $snapshot]) {
+                try {
+                    self::restore($file, $snapshot);
+                } catch (Throwable) {
+                    $restored = false;
+                }
+            }
+            Log::error('Site settings publication failed', [
+                'stage' => $stage,
+                'exception_class' => $error::class,
+                'restored' => $restored,
+            ]);
+            abort_unless($restored, 500, '设置发布失败，未能完全恢复先前配置，请检查服务器日志。');
+            abort(500, $stage === 'write' ? '修改失败' : '配置缓存刷新失败，已恢复先前设置。');
+        }
+    }
+
+    private static function snapshot(string $path): ?array
+    {
+        clearstatcache(true, $path);
+        $linked = is_link($path);
+        if (!$linked && !file_exists($path)) {
+            return null;
+        }
+
+        $target = realpath($path);
+        $link = $linked ? readlink($path) : null;
+        $mode = is_file($path) ? fileperms($path) : false;
+        if ($target === false || $mode === false || $link === false) {
+            throw new RuntimeException('Unable to read configuration file metadata.');
+        }
+        return ['target' => $target, 'link' => $link, 'mode' => $mode & 0777, 'bytes' => File::get($target)];
+    }
+
+    private static function restore(string $path, ?array $previous): void
+    {
+        clearstatcache(true, $path);
+        if ($previous === null) {
+            if ((file_exists($path) || is_link($path)) && !File::delete($path)) {
+                throw new RuntimeException('Unable to remove unpublished configuration file.');
+            }
+        } else {
+            $target = $previous['target'];
+            $current = self::snapshot($target);
+            if (($current['bytes'] ?? null) !== $previous['bytes']) {
+                File::replace($target, $previous['bytes'], $previous['mode']);
+            } elseif (($current['mode'] ?? null) !== $previous['mode'] && !chmod($target, $previous['mode'])) {
+                throw new RuntimeException('Unable to restore configuration file permissions.');
+            }
+            if ($previous['link'] !== null && (!is_link($path) || readlink($path) !== $previous['link'])) {
+                if (((file_exists($path) || is_link($path)) && !File::delete($path)) || !symlink($previous['link'], $path)) {
+                    throw new RuntimeException('Unable to restore configuration link.');
+                }
+            }
+            self::invalidateOpcodeCache($target);
+        }
+        if (self::snapshot($path) !== $previous) {
+            throw new RuntimeException('Restored configuration file does not match its backup.');
+        }
+        self::invalidateOpcodeCache($path);
+    }
+
+    private static function invalidateOpcodeCache(string $path): void
+    {
+        clearstatcache(true, $path);
+        if (function_exists('opcache_is_script_cached') && opcache_is_script_cached($path) && !opcache_invalidate($path, true)) {
+            throw new RuntimeException('Unable to invalidate cached configuration code.');
+        }
     }
 }

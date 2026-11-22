@@ -2,10 +2,13 @@
 
 namespace App\Support;
 
+use Illuminate\Support\Arr;
+
 final class AdminPath
 {
-    public static function resolve(): mixed
+    public static function resolve(?array $settings = null): mixed
     {
-        return config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
+        $settings ??= config('fastai', []);
+        return Arr::get($settings, 'secure_path', Arr::get($settings, 'frontend_admin_path', hash('crc32b', config('app.key'))));
     }
 }

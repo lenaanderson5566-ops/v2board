@@ -2,6 +2,7 @@
 
 namespace App\Utils;
 use App\Models\User;
+use App\Support\SubscriptionPath;
 use Illuminate\Support\Facades\Cache;
 
 class Helper
@@ -108,21 +109,14 @@ class Helper
     public static function getSubscribeUrl($token)
     {
         $submethod = (int)config('fastai.show_subscribe_method', 0);
-        $path = '/' . trim((string) config('fastai.subscribe_path', ''), '/');
-        $v10 = in_array($path, ['/', '/api/v1/client/subscribe', '/api/v10/subscriptions'], true);
+        $path = SubscriptionPath::resolve();
         $subscribeUrls = explode(',', config('fastai.subscribe_url'));
         $subscribeUrl = $subscribeUrls[rand(0, count($subscribeUrls) - 1)];
         switch ($submethod) {
             case 0:
-                $path = $v10 ? "/api/v10/subscriptions/" . rawurlencode($token) : "{$path}?token={$token}";
-                if ($subscribeUrl) return $subscribeUrl . $path;
-                return url($path);
                 break;
             case 1:
-                $newtoken = \App\Services\OneTimeSubscriptionToken::issue($token);
-                $path = $v10 ? "/api/v10/subscriptions/" . rawurlencode($newtoken) : "{$path}?token={$newtoken}";
-                if ($subscribeUrl) return $subscribeUrl . $path;
-                return url($path);
+                $token = \App\Services\OneTimeSubscriptionToken::issue($token);
                 break;
             case 2:
                 $timestep = (int)config('fastai.show_subscribe_expire', 5) * 60;
@@ -130,13 +124,15 @@ class Helper
                 $counterBytes = pack('N*', 0) . pack('N*', $counter);
                 $hash = hash_hmac('sha1', $counterBytes, $token, false);
                 $user = User::where('token', $token)->select('id')->first();
-                $newtoken = self::base64EncodeUrlSafe("{$user->id}:{$hash}");
-
-                $path = $v10 ? "/api/v10/subscriptions/" . rawurlencode($newtoken) : "{$path}?token={$newtoken}";
-                if ($subscribeUrl) return $subscribeUrl . $path;
-                return url($path);
+                $token = self::base64EncodeUrlSafe("{$user->id}:{$hash}");
                 break;
+            default:
+                return null;
         }
+        $path = $path === null || $path === SubscriptionPath::V10_BASE
+            ? SubscriptionPath::V10_BASE . '/' . rawurlencode($token)
+            : "{$path}?token={$token}";
+        return $subscribeUrl ? $subscribeUrl . $path : url($path);
     }
 
     public static function randomPort($range) {

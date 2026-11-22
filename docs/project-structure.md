@@ -24,6 +24,8 @@ Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序�
 
 `App\Support\AdminPath::resolve()` 统一为后台网页、API、运行配置和运维命令读取入口路径。优先读取 `fastai.secure_path`，其次读取 `fastai.frontend_admin_path`，两者均未配置时使用应用密钥的 CRC32B 派生值。`RouteServiceProvider` 显式注册仍在使用的 V1 后台、历史支付回调和认证模块。
 
+`SubscriptionPath` 按保存后的后台入口校验自定义订阅路径。历史冲突配置保留现有页面和 API 路由，生成的订阅链接回退到 V10。管理员可在系统设置中改为未占用的路径。
+
 `api/v10/openapi.json` 是 V10 契约的模块清单与全局元数据入口；唯一可编辑定义位于 `api/v10/modules/*.json`，按业务归属维护路径与 schema，公共响应、响应头、参数及基础类型集中在 `common.json`。发布文件、PHP 字段投影和前端映射/类型均由 `python scripts/generate-v10.py` 生成。`--check` 只检查漂移，不写文件。具体元数据与七项输出见 [V10 维护说明](api-v10/README.md)。路由、控制器、请求校验和业务逻辑仍显式维护，生成结果不能代替真实路由及行为测试。
 
 ## 服务与前端组件
@@ -31,6 +33,8 @@ Horizon 的主 supervisor 展示名为 FastAI，现有队列名、Job 类及序�
 邮件投递、限流、模板、活动、退订和反馈服务集中在 `app/Services/Mail/`，命名空间为 `App\Services\Mail`。共享业务 Action 保留 `app/Services/Actions/`，队列入口保留 `app/Jobs/`；Job 类名、构造参数、序列化属性和队列名称保持兼容，命令主名与旧别名的规则见上节。
 
 `SiteSettings` 负责合并、校验并保存已通过请求验证的站点设置，配置文件与写锁由 `SiteConfiguration` 管理。`MailSettings` 负责邮件设置投影、密钥轮换与合并后的校验。`V2boxSaveRules` 为 V2Box 表单与保存接口提供校验规则。`CheckoutPaymentMethods` 返回可用渠道和报价数据，结算预览和支付方式接口共用该查询。
+
+保存站点设置时，配置文件替换、缓存刷新和失败恢复都位于同一写锁内。刷新失败时恢复配置文件和缓存的原始内容与权限。首次从旧配置保存失败时恢复为仅有旧文件的布局。
 
 `frontend/src/shared/ui.tsx` 保留公共导出，实现在 `shared/ui/` 内按 `layout`、`data`、`Modal`、`Editor`、`controls` 和 `Table` 拆分。弹窗堆栈及关闭 Context 只在 Modal 模块初始化一次，避免拆分后多弹窗失去协调。管理员专用状态文案集中在现有 `admin-status.tsx`，不进入用户翻译扫描范围。
 

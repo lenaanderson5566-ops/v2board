@@ -3,7 +3,7 @@ vi.mock("./MailHealth",()=>({MailHealth:()=>null}));
 import { mailCredentialField } from "./mail-settings";
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 const api = vi.hoisted(() => {
     window.FASTAI = { mode: "admin", adminPath: "test-admin" } as any;
     return { request: vi.fn() };
@@ -11,6 +11,7 @@ const api = vi.hoisted(() => {
 vi.mock("../shared/api", async original => ({
     ...(await original<typeof import("../shared/api")>()), request: api.request, readRequest: api.request,
 }));
+import { configureTimeZone, setAdminDisplayTimeZone } from "../shared/timezone";
 import { AdminMailLogs } from "./AdminMailLogs";
 import { configField } from "./admin-fields";
 import { settingsFields } from "./admin-linkage";
@@ -70,6 +71,75 @@ it("rejects reversed date filters before requesting", async () => {
     expect(screen.getByRole("alert").textContent).toContain("结束时间不能早于开始时间");
     expect(advanced.getAttribute("aria-expanded")).toBe("true");
     expect(api.request.mock.calls).toHaveLength(before);
+});
+it("keeps applied and unsubmitted mail log bounds at the same instants when the display timezone changes", async () => {
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("UTC");
+    try {
+        const from = Date.parse("2026-11-01T06:30:37Z") / 1000;
+        api.request.mockResolvedValue({ data: [{ id: 1, status: "accepted", created_at: from }], total: 1 });
+        render(<AdminMailLogs />);
+        await screen.findByText(/06:30:37/, { selector: "time" });
+        const advanced = screen.getByRole("button", { name: "高级筛选" });
+        const search = screen.getByRole("button", { name: "查询" });
+        fireEvent.click(advanced);
+        const start = screen.getByLabelText<HTMLInputElement>("开始时间"), end = screen.getByLabelText<HTMLInputElement>("结束时间");
+        fireEvent.change(start, { target: { value: "2026-11-01T06:30:37" } });
+        fireEvent.click(search);
+        const params = () => new URLSearchParams(api.request.mock.calls.at(-1)?.[0].split("?")[1]);
+        await waitFor(() => expect(params().get("from")).toBe(String(from)));
+        const reads = api.request.mock.calls.length;
+        fireEvent.click(advanced);
+        act(() => setAdminDisplayTimeZone("America/New_York"));
+        expect(screen.getByText("日志时间与筛选时区：America/New_York")).toBeTruthy();
+        const timestamp = await screen.findByText(/01:30:37/, { selector: "time" });
+        expect(timestamp.getAttribute("datetime")).toBe("2026-11-01T06:30:37.000Z");
+        expect(timestamp.title).toContain("UTC-5");
+        expect(start.value).toContain("2026-11-01T01:30:37");
+        expect(advanced.textContent).toBe("高级筛选（已应用 1 项）");
+        fireEvent.click(search);
+        expect(screen.queryByRole("alert")).toBeNull();
+        expect(api.request.mock.calls).toHaveLength(reads);
+
+        fireEvent.click(advanced);
+        fireEvent.change(end, { target: { value: "2026-11-01T03:45:11" } });
+        fireEvent.click(advanced);
+        act(() => setAdminDisplayTimeZone("UTC"));
+        expect(end.value).toContain("2026-11-01T08:45:11");
+        expect(advanced.textContent).toContain("有未提交的条件");
+        expect(api.request.mock.calls).toHaveLength(reads);
+        expect(params().get("to")).toBeNull();
+        fireEvent.click(search);
+        await waitFor(() => {
+            expect(params().get("from")).toBe(String(from));
+            expect(params().get("to")).toBe(String(Date.parse("2026-11-01T08:45:11Z") / 1000));
+        });
+        expect(advanced.textContent).toBe("高级筛选（已应用 2 项）");
+        fireEvent.click(screen.getByRole("button", { name: "重置" }));
+        await waitFor(() => expect(params().has("from")).toBe(false));
+        expect(params().has("to")).toBe(false);
+        expect(start.value).toBe("");
+        expect(end.value).toBe("");
+    } finally { act(() => setAdminDisplayTimeZone("business")); }
+});
+it("keeps an ambiguous mail log date unsubmitted and opens its advanced filters on query", async () => {
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("America/New_York");
+    try {
+        api.request.mockResolvedValue({ data: [], total: 0 });
+        render(<AdminMailLogs />);
+        await screen.findByText("暂无匹配邮件日志");
+        const reads = api.request.mock.calls.length;
+        const advanced = screen.getByRole("button", { name: "高级筛选" });
+        fireEvent.click(advanced);
+        fireEvent.change(screen.getByLabelText("开始时间"), { target: { value: "2026-11-01T01:30:37" } });
+        fireEvent.click(advanced);
+        expect(advanced.textContent).toContain("有未提交的条件");
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(screen.getByRole("alert").textContent).toContain("重复");
+        expect(advanced.getAttribute("aria-expanded")).toBe("true");
+        expect(api.request.mock.calls).toHaveLength(reads);
+    } finally { act(() => setAdminDisplayTimeZone("business")); }
 });
 it("masks API keys and shows only the selected transport fields", () => {
     expect(configField("email_mailgun_api_key","","string","Key").type).toBe("password");

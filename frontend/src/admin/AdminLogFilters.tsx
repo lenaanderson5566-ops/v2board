@@ -1,8 +1,8 @@
 import { AdminFilterBar } from "./AdminFilterBar";
-import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
 import { useState } from "react";
 import type { Row } from "../shared/api";
 import { FilterActions } from "../shared/ui/controls";
+import { useAdminLogDateRange } from "./use-admin-log-date-range";
 
 export type AdminLogKind = "login" | "subscribe" | "connection" | "risk";
 
@@ -15,16 +15,9 @@ export function AdminLogFilters({
     kind: AdminLogKind;
     onApply: (filters: Row) => void;
 }) {
-    const [draft, setDraft] = useState<Row>(() =>
-        Object.fromEntries(
-            Object.entries(initialFilters).map(([key, value]) => {
-                if (["from", "to"].includes(key)) {
-                    return [key, dateTimeFieldValue(value)];
-                }
-                return [key, value];
-            }),
-        ),
-    );
+    const { from: initialFrom, to: initialTo, ...initialText } = initialFilters;
+    const dates = useAdminLogDateRange({ from: initialFrom, to: initialTo });
+    const [draft, setDraft] = useState<Row>(initialText);
     const [error, setError] = useState("");
     const fields = [
         ["keyword", "关键词", "text"],
@@ -44,12 +37,13 @@ export function AdminLogFilters({
                     const filters: Row = {};
                     for (const [key, value] of Object.entries(draft)) {
                         if (value != null && String(value).trim())
-                            filters[key] = ["from", "to"].includes(key)
-                                ? dateTimeFieldInstant(value, initialFilters[key])
-                                : String(value).trim();
+                            filters[key] = String(value).trim();
                     }
-                    if (typeof filters.from === "number" && typeof filters.to === "number" && filters.from > filters.to)
+                    const from = dates.instant("from"), to = dates.instant("to");
+                    if (from != null && to != null && from > to)
                         throw new Error("结束时间不能早于开始时间");
+                    if (from != null) filters.from = from;
+                    if (to != null) filters.to = to;
                     setError("");
                     onApply(filters);
                 } catch (e) {
@@ -64,7 +58,7 @@ export function AdminLogFilters({
                         aria-label={`日志${label}`}
                         type={type}
                         step={type === "datetime-local" ? 1 : undefined}
-                        value={draft[key] || ""}
+                        value={key === "from" || key === "to" ? dates.value(key) : draft[key] || ""}
                         maxLength={key === "keyword" ? 200 : undefined}
                         placeholder={
                             key === "keyword"
@@ -77,9 +71,10 @@ export function AdminLogFilters({
                                         : "邮箱、用户 ID、IP、UA 或结果代码"
                                 : undefined
                         }
-                        onChange={(event) =>
-                            setDraft({ ...draft, [key]: event.target.value })
-                        }
+                        onChange={(event) => {
+                            if (key === "from" || key === "to") dates.change(key, event.target.value);
+                            else setDraft({ ...draft, [key]: event.target.value });
+                        }}
                     />
                 </label>
             ))}
@@ -127,6 +122,7 @@ export function AdminLogFilters({
             <div className="admin-filter-actions">
                 <FilterActions onReset={() => {
                     setDraft({});
+                    dates.reset();
                     setError("");
                     onApply({});
                 }} />

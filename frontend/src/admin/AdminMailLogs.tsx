@@ -1,7 +1,7 @@
 import { AdminPager } from "./AdminPager";
 import { formatDuration } from "../shared/number-format";
 import { OperationsDetails } from "./OperationsAnalytics";
-import { AdminLogTimeZone, logTime } from "./admin-log-time";
+import { AdminLogTimeZone, AdminLogTimestamp } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
 import { AdminChoiceGroup } from "./AdminChoices";
@@ -11,7 +11,7 @@ import { MailHealth } from "./MailHealth";
 import { useEffect, useId, useRef, useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
-import { parseDateTimeInput } from "../shared/timezone";
+import { useAdminLogDateRange } from "./use-admin-log-date-range";
 
 const statuses: Record<string, string> = {
     skipped: "已跳过",
@@ -79,16 +79,16 @@ const empty = {
     provider: "",
     status: "",
     template: "",
-    from: "",
-    to: "",
     transport_code: "",
     enhanced_code: "",
     stream: "",
     delivery_status: "",
 };
-const advancedFields = ["stream", "delivery_status", "transport_code", "enhanced_code", "template", "from", "to"] as const;
+const advancedFields = ["stream", "delivery_status", "transport_code", "enhanced_code", "template"] as const;
+const dateFields = ["from", "to"] as const;
 
 export function AdminMailLogs() {
+    const dates = useAdminLogDateRange();
     const [pageSize, setPageSize] = useState(20);
     const [view, setView] = useState("logs");
     const [draft, setDraft] = useState(empty),
@@ -98,8 +98,16 @@ export function AdminMailLogs() {
     const [advancedOpen, setAdvancedOpen] = useState(false);
     const advancedId = useId();
     const hiddenInvalidInput = useRef<HTMLInputElement | null>(null);
-    const appliedAdvanced = advancedFields.filter(key => applied.params[key] !== undefined).length;
-    const hasAdvancedDraftChanges = advancedFields.some(key => draft[key] !== applied.draft[key]);
+    const appliedAdvanced = [...advancedFields, ...dateFields].filter(key => applied.params[key] !== undefined).length;
+    const hasAdvancedDraftChanges = advancedFields.some(key => draft[key] !== applied.draft[key])
+        || dateFields.some(key => {
+            try {
+                const instant = dates.instant(key);
+                return instant?.toString() !== applied.params[key];
+            } catch {
+                return true;
+            }
+        });
     useEffect(() => {
         const input = hiddenInvalidInput.current;
         if (advancedOpen && input) {
@@ -126,7 +134,7 @@ export function AdminMailLogs() {
                     ) : undefined
                 }
             >
-                <AdminLogTimeZone />
+                <AdminLogTimeZone logFilters />
                 <AdminChoiceGroup
                     variant="navigation"
                     label="邮件管理"
@@ -158,24 +166,13 @@ export function AdminMailLogs() {
                                 e.preventDefault();
                                 try {
                                     const next: Record<string, string> = {};
-                                    for (const [key, value] of Object.entries(
-                                        draft,
-                                    ))
-                                        if (value.trim())
-                                            next[key] =
-                                                key === "from" || key === "to"
-                                                    ? String(
-                                                          parseDateTimeInput(
-                                                              value,
-                                                          ),
-                                                      )
-                                                    : value.trim();
-                                    if (
-                                        next.from &&
-                                        next.to &&
-                                        Number(next.from) > Number(next.to)
-                                    )
+                                    for (const [key, value] of Object.entries(draft))
+                                        if (value.trim()) next[key] = value.trim();
+                                    const from = dates.instant("from"), to = dates.instant("to");
+                                    if (from !== null && to !== null && from > to)
                                         throw new Error("结束时间不能早于开始时间");
+                                    if (from !== null) next.from = String(from);
+                                    if (to !== null) next.to = String(to);
                                     setApplied({ params: next, draft });
                                     setPage(1);
                                     setError("");
@@ -356,13 +353,8 @@ export function AdminMailLogs() {
                                     <input
                                         type="datetime-local"
                                         step={1}
-                                        value={draft.from}
-                                        onChange={(e) =>
-                                            setDraft({
-                                                ...draft,
-                                                from: e.target.value,
-                                            })
-                                        }
+                                        value={dates.value("from")}
+                                        onChange={(e) => dates.change("from", e.target.value)}
                                     />
                                 </label>
                                 <label>
@@ -370,13 +362,8 @@ export function AdminMailLogs() {
                                     <input
                                         type="datetime-local"
                                         step={1}
-                                        value={draft.to}
-                                        onChange={(e) =>
-                                            setDraft({
-                                                ...draft,
-                                                to: e.target.value,
-                                            })
-                                        }
+                                        value={dates.value("to")}
+                                        onChange={(e) => dates.change("to", e.target.value)}
                                     />
                                 </label>
                             </fieldset>
@@ -385,6 +372,7 @@ export function AdminMailLogs() {
                                     loading={logs.loading}
                                     onReset={() => {
                                         setDraft(empty);
+                                        dates.reset();
                                         setApplied({ params: {}, draft: empty });
                                         setPage(1);
                                         setError("");
@@ -416,7 +404,7 @@ export function AdminMailLogs() {
                                         {(logs.data || []).map((row) => (
                                             <tr key={row.id}>
                                                 <td>
-                                                    {logTime(row.created_at)}
+                                                    <AdminLogTimestamp value={row.created_at} />
                                                 </td>
                                                 <td>
                                                     {row.email}

@@ -765,6 +765,26 @@ it("preserves an unavailable plan filter selection without replacing its submitt
     fireEvent.submit(view.container.querySelector("form")!);
     expect(onApply).toHaveBeenLastCalledWith([{ key: "plan_id", condition: "=", value: "null" }]);
 });
+it("keeps original and edited user date filters in the timezone at form opening", async () => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    const { UserFilters } = await import("./UserFilters");
+    configureTimeZone("America/New_York", true);
+    try {
+        const original = Date.parse("2026-11-01T06:30:37Z") / 1000;
+        const filter = { key: "expired_at", condition: ">=", value: original };
+        const created = { ...filter, key: "created_at" };
+        const onApply = vi.fn();
+        const form = () => <UserFilters initial={[filter, created]} plans={[]} onApply={onApply} />;
+        const view = render(form());
+        expect((screen.getByLabelText("筛选值 1") as HTMLInputElement).value).toContain("2026-11-01T01:30:37");
+        configureTimeZone("UTC", true);
+        view.rerender(form());
+        expect(screen.getByText(/日期按系统业务时区 America\/New_York 输入/)).toBeTruthy();
+        fireEvent.change(screen.getByLabelText("筛选值 2"), { target: { value: "2026-11-01T02:30:37" } });
+        fireEvent.click(screen.getByRole("button", { name: "应用筛选" }));
+        expect(onApply).toHaveBeenCalledWith([filter, { ...created, value: Date.parse("2026-11-01T07:30:37Z") / 1000 }]);
+    } finally { configureTimeZone("Asia/Shanghai", true); }
+});
 it("ignores a late clipboard failure after a different user action has opened details", async () => {
     let reject!: (error: Error) => void;
     vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText: vi.fn(() => new Promise((_, fail) => { reject = fail; })) } });
@@ -2238,6 +2258,34 @@ it("rechecks the grant audience after a same-count scope conflict", async () => 
     expect(api.request).toHaveBeenCalledWith("test-admin/user/usageReset", expect.objectContaining({scope_token:"grant-2",expected_count:1}));
 });
 
+it("uses the timezone captured when a banked reset grant opens for its expiry", async () => {
+    const { configureTimeZone } = await import("../shared/timezone");
+    const { AdminUsageReset } = await import("./AdminUsageReset");
+    configureTimeZone("UTC", true);
+    try {
+        api.request.mockImplementation(async (path: string) => path.endsWith("/usageResetPreview")
+            ? { data: { scope_token: "scope", total: 1, sample: [] } }
+            : { data: { affected: 1 } });
+        const done = vi.fn();
+        render(<AdminUsageReset count={1} filters={[]} onComplete={done} />);
+        configureTimeZone("Asia/Tokyo", true);
+        fireEvent.click(screen.getByRole("button", { name: "批量发放储备重置" }));
+        const dialog = within(await screen.findByRole("dialog", { name: "发放储备重置" }));
+        const expiry = dialog.getByLabelText(/有效期/);
+        fireEvent.change(expiry, { target: { value: "2099-08-18T08:30" } });
+        configureTimeZone("UTC", true);
+        fireEvent.click(dialog.getByRole("button", { name: "检查发放对象" }));
+        await dialog.findByText(/已核对 1 名用户/);
+        expect(dialog.getByText("日期输入使用业务时区：Asia/Tokyo")).toBeTruthy();
+        expect(expiry.title).toBe("业务时区：Asia/Tokyo");
+        fireEvent.click(dialog.getByRole("checkbox"));
+        fireEvent.click(dialog.getByRole("button", { name: "确认发放" }));
+        await waitFor(() => expect(done).toHaveBeenCalledOnce());
+        expect(api.request).toHaveBeenCalledWith("test-admin/user/usageReset", expect.objectContaining({
+            expires_at: Date.parse("2099-08-17T23:30:00Z") / 1000,
+        }));
+    } finally { configureTimeZone("Asia/Shanghai", true); }
+});
 it("keeps a nested row action dialog mounted when the action list closes", async () => {
     const {AdminRowMenu} = await import("./AdminRowMenu");
     const {AdminUsageReset} = await import("./AdminUsageReset");

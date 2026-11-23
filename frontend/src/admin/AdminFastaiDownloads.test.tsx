@@ -159,11 +159,15 @@ it("edits release dates in the business zone and publishes UTC ISO seconds", asy
     const save = vi.fn().mockResolvedValue(undefined);
     const original = { ...release, publishedAt: "2026-10-06T00:00:37Z" };
     try {
-        render(<AdminFastaiDownloads initial={[original]} save={save} />);
+        const view = render(<AdminFastaiDownloads initial={[original]} save={save} />);
         const input = screen.getByLabelText("发布时间") as HTMLInputElement;
         expect(input.type).toBe("datetime-local");
         expect(input.step).toBe("1");
         expect(input.value.replace(/\.0{1,3}$/, "")).toBe("2026-10-06T05:45:37");
+        configureTimeZone("UTC", true);
+        view.rerender(<AdminFastaiDownloads initial={[original]} save={save} />);
+        expect(input.closest("form")?.hasAttribute("data-unsaved")).toBe(false);
+        expect(screen.getByText(/发布时间按业务时区 Asia\/Kathmandu/)).toBeTruthy();
         fireEvent.click(screen.getByText("确认发布 FastAI 下载设置"));
         await waitFor(() => expect(save).toHaveBeenCalledWith([original]));
         fireEvent.change(input, { target: { value: "2026-10-06T06:00:37" } });

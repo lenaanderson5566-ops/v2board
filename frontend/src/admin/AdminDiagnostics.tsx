@@ -7,6 +7,7 @@ import {
 import { admin, bytes, date, request, type Row } from "../shared/api";
 import { Modal, State, useData } from "../shared/ui";
 import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
+import { businessTimeZone } from "../shared/timezone";
 import { AdminSwitch } from "./admin-switch";
 import { ProtocolBadge } from "./ProtocolBadge";
 
@@ -276,8 +277,9 @@ function NodeMaintenanceForm({
 }) {
     const [enabled, setEnabled] = useState(!!initial);
     const [reason, setReason] = useState(initial?.reason || "");
-    const [endsAt, setEndsAt] = useState(
-        dateTimeFieldValue(initial?.endsAt || Math.floor(Date.now() / 1000) + 3600),
+    const [dateInputZone] = useState(businessTimeZone);
+    const [endsAt, setEndsAt] = useState(() =>
+        dateTimeFieldValue(initial?.endsAt || Math.floor(Date.now() / 1000) + 3600, dateInputZone),
     );
     const [hide, setHide] = useState(!!initial?.hideSubscription);
     const [busy, setBusy] = useState(false);
@@ -291,7 +293,7 @@ function NodeMaintenanceForm({
                 if (pending.current) return;
                 let end = 0;
                 try {
-                    if (enabled) end = dateTimeFieldInstant(endsAt, initial?.endsAt) || 0;
+                    if (enabled) end = dateTimeFieldInstant(endsAt, initial?.endsAt, dateInputZone) || 0;
                 } catch (e) {
                     setError((e as Error).message);
                     return;
@@ -343,7 +345,7 @@ function NodeMaintenanceForm({
                 </div>
                 {enabled && (
                     <>
-                        <AdminBusinessTimeZoneNote />
+                        <AdminBusinessTimeZoneNote zone={dateInputZone} />
                         <label>
                             维护原因
                             <input

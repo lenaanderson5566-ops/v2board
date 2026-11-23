@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
 import {
+    act,
     cleanup,
     fireEvent,
     render,
@@ -98,29 +99,72 @@ it("rejects reversed time bounds before querying", async () => {
     fireEvent.click(screen.getByRole("button", { name: "查询" }));
     expect(screen.getByText("结束时间不能早于开始时间")).toBeTruthy();
 });
-it("retains the rolling lower bound in a repeated DST hour and when the business timezone changes", async () => {
-    const { configureTimeZone } = await import("../shared/timezone");
+it("redisplays the applied range and unsubmitted dates across UTC and Shanghai without another request", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
     const now = Date.parse("2026-11-02T05:30:37Z");
     const expectedFrom = now / 1000 - 86400;
+    const expectedTo = Date.parse("2026-11-01T07:45:19Z") / 1000;
     const clock = vi.spyOn(Date, "now").mockReturnValue(now);
-    configureTimeZone("America/New_York", true);
+    configureTimeZone("Asia/Kathmandu", true);
+    setAdminDisplayTimeZone("UTC");
     try {
-        setup();
-        const view = render(<AdminSystemLogs />);
-        await screen.findByText("暂无匹配日志");
+        api.request.mockResolvedValue({ data: [{ id: 1, created_at: expectedFrom, level: "INFO", title: "entry" }], total: 1 });
+        render(<AdminSystemLogs />);
+        await screen.findByRole("cell", { name: /05:30:37/ });
+        const from = screen.getByLabelText("日志开始时间") as HTMLInputElement;
+        const to = screen.getByLabelText("日志结束时间") as HTMLInputElement;
+        const wall = (field: HTMLInputElement) => field.value.replace(/\.0{1,3}$/, "");
         const request = () => new URLSearchParams(String(api.request.mock.calls.at(-1)?.[0]).split("?")[1]);
+        const initialReads = api.request.mock.calls.length;
         expect(request().get("from")).toBe(String(expectedFrom));
-        expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value.replace(/\.0{1,3}$/, "")).toBe("2026-11-01T01:30:37");
+        expect(wall(from)).toBe("2026-11-01T05:30:37");
+        fireEvent.change(to, { target: { value: "2026-11-01T07:45:19" } });
 
-        configureTimeZone("UTC", true);
-        view.rerender(<AdminSystemLogs />);
-        expect(screen.getByText(/此筛选表单使用打开时的业务时区 America\/New_York/)).toBeTruthy();
-        fireEvent.change(screen.getByLabelText("日志级别"), { target: { value: "ERROR" } });
+        act(() => setAdminDisplayTimeZone("Asia/Shanghai"));
+        expect(screen.getByTestId("log-time-zone").textContent).toContain("Asia/Shanghai");
+        expect(wall(from)).toBe("2026-11-01T13:30:37");
+        expect(wall(to)).toBe("2026-11-01T15:45:19");
+        expect(screen.getByText(/13:30:37 至 现在/)).toBeTruthy();
+        const rowTime = screen.getByRole("cell", { name: /13:30:37/ }).querySelector("time");
+        expect(rowTime?.dateTime).toBe(new Date(expectedFrom * 1000).toISOString());
+        expect(rowTime?.title).toContain("UTC+8");
+        expect(api.request.mock.calls).toHaveLength(initialReads);
+        expect(request().has("to")).toBe(false);
+
         fireEvent.click(screen.getByRole("button", { name: "查询" }));
-        await waitFor(() => expect(request().get("level")).toBe("ERROR"));
+        await waitFor(() => expect(request().get("to")).toBe(String(expectedTo)));
         expect(request().get("from")).toBe(String(expectedFrom));
+        const appliedReads = api.request.mock.calls.length;
+        act(() => setAdminDisplayTimeZone("UTC"));
+        expect(wall(to)).toBe("2026-11-01T07:45:19");
+        expect(screen.getByText(/05:30:37 至 .*07:45:19/)).toBeTruthy();
+        expect(api.request.mock.calls).toHaveLength(appliedReads);
     } finally {
         clock.mockRestore();
+        setAdminDisplayTimeZone("business");
+        configureTimeZone("Asia/Shanghai", true);
+    }
+});
+it("retains the precise rolling lower bound during a repeated display-zone hour", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("UTC", true);
+    setAdminDisplayTimeZone("America/New_York");
+    const now = Date.parse("2026-11-02T06:30:37Z");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    try {
+        setup();
+        render(<AdminSystemLogs />);
+        await screen.findByText("暂无匹配日志");
+        const from = screen.getByLabelText("日志开始时间") as HTMLInputElement;
+        expect(from.value.replace(/\.0{1,3}$/, "")).toBe("2026-11-01T01:30:37");
+        fireEvent.change(screen.getByLabelText("日志级别"), { target: { value: "ERROR" } });
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        await waitFor(() => expect(api.request.mock.calls.at(-1)?.[0]).toContain("level=ERROR"));
+        const query = new URLSearchParams(String(api.request.mock.calls.at(-1)?.[0]).split("?")[1]);
+        expect(query.get("from")).toBe(String(now / 1000 - 86400));
+    } finally {
+        clock.mockRestore();
+        setAdminDisplayTimeZone("business");
         configureTimeZone("Asia/Shanghai", true);
     }
 });

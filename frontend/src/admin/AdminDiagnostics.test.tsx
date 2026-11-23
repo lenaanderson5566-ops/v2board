@@ -221,8 +221,10 @@ it("preserves the existing maintenance instant during a DST repeated hour", asyn
         await screen.findByText("当前配置已生效");
         const input = screen.getByLabelText("预计结束时间") as HTMLInputElement;
         expect(input.step).toBe("1");
+        configureTimeZone("UTC", true);
         fireEvent.change(input, { target: { value: "2026-11-01T01:30:37.000" } });
         fireEvent.change(screen.getByLabelText("维护原因"), { target: { value: "Updated" } });
+        expect(screen.getByText(/日期输入使用业务时区：America\/New_York/)).toBeTruthy();
         fireEvent.click(screen.getByRole("button", { name: "保存维护设置" }));
         await screen.findByText("维护设置已保存");
         expect(api.request).toHaveBeenCalledWith("test-admin/server/manage/maintenance", expect.objectContaining({ reason: "Updated", endsAt }));

@@ -83,7 +83,7 @@ export function AdminDisplayTimeZoneDialog({ close }: { close: () => void }) {
                 <div><dt>界面显示时区</dt><dd dir="ltr">{displayTimeZone()}</dd></div>
                 <div><dt>系统业务时区</dt><dd dir="ltr">{business}</dd></div>
             </dl>
-            <p className="muted">日期输入与筛选使用系统业务时区；报表保留各自统计口径。流量重置、定时任务及已有时刻不受界面时区影响。</p>
+            <p className="muted">访问、系统和邮件日志的时间筛选随界面时区切换。业务表单使用系统业务时区，报表沿用各自统计口径。</p>
             <p role="status">{preference.temporary ? "当前浏览器无法保存偏好，仅本次打开期间生效。" : "自动保存至当前浏览器，重新登录同一管理员后仍会保留。"}</p>
             <footer><button type="button" className="primary" onClick={close}>完成</button></footer>
         </div>

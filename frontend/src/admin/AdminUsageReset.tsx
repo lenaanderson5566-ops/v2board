@@ -74,6 +74,7 @@ function ResetForm({
     complete: () => void;
 }) {
     const global = operation.kind === "global";
+    const [dateInputZone] = useState(businessTimeZone);
     const preview = useData(global ? admin("user/usageResetPreview") : "");
     const count = global ? preview.data?.count || 0 : operation.count;
     const [quantity, setQuantity] = useState(1),
@@ -121,7 +122,7 @@ function ResetForm({
                     : {
                           quantity,
                           expires_at: expiry
-                              ? parseDateTimeInput(expiry)
+                              ? parseDateTimeInput(expiry, dateInputZone)
                               : null,
                           filter: operation.filters,
                           scope_token: scope?.scope_token,
@@ -174,7 +175,7 @@ function ResetForm({
                 )}
                 {!global && (
                     <>
-                        <AdminBusinessTimeZoneNote />
+                        <AdminBusinessTimeZoneNote zone={dateInputZone} />
                         <p>
                             向当前筛选范围内的 <strong>{count}</strong>{" "}
                             位用户发放储备次数，用户可在「使用情况」主动使用。
@@ -201,7 +202,7 @@ function ResetForm({
                         <label>
                             有效期（留空为长期有效）
                             <input
-                                title={`业务时区：${businessTimeZone()}`}
+                                title={`业务时区：${dateInputZone}`}
                                 type="datetime-local"
                                 step={1}
                                 value={expiry}

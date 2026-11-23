@@ -18,9 +18,6 @@ const positions: Record<string, string> = {
     dashboard: "用户首页",
     landing: "落地页",
 };
-function localDate(value: number) {
-    return dateTimeFieldValue(value || null);
-}
 function dateLabel(value: number) {
     return value ? formatInstant(value) : "不限";
 }
@@ -168,13 +165,14 @@ export function BannerEditor({
     close: () => void;
     complete: () => void;
 }) {
-    const [draft, setDraft] = useState<Row>({
+    const [dateInputZone] = useState(businessTimeZone);
+    const [draft, setDraft] = useState<Row>(() => ({
         ...initial,
         image_url: bannerImages(initial).desktop,
         mobile_image_url: bannerImages(initial).mobile || "",
-        starts_at: localDate(initial.starts_at),
-        ends_at: localDate(initial.ends_at),
-    });
+        starts_at: dateTimeFieldValue(initial.starts_at || null, dateInputZone),
+        ends_at: dateTimeFieldValue(initial.ends_at || null, dateInputZone),
+    }));
     const [busy, setBusy] = useState(false),
         [uploading, setUploading] = useState(false),
         [error, setError] = useState("");
@@ -235,8 +233,8 @@ export function BannerEditor({
                 sort: Number(draft.sort),
                 mobile_image_url: draft.mobile_image_url || null,
                 target_url: draft.target_url || null,
-                starts_at: dateTimeFieldInstant(draft.starts_at, initial.starts_at),
-                ends_at: dateTimeFieldInstant(draft.ends_at, initial.ends_at),
+                starts_at: dateTimeFieldInstant(draft.starts_at, initial.starts_at, dateInputZone),
+                ends_at: dateTimeFieldInstant(draft.ends_at, initial.ends_at, dateInputZone),
             });
             complete();
         } catch (e) {
@@ -374,7 +372,7 @@ export function BannerEditor({
                         <input disabled={busy || uploading}
                             type="datetime-local"
                             step={1}
-                            title={`业务时区：${businessTimeZone()}`}
+                            title={`业务时区：${dateInputZone}`}
                             value={draft.starts_at}
                             onChange={(e) =>
                                 change("starts_at", e.target.value)
@@ -386,13 +384,13 @@ export function BannerEditor({
                         <input disabled={busy || uploading}
                             type="datetime-local"
                             step={1}
-                            title={`业务时区：${businessTimeZone()}`}
+                            title={`业务时区：${dateInputZone}`}
                             value={draft.ends_at}
                             onChange={(e) => change("ends_at", e.target.value)}
                         />
                     </label>
                 </div>
-                <small>时间按系统业务时区 {businessTimeZone()} 填写；留空表示不限制。</small>
+                <small>时间按系统业务时区 {dateInputZone} 填写，留空表示不限制。</small>
                 <label style={{ display: "flex", alignItems: "center" }}>
                     <input disabled={busy || uploading}
                         type="checkbox"

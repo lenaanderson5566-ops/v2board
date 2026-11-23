@@ -149,9 +149,9 @@ it("keeps unsaved text during upload and saves positions, languages and minute t
     expect(body.image_url).toBe("/uploaded.png");
     expect(body.placements).toEqual(["dashboard", "landing"]);
     expect(body.languages).toEqual(["en-US"]);
-    const { parseDateTimeInput } = await import("../shared/timezone");
+    const { businessTimeZone, parseDateTimeInput } = await import("../shared/timezone");
     expect(body.starts_at).toBe(
-        parseDateTimeInput("2026-10-05T12:34"),
+        parseDateTimeInput("2026-10-05T12:34", businessTimeZone()),
     );
 });
 it("allows saving a draft after upload fails", async () => {
@@ -240,8 +240,9 @@ it("preserves exact banner instants during a DST repeated hour while editing its
     try {
         render(<BannerEditor initial={{ title: "Original", image_url: "/before.png", placements: ["dashboard"], languages: [], sort: 0, show: true, starts_at, ends_at }} close={vi.fn()} complete={vi.fn()} />);
         expect((screen.getByLabelText("上线时间") as HTMLInputElement).step).toBe("1");
-        expect(screen.getByText(/系统业务时区 America\/New_York/)).toBeTruthy();
+        configureTimeZone("UTC", true);
         fireEvent.change(screen.getByLabelText("标题 / 图片替代文本"), { target: { value: "Changed" } });
+        expect(screen.getByText(/系统业务时区 America\/New_York/)).toBeTruthy();
         fireEvent.change(screen.getByLabelText("下线时间"), { target: { value: "2026-11-01T01:30:37.000" } });
         fireEvent.click(screen.getByRole("button", { name: "保存" }));
         await waitFor(() => expect(mocks.request).toHaveBeenCalledWith("admin/banner/save", expect.objectContaining({ title: "Changed", starts_at, ends_at })));

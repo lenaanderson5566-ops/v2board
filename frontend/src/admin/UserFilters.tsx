@@ -22,9 +22,10 @@ export function UserFilters({
     plansError?: string;
     onApply: (filters: UserFilter[]) => void;
 }) {
+    const [dateInputZone] = useState(businessTimeZone);
     const [draft, setDraft] = useState<Array<UserFilter & { original?: unknown }>>(
-            initial.map((filter) => {
-                return { ...filter, original: filter.value, value: ["expired_at", "created_at"].includes(filter.key) ? dateTimeFieldValue(filter.value) : filter.value };
+            () => initial.map((filter) => {
+                return { ...filter, original: filter.value, value: ["expired_at", "created_at"].includes(filter.key) ? dateTimeFieldValue(filter.value, dateInputZone) : filter.value };
             }),
         ),
         [error, setError] = useState("");
@@ -42,7 +43,7 @@ export function UserFilters({
                 try {
                     onApply(normalizeUserFilters(draft.map(({ original, ...filter }) => {
                         if (!["expired_at", "created_at"].includes(filter.key)) return filter;
-                        return { ...filter, value: dateTimeFieldInstant(filter.value, original) ?? "" };
+                        return { ...filter, value: dateTimeFieldInstant(filter.value, original, dateInputZone) ?? "" };
                     })));
                 } catch (err) {
                     setError((err as Error).message);
@@ -50,7 +51,7 @@ export function UserFilters({
             }}
         >
             <p className="muted">
-                多个条件同时满足。流量单位为 GiB，日期按系统业务时区 {businessTimeZone()} 输入。
+                多个条件同时满足。流量单位为 GiB，日期按系统业务时区 {dateInputZone} 输入。
             </p>
             {draft.map((f, i) => {
                 const spec = userFilterFields.find(([key]) => key === f.key)!;

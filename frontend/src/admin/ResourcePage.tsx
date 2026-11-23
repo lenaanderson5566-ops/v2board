@@ -442,7 +442,7 @@ export function ResourcePage({
                 }
             >
                 {actionBusy && <div className="admin-refresh-note" role="status" data-saving="true">正在提交操作…</div>}
-                {logKind && <AdminLogTimeZone />}
+                {logKind && <AdminLogTimeZone logFilters />}
                 {kind === "access-logs-risk" && <AdminChoiceGroup label="风控命中视图" value={riskView}
                     options={[{value: "grouped", label: "合并事件"}, {value: "pending", label: "待复核原始记录"}]}
                     onChange={value => { setRiskView(value); setRiskMessage(""); }} />}

@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { AdminLogFilters } from "./AdminLogFilters";
 vi.hoisted(() => {
     window.FASTAI = { mode: "admin" } as typeof window.FASTAI;
@@ -64,20 +64,20 @@ it("rejects reversed ranges without sending a query", () => {
 });
 
 it("uses the configured zone for filters without repeating it on labels", async () => {
-    const { configureTimeZone, setDisplayTimeZone } = await import("../shared/timezone");
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
     const { AdminLogTimeZone, logTime } = await import("./admin-log-time");
-    configureTimeZone("Asia/Kathmandu", true);
-    setDisplayTimeZone("America/New_York");
+    configureTimeZone("America/New_York", true);
+    setAdminDisplayTimeZone("Asia/Kathmandu");
     const apply = vi.fn();
     const at = Date.parse("2026-10-19T00:00:00Z") / 1000;
-    const view = render(<><AdminLogTimeZone /><AdminLogFilters kind="login" initialFilters={{from: at}} onApply={apply}/><span>{logTime(at)}</span></>);
-    expect(screen.getAllByText(/Asia\/Kathmandu/)).toHaveLength(1);
-    expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value).toBe("2026-10-19T05:45");
-    expect(view.container.textContent).not.toMatch(/GMT|UTC/);
-    fireEvent.click(screen.getByRole("button", {name:"查询"}));
-    expect(apply).toHaveBeenCalledWith({from:at});
-    configureTimeZone("Asia/Shanghai", true);
-    setDisplayTimeZone(null);
+    try {
+        const view = render(<><AdminLogTimeZone logFilters /><AdminLogFilters kind="login" initialFilters={{from: at}} onApply={apply}/><span>{logTime(at)}</span></>);
+        expect(screen.getByTestId("log-time-zone").textContent).toBe("日志时间与筛选时区：Asia/Kathmandu");
+        expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value).toBe("2026-10-19T05:45");
+        expect(view.container.textContent).not.toMatch(/GMT|UTC/);
+        fireEvent.click(screen.getByRole("button", {name:"查询"}));
+        expect(apply).toHaveBeenCalledWith({from:at});
+    } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai", true); }
 });
 
 it("uses one timezone hint for the workspace and formats ISO dates without a suffix", async () => {
@@ -124,20 +124,20 @@ it("formats ISO and numeric log timestamps through the same system-zone renderer
     setDisplayTimeZone(null);
 });
 
-it("restores explicit ISO filter times in the business zone without losing seconds", async () => {
-    const { configureTimeZone, setDisplayTimeZone } = await import("../shared/timezone");
-    configureTimeZone("Asia/Kathmandu", true);
-    setDisplayTimeZone("America/New_York");
+it("restores explicit ISO filter times in the display zone without losing seconds", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("America/New_York", true);
+    setAdminDisplayTimeZone("Asia/Kathmandu");
     const at = Date.parse("2026-10-19T00:00:37Z") / 1000;
     const apply = vi.fn();
-    render(<AdminLogFilters kind="login" initialFilters={{ from: "2026-10-19T00:00:37Z", to: at + 60 }} onApply={apply} />);
-    const from = screen.getByLabelText("日志开始时间") as HTMLInputElement;
-    expect(from.value.replace(/\.0{1,3}$/, "")).toBe("2026-10-19T05:45:37");
-    expect(from.step).toBe("1");
-    fireEvent.click(screen.getByRole("button", { name: "查询" }));
-    expect(apply).toHaveBeenCalledWith({ from: at, to: at + 60 });
-    configureTimeZone("Asia/Shanghai", true);
-    setDisplayTimeZone(null);
+    try {
+        render(<AdminLogFilters kind="login" initialFilters={{ from: "2026-10-19T00:00:37Z", to: at + 60 }} onApply={apply} />);
+        const from = screen.getByLabelText("日志开始时间") as HTMLInputElement;
+        expect(from.value.replace(/\.0{1,3}$/, "")).toBe("2026-10-19T05:45:37");
+        expect(from.step).toBe("1");
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(apply).toHaveBeenCalledWith({ from: at, to: at + 60 });
+    } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai", true); }
 });
 it("compares parsed instants when the range mixes minute and second precision", async () => {
     const { configureTimeZone } = await import("../shared/timezone");
@@ -163,7 +163,7 @@ it("rejects ambiguous DST filter times without sending a query", async () => {
     configureTimeZone("Asia/Shanghai", true);
 });
 
-it("keeps log queries in the business zone when displayed event dates use another zone", async () => {
+it("interprets typed log queries in the same display zone as the event", async () => {
     const { configureTimeZone, setAdminDisplayTimeZone, formatInstant } = await import("../shared/timezone");
     configureTimeZone("America/New_York", true);
     setAdminDisplayTimeZone("Asia/Kathmandu");
@@ -172,13 +172,76 @@ it("keeps log queries in the business zone when displayed event dates use anothe
     try {
         render(<AdminLogFilters kind="login" initialFilters={{ from: at }} onApply={apply} />);
         expect(formatInstant(at)).toContain("18:19:37");
-        expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value.replace(/\.0{1,3}$/, "")).toBe("2026-07-01T08:34:37");
+        expect((screen.getByLabelText("日志开始时间") as HTMLInputElement).value.replace(/\.0{1,3}$/, "")).toBe("2026-07-01T18:19:37");
         fireEvent.click(screen.getByRole("button", { name: "查询" }));
         expect(apply).toHaveBeenCalledWith({ from: at });
-        fireEvent.change(screen.getByLabelText("日志开始时间"), { target: { value: "2026-07-01T09:34:37" } });
+        fireEvent.change(screen.getByLabelText("日志开始时间"), { target: { value: "2026-07-01T19:19:37" } });
         fireEvent.click(screen.getByRole("button", { name: "查询" }));
         expect(apply).toHaveBeenLastCalledWith({ from: at + 3600 });
     } finally { setAdminDisplayTimeZone("business"); configureTimeZone("Asia/Shanghai", true); }
+});
+
+it("converts the access-log range and its pending edit without applying a new query", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("UTC");
+    const apply = vi.fn();
+    const at = Date.parse("2026-07-01T20:34:37Z") / 1000;
+    try {
+        render(<AdminLogFilters kind="subscribe" initialFilters={{ from: at }} onApply={apply} />);
+        const from = screen.getByLabelText<HTMLInputElement>("日志开始时间");
+        const to = screen.getByLabelText<HTMLInputElement>("日志结束时间");
+        expect(from.value).toContain("2026-07-01T20:34:37");
+        fireEvent.change(to, { target: { value: "2026-07-01T21:34:37" } });
+        act(() => setAdminDisplayTimeZone("business"));
+        expect(from.value).toContain("2026-07-02T04:34:37");
+        expect(to.value).toContain("2026-07-02T05:34:37");
+        expect(apply).not.toHaveBeenCalled();
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(apply).toHaveBeenCalledWith({ from: at, to: at + 3600 });
+    } finally { setAdminDisplayTimeZone("business"); }
+});
+
+it("shows the event's display offset without changing the underlying instant", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    const { AdminLogTimestamp } = await import("./admin-log-time");
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("UTC");
+    const iso = "2026-07-01T20:34:37.000Z";
+    try {
+        const at = Date.parse(iso) / 1000;
+        const view = render(<AdminLogTimestamp value={at} />);
+        let timestamp = view.container.querySelector("time");
+        expect(timestamp?.dateTime).toBe(iso);
+        expect(timestamp?.textContent).toContain("20:34:37");
+        expect(timestamp?.title).toBe("显示时区 UTC");
+        setAdminDisplayTimeZone("business");
+        view.rerender(<AdminLogTimestamp value={at} />);
+        timestamp = view.container.querySelector("time");
+        expect(timestamp?.dateTime).toBe(iso);
+        expect(timestamp?.textContent).toContain("04:34:37");
+        expect(timestamp?.title).toBe("显示时区 Asia/Shanghai · UTC+8");
+    } finally { setAdminDisplayTimeZone("business"); }
+});
+
+it("asks for a new entry when a pending wall clock was ambiguous in the previous zone", async () => {
+    const { configureTimeZone, setAdminDisplayTimeZone } = await import("../shared/timezone");
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("America/New_York");
+    const apply = vi.fn();
+    try {
+        render(<AdminLogFilters kind="risk" onApply={apply} />);
+        const from = screen.getByLabelText<HTMLInputElement>("日志开始时间");
+        fireEvent.change(from, { target: { value: "2026-11-01T01:30:37" } });
+        act(() => setAdminDisplayTimeZone("UTC"));
+        expect(from.value).toContain("2026-11-01T01:30:37");
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(screen.getByRole("alert").textContent).toContain("请按当前时区 UTC 重新输入");
+        expect(apply).not.toHaveBeenCalled();
+        fireEvent.change(from, { target: { value: "2026-11-01T05:30:37" } });
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        expect(apply).toHaveBeenCalledWith({ from: Date.parse("2026-11-01T05:30:37Z") / 1000 });
+    } finally { setAdminDisplayTimeZone("business"); }
 });
 
 it("preserves both distinct applied instants inside a DST repeated hour", async () => {

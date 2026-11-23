@@ -31,18 +31,19 @@ function AdminWorkspaceContent({ path, user, logout }: { path: string; user: Row
     useSyncExternalStore(subscribeTimeZone, timeZoneSnapshot, timeZoneSnapshot);
     const route = adminPage(path);
     const current = route.split("?", 1)[0];
+    const section = adminRoot(current);
     return (
         <EditorFieldContext.Provider value={adminEditorField}>
             <AdminShell
                 page={adminTabRoute(route)}
-                current={adminRoot(current)}
+                current={section}
                 user={user}
                 logout={() => {
                     clearListViews();
                     logout();
                 }}
             >
-                <AdminTimeZoneScope>
+                <AdminTimeZoneScope logFilters={["access-logs", "system-log", "mail-logs"].includes(section)}>
                     <AdminContent route={route} />
                 </AdminTimeZoneScope>
             </AdminShell>

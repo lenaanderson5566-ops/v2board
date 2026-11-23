@@ -1,12 +1,11 @@
 import { AdminPager } from "./AdminPager";
 import { formatDuration } from "../shared/number-format";
 import { StatusBadge, type StatusTone } from "../shared/StatusBadge";
-import { AdminLogTimeZone, logTime } from "./admin-log-time";
+import { AdminLogTimestamp, AdminLogTimeZone, logTime } from "./admin-log-time";
 import { TableViewport } from "../shared/ui";
 import { AdminFilterBar } from "./AdminFilterBar";
+import { useAdminLogDateRange } from "./use-admin-log-date-range";
 
-import { dateTimeFieldInstant, dateTimeFieldValue } from "../shared/date-time-field";
-import { inputTimeZone } from "../shared/timezone";
 import { useState } from "react";
 import { admin, type Row } from "../shared/api";
 import { Panel, Reload, State, useData } from "../shared/ui";
@@ -25,24 +24,13 @@ const levels = [
     "ALERT",
     "EMERGENCY",
 ];
-type Filters = {
-    level: string;
-    status: string;
-    request_id: string;
-    from: number | null;
-    to: number | null;
-};
-type FilterDraft = Omit<Filters, "from" | "to"> & { from: string; to: string };
-const empty: Filters = {
+const emptyDraft = {
     level: "",
     status: "",
     request_id: "",
-    from: null,
-    to: null,
 };
-function toDraft(filters: Filters, zone: string): FilterDraft {
-    return { ...filters, from: dateTimeFieldValue(filters.from, zone), to: dateTimeFieldValue(filters.to, zone) };
-}
+type Filters = typeof emptyDraft & { from: number | null; to: number | null };
+const empty: Filters = { ...emptyDraft, from: null, to: null };
 function recent(): Filters {
     const requestId = new URLSearchParams(
         window.location.hash.split("?")[1] || "",
@@ -54,8 +42,8 @@ function recent(): Filters {
 export function AdminSystemLogs() {
     const [pageSize, setPageSize] = useState(20);
     const [filters, setFilters] = useState<Filters>(recent);
-    const [dateInputZone] = useState(inputTimeZone);
-    const [draft, setDraft] = useState(() => toDraft(filters, dateInputZone));
+    const dates = useAdminLogDateRange(filters);
+    const [draft, setDraft] = useState(() => ({ ...emptyDraft, request_id: filters.request_id }));
     const [page, setPage] = useState(1), [error, setError] = useState("");
     const query = new URLSearchParams({
         current: String(page),
@@ -72,9 +60,7 @@ export function AdminSystemLogs() {
                     <Reload onClick={logs.reload} loading={logs.loading} />
                 }
             >
-                <AdminLogTimeZone />
-                {dateInputZone !== inputTimeZone() &&
-                    <p className="admin-log-note muted">此筛选表单使用打开时的业务时区 {dateInputZone}。</p>}
+                <AdminLogTimeZone logFilters />
                 <AdminFilterBar
                     className="admin-log-filters"
                     onSubmit={(e) => {
@@ -86,8 +72,8 @@ export function AdminSystemLogs() {
                             return;
                         }
                         try {
-                            const from = dateTimeFieldInstant(draft.from, filters.from, dateInputZone);
-                            const to = dateTimeFieldInstant(draft.to, filters.to, dateInputZone);
+                            const from = dates.instant("from");
+                            const to = dates.instant("to");
                             if (from != null && to != null && from > to)
                                 throw new Error("结束时间不能早于开始时间");
                             setError("");
@@ -104,10 +90,8 @@ export function AdminSystemLogs() {
                             aria-label="日志开始时间"
                             type="datetime-local"
                             step={1}
-                            value={draft.from}
-                            onChange={(e) =>
-                                setDraft({ ...draft, from: e.target.value })
-                            }
+                            value={dates.value("from")}
+                            onChange={(e) => dates.change("from", e.target.value)}
                         />
                     </label>
                     <label>
@@ -116,10 +100,8 @@ export function AdminSystemLogs() {
                             aria-label="日志结束时间"
                             type="datetime-local"
                             step={1}
-                            value={draft.to}
-                            onChange={(e) =>
-                                setDraft({ ...draft, to: e.target.value })
-                            }
+                            value={dates.value("to")}
+                            onChange={(e) => dates.change("to", e.target.value)}
                         />
                     </label>
                     <label>
@@ -170,7 +152,8 @@ export function AdminSystemLogs() {
                         <button
                             type="button"
                             onClick={() => {
-                                setDraft(toDraft(empty, dateInputZone));
+                                setDraft(emptyDraft);
+                                dates.reset();
                                 setFilters(empty);
                                 setPage(1);
                                 setError("");
@@ -203,7 +186,7 @@ export function AdminSystemLogs() {
                             <tbody>
                                 {logs.data?.map((r) => (
                                     <tr key={r.id}>
-                                        <td>{time(r.created_at)}</td>
+                                        <td><AdminLogTimestamp value={r.created_at} /></td>
                                         <td>
                                             <StatusBadge tone={levelTones[r.level] || "neutral"}>{r.level || "—"}</StatusBadge>
                                             <br />

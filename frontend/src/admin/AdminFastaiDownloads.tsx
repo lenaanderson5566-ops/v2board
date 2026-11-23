@@ -1,6 +1,7 @@
 import { useRef, useState, type FormEvent } from "react";
 import type { FastaiCatalogRelease } from "../shared/api";
 import { dateTimeFieldValue, dateTimeFieldInstant } from "../shared/date-time-field";
+import { businessTimeZone } from "../shared/timezone";
 import { FastaiInstallerPicker } from "./FastaiInstallerPicker";
 
 const platforms = {
@@ -45,8 +46,8 @@ function compareVersion(a: string, b: string) {
     return x === y ? 0 : x < y ? -1 : 1;
 }
 
-const toDraft = (releases: FastaiCatalogRelease[]): ReleaseDraft[] =>
-    releases.map(release => ({ ...release, publishedAtInput: dateTimeFieldValue(release.publishedAt) }));
+const toDraft = (releases: FastaiCatalogRelease[], zone: string): ReleaseDraft[] =>
+    releases.map(release => ({ ...release, publishedAtInput: dateTimeFieldValue(release.publishedAt, zone) }));
 const targetLabel = (release: FastaiCatalogRelease) => `${platforms[release.platform]} · ${release.architecture}`;
 const releaseFingerprint = (release: FastaiCatalogRelease) => JSON.stringify(
     Object.entries({ ...release, releaseNotes: release.releaseNotes ?? null }).sort(([a], [b]) => a.localeCompare(b)),
@@ -74,13 +75,14 @@ export function AdminFastaiDownloads({
     save: (releases: FastaiCatalogRelease[], revision?: string) => Promise<void>;
     reload?: () => Promise<CatalogSnapshot>;
 }) {
-    const [releases, setReleases] = useState<ReleaseDraft[]>(() => toDraft(initial));
+    const [dateInputZone] = useState(businessTimeZone);
+    const [releases, setReleases] = useState<ReleaseDraft[]>(() => toDraft(initial, dateInputZone));
     const [revision, setRevision] = useState(initialRevision);
     const baseline = useRef(initial);
     const [loadedMinimum, setLoadedMinimum] = useState<string | null | undefined>(undefined);
     const policyMinimum = loadedMinimum === undefined ? globalMinimum : loadedMinimum;
     const [needsReload, setNeedsReload] = useState(false);
-    const dirty = JSON.stringify(releases) !== JSON.stringify(toDraft(baseline.current));
+    const dirty = JSON.stringify(releases) !== JSON.stringify(toDraft(baseline.current, dateInputZone));
     const currentDraft = useRef(releases);
     currentDraft.current = releases;
     const [busy, setBusy] = useState(false);
@@ -95,7 +97,7 @@ export function AdminFastaiDownloads({
     const blockers = releases.map(({ publishedAtInput, ...release }, index) => {
         if (unsupported[index]) {
             const previous = baseline.current.find(item => targetLabel(item) === targetLabel(release));
-            return previous && publishedAtInput === dateTimeFieldValue(previous.publishedAt)
+            return previous && publishedAtInput === dateTimeFieldValue(previous.publishedAt, dateInputZone)
                 && releaseFingerprint(previous) === releaseFingerprint(release)
                 ? null
                 : "此平台与架构组合不在发布目标中。旧条目仅可原样保留或移除。";
@@ -111,7 +113,7 @@ export function AdminFastaiDownloads({
 
     function adoptCatalog(catalog: CatalogSnapshot) {
         baseline.current = catalog.releases;
-        setReleases(toDraft(catalog.releases));
+        setReleases(toDraft(catalog.releases, dateInputZone));
         setRevision(catalog.revision);
         setLoadedMinimum(catalog.globalMinimum ?? null);
         setNeedsReload(false);
@@ -135,7 +137,7 @@ export function AdminFastaiDownloads({
     }
     function update(index: number, values: Partial<ReleaseDraft>) {
         const changes = values.publishedAt === undefined ? values : {
-            ...values, publishedAtInput: dateTimeFieldValue(values.publishedAt),
+            ...values, publishedAtInput: dateTimeFieldValue(values.publishedAt, dateInputZone),
         };
         setReleases((items) =>
             items.map((item, i) => {
@@ -154,7 +156,7 @@ export function AdminFastaiDownloads({
         setMessage("");
         try {
             const catalog = releases.map(({ publishedAtInput, ...release }) => {
-                const at = dateTimeFieldInstant(publishedAtInput, release.publishedAt);
+                const at = dateTimeFieldInstant(publishedAtInput, release.publishedAt, dateInputZone);
                 if (at == null) throw new Error("请填写发布时间");
                 return { ...release, publishedAt: new Date(at * 1000).toISOString().replace(/\.000Z$/, "Z") };
             });
@@ -192,7 +194,7 @@ export function AdminFastaiDownloads({
                 <p className="muted">
                     Windows、Android、macOS 和 Linux 可各发布一个通用安装包，也可按架构分别发布。可上传本地文件或填写外部
                     HTTPS 链接。上传和选择只修改草稿，确认发布后才更新用户下载及
-                    App 更新策略。发布时间用于展示，确认发布后立即生效。iOS 继续使用下方原有设置。
+                    App 更新策略。发布时间按业务时区 {dateInputZone} 填写，仅用于展示，确认发布后立即生效。iOS 继续使用下方原有设置。
                 </p>
                 <fieldset
                     disabled={busy || needsReload || picker !== null}
@@ -325,6 +327,7 @@ export function AdminFastaiDownloads({
                                         required
                                         type="datetime-local"
                                         step={1}
+                                        title={`业务时区：${dateInputZone}`}
                                         value={release.publishedAtInput}
                                         onChange={(e) =>
                                             update(index, {
@@ -419,7 +422,7 @@ export function AdminFastaiDownloads({
                                         downloadUrl: "",
                                         sha256: "",
                                         publishedAt,
-                                        publishedAtInput: dateTimeFieldValue(publishedAt),
+                                        publishedAtInput: dateTimeFieldValue(publishedAt, dateInputZone),
                                         releaseNotes: "",
                                     },
                                 ]);

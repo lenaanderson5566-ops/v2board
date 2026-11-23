@@ -3,7 +3,7 @@ import { formatNumber, formatPercent } from "../shared/number-format";
 import { languages } from "../shared/language-options";
 import { admin, bytes, date, money, ops, type Row } from "../shared/api";
 import type { Field } from "../shared/ui";
-import { logTime } from "./admin-log-time";
+import { AdminLogTimestamp, logTime } from "./admin-log-time";
 import { AdminSubscriptionExpiry, hasRecordedPeriodicPlan } from "./AdminSubscriptionExpiry";
 import { AdminRiskReview } from "./AdminRiskReview";
 import { AdminUserActivityLink } from "./AdminUserActivity";
@@ -703,7 +703,7 @@ export const resources: Record<string, Resource> = {
                     <span className="admin-ua-text">{r.recognized_client && <strong>{r.recognized_client.name} · </strong>}{r.user_agent || "—"}</span>
                 ),
             ],
-            ["created_at", "创建时间", (r) => logTime(r.created_at)],
+            ["created_at", "创建时间", (r) => <AdminLogTimestamp value={r.created_at} />],
         ],
         fields: [],
     },
@@ -760,7 +760,7 @@ export const resources: Record<string, Resource> = {
                     <span className="admin-ua-text">{r.recognized_client && <strong>{r.recognized_client.name} · </strong>}{r.user_agent || "—"}</span>
                 ),
             ],
-            ["created_at", "创建时间", (r) => logTime(r.created_at)],
+            ["created_at", "创建时间", (r) => <AdminLogTimestamp value={r.created_at} />],
         ],
         fields: [],
     },
@@ -777,7 +777,8 @@ export const resources: Record<string, Resource> = {
             ],
             ["ip", "IP"],
             ["node", "节点"],
-            ["connected_at", "连接时间", (r) => logTime(r.connected_at)],
+            ["connected_at", "上报记录时间", (r) => <AdminLogTimestamp value={r.connected_at}
+                description="根据节点上报采样记录在线连接。" />],
         ],
         fields: [],
     },
@@ -801,8 +802,8 @@ export const resources: Record<string, Resource> = {
                 (r) => <AdminRiskReview key={r.id} row={r} />,
             ],
             ["hit_count", "命中次数"],
-            ["first_hit_at", "首次命中", (r) => logTime(r.first_hit_at)],
-            ["hit_at", "最后命中", (r) => logTime(r.hit_at)],
+            ["first_hit_at", "首次命中", (r) => <AdminLogTimestamp value={r.first_hit_at} />],
+            ["hit_at", "最后命中", (r) => <AdminLogTimestamp value={r.hit_at} />],
         ],
         fields: [],
     },

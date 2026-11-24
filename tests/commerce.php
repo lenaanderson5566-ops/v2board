@@ -242,16 +242,19 @@ try {
         && $orderDetail($ambiguousPending)['pending_purchase_context']==='unknown',
         'A later payment or a later same-second ID must not backdate paid history; an earlier undated order leaves context unknown');
     $repeatContext = $orderDetail($repeatPending);
-    $assert($repeatContext['pending_purchase_context']==='repeat'
+    $assert($repeatContext['checkout_purchase_context']==='repeat' && $repeatContext['pending_purchase_context']==='repeat'
         && $orderPage($pendingBuyer, 1)->get($repeatPending->id)['pending_purchase_context']==='repeat'
         && $repeatContext['status']===0 && !isset($repeatContext['purchase_stage'])
         && !isset($repeatContext['repurchase_expiry_status']),
         'A confirmed wallet-only payment already known at checkout makes a pending cycle order a repeat without asserting payment or expiry');
-    $assert(!isset($orderDetail($wallet)['pending_purchase_context']),
-        'A confirmed recurring payment received pending-only context');
+    $walletDetail = $orderDetail($wallet);
+    $assert(!isset($walletDetail['pending_purchase_context']) && !isset($walletDetail['checkout_purchase_context']),
+        'A confirmed recurring payment received unconfirmed checkout context');
     foreach ([['type'=>2], ['type'=>3], ['period'=>'reset_price'], ['credit_bytes'=>5], ['total_amount'=>0, 'balance_amount'=>0]] as $otherKind) {
         $notApplicable = $makeStageOrder($pendingBuyer, $otherKind + $pendingTerm);
         $assert(!isset($orderDetail($notApplicable)['pending_purchase_context']), 'Pending context was attached to an ineligible checkout type');
+        $notApplicable->update(['status'=>2]);
+        $assert(!isset($orderDetail($notApplicable)['checkout_purchase_context']), 'Cancellation changed the category of a renewal, plan switch, reset, credit or zero-value order');
     }
     $undatedCheckout = $makeStageOrder($pendingBuyer, ['created_at'=>0] + $pendingTerm);
     $assert($orderDetail($undatedCheckout)['pending_purchase_context']==='unknown', 'Missing checkout time must not prove a new purchase');
@@ -266,6 +269,33 @@ try {
             && $pageModels[1]->pending_purchase_context==='unknown' && !isset($stale->pending_purchase_context) && !isset($stale->purchase_stage),
             'A pending page must batch historical lookups and skip a row that changed status after the page was read');
     } finally { DB::disableQueryLog(); }
+
+    $ambiguousPending->update(['status'=>2]);
+    $cancelledUnknown = $orderDetail($ambiguousPending);
+    $assert($cancelledUnknown['checkout_purchase_context']==='unknown' && !isset($cancelledUnknown['pending_purchase_context'])
+        && !isset($cancelledUnknown['purchase_stage']), 'Cancelling a checkout with undated purchase history turned uncertainty into a paid fact');
+
+    $cancelBuyer = $makeStageBuyer(0);
+    $cancelBuyer->update(['balance'=>100000]);
+    $earlyCheckout = $makeStageOrder($cancelBuyer, ['status'=>2, 'created_at'=>$stageNow-3*365*86400, 'paid_at'=>null]);
+    $makeStageOrder($cancelBuyer, ['total_amount'=>0, 'balance_amount'=>500, 'created_at'=>$stageNow-86401, 'paid_at'=>$stageNow-86400]);
+    $assert($orderDetail($earlyCheckout)['checkout_purchase_context']==='new',
+        'A payment made years later was counted as history for an old cancelled checkout');
+    $returningCheckout = $save($cancelBuyer);
+    $pendingSnapshot = $returningCheckout->fresh();
+    $reserved = $returningCheckout->balance_amount;
+    $assert($returningCheckout->type===1 && $returningCheckout->total_amount===0 && $reserved>0
+        && (new OrderService($returningCheckout))->cancel() && $cancelBuyer->fresh()->balance===100000,
+        'Expected a genuine cancelled wallet-funded returning checkout with its reservation refunded');
+    App\Services\AdminOrderPurchaseStage::append(collect([$pendingSnapshot]));
+    $assert(!isset($pendingSnapshot->checkout_purchase_context) && !isset($pendingSnapshot->pending_purchase_context),
+        'A stale pending page was classified from a newly cancelled order');
+    $cancelledRepeat = $orderDetail($returningCheckout);
+    $assert($cancelledRepeat['status']===2 && $cancelledRepeat['checkout_purchase_context']==='repeat'
+        && $orderPage($cancelBuyer, 1)->get($returningCheckout->id)['checkout_purchase_context']==='repeat'
+        && $cancelledRepeat['balance_amount']===$reserved && !isset($cancelledRepeat['purchase_stage'])
+        && !isset($cancelledRepeat['repurchase_expiry_status']) && !isset($cancelledRepeat['pending_purchase_context']),
+        'List and detail must classify earlier wallet-funded purchases without treating the cancelled checkout as a settled payment');
 
     foreach ([3=>null, 4=>0] as $historicalStatus => $unknownPaidAt) {
         $legacyBuyer = $makeStageBuyer($priorExpiry);

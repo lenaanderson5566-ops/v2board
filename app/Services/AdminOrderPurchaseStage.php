@@ -7,12 +7,15 @@ use Illuminate\Support\Collection;
 
 final class AdminOrderPurchaseStage
 {
+    private const UNCONFIRMED_STATUSES = [0, 2];
+
     /** @param Collection<int, Order> $orders */
     public static function append(Collection $orders): void
     {
-        $pending = $orders->filter(static fn (Order $order) => (int)$order->status === 0 && (int)$order->type === 1);
-        if ($pending->isNotEmpty()) {
-            self::appendPendingContext($pending);
+        $checkouts = $orders->filter(static fn (Order $order) =>
+            (int)$order->type === 1 && in_array((int)$order->status, self::UNCONFIRMED_STATUSES, true));
+        if ($checkouts->isNotEmpty()) {
+            self::appendCheckoutContext($checkouts);
         }
         $orders = $orders->filter(static fn (Order $order) =>
             in_array((int)$order->status, RecurringOrderPurchase::CONFIRMED_STATUSES, true) && (int)$order->paid_at > 0);
@@ -59,27 +62,30 @@ final class AdminOrderPurchaseStage
         }
     }
 
-    private static function appendPendingContext(Collection $orders): void
+    private static function appendCheckoutContext(Collection $orders): void
     {
-        $pending = RecurringOrderPurchase::valuedTerm()
-            ->whereIn('o.id', $orders->pluck('id'))->where('o.status', 0)->where('o.type', 1)
-            ->select('o.id', 'o.user_id', 'o.created_at')
+        $checkouts = RecurringOrderPurchase::valuedTerm()
+            ->whereIn('o.id', $orders->pluck('id'))->whereIn('o.status', self::UNCONFIRMED_STATUSES)->where('o.type', 1)
+            ->select('o.id', 'o.user_id', 'o.status', 'o.created_at')
             ->selectSub(RecurringOrderPurchase::prior(atCheckout: true)->selectRaw('1')->limit(1), 'has_prior_purchase')
             ->selectSub(RecurringOrderPurchase::potentiallyPriorUndated(atCheckout: true)->selectRaw('1')->limit(1), 'has_undated_purchase')
             ->get()->keyBy('id');
 
         foreach ($orders as $order) {
-            $row = $pending->get($order->id);
-            if (!$row || (int)$row->user_id !== (int)$order->user_id ||
+            $row = $checkouts->get($order->id);
+            if (!$row || (int)$row->status !== (int)$order->status || (int)$row->user_id !== (int)$order->user_id ||
                 (int)$row->created_at !== (int)$order->getRawOriginal('created_at')) {
                 continue;
             }
-            $order['pending_purchase_context'] = match (true) {
+            $order['checkout_purchase_context'] = match (true) {
                 (int)$row->created_at <= 0 => 'unknown',
                 (bool)$row->has_prior_purchase => 'repeat',
                 (bool)$row->has_undated_purchase => 'unknown',
                 default => 'new',
             };
+            if ((int)$row->status === 0) {
+                $order['pending_purchase_context'] = $order['checkout_purchase_context'];
+            }
         }
     }
 }

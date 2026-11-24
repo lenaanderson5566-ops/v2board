@@ -30,8 +30,8 @@ function isCreditOrder(order: Row): boolean {
     return order.period === "onetime_price" || Number(order.credit_bytes ?? 0) > 0;
 }
 
-function isPendingOrder(order: Row): boolean {
-    return String(order.status) === "0";
+function isUnconfirmedOrder(order: Row): boolean {
+    return ["0", "2"].includes(String(order.status));
 }
 
 function isRecurringOrder(order: Row): boolean {
@@ -41,7 +41,7 @@ function isRecurringOrder(order: Row): boolean {
 }
 
 function purchaseStageLabel(order: Row): OrderTypeLabel | undefined {
-    if (isPendingOrder(order) || !isRecurringOrder(order)) return;
+    if (isUnconfirmedOrder(order) || !isRecurringOrder(order)) return;
     if (order.purchase_stage === "first_purchase") return {
         label: "首购", tone: "first",
         description: "首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。",
@@ -53,7 +53,7 @@ function purchaseStageLabel(order: Row): OrderTypeLabel | undefined {
 }
 
 function repurchaseExpiryStatus(order: Row): "expired" | "not_expired" | "unknown" | undefined {
-    if (isPendingOrder(order) || !isRecurringOrder(order)
+    if (isUnconfirmedOrder(order) || !isRecurringOrder(order)
         || !["repeat_purchase", "expired_repurchase"].includes(String(order.purchase_stage))) return;
     // Preserve older server responses while preferring the explicit evidence field.
     const status = order.repurchase_expiry_status ?? (order.purchase_stage === "expired_repurchase" ? "expired" : "unknown");
@@ -90,12 +90,14 @@ function orderTypeLabel(order: Row): OrderTypeLabel {
     const stage = purchaseStageLabel(order);
     if (stage && key === "1") return stage;
     if (key !== "1" || !isRecurringOrder(order)) return type;
-    if (isPendingOrder(order)) {
-        if (order.pending_purchase_context === "repeat") return {
+    if (isUnconfirmedOrder(order)) {
+        const pending = String(order.status) === "0";
+        const context = order.checkout_purchase_context ?? (pending ? order.pending_purchase_context : undefined);
+        if (context === "repeat") return {
             label: "再次购买", tone: "plan",
             description: "这笔订单下单前已有付费周期套餐记录，含余额支付。",
         };
-        if (order.pending_purchase_context !== "unknown") return type;
+        if (context === "new" || (pending && context !== "unknown")) return type;
         return {
             label: "周期购买", tone: "neutral",
             description: "现有记录不足以确认下单前是否已有付费周期套餐。",

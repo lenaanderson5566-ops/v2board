@@ -115,21 +115,25 @@ it("keeps purchase types concise and separates first-payment and sub-day return 
     expect(firstRenewal.queryByText("回购情况")).toBeNull();
 });
 
-it("uses earlier purchases for pending type labels without claiming a payment or expiry outcome", async () => {
-    const pending = { ...order, status: 0, period: "month_price", plan_id: 1 };
+it.each([
+    { status: "0", statusLabel: "待支付", contextField: "pending_purchase_context" },
+    { status: "2", statusLabel: "已取消", contextField: "checkout_purchase_context" },
+])("uses checkout history for $statusLabel labels without claiming a payment or expiry outcome", async ({ status, statusLabel, contextField }) => {
+    const checkout = { ...order, status, period: "month_price", plan_id: 1 };
     const rows = [
-        { ...pending, id: 1, type: 1, pending_purchase_context: "new" },
-        { ...pending, id: 2, type: 2, pending_purchase_context: "repeat" },
-        { ...pending, id: 3, type: 3, pending_purchase_context: "repeat" },
-        { ...pending, id: 4, type: 1, status: "0", pending_purchase_context: "repeat",
+        { ...checkout, id: 1, type: 1, [contextField]: "new" },
+        { ...checkout, id: 2, type: 2, [contextField]: "repeat" },
+        { ...checkout, id: 3, type: 3, [contextField]: "repeat" },
+        { ...checkout, id: 4, type: 1, [contextField]: "repeat",
             purchase_stage: "expired_repurchase", repurchase_expiry_status: "expired", repurchase_gap_days: 4 },
-        { ...pending, id: 5, type: 1, pending_purchase_context: "unknown" },
+        { ...checkout, id: 5, type: 1, [contextField]: "unknown" },
     ];
     api.request.mockImplementation(async (path: string, params?: { id?: number }) => path.includes("order/fetch")
         ? { data: rows, total: rows.length }
         : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
     render(<OrdersPage />);
     const repeatOrder = (await screen.findByRole("cell", { name: "再次购买" })).closest("tr")!;
+    expect(within(repeatOrder).getByText(statusLabel)).toBeTruthy();
     expect(screen.getByRole("cell", { name: "新购" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "周期购买" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "续费" })).toBeTruthy();

@@ -1,4 +1,4 @@
-import { adminRoot, adminTabRoute } from "./admin-navigation";
+import { adminRoot, adminTabRoute, userResetHistoryPage } from "./admin-navigation";
 import { AdminTimeZoneScope } from "./admin-log-time";
 import { clearListViews } from "./list-view-state";
 import { AdminShell, adminPage } from "./admin-shell";
@@ -43,7 +43,7 @@ function AdminWorkspaceContent({ path, user, logout }: { path: string; user: Row
                     logout();
                 }}
             >
-                <AdminTimeZoneScope logFilters={["access-logs", "system-log", "mail-logs"].includes(section)}>
+                <AdminTimeZoneScope logFilters={current === userResetHistoryPage || ["access-logs", "system-log", "mail-logs"].includes(section)}>
                     <AdminContent route={route} />
                 </AdminTimeZoneScope>
             </AdminShell>

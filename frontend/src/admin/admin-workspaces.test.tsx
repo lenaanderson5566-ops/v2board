@@ -115,6 +115,28 @@ it("keeps purchase types concise and separates first-payment and sub-day return 
     expect(firstRenewal.queryByText("回购情况")).toBeNull();
 });
 
+it("shows the original purchase type for pending recurring orders in the list and detail", async () => {
+    const pending = { ...order, status: 0, period: "month_price", plan_id: 1 };
+    const rows = [
+        { ...pending, id: 1, type: 1 },
+        { ...pending, id: 2, type: 2 },
+        { ...pending, id: 3, type: 3 },
+    ];
+    api.request.mockImplementation(async (path: string, params?: { id?: number }) => path.includes("order/fetch")
+        ? { data: rows, total: rows.length }
+        : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
+    render(<OrdersPage />);
+    const newOrder = (await screen.findByRole("cell", { name: "新购" })).closest("tr")!;
+    expect(screen.getByRole("cell", { name: "续费" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "变更套餐" })).toBeTruthy();
+    fireEvent.click(within(newOrder).getByRole("button", { name: "订单详情" }));
+    const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
+    expect(await detail.findByText("新购", { exact: true })).toBeTruthy();
+    expect(detail.queryByText("购买记录")).toBeNull();
+    expect(screen.queryByText("周期购买")).toBeNull();
+    expect(screen.queryByText("首购")).toBeNull();
+});
+
 it("distinguishes a historical returning customer from their first paid recurring plan and free quota order", async () => {
     const rows = [
         { ...order, id: 3, type: 1, period: "year_price", plan_name: "Pro", total_amount: 40640, purchase_stage: "repeat_purchase" },

@@ -2,7 +2,8 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { AdminUserDetails } from "./AdminUserDetails";
-import { AdminTimeZoneScope, logTime } from "./admin-log-time";
+import { logTime } from "./admin-log-time";
+import AdminContent from "./admin-entry";
 import { configureTimeZone, setAdminDisplayTimeZone } from "../shared/timezone";
 
 const readRequest = vi.hoisted(() => {
@@ -137,7 +138,7 @@ function resetQueries() {
         .map(path => new URLSearchParams(path.split("?")[1]));
 }
 
-it("loads reset history on demand, pages it, and converts the display zone without changing the active query", async () => {
+it("prefills the central reset lookup by user ID and preserves the active query across display zones", async () => {
     const iso = "2026-11-22T16:10:37.000Z";
     const timestamp = Date.parse(iso) / 1000;
     const now = Date.parse("2026-11-24T12:00:00Z");
@@ -150,17 +151,13 @@ it("loads reset history on demand, pages it, and converts the display zone witho
             return { data: [{ id: page, kind: "use", quantity: -1, u_before: 1024 ** 3,
                 d_before: 2 * 1024 ** 3, batch_id: 81, created_at: timestamp }], total: 11 };
         }
-        if (path.includes("/stat/getStatUser")) return { data: [], total: 0 };
         return { data: { user: {}, events: [] } };
     });
     try {
-        render(<AdminTimeZoneScope><AdminUserDetails row={{ id: 42 }} close={vi.fn()} /></AdminTimeZoneScope>);
-        fireEvent.mouseDown(screen.getByRole("tab", { name: "流量记录" }), { button: 0, ctrlKey: false });
-        expect(screen.getByRole("tab", { name: "每日用量" }).getAttribute("aria-selected")).toBe("true");
-        expect(resetQueries()).toHaveLength(0);
-        fireEvent.mouseDown(screen.getByRole("tab", { name: "储备重置" }), { button: 0, ctrlKey: false });
+        const view = render(<AdminContent route="user-reset-history?user_id=42" />);
 
         const amount = await screen.findByText("3 GiB");
+        expect(screen.getByLabelText<HTMLInputElement>("用户 ID 或邮箱").value).toBe("42");
         const record = amount.closest("tr")!;
         expect(record.querySelector("time")?.dateTime).toBe(iso);
         expect(record.querySelector("time")?.textContent).toContain("16:10:37");
@@ -184,12 +181,16 @@ it("loads reset history on demand, pages it, and converts the display zone witho
         const requestCount = resetQueries().length;
         act(() => setAdminDisplayTimeZone("business"));
         expect(start.value).toContain("2026-11-23T00:10:37");
-        expect(screen.getByText(/记录与筛选时区.*Asia\/Shanghai/)).toBeTruthy();
+        expect(screen.getByText(/日志时间与筛选时区.*Asia\/Shanghai/)).toBeTruthy();
         expect(screen.getByText("3 GiB").closest("tr")?.querySelector("time")?.textContent).toContain("00:10:37");
         expect(resetQueries()).toHaveLength(requestCount);
         fireEvent.click(screen.getByRole("button", { name: "查询" }));
         await waitFor(() => expect(resetQueries()).toHaveLength(requestCount + 1));
         expect(resetQueries().at(-1)?.get("from")).toBe(String(timestamp));
+
+        view.rerender(<AdminContent route="user-reset-history?user_id=43" />);
+        await waitFor(() => expect(resetQueries().at(-1)?.get("user_id")).toBe("43"));
+        expect(screen.getByLabelText<HTMLInputElement>("用户 ID 或邮箱").value).toBe("43");
     } finally {
         cleanup();
         clock.mockRestore();
@@ -197,7 +198,7 @@ it("loads reset history on demand, pages it, and converts the display zone witho
     }
 });
 
-it("shows grant expiry and administrator information without presenting a grant as a reset", async () => {
+it("queries grants by email and preserves the applied identity when clearing dates", async () => {
     const created_at = Date.parse("2026-11-22T16:10:37Z") / 1000;
     readRequest.mockImplementation(async (path: string) => {
         if (path.startsWith("test-admin/user/usageResetLogs?")) {
@@ -215,21 +216,64 @@ it("shows grant expiry and administrator information without presenting a grant 
         if (path.includes("/stat/getStatUser")) return { data: [], total: 0 };
         return { data: { user: {}, events: [] } };
     });
-    render(<AdminUserDetails row={{ id: 42 }} close={vi.fn()} />);
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "流量记录" }), { button: 0, ctrlKey: false });
-    fireEvent.mouseDown(screen.getByRole("tab", { name: "储备重置" }), { button: 0, ctrlKey: false });
-    fireEvent.click(screen.getByRole("button", { name: "管理员发放" }));
+    render(<AdminContent route="user-reset-history" />);
+    const lookup = await screen.findByLabelText("用户 ID 或邮箱");
+    expect(resetQueries()).toHaveLength(0);
+    fireEvent.change(lookup, { target: { value: " invalid " } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    expect(screen.getByRole("alert").textContent).toContain("请输入用户 ID 或完整邮箱。");
+    expect(resetQueries()).toHaveLength(0);
+    fireEvent.change(lookup, { target: { value: " target@example.test " } });
+    const kind = screen.getByRole("combobox", { name: "记录类型" });
+    fireEvent.change(kind, { target: { value: "grant" } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
     const grant = (await screen.findByText(/grant-admin@example.test/)).closest("tr")!;
     expect(within(grant).getByText("长期有效")).toBeTruthy();
     expect(screen.getByText(/未记录/)).toBeTruthy();
     expect(screen.queryByText("3 GiB")).toBeNull();
+    expect(resetQueries().at(-1)?.has("user_id")).toBe(false);
+    expect(resetQueries().at(-1)?.get("email")).toBe("target@example.test");
+    fireEvent.change(lookup, { target: { value: "43" } });
+    expect(screen.getByText("查询用户：target@example.test")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "清除时间" }));
     await waitFor(() => {
         const query = resetQueries().at(-1)!;
         expect(query.get("kind")).toBe("grant");
+        expect(query.get("email")).toBe("target@example.test");
         expect(query.has("from")).toBe(false);
         expect(query.has("to")).toBe(false);
     });
-    fireEvent.click(screen.getByRole("button", { name: "全局重置" }));
-    await waitFor(() => expect(resetQueries().at(-1)?.get("kind")).toBe("global"));
+    fireEvent.change(kind, { target: { value: "global" } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    await waitFor(() => {
+        const query = resetQueries().at(-1)!;
+        expect(query.get("kind")).toBe("global");
+        expect(query.get("user_id")).toBe("43");
+        expect(query.has("email")).toBe(false);
+    });
+});
+
+it("shows the current valid reset credits and a shortcut alongside daily usage in one panel", async () => {
+    const expiry = Date.parse("2026-11-29T15:00:00Z") / 1000;
+    readRequest.mockImplementation(async (path: string) => {
+        if (path.startsWith("test-admin/user/usageResetCredits?")) {
+            return { data: { available: 4, next_expires_at: expiry, next_expires_count: 2 } };
+        }
+        if (path.includes("/stat/getStatUser")) {
+            return { data: [{ id: 1, record_at: expiry, u: 10, d: 20, server_rate: 1 }], total: 1 };
+        }
+        return { data: { user: {}, events: [] } };
+    });
+    render(<AdminUserDetails row={{ id: 42 }} close={vi.fn()} />);
+    expect(readRequest.mock.calls.some(([path]) => String(path).includes("/usageResetCredits?"))).toBe(false);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "流量记录" }), { button: 0, ctrlKey: false });
+    const summary = await screen.findByRole("region", { name: "有效储备重置" });
+    expect(await within(summary).findByText("有效储备重置 4 次")).toBeTruthy();
+    expect(summary.querySelector("time")?.dateTime).toBe("2026-11-29T15:00:00.000Z");
+    expect(summary.textContent).toContain("· 2 次");
+    expect(within(summary).getByRole("link", { name: "查看重置记录" }).getAttribute("href")).toBe("#/user-reset-history?user_id=42");
+    expect(await screen.findByText("统计日期")).toBeTruthy();
+    expect(screen.queryByRole("tab", { name: "储备重置" })).toBeNull();
+    expect(readRequest).toHaveBeenCalledWith("test-admin/user/usageResetCredits?user_id=42", undefined, false);
+    expect(resetQueries()).toHaveLength(0);
 });

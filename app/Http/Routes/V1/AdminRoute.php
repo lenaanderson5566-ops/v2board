@@ -179,6 +179,7 @@ class AdminRoute
             $router->post('/order/detail', 'V1\\Admin\\OrderController@detail');
             // User
             $router->get('/user/usageResetLogs', 'V1\\Admin\\UserUsageResetLogController@index');
+            $router->get('/user/usageResetCredits', 'V1\\Admin\\UserUsageResetLogController@credits');
             $router->get('/user/usageResetPreview', 'V1\\Admin\\UserController@usageResetPreview');
             $router->post('/user/usageResetPreview', 'V1\\Admin\\UserController@usageResetGrantPreview')->middleware('throttle:20,1');
             $router->post('/user/usageReset', 'V1\\Admin\\UserController@usageReset')->middleware('throttle:10,1');

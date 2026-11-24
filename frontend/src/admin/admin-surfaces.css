@@ -350,6 +350,22 @@ body[data-console="admin"] .table-viewport td > .admin-user-details-button {
 body[data-console="admin"] .user-details-drawer .modal > .panel-head { flex-wrap: nowrap; align-items: flex-start; }
 body[data-console="admin"] .user-details-drawer .modal > .panel-head h2 { flex: 1; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
 body[data-console="admin"] .user-details-drawer .modal > .panel-head .icon-button { flex: 0 0 auto; }
+body[data-console="admin"] .user-traffic-reset-summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    margin-block-end: 12px;
+    padding-block-end: 12px;
+    border-bottom: 1px solid var(--border);
+}
+body[data-console="admin"] .user-traffic-reset-count {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+}
 body[data-console="admin"] .admin-credit-order-ref {
     display: grid;
     justify-items: start;

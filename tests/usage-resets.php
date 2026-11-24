@@ -32,6 +32,12 @@ try {
     [$user, $token] = $makeUser(); [$admin, $adminToken] = $makeUser(true); [$other, $otherToken] = $makeUser();
     $service = new UsageResetService();
     $endpoint = '/api/v1/'.App\Http\Routes\V1\AdminRoute::prefix().'/user/usageReset';
+    $creditsUrl = $endpoint.'Credits';
+    $readCredits = function (int $userId) use ($call, $creditsUrl, $adminToken, $assert) {
+        $response = $call($creditsUrl.'?user_id='.$userId, null, $adminToken);
+        $assert($response->getStatusCode() === 200, 'Admin reset credit summary failed: '.$response->getContent());
+        return json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR)['data'];
+    };
     $logsUrl = fn (array $params) => $endpoint.'Logs?'.http_build_query($params);
     $readLogs = function (array $params) use ($call, $logsUrl, $adminToken, $assert) {
         $response = $call($logsUrl($params), null, $adminToken);
@@ -59,6 +65,25 @@ try {
     $assert($r->getStatusCode()===200, 'Grant failed: '.$r->getContent());
     $assert($service->summary($user->id)['available']===2, 'Grant count wrong');
     $assert($service->summary($other->id)['available']===0, 'Grant leaked to other user');
+    $assert($call($creditsUrl.'?user_id='.$user->id, null)->getStatusCode() === 403
+        && $call($creditsUrl.'?user_id='.$user->id, null, $token)->getStatusCode() === 403, 'Non-admin could read reset credit inventory');
+    $assert($call($creditsUrl, null, $adminToken)->getStatusCode() === 422
+        && $call($creditsUrl.'?user_id=0', null, $adminToken)->getStatusCode() === 422, 'Credit query accepted a missing or invalid user ID');
+    $emptyCredits = ['available' => 0, 'next_expires_at' => null, 'next_expires_count' => 0];
+    $permanentCredits = ['available' => 2, 'next_expires_at' => null, 'next_expires_count' => 0];
+    $assert($readCredits($other->id) === $emptyCredits, 'Empty inventory mixed credits from another account');
+    $assert($readCredits($user->id) === $permanentCredits, 'Permanent credits were reported as expiring');
+    $firstExpiry = time() + 3600;
+    $adminScope = $service->previewGrant(User::whereKey($admin->id), $admin->id, 1);
+    foreach ([[2, $firstExpiry], [3, $firstExpiry], [4, $firstExpiry + 3600], [5, null], [6, time() - 1]] as [$quantity, $expiry]) {
+        $service->batch(User::whereKey($admin->id), $admin->id, [
+            'kind' => 'grant', 'request_key' => (string)Str::uuid(), 'scope_token' => $adminScope['scope_token'],
+            'expected_count' => 1, 'quantity' => $quantity, 'expires_at' => $expiry,
+        ]);
+    }
+    $service->consume($admin->id, (string)Str::uuid());
+    $assert($readCredits($admin->id) === ['available' => 13, 'next_expires_at' => $firstExpiry, 'next_expires_count' => 4],
+        'Inventory did not sum the remaining credits, grouping all batches expiring at the earliest instant');
     $assert($call($endpoint, $grant, $adminToken)->getStatusCode()===200 && $service->summary($user->id)['available']===2, 'Grant retry duplicated');
     $grant['quantity']=3;
     $assert($call($endpoint, $grant, $adminToken)->getStatusCode()===422, 'Reused key allowed different payload');
@@ -90,6 +115,7 @@ try {
     $assert($user->only(array_keys($before))===$before,'Subscription or credentials changed');
     $assert($other->refresh()->u===10 && $other->d===20,'Other account was reset');
     $assert(DB::table('v2_usage_reset_credit')->where('id',$soon->id)->value('remaining')===0,'Expiring credit not used first');
+    $assert($readCredits($user->id) === $permanentCredits, 'A depleted credit still affected the next expiry');
     $user->update(['u'=>50]);
     $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>$key],$token)->getStatusCode()===200 && $user->refresh()->u===50,'Retry reset newly accrued usage');
     $assert($service->summary($user->id)['available']===2,'Retry consumed a second credit');
@@ -98,6 +124,7 @@ try {
     $assert($call($logsUrl($target), null)->getStatusCode() === 403
         && $call($logsUrl($target), null, $token)->getStatusCode() === 403, 'Usage reset audit allowed a non-admin');
     foreach ([[], ['user_id' => 0], ['user_id' => [$user->id]], $target + ['kind' => 'paid'],
+        $target + ['email' => $other->email], ['email' => 'incomplete'], ['email' => [$user->email]],
         $target + ['from' => 'yesterday'], $target + ['from' => 2, 'to' => 1],
         $target + ['current' => 0], $target + ['pageSize' => 101]] as $invalid) {
         $assert($call($logsUrl($invalid), null, $adminToken)->getStatusCode() === 422, 'Invalid usage reset filters accepted');
@@ -112,6 +139,16 @@ try {
     $assert(!array_diff(array_keys($usage), $expectedFields) && !array_diff($expectedFields, array_keys($usage)),
         'Audit projection omitted fields or exposed internal data');
     $assert($readLogs(['user_id' => $other->id]) === ['data' => [], 'total' => 0], 'Audit leaked another user’s consumption');
+    $assert($readLogs(['email' => ' '.strtoupper($user->email).' ']) === $used,
+        'Exact email lookup did not return the same account history as its ID');
+    $assert($readLogs(['email' => $other->email]) === ['data' => [], 'total' => 0],
+        'Existing user with no consumption must return an empty page');
+    $unmatchedEmail = str_replace('@', '+tag@', $user->email);
+    $missing = $call($logsUrl(['email' => $unmatchedEmail]), null, $adminToken);
+    $assert($missing->getStatusCode() === 404 && (json_decode($missing->getContent(), true)['message'] ?? '') === '未找到匹配该邮箱的用户',
+        'Unmatched email was not distinguished from an empty history, or a plus alias matched another account');
+    $assert($call($logsUrl(['email' => $user->email]), null, $token)->getStatusCode() === 403,
+        'Email lookup exposed account history to a non-admin');
     $granted = $readLogs($target + ['kind' => 'grant']);
     $grants = collect($granted['data'])->keyBy('quantity');
     $assert($granted['total'] === 2 && $grants[1]['actor_id'] === $admin->id && $grants[1]['actor_email'] === $admin->email
@@ -136,6 +173,14 @@ try {
     $assert($readLogs($historyFilters + ['current' => 3]) === ['data' => [], 'total' => 2], 'Out-of-range audit page changed total');
     $allOldGrants = $readLogs(['user_id' => $other->id, 'kind' => 'grant', 'from' => 0]);
     $assert(array_column($allOldGrants['data'], 'id') === [$second, $first, $oldest], 'Audit pagination did not order by time then id');
+    $byEmail = $historyFilters;
+    unset($byEmail['user_id']);
+    $assert($readLogs($byEmail + ['email' => $other->email]) === $page, 'Email lookup lost pagination, kind or date bounds');
+    $removedUserId = User::max('id') + 1;
+    $orphanId = $ledger->insertGetId(array_replace($historical, ['user_id' => $removedUserId]));
+    $orphan = $readLogs(['user_id' => $removedUserId, 'kind' => 'grant']);
+    $assert($orphan['total'] === 1 && $orphan['data'][0]['id'] === $orphanId,
+        'Audit history could no longer be queried by ID after the account row disappeared');
     $paidReset = App\Models\Order::create([
         'user_id'=>$other->id, 'plan_id'=>$plan->id, 'trade_no'=>App\Utils\Helper::generateOrderNo(),
         'currency'=>$other->currency ?: 'CNY', 'period'=>'reset_price', 'type'=>4, 'status'=>1, 'paid_at'=>time(), 'total_amount'=>100,
@@ -162,6 +207,7 @@ try {
     DB::table('v2_usage_reset_credit')->where('user_id',$user->id)->update(['expires_at'=>time()-1]);
     $user->update(['u'=>100]);
     $assert($service->summary($user->id)['available']===0,'Expired credits counted');
+    $assert($readCredits($user->id) === $emptyCredits, 'Expired credits remained in the administrator summary');
     $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>(string)Str::uuid()],$token)->getStatusCode()===422,'Expired credits usable');
     $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>'bad'], $token)->getStatusCode()===422,'Invalid idempotency key accepted');
     $all=['kind'=>'global','request_key'=>(string)Str::uuid(),'expected_count'=>User::count(),'confirmation'=>'RESET ALL USAGE'];

@@ -6,9 +6,9 @@ import { UserActivityContent } from "./UserActivityContent";
 import { adminUserLabel } from "./admin-user-label";
 import { adminOrderPlan, adminOrderType } from "./admin-order-labels";
 import { AdminOrderDetails } from "./AdminOrderDetails";
-import { AdminUsageResetHistory } from "./AdminUsageResetHistory";
+import { userResetHistoryLink } from "./admin-navigation";
 import { admin, query, bytes, money, type Row } from "../shared/api";
-import { logTime as date, AdminLogTimeZone } from "./admin-log-time";
+import { logTime as date, AdminLogTimestamp, AdminLogTimeZone } from "./admin-log-time";
 import { calendarDay, instantDate, validZone } from "../shared/timezone";
 import { StatusBadge } from "../shared/StatusBadge";
 import { Modal, State, Table, useData } from "../shared/ui";
@@ -27,23 +27,11 @@ export function AdminUserDetails({row, close}: {row:Row; close:()=>void}) {
             />}
             {tab === "invitations" && <UserInvitations row={row}/>}
             {tab === "orders" && <UserOrders row={row}/>}
-            {tab === "traffic" && <UserTrafficHistory key={row.id} row={row} />}
+            {tab === "traffic" && <UserTraffic key={row.id} row={row} />}
             {tab === "credits" && <UserCredits row={row} focusOnOpen={focusPanel}/>}
         </AdminTabs>
     </Modal>;
 }
-function UserTrafficHistory({ row }: { row: Row }) {
-    const [view, setView] = useState<"daily" | "resets">("daily");
-    return (
-        <AdminTabs label="流量记录视图" value={view} onChange={setView} options={[
-            { value: "daily", label: "每日用量" },
-            { value: "resets", label: "储备重置" },
-        ]}>
-            {view === "daily" ? <UserTraffic row={row} /> : <AdminUsageResetHistory userId={row.id} />}
-        </AdminTabs>
-    );
-}
-
 function UserInvitations({row}: {row:Row}) {
     const [page,setPage]=useState(1), [pageSize,setPageSize]=useState(10);
     const d=useData<Row[]>(query(admin("user/fetch"),{current:page,pageSize,filter:[{key:"invite_user_id",condition:"=",value:row.id}]}));
@@ -193,6 +181,26 @@ function UserCredits({ row, focusOnOpen }: { row: Row; focusOnOpen: boolean }) {
         {orderId !== null && <AdminOrderDetails commissionMode id={orderId} close={() => setOrderId(null)}/>}
     </div>;
 }
+type ResetCredits = { available: number; next_expires_at: number | null; next_expires_count: number };
+
+function UserResetCreditSummary({ userId }: { userId: number }) {
+    const credits = useData<ResetCredits>(query(admin("user/usageResetCredits"), { user_id: userId }));
+    const summary = typeof credits.data?.available === "number" ? credits.data : null;
+    return (
+        <section className="user-traffic-reset-summary" aria-label="有效储备重置">
+            <State {...credits} retry={credits.reload}>
+                {summary && <div className="user-traffic-reset-count">
+                    <strong>有效储备重置 {summary.available} 次</strong>
+                    {summary.next_expires_at != null
+                        ? <span className="muted">最近到期 <AdminLogTimestamp value={summary.next_expires_at} /> · {summary.next_expires_count} 次</span>
+                        : summary.available > 0 ? <span className="muted">长期有效</span> : null}
+                </div>}
+            </State>
+            <a className="button" href={userResetHistoryLink(userId)}>查看重置记录</a>
+        </section>
+    );
+}
+
 function UserTraffic({ row }: { row: Row }) {
     const [pageSize, setPageSize] = useState(10);
     const [page, setPage] = useState(1);
@@ -205,6 +213,7 @@ function UserTraffic({ row }: { row: Row }) {
     );
     return (
         <div className="pad">
+            <UserResetCreditSummary userId={row.id} />
             <p className="muted">日期按记录生成时的业务时区显示。旧记录沿用上海时区。</p>
             <State {...d} retry={d.reload}>
                 <Table

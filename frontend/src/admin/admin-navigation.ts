@@ -105,8 +105,15 @@ export const adminWorkspaces = [
         ],
     },
 ];
-// These pages already own their tabs, but their links still belong in search.
+export const userResetHistoryPage = "user-reset-history";
+
+export function userResetHistoryLink(userId?: number) {
+    return `#/${userResetHistoryPage}${userId == null ? "" : `?user_id=${encodeURIComponent(userId)}`}`;
+}
+
+// These links belong in search without adding workspace tabs.
 const additionalSubpages: Record<string, string[][]> = {
+    users: [[userResetHistoryPage, "重置记录"]],
     overview: [
         ["overview-analytics", "访问与转化"],
         ["overview-risk", "风控概览"],

@@ -1,4 +1,4 @@
-import { settingSections } from "./admin-navigation";
+import { settingSections, userResetHistoryPage } from "./admin-navigation";
 import { AdminRouteTabs } from "./AdminChoices";
 import { PasskeySecurity } from "../shared/PasskeySecurity";
 import { ErrorBoundary } from "../shared/ErrorBoundary";
@@ -96,6 +96,9 @@ const ContentPage = lazy(() =>
 const UsersPage = lazy(() =>
     import("./admin-users").then((module) => ({ default: module.UsersPage })),
 );
+const AdminUsageResetHistory = lazy(() =>
+    import("./AdminUsageResetHistory").then((module) => ({ default: module.AdminUsageResetHistory })),
+);
 const Overview = lazy(() =>
     import("./admin-dashboard").then((module) => ({
         default: module.Overview,
@@ -147,6 +150,7 @@ function AdminPageBody({ current, route }: { current: string; route: string }) {
     if (current === "client-downloads")
         return <Settings key="client-downloads" section="app" />;
     if (current === "users") return <UsersPage />;
+    if (current === userResetHistoryPage) return <AdminUsageResetHistory key={route} route={route} />;
     if (current === "orders") return <OrdersPage />;
     if (current === "knowledge" || current === "notices")
         return <ContentPage kind={current} />;

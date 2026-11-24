@@ -31,15 +31,13 @@ try {
     };
     [$user, $token] = $makeUser(); [$admin, $adminToken] = $makeUser(true); [$other, $otherToken] = $makeUser();
     $service = new UsageResetService();
-    $adminPath = config('fastai.secure_path', config('fastai.frontend_admin_path', hash('crc32b', config('app.key'))));
-    // The admin API prefix is independent of the frontend secret route.
-    $adminPath = 'admin';
-    foreach (app('router')->getRoutes() as $route) {
-        if (strpos($route->uri(), '/user/usageReset') !== false && strpos($route->uri(), 'Preview') === false) {
-            $adminPath = substr($route->uri(), strlen('api/v1/'), -strlen('/user/usageReset')); break;
-        }
-    }
-    $endpoint = '/api/v1/'.$adminPath.'/user/usageReset';
+    $endpoint = '/api/v1/'.App\Http\Routes\V1\AdminRoute::prefix().'/user/usageReset';
+    $logsUrl = fn (array $params) => $endpoint.'Logs?'.http_build_query($params);
+    $readLogs = function (array $params) use ($call, $logsUrl, $adminToken, $assert) {
+        $response = $call($logsUrl($params), null, $adminToken);
+        $assert($response->getStatusCode() === 200, 'Admin usage reset history failed: '.$response->getContent());
+        return json_decode($response->getContent(), true, flags: JSON_THROW_ON_ERROR);
+    };
     $grant = ['kind'=>'grant', 'request_key'=>(string)Str::uuid(), 'expected_count'=>1, 'quantity'=>2,
         'filter'=>[['key'=>'id', 'condition'=>'=', 'value'=>$user->id]]];
     $assert($call('/api/v10/me/usage-resets', null)->getStatusCode()===401, 'Anonymous access accepted');
@@ -96,6 +94,48 @@ try {
     $assert($call('/api/v10/me/usage-resets/consumptions',['requestKey'=>$key],$token)->getStatusCode()===200 && $user->refresh()->u===50,'Retry reset newly accrued usage');
     $assert($service->summary($user->id)['available']===2,'Retry consumed a second credit');
     $assert($user->traffic_reset_anchor_at === $consumeAnchor,'Retry moved the reset cycle again');
+    $target = ['user_id' => $user->id];
+    $assert($call($logsUrl($target), null)->getStatusCode() === 403
+        && $call($logsUrl($target), null, $token)->getStatusCode() === 403, 'Usage reset audit allowed a non-admin');
+    foreach ([[], ['user_id' => 0], ['user_id' => [$user->id]], $target + ['kind' => 'paid'],
+        $target + ['from' => 'yesterday'], $target + ['from' => 2, 'to' => 1],
+        $target + ['current' => 0], $target + ['pageSize' => 101]] as $invalid) {
+        $assert($call($logsUrl($invalid), null, $adminToken)->getStatusCode() === 422, 'Invalid usage reset filters accepted');
+    }
+    $used = $readLogs($target);
+    $usage = $used['data'][0];
+    $assert($used['total'] === 1 && count($used['data']) === 1 && $usage['kind'] === 'use' && $usage['quantity'] === -1
+        && $usage['actor_id'] === $user->id && $usage['actor_email'] === $user->email && $usage['batch_id'] === $soon->batch_id
+        && $usage['u_before'] === 10 && $usage['d_before'] === 20 && !$usage['expiry_known'] && $usage['expires_at'] === null,
+        'Default audit list included retries, other event types or incorrect consumption details');
+    $expectedFields = ['id','kind','quantity','batch_id','actor_id','actor_email','u_before','d_before','created_at','expires_at','expiry_known'];
+    $assert(!array_diff(array_keys($usage), $expectedFields) && !array_diff($expectedFields, array_keys($usage)),
+        'Audit projection omitted fields or exposed internal data');
+    $assert($readLogs(['user_id' => $other->id]) === ['data' => [], 'total' => 0], 'Audit leaked another user’s consumption');
+    $granted = $readLogs($target + ['kind' => 'grant']);
+    $grants = collect($granted['data'])->keyBy('quantity');
+    $assert($granted['total'] === 2 && $grants[1]['actor_id'] === $admin->id && $grants[1]['actor_email'] === $admin->email
+        && $grants[1]['expiry_known'] === true && $grants[1]['expires_at'] === $soon->expires_at
+        && $grants[2]['expiry_known'] === true && $grants[2]['expires_at'] === null,
+        'Audit confused dated grants with permanent grants');
+
+    $old = time() - 45 * 86400;
+    $historical = ['user_id' => $other->id, 'actor_id' => 0, 'kind' => 'grant', 'quantity' => 1, 'created_at' => $old];
+    $ledger = DB::table('v2_usage_reset_log');
+    $first = $ledger->insertGetId($historical);
+    $second = $ledger->insertGetId($historical + ['credit_id' => $soon->id]);
+    $oldest = $ledger->insertGetId(array_replace($historical, ['created_at' => $old - 1]));
+    $historyFilters = ['user_id' => $other->id, 'kind' => 'grant', 'from' => $old, 'to' => $old, 'pageSize' => 1];
+    $page = $readLogs($historyFilters);
+    $item = $page['data'][0];
+    $assert($page['total'] === 2 && count($page['data']) === 1 && $item['id'] === $second
+        && $item['actor_id'] === 0 && $item['actor_email'] === null && $item['expiry_known'] === false && $item['expires_at'] === null,
+        'Audit lost an old row, a boundary tie or borrowed another user’s credit expiry');
+    $nextPage = $readLogs($historyFilters + ['current' => 2]);
+    $assert($nextPage['data'][0]['id'] === $first && $nextPage['data'][0]['expiry_known'] === false, 'Missing grant credit shown as permanent');
+    $assert($readLogs($historyFilters + ['current' => 3]) === ['data' => [], 'total' => 2], 'Out-of-range audit page changed total');
+    $allOldGrants = $readLogs(['user_id' => $other->id, 'kind' => 'grant', 'from' => 0]);
+    $assert(array_column($allOldGrants['data'], 'id') === [$second, $first, $oldest], 'Audit pagination did not order by time then id');
     $paidReset = App\Models\Order::create([
         'user_id'=>$other->id, 'plan_id'=>$plan->id, 'trade_no'=>App\Utils\Helper::generateOrderNo(),
         'currency'=>$other->currency ?: 'CNY', 'period'=>'reset_price', 'type'=>4, 'status'=>1, 'paid_at'=>time(), 'total_amount'=>100,
@@ -132,6 +172,10 @@ try {
     $assert($user->refresh()->u===0 && $other->refresh()->u===0,'Global reset did not affect all accounts');
     $assert($other->traffic_reset_anchor_at === $paidAnchor,'Global reset moved the paid reset cycle');
     $assert(DB::table('v2_usage_reset_log')->where('user_id',$user->id)->where('kind','global')->value('u_before')===100,'Global audit lost prior usage');
+    $global = $readLogs($target + ['kind' => 'global']);
+    $assert($global['total'] === 1 && $global['data'][0]['actor_id'] === $admin->id && $global['data'][0]['quantity'] === 0
+        && $global['data'][0]['u_before'] === 100 && $global['data'][0]['expiry_known'] === false,
+        'Global reset not distinguishable from using a credit');
     $other->update(['d'=>37]);
     $assert($call($endpoint,$all,$adminToken)->getStatusCode()===200 && $other->refresh()->d===37,'Repeated global reset changed new usage');
     $assert($user->only(array_keys($before))===$before,'Global reset changed plan or credentials');

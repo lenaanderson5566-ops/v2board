@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { AdminUserDetails } from "./AdminUserDetails";
-import { logTime } from "./admin-log-time";
+import { AdminTimeZoneScope, logTime } from "./admin-log-time";
 import { configureTimeZone, setAdminDisplayTimeZone } from "../shared/timezone";
 
 const readRequest = vi.hoisted(() => {
@@ -128,4 +128,108 @@ it("shows each traffic bucket's original business date across administrator time
         configureTimeZone("Asia/Shanghai", true);
         setAdminDisplayTimeZone("business");
     }
+});
+
+function resetQueries() {
+    return readRequest.mock.calls
+        .map(([path]) => String(path))
+        .filter(path => path.startsWith("test-admin/user/usageResetLogs?"))
+        .map(path => new URLSearchParams(path.split("?")[1]));
+}
+
+it("loads reset history on demand, pages it, and converts the display zone without changing the active query", async () => {
+    const iso = "2026-11-22T16:10:37.000Z";
+    const timestamp = Date.parse(iso) / 1000;
+    const now = Date.parse("2026-11-24T12:00:00Z");
+    const clock = vi.spyOn(Date, "now").mockReturnValue(now);
+    configureTimeZone("Asia/Shanghai", true);
+    setAdminDisplayTimeZone("UTC");
+    readRequest.mockImplementation(async (path: string) => {
+        if (path.startsWith("test-admin/user/usageResetLogs?")) {
+            const page = Number(new URLSearchParams(path.split("?")[1]).get("current"));
+            return { data: [{ id: page, kind: "use", quantity: -1, u_before: 1024 ** 3,
+                d_before: 2 * 1024 ** 3, batch_id: 81, created_at: timestamp }], total: 11 };
+        }
+        if (path.includes("/stat/getStatUser")) return { data: [], total: 0 };
+        return { data: { user: {}, events: [] } };
+    });
+    try {
+        render(<AdminTimeZoneScope><AdminUserDetails row={{ id: 42 }} close={vi.fn()} /></AdminTimeZoneScope>);
+        fireEvent.mouseDown(screen.getByRole("tab", { name: "流量记录" }), { button: 0, ctrlKey: false });
+        expect(screen.getByRole("tab", { name: "每日用量" }).getAttribute("aria-selected")).toBe("true");
+        expect(resetQueries()).toHaveLength(0);
+        fireEvent.mouseDown(screen.getByRole("tab", { name: "储备重置" }), { button: 0, ctrlKey: false });
+
+        const amount = await screen.findByText("3 GiB");
+        const record = amount.closest("tr")!;
+        expect(record.querySelector("time")?.dateTime).toBe(iso);
+        expect(record.querySelector("time")?.textContent).toContain("16:10:37");
+        expect(resetQueries()[0].get("user_id")).toBe("42");
+        expect(resetQueries()[0].get("kind")).toBe("use");
+        expect(resetQueries()[0].has("to")).toBe(false);
+        expect(Number(resetQueries()[0].get("from"))).toBe(now / 1000 - 30 * 86400);
+
+        fireEvent.click(screen.getByRole("button", { name: "下一页" }));
+        await waitFor(() => expect(resetQueries().at(-1)?.get("current")).toBe("2"));
+        await screen.findByText("3 GiB");
+
+        const start = screen.getByLabelText<HTMLInputElement>("开始时间");
+        fireEvent.change(start, { target: { value: "2026-11-22T16:10:37" } });
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        await waitFor(() => {
+            expect(resetQueries().at(-1)?.get("from")).toBe(String(timestamp));
+            expect(resetQueries().at(-1)?.get("current")).toBe("1");
+        });
+        await screen.findByText("3 GiB");
+        const requestCount = resetQueries().length;
+        act(() => setAdminDisplayTimeZone("business"));
+        expect(start.value).toContain("2026-11-23T00:10:37");
+        expect(screen.getByText(/记录与筛选时区.*Asia\/Shanghai/)).toBeTruthy();
+        expect(screen.getByText("3 GiB").closest("tr")?.querySelector("time")?.textContent).toContain("00:10:37");
+        expect(resetQueries()).toHaveLength(requestCount);
+        fireEvent.click(screen.getByRole("button", { name: "查询" }));
+        await waitFor(() => expect(resetQueries()).toHaveLength(requestCount + 1));
+        expect(resetQueries().at(-1)?.get("from")).toBe(String(timestamp));
+    } finally {
+        cleanup();
+        clock.mockRestore();
+        setAdminDisplayTimeZone("business");
+    }
+});
+
+it("shows grant expiry and administrator information without presenting a grant as a reset", async () => {
+    const created_at = Date.parse("2026-11-22T16:10:37Z") / 1000;
+    readRequest.mockImplementation(async (path: string) => {
+        if (path.startsWith("test-admin/user/usageResetLogs?")) {
+            const params = new URLSearchParams(path.split("?")[1]);
+            if (params.get("kind") === "grant") return {
+                data: [
+                    { id: 1, kind: "grant", quantity: 2, u_before: 1024 ** 3, d_before: 2 * 1024 ** 3,
+                        batch_id: 81, actor_id: 5, actor_email: "grant-admin@example.test", created_at, expiry_known: true, expires_at: null },
+                    { id: 2, kind: "grant", quantity: 1, batch_id: 80, actor_id: 7, created_at, expiry_known: false, expires_at: null },
+                ],
+                total: 2,
+            };
+            return { data: [], total: 0 };
+        }
+        if (path.includes("/stat/getStatUser")) return { data: [], total: 0 };
+        return { data: { user: {}, events: [] } };
+    });
+    render(<AdminUserDetails row={{ id: 42 }} close={vi.fn()} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "流量记录" }), { button: 0, ctrlKey: false });
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "储备重置" }), { button: 0, ctrlKey: false });
+    fireEvent.click(screen.getByRole("button", { name: "管理员发放" }));
+    const grant = (await screen.findByText(/grant-admin@example.test/)).closest("tr")!;
+    expect(within(grant).getByText("长期有效")).toBeTruthy();
+    expect(screen.getByText(/未记录/)).toBeTruthy();
+    expect(screen.queryByText("3 GiB")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "清除时间" }));
+    await waitFor(() => {
+        const query = resetQueries().at(-1)!;
+        expect(query.get("kind")).toBe("grant");
+        expect(query.has("from")).toBe(false);
+        expect(query.has("to")).toBe(false);
+    });
+    fireEvent.click(screen.getByRole("button", { name: "全局重置" }));
+    await waitFor(() => expect(resetQueries().at(-1)?.get("kind")).toBe("global"));
 });

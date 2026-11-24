@@ -509,6 +509,7 @@ CREATE TABLE IF NOT EXISTS `v2_usage_reset_log` (
   `request_key` varchar(64) DEFAULT NULL,
   `created_at` int NOT NULL,
   PRIMARY KEY (`id`), KEY `v2_usage_reset_log_user_id_created_at_index` (`user_id`,`created_at`),
+  KEY `usage_reset_kind_created_id` (`kind`,`created_at`,`id`),
   UNIQUE KEY `v2_usage_reset_log_user_id_request_key_unique` (`user_id`,`request_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

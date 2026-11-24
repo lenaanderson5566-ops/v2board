@@ -27,7 +27,7 @@ export function AdminUserDetails({row, close}: {row:Row; close:()=>void}) {
             />}
             {tab === "invitations" && <UserInvitations row={row}/>}
             {tab === "orders" && <UserOrders row={row}/>}
-            {tab === "traffic" && <UserTraffic key={row.id} row={row} />}
+            {tab === "traffic" && <UserTraffic key={row.id} row={row} close={close} />}
             {tab === "credits" && <UserCredits row={row} focusOnOpen={focusPanel}/>}
         </AdminTabs>
     </Modal>;
@@ -183,9 +183,10 @@ function UserCredits({ row, focusOnOpen }: { row: Row; focusOnOpen: boolean }) {
 }
 type ResetCredits = { available: number; next_expires_at: number | null; next_expires_count: number };
 
-function UserResetCreditSummary({ userId }: { userId: number }) {
+function UserResetCreditSummary({ userId, close }: { userId: number; close: () => void }) {
     const credits = useData<ResetCredits>(query(admin("user/usageResetCredits"), { user_id: userId }));
     const summary = typeof credits.data?.available === "number" ? credits.data : null;
+    const historyLink = userResetHistoryLink(userId);
     return (
         <section className="user-traffic-reset-summary" aria-label="有效储备重置">
             <State {...credits} retry={credits.reload}>
@@ -196,12 +197,17 @@ function UserResetCreditSummary({ userId }: { userId: number }) {
                         : summary.available > 0 ? <span className="muted">长期有效</span> : null}
                 </div>}
             </State>
-            <a className="button" href={userResetHistoryLink(userId)}>查看重置记录</a>
+            <a className="button" href={historyLink} onClick={event => {
+                if (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && window.location.hash === historyLink) {
+                    event.preventDefault();
+                    close();
+                }
+            }}>查看重置记录</a>
         </section>
     );
 }
 
-function UserTraffic({ row }: { row: Row }) {
+function UserTraffic({ row, close }: { row: Row; close: () => void }) {
     const [pageSize, setPageSize] = useState(10);
     const [page, setPage] = useState(1);
     const d = useData<Row[]>(
@@ -213,7 +219,7 @@ function UserTraffic({ row }: { row: Row }) {
     );
     return (
         <div className="pad">
-            <UserResetCreditSummary userId={row.id} />
+            <UserResetCreditSummary userId={row.id} close={close} />
             <p className="muted">日期按记录生成时的业务时区显示。旧记录沿用上海时区。</p>
             <State {...d} retry={d.reload}>
                 <Table

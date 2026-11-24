@@ -123,7 +123,9 @@ try {
     $target = ['user_id' => $user->id];
     $assert($call($logsUrl($target), null)->getStatusCode() === 403
         && $call($logsUrl($target), null, $token)->getStatusCode() === 403, 'Usage reset audit allowed a non-admin');
-    foreach ([[], ['user_id' => 0], ['user_id' => [$user->id]], $target + ['kind' => 'paid'],
+    $assert($call($logsUrl([]), null)->getStatusCode() === 403
+        && $call($logsUrl([]), null, $token)->getStatusCode() === 403, 'Site-wide reset history allowed a non-admin');
+    foreach ([['user_id' => ''], ['email' => ''], ['user_id' => 0], ['user_id' => [$user->id]], $target + ['kind' => 'paid'],
         $target + ['email' => $other->email], ['email' => 'incomplete'], ['email' => [$user->email]],
         $target + ['from' => 'yesterday'], $target + ['from' => 2, 'to' => 1],
         $target + ['current' => 0], $target + ['pageSize' => 101]] as $invalid) {
@@ -135,7 +137,7 @@ try {
         && $usage['actor_id'] === $user->id && $usage['actor_email'] === $user->email && $usage['batch_id'] === $soon->batch_id
         && $usage['u_before'] === 10 && $usage['d_before'] === 20 && !$usage['expiry_known'] && $usage['expires_at'] === null,
         'Default audit list included retries, other event types or incorrect consumption details');
-    $expectedFields = ['id','kind','quantity','batch_id','actor_id','actor_email','u_before','d_before','created_at','expires_at','expiry_known'];
+    $expectedFields = ['id','kind','quantity','batch_id','user_id','user_email','actor_id','actor_email','u_before','d_before','created_at','expires_at','expiry_known'];
     $assert(!array_diff(array_keys($usage), $expectedFields) && !array_diff($expectedFields, array_keys($usage)),
         'Audit projection omitted fields or exposed internal data');
     $assert($readLogs(['user_id' => $other->id]) === ['data' => [], 'total' => 0], 'Audit leaked another user’s consumption');
@@ -179,8 +181,31 @@ try {
     $removedUserId = User::max('id') + 1;
     $orphanId = $ledger->insertGetId(array_replace($historical, ['user_id' => $removedUserId]));
     $orphan = $readLogs(['user_id' => $removedUserId, 'kind' => 'grant']);
-    $assert($orphan['total'] === 1 && $orphan['data'][0]['id'] === $orphanId,
+    $assert($orphan['total'] === 1 && $orphan['data'][0]['id'] === $orphanId
+        && $orphan['data'][0]['user_id'] === $removedUserId && $orphan['data'][0]['user_email'] === null,
         'Audit history could no longer be queried by ID after the account row disappeared');
+    $historicalUse = ['user_id' => $removedUserId, 'actor_id' => $removedUserId, 'kind' => 'use', 'quantity' => -1];
+    $outsideWindow = $ledger->insertGetId($historicalUse + ['created_at' => $old - 30 * 86400 - 1]);
+    $onBoundary = $ledger->insertGetId($historicalUse + ['created_at' => $old - 30 * 86400]);
+    $oldUse = $ledger->insertGetId($historicalUse + ['created_at' => $old]);
+    $otherUse = $ledger->insertGetId(array_replace($historicalUse, ['created_at' => $old, 'user_id' => $other->id, 'actor_id' => $other->id]));
+    $recent = $readLogs([]);
+    $assert($recent['total'] === 2 && collect($recent['data'])->every(fn ($item) => $item['kind'] === 'use')
+        && collect($recent['data'])->pluck('user_email', 'user_id')->get($user->id) === $user->email
+        && collect($recent['data'])->pluck('user_email', 'user_id')->get($admin->id) === $admin->email,
+        'Default activity did not show recent consumption across accounts only');
+    $bounded = $readLogs(['to' => $old, 'pageSize' => 2]);
+    $assert($bounded['total'] === 3 && array_column($bounded['data'], 'id') === [$otherUse, $oldUse]
+        && $bounded['data'][1]['user_email'] === null, 'Site-wide window or same-second paging lost historical users');
+    $next = $readLogs(['to' => $old, 'pageSize' => 2, 'current' => 2]);
+    $assert($next['total'] === 3 && array_column($next['data'], 'id') === [$onBoundary],
+        'A to-only lookup did not include exactly the preceding 30 days');
+    $fullUser = $readLogs(['user_id' => $removedUserId]);
+    $assert(array_column($fullUser['data'], 'id') === [$oldUse, $onBoundary, $outsideWindow],
+        'Personal audit history incorrectly inherited the site-wide lookback');
+    $grantWindow = $readLogs(['kind' => 'grant', 'from' => $old, 'to' => $old]);
+    $assert($grantWindow['total'] === 3 && array_column($grantWindow['data'], 'id') === [$orphanId, $second, $first],
+        'Explicit site-wide grant filter did not respect its date range');
     $paidReset = App\Models\Order::create([
         'user_id'=>$other->id, 'plan_id'=>$plan->id, 'trade_no'=>App\Utils\Helper::generateOrderNo(),
         'currency'=>$other->currency ?: 'CNY', 'period'=>'reset_price', 'type'=>4, 'status'=>1, 'paid_at'=>time(), 'total_amount'=>100,
@@ -222,6 +247,12 @@ try {
     $assert($global['total'] === 1 && $global['data'][0]['actor_id'] === $admin->id && $global['data'][0]['quantity'] === 0
         && $global['data'][0]['u_before'] === 100 && $global['data'][0]['expiry_known'] === false,
         'Global reset not distinguishable from using a credit');
+    $allGlobal = $readLogs(['kind' => 'global', 'pageSize' => 100]);
+    $otherGlobal = collect($allGlobal['data'])->firstWhere('user_id', $other->id);
+    $assert($allGlobal['total'] === $all['expected_count'] && $otherGlobal['user_email'] === $other->email
+        && $otherGlobal['actor_email'] === $admin->email && $otherGlobal['actor_id'] === $admin->id,
+        'Site-wide global reset merged affected users or confused their identities with the administrator');
+    $assert($readLogs([]) === $recent, 'Global reset rows displaced personal consumptions in the default view');
     $other->update(['d'=>37]);
     $assert($call($endpoint,$all,$adminToken)->getStatusCode()===200 && $other->refresh()->d===37,'Repeated global reset changed new usage');
     $assert($user->only(array_keys($before))===$before,'Global reset changed plan or credentials');

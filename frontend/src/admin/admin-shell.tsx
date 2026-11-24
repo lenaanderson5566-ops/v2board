@@ -12,7 +12,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { boot, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
-import { adminRoot, adminSubpages } from "./admin-navigation";
+import { adminRoot, adminSubpages, userResetHistoryPage } from "./admin-navigation";
 import { AdminDisplayTimeZoneDialog, useAdminDisplayTimeZone } from "./AdminDisplayTimeZone";
 import "./admin-shell-experience.css";
 
@@ -42,6 +42,7 @@ export const adminMenu = [
     ["access-blacklist", "订阅访问黑名单", "ban", "安全与风控"],
     ["log-targets", "节点访问目标", "layers", "日志与诊断"],
     ["access-logs", "访问日志", "login", "日志与诊断"],
+    [userResetHistoryPage, "重置记录", "refresh", "日志与诊断"],
     ["mail-logs", "邮件发送日志", "notebook", "日志与诊断"],
     ["client-diagnostics", "客户端运行记录", "screen-smartphone", "日志与诊断"],
     ["system-log", "系统日志", "notebook", "日志与诊断"],

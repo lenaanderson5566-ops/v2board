@@ -107,13 +107,12 @@ export const adminWorkspaces = [
 ];
 export const userResetHistoryPage = "user-reset-history";
 
-export function userResetHistoryLink(userId?: number) {
-    return `#/${userResetHistoryPage}${userId == null ? "" : `?user_id=${encodeURIComponent(userId)}`}`;
+export function userResetHistoryLink(userId: number) {
+    return `#/${userResetHistoryPage}?user_id=${encodeURIComponent(userId)}`;
 }
 
 // These links belong in search without adding workspace tabs.
 const additionalSubpages: Record<string, string[][]> = {
-    users: [[userResetHistoryPage, "重置记录"]],
     overview: [
         ["overview-analytics", "访问与转化"],
         ["overview-risk", "风控概览"],

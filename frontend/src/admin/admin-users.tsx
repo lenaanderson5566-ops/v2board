@@ -9,7 +9,6 @@ import { AdminMailComposer } from "./AdminMailComposer";
 import { useEffect, useState, useRef } from "react";
 import { AdminUsageReset } from "./AdminUsageReset";
 import { AdminRowMenu } from "./AdminRowMenu";
-import { userResetHistoryLink } from "./admin-navigation";
 import {
     admin,
     request,
@@ -217,10 +216,7 @@ export function UsersPage() {
                     setDirection(next);
                 }}
                 onUserDetails={(row) => setDetail({kind:"profile",row})}
-                headerActions={<>
-                    <a className="button" href={userResetHistoryLink()}>重置记录</a>
-                    <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>
-                </>}
+                headerActions={<button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
                 toolbar={({ total, error: listError }) => (
                     <div className="pad user-toolbar">
                         <form

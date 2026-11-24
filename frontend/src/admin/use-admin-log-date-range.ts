@@ -48,8 +48,8 @@ export function useAdminLogDateRange(initial: Partial<Record<Boundary, unknown>>
             }
             return date;
         },
-        reset() {
-            setDraft({ from: null, to: null });
+        reset(range: Partial<Record<Boundary, unknown>> = {}) {
+            setDraft({ from: savedInstant(range.from), to: savedInstant(range.to) });
         },
     };
 }

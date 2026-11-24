@@ -19,7 +19,9 @@
 
 用户显示近 30 天最新 100 条发放/使用/全局重置记录，数据库保留完整记录和管理员 ID。所有写操作均使用事务；用户行锁串行化扣减，幂等键阻止网络重试重复消耗或重复全局清零。全局操作对所有用户写入审计，人数多时可能需要较长时间，建议低峰操作；超时后使用同一窗口重试。
 
-管理员可在「用户管理 → 重置记录」按用户 ID 或完整邮箱查询流水。默认查询最近 30 天的用户使用记录，可切换管理员发放或全局重置，按时间筛选和分页，也可清除时间查阅更早的记录。列表和起止时间采用后台界面显示时区。使用记录显示清零前的用量及对应的发放批次，发放记录显示发放人、次数和有效期。
+「日志与诊断 → 重置记录」默认按时间倒序显示近 30 天所有用户使用储备次数的记录。每次使用各占一条，显示用户 ID、邮箱、重置前用量和对应批次。可按用户 ID 或完整邮箱缩小范围，按时间筛选和分页。全局重置和管理员发放各有独立筛选，发放记录显示发放人、次数和有效期。列表和起止时间采用后台界面显示时区。
+
+全站查询可选其他时间段，也可一键恢复最近 30 天。指定用户后可清除时间限制。自动周期重置及付费重置沿用各自的记录。
 
 「用户详情 → 流量记录」显示当前未到期的剩余次数。有定期批次时显示最近到期时间及届时到期的剩余次数，全部长期有效时显示「长期有效」。「查看重置记录」会自动带入当前用户 ID。
 
@@ -27,11 +29,12 @@
 
 储备重置使用 `v2_usage_reset_batch`、`v2_usage_reset_credit` 和 `v2_usage_reset_log`。用户的重置起算日保存在可空字段 `traffic_reset_anchor_at`，从新发生的手动重置开始写入。`database/install.sql` 包含完整结构，`update.sh` 包含定向迁移。
 
-按原升级流程备份数据库并停止队列/计划任务，运行 `update.sh --jobs-stopped` 等既有参数。已经拉取代码且只需补表时，先备份，然后执行：
+按原升级流程备份数据库并停止队列/计划任务，运行 `update.sh --jobs-stopped` 等既有参数。全站查询使用 `v2_usage_reset_log` 的类型和时间索引，由升级脚本创建。已经拉取代码且只需补表和索引时，先备份，然后执行：
 
 ```bash
 /www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_10_02_000003_create_usage_resets.php --force
 /www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_11_03_000001_add_traffic_reset_anchor.php --force
+/www/server/php/84/bin/php artisan migrate --path=database/migrations/2026_11_24_000001_index_usage_reset_history.php --force
 ```
 
 不要对历史 SQL 安装环境直接执行全量 `artisan migrate`，也不要使用 `migrate:fresh`。前端静态资源随仓库提交，生产无需 Node 构建。

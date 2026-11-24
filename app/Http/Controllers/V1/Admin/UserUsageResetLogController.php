@@ -13,8 +13,8 @@ class UserUsageResetLogController extends Controller
     public function index(Request $request)
     {
         $input = $request->validate([
-            'user_id' => 'bail|required_without:email|prohibits:email|nullable|integer|min:1',
-            'email' => 'bail|required_without:user_id|prohibits:user_id|nullable|string|max:254|email:rfc',
+            'user_id' => 'bail|sometimes|required|prohibits:email|integer|min:1',
+            'email' => 'bail|sometimes|required|prohibits:user_id|string|max:254|email:rfc',
             'kind' => 'sometimes|required|in:use,grant,global',
             'from' => 'nullable|integer|min:0',
             'to' => 'nullable|integer|min:0',
@@ -24,11 +24,18 @@ class UserUsageResetLogController extends Controller
         if (isset($input['from'], $input['to']) && $input['from'] > $input['to']) {
             abort(422, '结束时间不能早于开始时间');
         }
-        $userId = $input['user_id'] ?? EmailAddress::find($input['email'])?->id;
-        abort_if($userId === null, 404, '未找到匹配该邮箱的用户');
-        $logs = DB::table('v2_usage_reset_log as log')
-            ->where('log.user_id', $userId)
-            ->where('log.kind', $input['kind'] ?? 'use');
+        if (isset($input['email'])) {
+            $input['user_id'] = EmailAddress::find($input['email'])?->id;
+            abort_if($input['user_id'] === null, 404, '未找到匹配该邮箱的用户');
+        }
+        $kind = $input['kind'] ?? 'use';
+        $logs = DB::table('v2_usage_reset_log as log')->where('log.kind', $kind);
+        if (isset($input['user_id'])) {
+            $logs->where('log.user_id', $input['user_id']);
+        } elseif (!isset($input['from'])) {
+            $input['to'] ??= time();
+            $input['from'] = max(0, $input['to'] - 30 * 86400);
+        }
         if (isset($input['from'])) $logs->where('log.created_at', '>=', $input['from']);
         if (isset($input['to'])) $logs->where('log.created_at', '<=', $input['to']);
 
@@ -39,18 +46,22 @@ class UserUsageResetLogController extends Controller
             return response()->json(['data' => [], 'total' => $total]);
         }
 
-        $rows = $logs->leftJoin('v2_user as actor', 'actor.id', '=', 'log.actor_id')
-            ->leftJoin('v2_usage_reset_credit as credit', function ($join) {
+        $logs->select(['log.id', 'log.kind', 'log.quantity', 'log.batch_id', 'log.user_id', 'log.actor_id',
+            'log.u_before', 'log.d_before', 'log.created_at']);
+        if ($kind === 'grant') {
+            $logs->leftJoin('v2_usage_reset_credit as credit', function ($join) {
                 $join->on('credit.id', '=', 'log.credit_id')
-                    ->on('credit.user_id', '=', 'log.user_id')
-                    ->where('log.kind', '=', 'grant');
-            })
-            ->orderByDesc('log.created_at')->orderByDesc('log.id')
-            ->forPage($current, $pageSize)
-            ->get(['log.id', 'log.kind', 'log.quantity', 'log.batch_id', 'log.actor_id', 'actor.email as actor_email',
-                'log.u_before', 'log.d_before', 'log.created_at', 'credit.expires_at', 'credit.id as expiry_known']);
+                    ->on('credit.user_id', '=', 'log.user_id');
+            })->addSelect(['credit.expires_at', 'credit.id as expiry_known']);
+        }
+        $rows = $logs->orderByDesc('log.created_at')->orderByDesc('log.id')->forPage($current, $pageSize)->get();
+        $userIds = $rows->pluck('user_id')->merge($rows->pluck('actor_id'))->unique();
+        $emails = DB::table('v2_user')->whereIn('id', $userIds)->pluck('email', 'id');
         foreach ($rows as $row) {
-            $row->expiry_known = $row->expiry_known !== null;
+            $row->user_email = $emails->get($row->user_id);
+            $row->actor_email = $emails->get($row->actor_id);
+            $row->expiry_known = isset($row->expiry_known);
+            $row->expires_at ??= null;
         }
         return response()->json(['data' => $rows, 'total' => $total]);
     }

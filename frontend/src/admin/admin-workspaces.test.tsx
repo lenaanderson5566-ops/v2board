@@ -2085,6 +2085,7 @@ it("shows an empty trend without drawing invalid values", () => {
 
 it("groups target logs in diagnostics and loads dashboard analytics only on selection", async () => {
     expect(adminMenu.find(([key]) => key === "log-targets")?.[3]).toBe("日志与诊断");
+    expect(adminMenu.find(([key]) => key === "user-reset-history")?.[3]).toBe("日志与诊断");
     expect(adminMenu.some(([key]) => String(key) === "analytics")).toBe(false);
     const { adminPageFixture } = await import("./test-support/page-fixtures");
     api.request.mockImplementation(async (path: string) => adminPageFixture(path));

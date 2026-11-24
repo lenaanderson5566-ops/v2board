@@ -198,7 +198,7 @@ it("prefills the central reset lookup by user ID and preserves the active query 
     }
 });
 
-it("queries grants by email and preserves the applied identity when clearing dates", async () => {
+it("opens on recent resets for all users and can narrow to grants by email or widen again", async () => {
     const created_at = Date.parse("2026-11-22T16:10:37Z") / 1000;
     readRequest.mockImplementation(async (path: string) => {
         if (path.startsWith("test-admin/user/usageResetLogs?")) {
@@ -211,6 +211,11 @@ it("queries grants by email and preserves the applied identity when clearing dat
                 ],
                 total: 2,
             };
+            if (params.get("kind") === "use") return { data: [
+                { id: 4, kind: "use", user_id: 42, user_email: "target@example.test", quantity: -1, created_at,
+                    u_before: 1024 ** 3, d_before: 2 * 1024 ** 3 },
+                { id: 3, kind: "use", user_id: 44, user_email: null, quantity: -1, created_at },
+            ], total: 2 };
             return { data: [], total: 0 };
         }
         if (path.includes("/stat/getStatUser")) return { data: [], total: 0 };
@@ -218,11 +223,17 @@ it("queries grants by email and preserves the applied identity when clearing dat
     });
     render(<AdminContent route="user-reset-history" />);
     const lookup = await screen.findByLabelText("用户 ID 或邮箱");
-    expect(resetQueries()).toHaveLength(0);
+    expect(await screen.findByRole("button", { name: /target@example.test/ })).toBeTruthy();
+    expect(screen.getByText("ID: 44 · 邮箱不可用")).toBeTruthy();
+    expect(resetQueries()).toHaveLength(1);
+    expect(resetQueries()[0].get("kind")).toBe("use");
+    expect(resetQueries()[0].has("from")).toBe(true);
+    expect(resetQueries()[0].has("user_id")).toBe(false);
+    expect(resetQueries()[0].has("email")).toBe(false);
     fireEvent.change(lookup, { target: { value: " invalid " } });
     fireEvent.click(screen.getByRole("button", { name: "查询" }));
     expect(screen.getByRole("alert").textContent).toContain("请输入用户 ID 或完整邮箱。");
-    expect(resetQueries()).toHaveLength(0);
+    expect(resetQueries()).toHaveLength(1);
     fireEvent.change(lookup, { target: { value: " target@example.test " } });
     const kind = screen.getByRole("combobox", { name: "记录类型" });
     fireEvent.change(kind, { target: { value: "grant" } });
@@ -251,6 +262,22 @@ it("queries grants by email and preserves the applied identity when clearing dat
         expect(query.get("user_id")).toBe("43");
         expect(query.has("email")).toBe(false);
     });
+    fireEvent.change(lookup, { target: { value: "" } });
+    fireEvent.change(kind, { target: { value: "use" } });
+    fireEvent.click(screen.getByRole("button", { name: "查询" }));
+    await waitFor(() => {
+        const query = resetQueries().at(-1)!;
+        expect(query.get("kind")).toBe("use");
+        expect(query.has("user_id")).toBe(false);
+        expect(query.has("from")).toBe(true);
+    });
+    expect(screen.getByRole("button", { name: "恢复最近 30 天" })).toBeTruthy();
+});
+
+it("does not widen an invalid user link to all users", async () => {
+    render(<AdminContent route="user-reset-history?user_id=invalid" />);
+    expect((await screen.findByRole("alert")).textContent).toContain("链接中的用户 ID 无效");
+    expect(resetQueries()).toHaveLength(0);
 });
 
 it("shows the current valid reset credits and a shortcut alongside daily usage in one panel", async () => {

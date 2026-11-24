@@ -67,8 +67,12 @@ function UserOrders({ row }: { row: Row }) {
                         ["plan_name", "套餐", r => adminOrderPlan(r, plans)],
                         [
                             "total_amount",
-                            "金额",
-                            (r) => money(r.total_amount, r.currency),
+                            "外部应付",
+                            (r) => <>
+                                <div>{money(r.total_amount, r.currency)}</div>
+                                {Number(r.balance_amount) > 0 &&
+                                    <small className="muted">余额抵扣 {money(r.balance_amount, r.currency)}</small>}
+                            </>,
                         ],
                         [
                             "status",

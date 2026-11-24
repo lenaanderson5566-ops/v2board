@@ -221,6 +221,52 @@ try {
     $assert($orderDetail($walletFirst)['purchase_stage']==='first_purchase',
         'Balance-funded cycle purchases qualify even when the external payment column is zero');
 
+    $checkoutAt = (new DateTimeImmutable('2026-11-24T08:01:42+08:00'))->getTimestamp();
+    $pendingTerm = ['status'=>0, 'paid_at'=>null, 'created_at'=>$checkoutAt];
+    $pendingBuyer = $makeStageBuyer(0);
+    $makeStageOrder($pendingBuyer, ['created_at'=>$checkoutAt-3600, 'paid_at'=>$checkoutAt+1]);
+    foreach ([
+        ['period'=>'onetime_price'], ['period'=>'reset_price'], ['period'=>'deposit', 'plan_id'=>0],
+        ['credit_bytes'=>100], ['total_amount'=>0, 'balance_amount'=>0, 'surplus_amount'=>500], ['status'=>2],
+    ] as $excludedHistory) {
+        $makeStageOrder($pendingBuyer, $excludedHistory + ['created_at'=>$checkoutAt-20, 'paid_at'=>$checkoutAt-10]);
+    }
+    $firstPending = $makeStageOrder($pendingBuyer, $pendingTerm);
+    $makeStageOrder($pendingBuyer, ['paid_at'=>null, 'created_at'=>$checkoutAt]);
+    $ambiguousPending = $makeStageOrder($pendingBuyer, $pendingTerm);
+    $wallet = $makeStageOrder($pendingBuyer, ['type'=>2, 'total_amount'=>0, 'balance_amount'=>500,
+        'created_at'=>$checkoutAt-60, 'paid_at'=>$checkoutAt]);
+    $repeatPending = $makeStageOrder($pendingBuyer, $pendingTerm + ['previous_subscription_expires_at'=>$checkoutAt-300]);
+    $firstContext = $orderDetail($firstPending);
+    $assert($firstContext['pending_purchase_context']==='new' && !isset($firstContext['purchase_stage'])
+        && $orderDetail($ambiguousPending)['pending_purchase_context']==='unknown',
+        'A later payment or a later same-second ID must not backdate paid history; an earlier undated order leaves context unknown');
+    $repeatContext = $orderDetail($repeatPending);
+    $assert($repeatContext['pending_purchase_context']==='repeat'
+        && $orderPage($pendingBuyer, 1)->get($repeatPending->id)['pending_purchase_context']==='repeat'
+        && $repeatContext['status']===0 && !isset($repeatContext['purchase_stage'])
+        && !isset($repeatContext['repurchase_expiry_status']),
+        'A confirmed wallet-only payment already known at checkout makes a pending cycle order a repeat without asserting payment or expiry');
+    $assert(!isset($orderDetail($wallet)['pending_purchase_context']),
+        'A confirmed recurring payment received pending-only context');
+    foreach ([['type'=>2], ['type'=>3], ['period'=>'reset_price'], ['credit_bytes'=>5], ['total_amount'=>0, 'balance_amount'=>0]] as $otherKind) {
+        $notApplicable = $makeStageOrder($pendingBuyer, $otherKind + $pendingTerm);
+        $assert(!isset($orderDetail($notApplicable)['pending_purchase_context']), 'Pending context was attached to an ineligible checkout type');
+    }
+    $undatedCheckout = $makeStageOrder($pendingBuyer, ['created_at'=>0] + $pendingTerm);
+    $assert($orderDetail($undatedCheckout)['pending_purchase_context']==='unknown', 'Missing checkout time must not prove a new purchase');
+    $stale = $repeatPending->fresh();
+    DB::table('v2_order')->where('id',$stale->id)->update(['status'=>3, 'paid_at'=>$checkoutAt+120]);
+    $pageModels = collect([$firstPending->fresh(), $ambiguousPending->fresh(), $stale]);
+    DB::enableQueryLog();
+    DB::flushQueryLog();
+    try {
+        App\Services\AdminOrderPurchaseStage::append($pageModels);
+        $assert(count(DB::getQueryLog())===1 && $pageModels[0]->pending_purchase_context==='new'
+            && $pageModels[1]->pending_purchase_context==='unknown' && !isset($stale->pending_purchase_context) && !isset($stale->purchase_stage),
+            'A pending page must batch historical lookups and skip a row that changed status after the page was read');
+    } finally { DB::disableQueryLog(); }
+
     foreach ([3=>null, 4=>0] as $historicalStatus => $unknownPaidAt) {
         $legacyBuyer = $makeStageBuyer($priorExpiry);
         $makeStageOrder($legacyBuyer, ['status'=>$historicalStatus, 'paid_at'=>$unknownPaidAt]);

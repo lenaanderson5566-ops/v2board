@@ -115,25 +115,32 @@ it("keeps purchase types concise and separates first-payment and sub-day return 
     expect(firstRenewal.queryByText("回购情况")).toBeNull();
 });
 
-it("shows the original purchase type for pending recurring orders in the list and detail", async () => {
+it("uses earlier purchases for pending type labels without claiming a payment or expiry outcome", async () => {
     const pending = { ...order, status: 0, period: "month_price", plan_id: 1 };
     const rows = [
-        { ...pending, id: 1, type: 1 },
-        { ...pending, id: 2, type: 2 },
-        { ...pending, id: 3, type: 3 },
+        { ...pending, id: 1, type: 1, pending_purchase_context: "new" },
+        { ...pending, id: 2, type: 2, pending_purchase_context: "repeat" },
+        { ...pending, id: 3, type: 3, pending_purchase_context: "repeat" },
+        { ...pending, id: 4, type: 1, status: "0", pending_purchase_context: "repeat",
+            purchase_stage: "expired_repurchase", repurchase_expiry_status: "expired", repurchase_gap_days: 4 },
+        { ...pending, id: 5, type: 1, pending_purchase_context: "unknown" },
     ];
     api.request.mockImplementation(async (path: string, params?: { id?: number }) => path.includes("order/fetch")
         ? { data: rows, total: rows.length }
         : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
     render(<OrdersPage />);
-    const newOrder = (await screen.findByRole("cell", { name: "新购" })).closest("tr")!;
+    const repeatOrder = (await screen.findByRole("cell", { name: "再次购买" })).closest("tr")!;
+    expect(screen.getByRole("cell", { name: "新购" })).toBeTruthy();
+    expect(screen.getByRole("cell", { name: "周期购买" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "续费" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "变更套餐" })).toBeTruthy();
-    fireEvent.click(within(newOrder).getByRole("button", { name: "订单详情" }));
+    fireEvent.click(within(repeatOrder).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
-    expect(await detail.findByText("新购", { exact: true })).toBeTruthy();
+    expect(await detail.findByText("再次购买", { exact: true })).toBeTruthy();
+    expect(detail.getByText("这笔订单下单前已有付费周期套餐记录，含余额支付。")).toBeTruthy();
     expect(detail.queryByText("购买记录")).toBeNull();
-    expect(screen.queryByText("周期购买")).toBeNull();
+    expect(detail.queryByText("回购情况")).toBeNull();
+    expect(detail.queryByText("回购间隔")).toBeNull();
     expect(screen.queryByText("首购")).toBeNull();
 });
 

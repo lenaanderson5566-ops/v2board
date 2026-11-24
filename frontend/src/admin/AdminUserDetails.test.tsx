@@ -304,3 +304,30 @@ it("shows the current valid reset credits and a shortcut alongside daily usage i
     expect(readRequest).toHaveBeenCalledWith("test-admin/user/usageResetCredits?user_id=42", undefined, false);
     expect(resetQueries()).toHaveLength(0);
 });
+
+it("distinguishes balance-funded orders from free orders and shows a pending repeat", async () => {
+    const base = { type: 1, period: "month_price", currency: "CNY", plan_name: "Basic", status: 3, total_amount: 0 };
+    const orders = [
+        { ...base, id: 3, trade_no: "pending-repeat", status: 0, total_amount: 1912, pending_purchase_context: "repeat" },
+        { ...base, id: 2, trade_no: "paid-by-balance", balance_amount: 2390, purchase_stage: "first_purchase" },
+        { ...base, id: 1, trade_no: "free-order", balance_amount: 0 },
+    ];
+    readRequest.mockImplementation(async (path: string) => {
+        if (path.startsWith("test-admin/order/fetch?")) return { data: orders, total: orders.length };
+        if (path.endsWith("/plan/fetch")) return { data: [] };
+        return { data: { user: {}, events: [] } };
+    });
+    render(<AdminUserDetails row={{ id: 42 }} close={vi.fn()} />);
+    fireEvent.mouseDown(screen.getByRole("tab", { name: "订单" }), { button: 0, ctrlKey: false });
+    const pending = within((await screen.findByText("pending-repeat")).closest("tr")!);
+    const balance = within(screen.getByText("paid-by-balance").closest("tr")!);
+    const free = within(screen.getByText("free-order").closest("tr")!);
+    expect(screen.getByRole("columnheader", { name: "外部应付" })).toBeTruthy();
+    expect(pending.getByText("再次购买")).toBeTruthy();
+    expect(pending.getByText("待支付")).toBeTruthy();
+    expect(pending.getByText("CNY 19.12")).toBeTruthy();
+    expect(balance.getByText("首购")).toBeTruthy();
+    expect(balance.getByText("CNY 0.00")).toBeTruthy();
+    expect(balance.getByText("余额抵扣 CNY 23.90")).toBeTruthy();
+    expect(free.queryByText(/余额抵扣/)).toBeNull();
+});

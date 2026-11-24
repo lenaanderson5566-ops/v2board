@@ -30,15 +30,18 @@ function isCreditOrder(order: Row): boolean {
     return order.period === "onetime_price" || Number(order.credit_bytes ?? 0) > 0;
 }
 
-function usesPurchaseHistory(order: Row): boolean {
-    return String(order.status) !== "0"
-        && ["1", "2", "3"].includes(String(order.type))
+function isPendingOrder(order: Row): boolean {
+    return String(order.status) === "0";
+}
+
+function isRecurringOrder(order: Row): boolean {
+    return ["1", "2", "3"].includes(String(order.type))
         && Object.hasOwn(periodicPlanPrices, String(order.period))
         && !isCreditOrder(order);
 }
 
 function purchaseStageLabel(order: Row): OrderTypeLabel | undefined {
-    if (!usesPurchaseHistory(order)) return;
+    if (isPendingOrder(order) || !isRecurringOrder(order)) return;
     if (order.purchase_stage === "first_purchase") return {
         label: "首购", tone: "first",
         description: "首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。",
@@ -50,7 +53,8 @@ function purchaseStageLabel(order: Row): OrderTypeLabel | undefined {
 }
 
 function repurchaseExpiryStatus(order: Row): "expired" | "not_expired" | "unknown" | undefined {
-    if (!usesPurchaseHistory(order) || !["repeat_purchase", "expired_repurchase"].includes(String(order.purchase_stage))) return;
+    if (isPendingOrder(order) || !isRecurringOrder(order)
+        || !["repeat_purchase", "expired_repurchase"].includes(String(order.purchase_stage))) return;
     // Preserve older server responses while preferring the explicit evidence field.
     const status = order.repurchase_expiry_status ?? (order.purchase_stage === "expired_repurchase" ? "expired" : "unknown");
     return status === "expired" || status === "not_expired" ? status : "unknown";
@@ -85,11 +89,22 @@ function orderTypeLabel(order: Row): OrderTypeLabel {
     const type = Object.hasOwn(orderTypes, key) ? orderTypes[key] : { label: key || "—", tone: "neutral" } as const;
     const stage = purchaseStageLabel(order);
     if (stage && key === "1") return stage;
-    if (key === "1" && usesPurchaseHistory(order)) return {
+    if (key !== "1" || !isRecurringOrder(order)) return type;
+    if (isPendingOrder(order)) {
+        if (order.pending_purchase_context === "repeat") return {
+            label: "再次购买", tone: "plan",
+            description: "这笔订单下单前已有付费周期套餐记录，含余额支付。",
+        };
+        if (order.pending_purchase_context !== "unknown") return type;
+        return {
+            label: "周期购买", tone: "neutral",
+            description: "现有记录不足以确认下单前是否已有付费周期套餐。",
+        };
+    }
+    return {
         label: "周期购买", tone: "neutral",
         description: "周期套餐购买，现有记录不足以确认首次实付或再次购买。",
     };
-    return type;
 }
 
 function orderBadge({ label, tone, description }: OrderTypeLabel) {

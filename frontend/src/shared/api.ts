@@ -156,7 +156,7 @@ function apiFailure(payload: unknown, status: number, authenticated: boolean, pr
 export async function request<T = Row>(
     path: string,
     body?: Row | FormData,
-    options?: { signal?: AbortSignal; timeoutMs?: number; method?: "PATCH" },
+    options?: { signal?: AbortSignal; timeoutMs?: number; method?: "PATCH"; cache?: "no-store"; redirect?: "error" },
 ): Promise<Envelope<T>> {
     const observedStart=performance.now();
     let observedFailure: "api_error" | "network_error" | null = null;
@@ -192,6 +192,8 @@ export async function request<T = Row>(
             credentials: "include",
             signal: controller.signal,
             method: v10?.method ?? options?.method ?? (body ? "POST" : "GET"),
+            ...(options?.cache ? { cache: options.cache } : {}),
+            ...(options?.redirect ? { redirect: options.redirect } : {}),
             headers: {
                 Accept: "application/json",
                 ...(v10

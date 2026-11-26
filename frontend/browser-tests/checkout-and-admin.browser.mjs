@@ -1284,6 +1284,52 @@ test.describe("desktop admin frontend", () => {
     });
 });
 
+test("mobile admin checks a migration file before sending it for import", async ({ page, context }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    let usersFetched = 0;
+    const submissions = [];
+    await consoleFixture(context, "admin", (path, request) => {
+        if (path === "/api/v1/test-admin/config/fetch") return {};
+        if (path === "/api/v1/test-admin/plan/fetch") return [];
+        if (path === "/api/v1/test-admin/user/fetch") { usersFetched++; return []; }
+        if (path === "/api/v1/test-admin/user/importPreview") {
+            submissions.push({ path, content: request.postData(), type: request.headers()["content-type"] });
+            return {
+                source_site: "legacy-site", snapshot_at: 1786013217, cutoff_at: 1777564800,
+                total: 3, ready: 2, existing_email: 1, already_imported: 0, needs_review: 0, conflicts: 0,
+                totals: { CNY: 2755, USD: 0 }, preview_token: "test-preview-token",
+                rows: [{ source_user_id: 1, email: "duplicate@example.test", state: "existing_email", currency: "CNY", balance: 0, review_reasons: [] }],
+            };
+        }
+        if (path === "/api/v1/test-admin/user/importApply") {
+            submissions.push({ path, content: request.postData(), type: request.headers()["content-type"] });
+            return { created: 1, skipped: 2, totals: { CNY: 2500, USD: 0 } };
+        }
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/users`);
+    await page.getByRole("button", { name: "批量导入用户" }).click();
+    const dialog = page.getByRole("dialog", { name: "批量导入用户" });
+    await dialog.getByLabel("迁移 JSON 文件").setInputFiles({ name: "migration.json", mimeType: "application/json", buffer: Buffer.from('{"version":1}') });
+    await dialog.getByRole("button", { name: "预览导入" }).click();
+    await expect(dialog.getByText("CNY 27.55", { exact: true })).toBeVisible();
+    await dialog.getByText("查看预览明细（显示 1 条，共 3 条）").click();
+    await expect(dialog.getByRole("row").filter({ hasText: "duplicate@example.test" })).toContainText("邮箱已存在");
+    await expect(dialog.getByRole("button", { name: "确认导入" })).toBeDisabled();
+    expect(submissions).toHaveLength(1);
+    await expectPageWidth(page, 390);
+
+    const beforeImport = usersFetched;
+    await dialog.getByRole("checkbox", { name: "确认创建可导入账号并按预览金额入账" }).check();
+    await dialog.getByRole("button", { name: "确认导入" }).click();
+    await expect(dialog.getByRole("status")).toHaveText("导入完成。已创建 1 个账号，跳过 2 个账号。");
+    await expect(dialog.getByText("CNY 25.00", { exact: true })).toBeVisible();
+    await expect(dialog.getByText("CNY 27.55", { exact: true })).toHaveCount(0);
+    await expect.poll(() => usersFetched).toBeGreaterThan(beforeImport);
+    expect(submissions.map(({ path }) => path.split("/").at(-1))).toEqual(["importPreview", "importApply"]);
+    expect(submissions.every(({ type }) => type.startsWith("multipart/form-data;"))).toBe(true);
+    expect(submissions[1].content).toContain("test-preview-token");
+});
+
 test("admin records a manual receipt with the simplified order columns", async ({ page, context }) => {
     await context.addInitScript(origin => {
         if (location.origin !== origin) return;

@@ -55,6 +55,169 @@ try {
  $r=$as('/api/v10/me','Bearer '.$ordinaryToken,['id'=>$admin->id,'user'=>['id'=>$admin->id,'is_admin'=>1]]);
  $me=json_decode($r->getContent(),true)['data']??[];
  $assert($r->getStatusCode()===200 && ($me['id']??null)===$user->id && !array_intersect(['password','password_algo','password_salt','uses_legacy_password','token'],array_keys($me)),'Account info ignores forged user context and exposes no password or subscription token');
+
+ // User migration requires an authenticated admin browser and binds each confirmation to its preview.
+ $importOrigin = 'https://migration.example.test';
+ $browserSessions = app(App\Services\BrowserSession::class);
+ $importSessions = [];
+ $makeImportSession = function (User $actor, string $scope = 'admin', ?int $authenticatedAt = null) use ($browserSessions, $importOrigin, &$importSessions) {
+     $request = Request::create($importOrigin.'/api/v10/auth/sessions', 'POST');
+     $record = $browserSessions->load($request, $scope);
+     $request->attributes->set('browser.session', $record);
+     if ($authenticatedAt !== null) $request->attributes->set('auth.authenticatedAt', $authenticatedAt);
+     $credential = (new App\Services\AuthService($actor))->generateAuthData($request)['auth_data'];
+     $record = $browserSessions->rotate($record, $credential);
+     $browserSessions->persist($record, response('', 204));
+     $importSessions[] = $record;
+     return $record;
+ };
+ $importSubnet = '2001:db8:'.bin2hex(random_bytes(2)).':'.bin2hex(random_bytes(2)).'::';
+ $importRequests = 0;
+ $import = function (string $endpoint, string $contents, ?array $browser = null, array $fields = [], array $headers = []) use ($kernel, $adminPath, $browserSessions, $importOrigin, $importSubnet, &$importRequests) {
+     $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('users.json', $contents);
+     $cookies = [];
+     if ($browser !== null) {
+         $cookies[$browserSessions->cookieName($browser['scope'])] = $browser['id'];
+         $headers += ['HTTP_X_BROWSER_CLIENT' => $browser['scope'], 'HTTP_X_CSRF_TOKEN' => $browser['csrfToken']];
+     }
+     $headers += [
+         'HTTP_ORIGIN' => $importOrigin, 'HTTP_ACCEPT' => 'application/json', 'CONTENT_TYPE' => 'multipart/form-data',
+         'REMOTE_ADDR' => $importSubnet.dechex(++$importRequests),
+     ];
+     $headers = array_filter($headers, static fn ($value) => $value !== null);
+     return $kernel->handle(Request::create($importOrigin.$adminPath.'/user/'.$endpoint, 'POST', $fields, $cookies, ['file' => $file], $headers));
+ };
+ $tag = bin2hex(random_bytes(5));
+ $email = 'migration-'.$tag.'@example.com';
+ $lateEmail = 'migration-late-'.$tag.'@example.com';
+ $heldEmail = 'migration-review-'.$tag.'@example.com';
+ $duplicateEmail = 'migration-duplicate-'.$tag.'@example.com';
+ $weakEmail = 'migration-weak-'.$tag.'@example.com';
+ $highCostEmail = 'migration-high-cost-'.$tag.'@example.com';
+ $password = 'ImportedFixture!2026';
+ $passwordHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 10]);
+ $weakHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 9]);
+ $highCostHash = substr_replace($passwordHash, '15', 4, 2);
+ $importRow = fn (int $id, string $address, array $overrides = []) => $overrides + [
+     'source_user_id' => $id, 'email' => $address, 'password_hash' => $passwordHash, 'currency' => 'CNY',
+     'wallet_balance' => 150, 'before_cutoff_credit' => 200, 'after_cutoff_credit' => 350, 'review_reasons' => [],
+ ];
+ $batch = [
+     'version' => 1, 'source_site' => 'fixture-'.$tag, 'cutoff_at' => 1777564800, 'snapshot_at' => 1786013277,
+     'users' => [
+         $importRow(1, strtoupper($email)),
+         $importRow(2, strtoupper($user->email)),
+         $importRow(3, $heldEmail, ['review_reasons' => ['pre_cutoff_entitlement_unknown', 'private_note_should_not_echo']]),
+         $importRow(4, $lateEmail, ['currency' => 'USD']),
+         $importRow(5, $duplicateEmail),
+         $importRow(6, strtoupper($duplicateEmail)),
+         $importRow(7, $weakEmail, ['password_hash' => $weakHash]),
+         $importRow(8, $highCostEmail, ['password_hash' => $highCostHash]),
+     ],
+ ];
+ $contents = json_encode($batch, JSON_THROW_ON_ERROR);
+ $beforeCollision = $user->fresh()->only(['password', 'balance', 'email', 'currency', 'token', 'uuid']);
+ $adminCurrency = config('fastai.new_user_currency', 'CNY');
+ config(['fastai.new_user_currency' => 'USD']);
+ try {
+     $adminBrowser = $makeImportSession($admin);
+     $sameAdminBrowser = $makeImportSession($admin);
+     $otherAdminBrowser = $makeImportSession($make('admin'));
+     $userScopeBrowser = $makeImportSession($admin, 'user');
+     $staleAdminBrowser = $makeImportSession($admin, 'admin', time() - 301);
+     $beforeImport = User::count();
+
+     $assert($import('importPreview', $contents, null, [], ['HTTP_AUTHORIZATION' => $ordinaryToken])->getStatusCode() === 403,
+         'Ordinary sessions cannot preview credential migration');
+     $assert($import('importPreview', $contents, null, [], ['HTTP_AUTHORIZATION' => $adminToken])->getStatusCode() === 403,
+         'Administrator Authorization header alone cannot preview a credential migration');
+     $assert($import('importPreview', $contents, $userScopeBrowser)->getStatusCode() === 403,
+         'An administrator cookie in the user scope does not authorize migration');
+     $assert($import('importPreview', $contents, $adminBrowser, [], ['HTTP_X_CSRF_TOKEN' => null])->getStatusCode() === 419,
+         'Browser migration preview requires CSRF');
+     $assert($import('importPreview', $contents, $adminBrowser, [], ['HTTP_ORIGIN' => 'https://untrusted.example.test'])->getStatusCode() === 419,
+         'Browser migration preview requires a trusted Origin');
+
+     $response = $import('importPreview', $contents, $adminBrowser);
+     $preview = json_decode($response->getContent(), true)['data'] ?? [];
+     $assert($response->getStatusCode() === 200 && ($preview['ready'] ?? null) === 2 && $preview['existing_email'] === 1
+         && $preview['needs_review'] === 3 && $preview['conflicts'] === 2 && $preview['totals'] === ['CNY' => 700, 'USD' => 700],
+         'Preview counts only verified importable accounts and currency totals');
+     $bySourceId = array_column($preview['rows'], null, 'source_user_id');
+     foreach ([7, 8] as $id) {
+         $assert($bySourceId[$id]['state'] === 'needs_review' && in_array('password_hash_cost_out_of_range', $bySourceId[$id]['review_reasons'], true),
+             'An unsupported bcrypt cost is held for review without blocking the rest of the file');
+     }
+     $assert(str_contains((string)$response->headers->get('Cache-Control'), 'no-store') && !str_contains($response->getContent(), $passwordHash)
+         && !str_contains($response->getContent(), $weakHash) && !str_contains($response->getContent(), $highCostHash)
+         && !str_contains($response->getContent(), 'private_note_should_not_echo') && User::count() === $beforeImport,
+         'Preview is uncacheable, discloses no password material and creates no accounts');
+
+     $apply = ['preview_token' => $preview['preview_token']];
+     $assert($import('importApply', $contents, null, $apply, ['HTTP_AUTHORIZATION' => $adminToken])->getStatusCode() === 403,
+         'Administrator Authorization header alone cannot confirm a credential migration');
+     $assert($import('importApply', $contents, $adminBrowser, $apply, ['HTTP_X_CSRF_TOKEN' => null])->getStatusCode() === 419,
+         'Browser migration confirmation requires CSRF');
+     $assert($import('importApply', $contents.' ', $adminBrowser, $apply)->getStatusCode() === 409,
+         'Apply is bound to the exact reviewed file bytes');
+     $assert($import('importApply', $contents, $otherAdminBrowser, $apply)->getStatusCode() === 409,
+         'Apply is bound to the previewing administrator');
+     $assert($import('importApply', $contents, $sameAdminBrowser, $apply)->getStatusCode() === 409,
+         'Another browser session for the same administrator cannot reuse a preview');
+
+     $staleResponse = $import('importPreview', $contents, $staleAdminBrowser);
+     $stalePreview = json_decode($staleResponse->getContent(), true)['data'] ?? [];
+     $assert($staleResponse->getStatusCode() === 200 && is_string($stalePreview['preview_token'] ?? null),
+         'An authenticated administrator can preview without recent login assurance');
+     $staleApply = $import('importApply', $contents, $staleAdminBrowser, ['preview_token' => $stalePreview['preview_token']]);
+     $staleProblem = json_decode($staleApply->getContent(), true) ?? [];
+     $assert($staleApply->getStatusCode() === 409 && str_contains($staleProblem['message'] ?? '', '重新登录')
+         && str_contains((string)$staleApply->headers->get('Cache-Control'), 'no-store') && User::count() === $beforeImport,
+         'An old login cannot confirm migration even with its own valid preview');
+
+     User::create(['email' => $lateEmail, 'password' => $passwordHash, 'balance' => 13,
+         'uuid' => App\Utils\Helper::guid(true), 'token' => App\Utils\Helper::guid()]);
+     $response = $import('importApply', $contents, $adminBrowser, $apply);
+     $applied = json_decode($response->getContent(), true)['data'] ?? [];
+     $assert($response->getStatusCode() === 200 && ($applied['created'] ?? null) === 1 && $applied['skipped'] === 7
+         && $applied['totals'] === ['CNY' => 700, 'USD' => 0],
+         'Rejected attempts do not burn the original preview and confirmation rechecks destination emails');
+     $assert(count($applied) === 3 && str_contains((string)$response->headers->get('Cache-Control'), 'no-store')
+         && !str_contains($response->getContent(), $email) && !str_contains($response->getContent(), $passwordHash)
+         && !str_contains($response->getContent(), $preview['preview_token']),
+         'Confirmation returns only uncacheable aggregate results');
+     $account = User::where('email', $email)->firstOrFail();
+     $assert($account->password === $passwordHash && $account->currency === 'CNY' && $account->balance === 700
+         && !$account->is_admin && !$account->banned && $account->plan_id === null && !$account->transfer_enable,
+         'Migration preserves the original bcrypt hash and explicit currency and grants only wallet balance');
+     $assert($user->fresh()->only(array_keys($beforeCollision)) === $beforeCollision
+         && User::where('email', $lateEmail)->value('balance') === 13
+         && !User::whereIn('email', [$heldEmail, $duplicateEmail, $weakEmail, $highCostEmail])->exists(),
+         'Destination collisions preserve existing accounts while held or conflicting rows receive no credits');
+     $entry = DB::table('v2_user_migration')->where('source_site', $batch['source_site'])->sole();
+     $assert((int)$entry->user_id === $account->id && (int)$entry->administrator_id === $admin->id
+         && (int)$entry->wallet_balance === 150 && (int)$entry->before_cutoff_credit === 200 && (int)$entry->after_cutoff_credit === 350,
+         'A successful import records each balance component and the acting administrator');
+
+     $retry = $import('importApply', $contents, $adminBrowser, $apply);
+     $assert($retry->getStatusCode() === 409 && (int)$account->fresh()->balance === 700
+         && DB::table('v2_user_migration')->where('source_site', $batch['source_site'])->count() === 1,
+         'A consumed confirmation cannot be reused or issue another credit');
+     $batch['users'] = [$importRow(1, 'migration-renamed-'.$tag.'@example.com')];
+     $response = $import('importPreview', json_encode($batch, JSON_THROW_ON_ERROR), $adminBrowser);
+     $assert($response->getStatusCode() === 200 && (json_decode($response->getContent(), true)['data']['already_imported'] ?? null) === 1,
+         'Stable source identity prevents a new credit even when the source email changes');
+
+     $login = $kernel->handle(Request::create('/api/v10/auth/sessions', 'POST', ['email' => $email, 'password' => $password],
+         [], [], ['HTTP_ACCEPT' => 'application/json']));
+     $assert($login->getStatusCode() === 200 && is_string(json_decode($login->getContent(), true)['data']['accessToken'] ?? null),
+         'The original password succeeds through the normal V10 login after migration');
+     (new App\Services\AuthService($account))->removeAllSession();
+ } finally {
+     foreach ($importSessions as $record) $browserSessions->destroy($record);
+     config(['fastai.new_user_currency' => $adminCurrency]);
+ }
+
  $filter=[['key'=>'id','condition'=>'=','value'=>$user->id]];
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>$filter]);
  $assert($r->getStatusCode()===404 && $user->fresh()->banned===0,'Retired staff ban cannot mutate an ordinary user');

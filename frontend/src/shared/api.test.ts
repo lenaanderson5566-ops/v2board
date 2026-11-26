@@ -281,7 +281,7 @@ describe("CSV download", () => {
     });
 });
 
-it("sends multipart uploads without overriding the browser boundary", async () => {
+it("sends multipart uploads with explicit fetch controls without overriding the browser boundary", async () => {
     storage.set(storageKey, "upload-session");
     const fetchMock = vi
         .fn()
@@ -295,9 +295,11 @@ it("sends multipart uploads without overriding the browser boundary", async () =
         new Blob(["png"], { type: "image/png" }),
         "banner.png",
     );
-    await request("admin/banner/upload", body);
+    await request("admin/banner/upload", body, { cache: "no-store", redirect: "error" });
     const options = fetchMock.mock.calls[0][1];
     expect(options.body).toBe(body);
+    expect(options.cache).toBe("no-store");
+    expect(options.redirect).toBe("error");
     expect(options.headers["Content-Type"]).toBeUndefined();
     expect(options.headers.Authorization).toBeUndefined();
 });

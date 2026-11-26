@@ -39,3 +39,8 @@ workerman.log
 /storage/app/ui-validation/
 
 /scripts/__pycache__/
+
+# Private account import files
+/migration/
+*-users-cutoff-*.json
+*.sql.gz

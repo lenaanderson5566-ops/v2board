@@ -186,6 +186,8 @@ class AdminRoute
             $router->get ('/user/fetch', 'V1\\Admin\\UserController@fetch');
             $router->get('/user/creditBatches', 'V1\\Admin\\UserCreditBatchController@index');
             $router->post('/user/update', 'V1\\Admin\\UserController@update');
+            $router->post('/user/importPreview', 'V1\\Admin\\UserMigrationController@preview')->middleware('throttle:20,1,user-migration-preview:');
+            $router->post('/user/importApply', 'V1\\Admin\\UserMigrationController@apply')->middleware('throttle:10,1,user-migration-apply:');
             $router->get ('/user/getUserInfoById', 'V1\\Admin\\UserController@getUserInfoById');
             $router->get('/mail-campaigns/fetch', 'V1\\Admin\\MailCampaignController@fetch');
             $router->post('/user/previewMailAudience', 'V1\\Admin\\UserController@previewMailAudience')->middleware('throttle:20,1');

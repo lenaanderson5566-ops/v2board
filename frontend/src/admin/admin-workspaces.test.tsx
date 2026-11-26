@@ -1906,6 +1906,81 @@ it.each([
     expect(api.request).toHaveBeenCalledWith(`test-admin/user/${endpoint}`, expect.objectContaining({scope_token:"scope-2"}));
 });
 
+it("previews a user migration file before import and reloads the list on success", async () => {
+    let previews = 0;
+    let imports = 0;
+    const file = new File(['{"opaque":true}'], "migration.json", { type: "application/json" });
+    api.request.mockImplementation(async (path: string, payload?: FormData, options?: unknown) => {
+        if (path.includes("user/fetch")) return { data: [], total: 0 };
+        if (path.endsWith("user/importPreview")) {
+            expect(payload?.get("file")).toBe(file);
+            expect(payload?.has("preview_token")).toBe(false);
+            expect(options).toEqual({ cache: "no-store", redirect: "error" });
+            return { data: {
+                source_site: "legacy-site", snapshot_at: 1786013217, cutoff_at: 1777564800,
+                total: 4, ready: 2, existing_email: 1, already_imported: 0, needs_review: 1, conflicts: 0,
+                totals: { CNY: 1234, USD: 0 }, preview_token: `preview-${++previews}`,
+                rows: [
+                    { source_user_id: 1, email: "duplicate@example.test", state: "existing_email", currency: "CNY", balance: 300, review_reasons: [] },
+                    { source_user_id: 2, email: "review@example.test", state: "needs_review", currency: "USD", balance: 500,
+                        password_hash: "opaque-hash-sentinel", review_reasons: ["password_hash_cost_out_of_range", "source_account_ineligible", "opaque-hash-sentinel"] },
+                ],
+            } };
+        }
+        if (path.endsWith("user/importApply")) {
+            expect(payload?.get("file")).toBe(file);
+            expect(options).toEqual({ cache: "no-store", redirect: "error", timeoutMs: 120000 });
+            expect(payload?.get("preview_token")).toBe(`preview-${++imports}`);
+            if (imports === 1) throw Object.assign(new Error("expired"), { status: 409 });
+            if (imports === 2) throw Object.assign(new Error("reauthenticate"), { status: 409, code: "RECENT_LOGIN_REQUIRED" });
+            return { data: { created: 1, skipped: 3, totals: { CNY: 1000, USD: 0 } } };
+        }
+        return { data: [] };
+    });
+    render(<UsersPage />);
+    fireEvent.click(screen.getByRole("button", { name: "批量导入用户" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "批量导入用户" }));
+    const preview = () => dialog.getByRole("button", { name: "预览导入" });
+    const submit = () => dialog.getByRole("button", { name: "确认导入" }) as HTMLButtonElement;
+    const checkbox = () => dialog.getByRole("checkbox", { name: "确认创建可导入账号并按预览金额入账" });
+    expect((preview() as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.change(dialog.getByLabelText("迁移 JSON 文件"), { target: { files: [file] } });
+    fireEvent.click(preview());
+    await dialog.findByText("CNY 12.34");
+    expect(dialog.getByText("USD 0.00")).toBeTruthy();
+    expect(dialog.getByText("密码哈希的计算成本超出允许范围、原站账号的状态或权限需核对、其他事项需复核")).toBeTruthy();
+    expect(dialog.queryByText("opaque-hash-sentinel")).toBeNull();
+    expect(submit().disabled).toBe(true);
+    fireEvent.click(submit());
+    expect(imports).toBe(0);
+    fireEvent.click(checkbox());
+    fireEvent.click(submit());
+    await dialog.findByRole("alert");
+    expect(dialog.getByText("导入预览已失效，请重新预览后确认。")).toBeTruthy();
+    expect(dialog.queryByRole("checkbox")).toBeNull();
+    fireEvent.click(preview());
+    await dialog.findByText("CNY 12.34");
+    expect(submit().disabled).toBe(true);
+    fireEvent.click(checkbox());
+    fireEvent.click(submit());
+    await dialog.findByText("请重新登录后台，并在 5 分钟内重新预览并确认导入。");
+    expect(dialog.queryByRole("checkbox")).toBeNull();
+    fireEvent.click(preview());
+    await dialog.findByText("CNY 12.34");
+    expect(submit().disabled).toBe(true);
+    const beforeRefresh = api.request.mock.calls.filter(([path]) => path.includes("user/fetch")).length;
+    fireEvent.click(checkbox());
+    fireEvent.click(submit());
+    await dialog.findByText("导入完成。已创建 1 个账号，跳过 3 个账号。");
+    expect(dialog.getByText("实际入账人民币")).toBeTruthy();
+    expect(dialog.getByText("CNY 10.00")).toBeTruthy();
+    expect(dialog.queryByText("CNY 12.34")).toBeNull();
+    await waitFor(() => expect(api.request.mock.calls.filter(([path]) => path.includes("user/fetch")).length).toBeGreaterThan(beforeRefresh));
+    expect(dialog.queryByLabelText("迁移 JSON 文件")).toBeNull();
+    fireEvent.click(dialog.getByRole("button", { name: "完成" }));
+    expect(screen.queryByRole("dialog", { name: "批量导入用户" })).toBeNull();
+});
+
 it.each([
     {expiry:0, history:false, label:"尚未购买周期套餐", field:"备注", value:"new note", update:{remarks:"new note", edit_versions:{remarks:"note-version"}}},
     {expiry:null, history:true, label:"到期时间未记录", field:"余额（账号币种）", value:"12.34", update:{balance:1234, edit_versions:{balance:"balance-version"}}},

@@ -1,4 +1,5 @@
 import { AdminUserDetails } from "./AdminUserDetails";
+import { AdminUserImport } from "./AdminUserImport";
 import { AdminDisplaySettings } from "./AdminDisplaySettings";
 import { UserFilters } from "./UserFilters";
 import { adminUserLabel } from "./admin-user-label";
@@ -91,6 +92,7 @@ export function UsersPage() {
         [email, setEmail] = useState(""),
         [showFilters, setShowFilters] = useState(false),
         [showDisplay, setShowDisplay] = useState(false),
+        [showImport, setShowImport] = useState(false),
         [revision, setRevision] = useState(0),
         [error, setError] = useState(""),
         [notice, setNotice] = useState(""),
@@ -216,7 +218,10 @@ export function UsersPage() {
                     setDirection(next);
                 }}
                 onUserDetails={(row) => setDetail({kind:"profile",row})}
-                headerActions={<button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>}
+                headerActions={<>
+                    <button type="button" onClick={() => setShowImport(true)}>批量导入用户</button>
+                    <button type="button" onClick={() => setShowDisplay(true)}>显示设置</button>
+                </>}
                 toolbar={({ total, error: listError }) => (
                     <div className="pad user-toolbar">
                         <form
@@ -329,6 +334,7 @@ export function UsersPage() {
                     </>
                 )}
             />
+            {showImport && <AdminUserImport close={() => setShowImport(false)} onComplete={refresh} />}
             {showFilters && (
                 <Modal title="用户高级筛选" guardChanges close={() => setShowFilters(false)}>
                     <UserFilters

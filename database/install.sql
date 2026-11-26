@@ -474,6 +474,24 @@ CREATE TABLE `v2_user` (
 
 -- 2025-09-12 10:05:00
 
+CREATE TABLE IF NOT EXISTS `v2_user_migration` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `source_site` varchar(64) NOT NULL,
+  `source_user_id` bigint unsigned NOT NULL,
+  `user_id` bigint unsigned NOT NULL,
+  `administrator_id` bigint unsigned NOT NULL,
+  `currency` char(3) NOT NULL,
+  `wallet_balance` int unsigned NOT NULL,
+  `before_cutoff_credit` int unsigned NOT NULL,
+  `after_cutoff_credit` int unsigned NOT NULL,
+  `cutoff_at` bigint unsigned NOT NULL,
+  `snapshot_at` bigint unsigned NOT NULL,
+  `created_at` bigint unsigned NOT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `user_migration_source_unique` (`source_site`,`source_user_id`),
+  UNIQUE KEY `user_migration_user_unique` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS `v2_usage_reset_batch` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `request_key` varchar(64) NOT NULL,

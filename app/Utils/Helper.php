@@ -7,6 +7,10 @@ use Illuminate\Support\Facades\Cache;
 
 class Helper
 {
+    private const PASSWORD_MD5 = 'md5';
+    private const PASSWORD_SHA256 = 'sha256';
+    private const PASSWORD_MD5_SALT = 'md5salt';
+
     public static function uuidToBase64($uuid, $length)
     {
         return base64_encode(substr($uuid, 0, $length));
@@ -59,12 +63,17 @@ class Helper
         return $str;
     }
 
+    public static function isLegacyPasswordAlgorithm(?string $algorithm): bool
+    {
+        return in_array($algorithm, [self::PASSWORD_MD5, self::PASSWORD_SHA256, self::PASSWORD_MD5_SALT], true);
+    }
+
     public static function multiPasswordVerify($algo, $salt, $password, $hash)
     {
         switch($algo) {
-            case 'md5': return md5($password) === $hash;
-            case 'sha256': return hash('sha256', $password) === $hash;
-            case 'md5salt': return md5($password . $salt) === $hash;
+            case self::PASSWORD_MD5: return md5($password) === $hash;
+            case self::PASSWORD_SHA256: return hash('sha256', $password) === $hash;
+            case self::PASSWORD_MD5_SALT: return md5($password . $salt) === $hash;
             default: return password_verify($password, $hash);
         }
     }

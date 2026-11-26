@@ -1960,6 +1960,24 @@ it.each([0, 2, 3])("prioritizes account and subscription columns in the version 
     }
 });
 
+it("labels legacy passwords in the user status column alongside the account status", async () => {
+    api.request.mockImplementation(async (path: string) => path.includes("user/fetch")
+        ? { data: [
+            { id: 1, email: "legacy-password@example.test", banned: 1, uses_legacy_password: true },
+            { id: 2, email: "modern-password@example.test", banned: 0, uses_legacy_password: false },
+            { id: 3, email: "older-response@example.test", banned: 0 },
+        ], total: 3 } : { data: [] });
+    render(<UsersPage />);
+    await screen.findByRole("button", { name: /legacy-password@example\.test/ });
+    const status = (email: string) => within(screen.getByRole("row", { name: new RegExp(email) })
+        .querySelector('td[data-label="状态"]')! as HTMLElement);
+    expect(status("legacy-password").getByText("封禁")).toBeTruthy();
+    expect(status("legacy-password").getByText("旧版密码").getAttribute("data-tone")).toBe("warning");
+    expect(status("modern-password").getByText("正常")).toBeTruthy();
+    expect(status("modern-password").queryByText("旧版密码")).toBeNull();
+    expect(status("older-response").queryByText("旧版密码")).toBeNull();
+});
+
 it("shows recorded periodic plans without treating independent credits or old permanent grants as subscriptions", async () => {
     const now = Math.floor(Date.now() / 1000);
     const profile = { invite_user_id: 10, plan_id: 1, transfer_enable: 1073741824 };

@@ -679,8 +679,8 @@ test("mobile admin users prioritize account columns and distinguish subscription
         if (path === "/api/v1/test-admin/config/fetch") return {};
         if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试周期套餐" }, { id: 2, name: "测试额度包" }];
         if (path === "/api/v1/test-admin/user/fetch") return [
-            { ...account, id: 1, email: "expired@example.test", expired_at: now - 3 * 86400, currency: "USD", total_paid_amount: 1234, total_recharge_amount: 0 },
-            { ...account, id: 2, email: "active@example.test", expired_at: now + 27 * 86400, currency: "CNY", total_paid_amount: 0, credit_balance: 2 * gib, total_used: gib },
+            { ...account, id: 1, email: "expired@example.test", expired_at: now - 3 * 86400, currency: "USD", total_paid_amount: 1234, total_recharge_amount: 0, uses_legacy_password: true },
+            { ...account, id: 2, email: "active@example.test", expired_at: now + 27 * 86400, currency: "CNY", total_paid_amount: 0, credit_balance: 2 * gib, total_used: gib, uses_legacy_password: false },
             { id: 3, email: "unknown@example.test", transfer_enable: 0, expired_at: null, currency: "CNY", banned: 0 },
             { ...account, id: 4, email: "expiring@example.test", expired_at: now + 2 * 86400, credit_balance: 0 },
             { id: 5, email: "purchased@example.test", transfer_enable: 0, expired_at: 0, has_recurring_order_history: true, banned: 0 },
@@ -692,6 +692,10 @@ test("mobile admin users prioritize account columns and distinguish subscription
     });
     await page.goto(`${consoleOrigin}/admin.html#/users`);
     const userCell = (email, label) => page.getByRole("row").filter({ hasText: email }).locator(`td[data-label="${label}"]`);
+    const legacyStatus = userCell("expired@example.test", "状态");
+    await expect(legacyStatus.getByText("正常", { exact: true })).toBeVisible();
+    await expect(legacyStatus.getByText("旧版密码", { exact: true })).toHaveAttribute("data-tone", "warning");
+    await expect(userCell("active@example.test", "状态").getByText("旧版密码", { exact: true })).toHaveCount(0);
     const expiryCell = (email) => userCell(email, "周期到期");
     const expired = expiryCell("expired@example.test").getByText("已到期", { exact: true });
     const expiringCell = expiryCell("expiring@example.test");

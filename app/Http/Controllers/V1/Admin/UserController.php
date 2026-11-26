@@ -85,7 +85,7 @@ class UserController extends Controller
         $sortType = in_array($request->input('sort_type'), ['ASC', 'DESC']) ? $request->input('sort_type') : 'DESC';
         $sort = $request->input('sort') ? $request->input('sort') : 'created_at';
         // Token is needed only to build the administrator's subscription link.
-        $userModel = User::select(array_merge(self::USER_FIELDS, ['token', DB::raw('(u+d) as total_used')]))
+        $userModel = User::select(array_merge(self::USER_FIELDS, ['token', 'password_algo', DB::raw('(u+d) as total_used')]))
             ->orderBy($sort, $sortType);
         $this->filter($request, $userModel);
         $total = $userModel->count();
@@ -115,6 +115,7 @@ class UserController extends Controller
             ->selectRaw('SUM(CASE WHEN period = ? AND v2_order.plan_id = 0 AND status = 3 THEN total_amount ELSE 0 END) AS total_recharge_amount', ['deposit'])
             ->groupBy('v2_order.user_id')->get()->keyBy('user_id');
         foreach ($res as $row) {
+            $row['uses_legacy_password'] = Helper::isLegacyPasswordAlgorithm($row->password_algo);
             $row['last_subscribe_at'] = (int) $lastSubscriptions->get($row->id) ?: null;
             $row['last_connected_at'] = max((int) $row->t, (int) $lastConnections->get($row->id)) ?: null;
             $payment = $payments->get($row->id);

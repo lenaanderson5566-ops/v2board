@@ -13,6 +13,7 @@ Schema::create('v2_user', function (Blueprint $table) {
     $table->increments('id'); $table->string('email'); $table->integer('invite_user_id')->nullable();
     foreach (['t', 'last_login_at', 'created_at', 'plan_id', 'u', 'd'] as $key) $table->integer($key)->default(0);
     $table->string('token')->default('test-token');
+    $table->string('password_algo')->nullable();
     $table->string('currency')->default('CNY');
     $table->integer('credit_balance')->default(0);
     $table->integer('expired_at')->nullable()->default(0);

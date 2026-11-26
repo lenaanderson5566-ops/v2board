@@ -29,7 +29,16 @@ try {
  $listed=json_decode($r->getContent(),true)['data'][0]??[];
  $assert($r->getStatusCode()===200 && ($listed['id']??null)===$user->id,'Administrator user list works');
  $assert(!array_intersect($secrets,array_keys($listed)),'Administrator list omits raw credentials');
+ $assert(($listed['uses_legacy_password'] ?? null) === false, 'Current password hashing has no legacy flag');
  $assert(($listed['subscribe_url']??null)===App\Utils\Helper::getSubscribeUrl($user->token),'Authorized administrator subscription-link operation remains available');
+ foreach ([['md5', true], ['sha256', true], ['md5salt', true], ['MD5', false], ['bcrypt', false], [null, false]] as [$algorithm, $expected]) {
+     $user->update(['password_algo' => $algorithm, 'password_salt' => 'audit-salt']);
+     $response = $as($adminPath.'/user/fetch', $adminToken, ['filter' => [['key' => 'id', 'condition' => '=', 'value' => $user->id]]]);
+     $row = json_decode($response->getContent(), true)['data'][0] ?? [];
+     $assert($response->getStatusCode() === 200 && ($row['uses_legacy_password'] ?? null) === $expected
+         && !array_intersect($secrets, array_keys($row)), 'Administrator list summarizes the legacy password state without raw credentials');
+ }
+ $user->update(['password_salt' => null]);
  $r=$as($adminPath.'/user/getUserInfoById',$adminToken,['id'=>$user->id]);
  $detail=json_decode($r->getContent(),true)['data']??[];
  $assert($r->getStatusCode()===200 && ($detail['id']??null)===$user->id && !array_intersect($secrets,array_keys($detail)),'Administrator details omit raw credentials');
@@ -45,7 +54,7 @@ try {
  }
  $r=$as('/api/v10/me','Bearer '.$ordinaryToken,['id'=>$admin->id,'user'=>['id'=>$admin->id,'is_admin'=>1]]);
  $me=json_decode($r->getContent(),true)['data']??[];
- $assert($r->getStatusCode()===200 && ($me['id']??null)===$user->id && !array_intersect(['password','password_algo','password_salt','token'],array_keys($me)),'Account info ignores forged user context and exposes no password or subscription token');
+ $assert($r->getStatusCode()===200 && ($me['id']??null)===$user->id && !array_intersect(['password','password_algo','password_salt','uses_legacy_password','token'],array_keys($me)),'Account info ignores forged user context and exposes no password or subscription token');
  $filter=[['key'=>'id','condition'=>'=','value'=>$user->id]];
  $r=$call('/api/v1/staff/user/ban','POST',['filter'=>$filter]);
  $assert($r->getStatusCode()===404 && $user->fresh()->banned===0,'Retired staff ban cannot mutate an ordinary user');

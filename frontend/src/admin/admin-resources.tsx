@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { formatNumber, formatPercent } from "../shared/number-format";
 import { languages } from "../shared/language-options";
 import { admin, bytes, date, money, ops, type Row } from "../shared/api";
+import { StatusBadge } from "../shared/StatusBadge";
 import type { Field } from "../shared/ui";
 import { AdminLogTimestamp, logTime } from "./admin-log-time";
 import { AdminSubscriptionExpiry, hasRecordedPeriodicPlan } from "./AdminSubscriptionExpiry";
@@ -254,11 +255,12 @@ export const resources: Record<string, Resource> = {
                 "banned",
                 "状态",
                 (r) => (
-                    <span
-                        className={`admin-status ${r.banned ? "error" : "success"}`}
-                    >
-                        {r.banned ? "封禁" : "正常"}
-                    </span>
+                    <>
+                        <span className={`admin-status ${r.banned ? "error" : "success"}`}>
+                            {r.banned ? "封禁" : "正常"}
+                        </span>
+                        {r.uses_legacy_password === true && <> <StatusBadge tone="warning">旧版密码</StatusBadge></>}
+                    </>
                 ),
             ],
             ["language", "用户语言", (r) => {

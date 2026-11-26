@@ -168,7 +168,7 @@ try {
     $assignmentExpiredOwner = $makeStageBuyer($priorExpiry);
     $assignmentExpiredOwner->update(['u' => 128, 'd' => 256]);
     $assignmentReopening = $assignOrder($assignmentExpiredOwner, $assignmentPlan);
-    $assert((int)$assignmentReopening->type === 1 && $assignmentReopening->order_source === 'admin'
+    $assert((int)$assignmentReopening->type === 1
         && $assignmentReopening->previous_subscription_expires_at === $priorExpiry
         && (int)$assignmentReopening->status === 0 && (int)$assignmentExpiredOwner->fresh()->plan_id === (int)$plan->id,
         'Admin assignment after expiry creates a new unpaid order with the prior expiry and admin source');

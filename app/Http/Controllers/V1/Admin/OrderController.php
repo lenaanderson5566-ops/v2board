@@ -46,7 +46,6 @@ class OrderController extends Controller
         if (!$order) abort(500, '订单不存在');
         \App\Services\AdminUserIdentity::append(collect([$order]));
         AdminOrderPurchaseStage::append(collect([$order]));
-        $order->makeVisible('order_source');
         $receipt = OrderPaymentHistory::manualReceipt($order);
         $order['manual_payment_verified'] = $receipt !== null;
         $order['manual_payment_receipt'] = $receipt;
@@ -86,7 +85,6 @@ class OrderController extends Controller
         $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
         $payments = \App\Models\Payment::whereIn('id', $res->pluck('payment_id')->filter())->get()->keyBy('id');
         for ($i = 0; $i < count($res); $i++) {
-            $res[$i]->makeVisible('order_source');
             $res[$i]['manual_payment_verified'] = OrderPaymentHistory::manualReceipt($res[$i]) !== null;
             $res[$i]['payment_display'] = OrderPaymentHistory::display($res[$i], $payments->get($res[$i]->payment_id));
             if ($plans->has($res[$i]['plan_id'])) $res[$i]['plan_name'] = $plans->get($res[$i]['plan_id']);
@@ -199,7 +197,6 @@ class OrderController extends Controller
             $order->period = $request->input('period');
             $order->trade_no = Helper::guid();
             $order->total_amount = $request->input('total_amount');
-            $order->order_source = 'admin';
 
             if ($order->period === 'onetime_price') {
                 TrafficCreditService::snapshotPurchase($order, $plan);

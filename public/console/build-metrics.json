@@ -76,24 +76,24 @@
     },
     {
       "mode": "admin",
-      "startupGzipBytes": 295011,
+      "startupGzipBytes": 295003,
       "startupBytes": 975704,
       "startupFileCount": 7,
       "largestStartupAssets": [
         {
-          "file": "assets/admin/AdminApp-BPZLl9ye.js",
+          "file": "assets/admin/AdminApp-C_xeumZ2.js",
           "bytes": 496064,
           "gzipBytes": 159752
         },
         {
-          "file": "assets/admin/render-app-CAVl2ZnK.js",
+          "file": "assets/admin/render-app-BEvkD1yk.js",
           "bytes": 209906,
-          "gzipBytes": 65493
+          "gzipBytes": 65492
         },
         {
-          "file": "assets/admin/ErrorBoundary-BzWe6CAS.js",
+          "file": "assets/admin/ErrorBoundary-DshzM4oy.js",
           "bytes": 146931,
-          "gzipBytes": 43927
+          "gzipBytes": 43926
         },
         {
           "file": "assets/admin/AdminApp-DaxZo5DA.css",
@@ -101,13 +101,13 @@
           "gzipBytes": 19502
         },
         {
-          "file": "assets/admin/admin-Cq9BWtEE.js",
+          "file": "assets/admin/admin-B-LdLBFU.js",
           "bytes": 10022,
-          "gzipBytes": 4505
+          "gzipBytes": 4501
         }
       ],
       "budget": 460800,
-      "totalBytes": 5054474,
+      "totalBytes": 5054096,
       "fileCount": 102
     }
   ],

@@ -1280,7 +1280,7 @@ test.describe("desktop admin frontend", () => {
     });
 });
 
-test("admin records a manual receipt and keeps business type, purchase history and source distinct", async ({ page, context }) => {
+test("admin records a manual receipt with the simplified order columns", async ({ page, context }) => {
     await context.addInitScript(origin => {
         if (location.origin !== origin) return;
         localStorage.setItem("admin.columns.test-admin/order/fetch", JSON.stringify(["user_id", "type", "status", "payment_display"]));
@@ -1310,7 +1310,8 @@ test("admin records a manual receipt and keeps business type, purchase history a
     await page.goto(`${consoleOrigin}/admin.html#/orders`);
     const row = page.getByRole("row").filter({ hasText: order.email });
     await expect(row.getByRole("cell", { name: "新购", exact: true })).toBeVisible();
-    await expect(row.getByRole("cell", { name: "后台分配", exact: true })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "购买记录" })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "下单来源" })).toHaveCount(0);
     await expect(page.getByRole("columnheader", { name: "创建时间" })).toHaveCount(0);
     const more = row.getByRole("button", { name: "更多操作" });
     await more.scrollIntoViewIfNeeded();
@@ -1332,6 +1333,7 @@ test("admin records a manual receipt and keeps business type, purchase history a
     await row.getByRole("button", { name: "订单详情" }).click();
     const details = page.getByRole("dialog", { name: "订单详情" });
     await expect(details.getByText("test-receipt-0123", { exact: true })).toBeVisible();
+    await expect(details.getByText("下单来源", { exact: true })).toHaveCount(0);
     await expectPageWidth(page, 390);
 });
 

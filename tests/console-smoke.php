@@ -259,7 +259,7 @@ try {
     $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['data']['trade_no'] === $order->trade_no, 'User order detail failed');
     $response = $call('/api/v1/' . $securePath . '/order/fetch?' . http_build_query(['filter' => [['key' => 'user_id', 'condition' => '=', 'value' => $subject->id]]]), null, $token);
     $assignedList = json_decode($response->getContent(), true);
-    $assert($assignedList['total'] === 1 && $assignedList['data'][0]['order_source'] === 'admin', 'User order scope or assigned provenance failed');
+    $assert($assignedList['total'] === 1 && !array_key_exists('order_source', $assignedList['data'][0]), 'User order scope failed or included the retired source');
     $manualPaidPath = '/api/v1/' . $securePath . '/order/paid';
     $manualOrderInput = ['trade_no' => $order->trade_no];
     $receipt = ['reference' => 'fixture-receipt-123', 'amount' => 123, 'currency' => 'CNY'];
@@ -275,7 +275,7 @@ try {
             $detail = $call('/api/v1/' . $securePath . '/order/detail', ['id' => $order->id], $token);
             $data = json_decode($detail->getContent(), true)['data'];
             $assert($paid->getStatusCode() === 200 && $data['callback_no'] === 'manual_operation'
-                && $data['manual_payment_verified'] === $withReceipt && $data['order_source'] === 'admin'
+                && $data['manual_payment_verified'] === $withReceipt && !array_key_exists('order_source', $data)
                 && !array_key_exists('manual_payment_evidence', $data), 'Manual settlement exposes only its admin projection');
             if ($withReceipt) {
                 $assert($data['purchase_stage'] === 'first_purchase' && $data['manual_payment_receipt']['reference'] === $receipt['reference']

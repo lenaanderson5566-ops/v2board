@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { AdminChoiceGroup, AdminTabs } from "./AdminChoices";
 import { UserActivityContent } from "./UserActivityContent";
 import { adminUserLabel } from "./admin-user-label";
-import { adminOrderPayment, adminOrderPlan, adminOrderPurchaseRecord, adminOrderSource, adminOrderType } from "./admin-order-labels";
+import { adminOrderPayment, adminOrderPlan, adminOrderPurchaseRecord, adminOrderType } from "./admin-order-labels";
 import { AdminOrderDetails } from "./AdminOrderDetails";
 import { userResetHistoryLink } from "./admin-navigation";
 import { admin, query, bytes, money, type Row } from "../shared/api";
@@ -66,7 +66,6 @@ function UserOrders({ row }: { row: Row }) {
                         ["type", "类型", adminOrderType],
                         ["purchase_stage", "购买记录", r => adminOrderPurchaseRecord(r) ?? "—"],
                         ["plan_name", "套餐", r => adminOrderPlan(r, plans)],
-                        ["order_source", "下单来源", adminOrderSource],
                         ["payment_display", "支付方式", adminOrderPayment],
                         [
                             "total_amount",

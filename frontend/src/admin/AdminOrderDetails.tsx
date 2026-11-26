@@ -3,7 +3,7 @@ import { adminStatusCell } from "../shared/admin-status";
 import { admin, date, money, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
-import { adminOrderPayment, adminOrderPeriod, adminOrderPlan, adminOrderSource, adminOrderType, adminOrderTypeDescription, adminOrderPurchaseRecord, adminRepurchaseContext, adminRepurchaseGap } from "./admin-order-labels";
+import { adminOrderPayment, adminOrderPeriod, adminOrderPlan, adminOrderType, adminOrderTypeDescription, adminOrderPurchaseRecord, adminRepurchaseContext, adminRepurchaseGap } from "./admin-order-labels";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
 import { AdminDetails } from "./admin-section";
 import { adminUserLabel } from "./admin-user-label";
@@ -57,7 +57,6 @@ export function AdminOrderDetails({
                                 { label: "订单状态", value: adminStatusCell("status", "订单状态", order.status) },
                                 { label: "用户（ID / 邮箱）", value: renderUser(order) },
                                 { label: "类型", value: adminOrderType(order) },
-                                { label: "下单来源", value: adminOrderSource(order) },
                                 ...(purchaseRecord ? [{ label: "购买记录", value: purchaseRecord }] : []),
                                 ...(repurchaseContext ? [{ label: "回购情况", value: repurchaseContext }] : []),
                                 ...(repurchaseGap ? [{ label: "回购间隔", value: repurchaseGap }] : []),

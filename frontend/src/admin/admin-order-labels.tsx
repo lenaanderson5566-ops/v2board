@@ -130,15 +130,6 @@ export function adminOrderPurchaseRecord(order: Row) {
     return stage ? orderBadge(stage) : undefined;
 }
 
-export function adminOrderSource(order: Row): string {
-    switch (order.order_source) {
-        case "admin": return "后台分配";
-        case "customer": return "用户下单";
-        case "system": return "系统生成";
-        default: return "来源未记录";
-    }
-}
-
 export function adminOrderPayment(order: Row): string {
     if (order.callback_no === "manual_operation") {
         return order.manual_payment_verified === true ? "人工确认（已记录凭据）" : "人工确认（未记录凭据）";

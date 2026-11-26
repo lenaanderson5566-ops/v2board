@@ -131,12 +131,9 @@ export function ResourcePage({
         if (Array.isArray(saved)) {
             const available = new Set(displayColumns.map(([key]) => key));
             const valid = saved.filter(value => typeof value === "string" && available.has(value));
+            if (useLegacyOrderColumns && valid.length && !valid.includes("purchase_stage")) valid.push("purchase_stage");
             // A preference containing only retired columns falls back to the current defaults.
-            if (valid.length && useLegacyOrderColumns) {
-                storedColumns = [...new Set([...valid, "purchase_stage", "order_source"])];
-            } else if (valid.length || saved.length === 0) {
-                storedColumns = valid;
-            }
+            if (valid.length || saved.length === 0) storedColumns = valid;
         }
     } catch { /* Optional browser preference. */ }
     const selectedColumns = columnViews[columnStorageKey] ?? storedColumns ?? displayColumns.map(([key]) => key);

@@ -548,7 +548,7 @@ it("checks receipt evidence and requires a status check after an ambiguous submi
     await waitFor(() => expect(paidCalls()).toHaveLength(2));
 });
 
-it("shows source, purchase stage and receipt verification independently", async () => {
+it("shows purchase stage and receipt verification without displaying order source", async () => {
     const manual = { ...order, type: 1, period: "month_price", callback_no: "manual_operation" };
     const assigned = { ...manual, id: 1, order_source: "admin", manual_payment_verified: false,
         purchase_stage: "first_purchase", plan_name: "后台分配套餐" };
@@ -562,16 +562,16 @@ it("shows source, purchase stage and receipt verification independently", async 
     render(<OrdersPage />);
     const first = within((await screen.findByText("后台分配套餐")).closest("tr")!);
     expect(first.getByRole("cell", { name: "新购" })).toBeTruthy();
-    expect(first.getByRole("cell", { name: "后台分配" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "下单来源" })).toBeNull();
     expect(first.getByRole("cell", { name: "实收未核实" })).toBeTruthy();
     expect(first.getByRole("cell", { name: "人工确认（未记录凭据）" })).toBeTruthy();
     const second = within(screen.getByText("用户购买套餐").closest("tr")!);
-    expect(second.getByRole("cell", { name: "用户下单" })).toBeTruthy();
     expect(second.getByRole("cell", { name: "首购" })).toBeTruthy();
     expect(second.getByRole("cell", { name: "人工确认（已记录凭据）" })).toBeTruthy();
     fireEvent.click(second.getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
     expect(await detail.findByText("https://receipt-reference.example")).toBeTruthy();
+    expect(detail.queryByText("下单来源")).toBeNull();
     expect(detail.queryByRole("link", { name: "https://receipt-reference.example" })).toBeNull();
 });
 it("keeps all order actions flat in the context menu", async () => {
@@ -1733,7 +1733,7 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
     expect(api.request).toHaveBeenCalledWith("test-admin/ticket/close", { id: 42 });
 });
 
-it("adds the order provenance columns to legacy preferences and preserves later choices", async () => {
+it("adds purchase history to legacy preferences and ignores the retired source column", async () => {
     const { ResourcePage } = await import("./ResourcePage");
     const previousKey = `admin.columns.${resources.orders.fetch}`;
     const currentKey = `${previousKey}:v2`;
@@ -1746,19 +1746,24 @@ it("adds the order provenance columns to legacy preferences and preserves later 
     expect(options.getByRole("button", { name: "购买记录" }).getAttribute("aria-pressed")).toBe("true");
     expect(options.getByRole("button", { name: "支付方式" }).getAttribute("aria-pressed")).toBe("true");
     expect(options.getByRole("button", { name: "创建时间" }).getAttribute("aria-pressed")).toBe("false");
-    const option = options.getByRole("button", { name: "下单来源" });
-    expect(option.getAttribute("aria-pressed")).toBe("true");
+    expect(options.queryByRole("button", { name: "下单来源" })).toBeNull();
+    const option = options.getByRole("button", { name: "购买记录" });
     fireEvent.click(option);
     expect(option.getAttribute("aria-pressed")).toBe("false");
-    expect(JSON.parse(localStorage.getItem(currentKey)!)).not.toContain("order_source");
+    const saved = JSON.parse(localStorage.getItem(currentKey)!);
+    expect(saved).not.toContain("purchase_stage");
     fireEvent.click(screen.getByRole("button", { name: "完成" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     view.unmount();
+    localStorage.setItem(currentKey, JSON.stringify([...saved, "order_source"]));
     render(<ResourcePage resource={resources.orders} />);
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
-    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: "下单来源" }).getAttribute("aria-pressed")).toBe("false");
+    const restored = within(screen.getByLabelText("可选显示列"));
+    expect(restored.queryByRole("button", { name: "下单来源" })).toBeNull();
+    expect(restored.getByRole("button", { name: "支付方式" }).getAttribute("aria-pressed")).toBe("true");
+    expect(restored.getByRole("button", { name: "购买记录" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
-    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: "下单来源" }).getAttribute("aria-pressed")).toBe("true");
+    expect(restored.getByRole("button", { name: "购买记录" }).getAttribute("aria-pressed")).toBe("true");
     localStorage.removeItem(previousKey);
     localStorage.removeItem(currentKey);
 });

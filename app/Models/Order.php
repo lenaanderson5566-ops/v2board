@@ -20,6 +20,7 @@ class Order extends Model
         });
     }
     protected $dateFormat = 'U';
+    // Older schemas may still contain the retired order_source column.
     protected $guarded = ['id', 'previous_subscription_expires_at', 'order_source', 'manual_payment_evidence'];
     protected $hidden = ['payment_snapshot', 'fx_snapshot', 'previous_subscription_expires_at', 'order_source', 'manual_payment_evidence'];
     protected $casts = [

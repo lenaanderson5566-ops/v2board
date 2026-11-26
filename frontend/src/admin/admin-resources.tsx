@@ -9,7 +9,7 @@ import { AdminRiskReview } from "./AdminRiskReview";
 import { AdminUserActivityLink } from "./AdminUserActivity";
 import { ClientUaStats } from "./ClientUaStats";
 import { field, nameColumn, resetOptions } from "./admin-fields";
-import { adminOrderPayment, adminOrderPeriod, adminOrderPurchaseRecord, adminOrderSource, adminOrderType } from "./admin-order-labels";
+import { adminOrderPayment, adminOrderPeriod, adminOrderPurchaseRecord, adminOrderType } from "./admin-order-labels";
 import { adminPlanLabel } from "./admin-plan-reference";
 import { nodeRoutePresets, routeSummary } from "./node-route-presets";
 import { routeActionLabel, routeDetails } from "./route-form";
@@ -345,7 +345,6 @@ export const resources: Record<string, Resource> = {
             ["type", "类型", adminOrderType],
             ["purchase_stage", "购买记录", r => adminOrderPurchaseRecord(r) ?? "—"],
             ["plan_name", "套餐"],
-            ["order_source", "下单来源", adminOrderSource],
             ["payment_display", "支付方式", adminOrderPayment],
             ["period", "周期", adminOrderPeriod],
             [

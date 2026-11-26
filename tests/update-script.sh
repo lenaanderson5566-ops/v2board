@@ -308,6 +308,7 @@ awk '/migrate --path=database\/migrations\/2026_10_13_000001_create_payment_call
 grep -q 'Missing raw payment diagnostic column' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_17_000001_add_order_subscription_expiry_snapshot.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_26_000001_add_order_provenance.php --force --no-interaction' calls.log
+grep -q 'migrate --path=database/migrations/2026_11_26_000002_retire_order_source.php --force --no-interaction' calls.log
 grep -q 'migrate --path=database/migrations/2026_11_24_000001_index_usage_reset_history.php --force --no-interaction' calls.log
 grep -q 'Missing usage reset history index' calls.log
 if grep -q 'migrate --path=database/migrations/2026_11_20_000001_create_risk_cleanup_tasks.php ' calls.log; then

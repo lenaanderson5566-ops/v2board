@@ -337,7 +337,7 @@ it("distinguishes balance-funded orders from free orders and identifies unpaid r
     expect(balance.getByText("余额抵扣 CNY 23.90")).toBeTruthy();
     expect(free.queryByText(/余额抵扣/)).toBeNull();
     expect(manual.getByRole("cell", { name: "新购" })).toBeTruthy();
-    expect(manual.getByRole("cell", { name: "后台分配" })).toBeTruthy();
+    expect(screen.queryByRole("columnheader", { name: "下单来源" })).toBeNull();
     expect(manual.getByRole("cell", { name: "实收未核实" })).toBeTruthy();
     expect(manual.getByRole("cell", { name: "人工确认（未记录凭据）" })).toBeTruthy();
 });

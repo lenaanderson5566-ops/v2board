@@ -77,6 +77,7 @@ export function ResourcePage({
     extraActions,
     headerActions,
     onUserDetails,
+    onMarkOrderPaid,
     refreshKey = 0,
     searchable = true,
     pageSize: initialPageSize = 20,
@@ -94,6 +95,7 @@ export function ResourcePage({
     extraActions?: (row: Row, context?: boolean, secondary?: ReactNode) => ReactNode;
     headerActions?: ReactNode;
     onUserDetails?: (row: Row) => void;
+    onMarkOrderPaid?: (row: Row) => void;
     refreshKey?: number;
     searchable?: boolean;
     pageSize?: number;
@@ -117,17 +119,24 @@ export function ResourcePage({
     const [riskMessage, setRiskMessage] = useState("");
     const pendingRiskHits = kind === "access-logs-risk" && riskView === "pending";
     const displayColumns = pendingRiskHits ? pendingRiskColumns : resource.columns;
-    const columnStorageKey = `admin.columns.${viewKey}${pendingRiskHits ? ":pending" : ""}`;
+    const baseColumnStorageKey = `admin.columns.${viewKey}${pendingRiskHits ? ":pending" : ""}`;
+    const columnStorageKey = kind === "orders" ? `${baseColumnStorageKey}:v2` : baseColumnStorageKey;
     const [showDisplay, setShowDisplay] = useState(false);
     const [columnViews, setColumnViews] = useState<Record<string, string[]>>({});
     let storedColumns: string[] | undefined;
     try {
-        const saved = JSON.parse(localStorage.getItem(columnStorageKey) || "null");
+        const current = localStorage.getItem(columnStorageKey);
+        const useLegacyOrderColumns = kind === "orders" && current === null;
+        const saved = JSON.parse((useLegacyOrderColumns ? localStorage.getItem(baseColumnStorageKey) : current) || "null");
         if (Array.isArray(saved)) {
             const available = new Set(displayColumns.map(([key]) => key));
             const valid = saved.filter(value => typeof value === "string" && available.has(value));
             // A preference containing only retired columns falls back to the current defaults.
-            if (valid.length || saved.length === 0) storedColumns = valid;
+            if (valid.length && useLegacyOrderColumns) {
+                storedColumns = [...new Set([...valid, "purchase_stage", "order_source"])];
+            } else if (valid.length || saved.length === 0) {
+                storedColumns = valid;
+            }
         }
     } catch { /* Optional browser preference. */ }
     const selectedColumns = columnViews[columnStorageKey] ?? storedColumns ?? displayColumns.map(([key]) => key);
@@ -316,6 +325,10 @@ export function ResourcePage({
     const [actionBusy, setActionBusy] = useState(false);
     async function action(path: string, r: Row, extra: Row = {}) {
         if (actionPending.current) return;
+        if (kind === "orders" && onMarkOrderPaid && path === admin("order/paid")) {
+            onMarkOrderPaid(r);
+            return;
+        }
         if (
             !confirm(
                 kind === "users"

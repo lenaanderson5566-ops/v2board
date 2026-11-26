@@ -88,22 +88,25 @@ it("keeps purchase types concise and separates first-payment and sub-day return 
         : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
 
     render(<OrdersPage />);
-    for (const label of ["首购", "周期购买", "额度购买"]) {
+    for (const label of ["证据不足", "额度购买"]) {
         expect(await screen.findByRole("cell", { name: label })).toBeTruthy();
     }
-    for (const label of ["再次购买", "续费", "变更套餐"]) expect(screen.getAllByRole("cell", { name: label })).toHaveLength(2);
+    for (const label of ["首购", "续费", "变更套餐"]) expect(screen.getAllByRole("cell", { name: label })).toHaveLength(2);
+    expect(screen.getAllByRole("cell", { name: "再次购买" })).toHaveLength(5);
+    expect(screen.getAllByRole("cell", { name: "新购" })).toHaveLength(4);
     expect(screen.queryByText("续费 · 首购")).toBeNull();
     expect(screen.queryByText("变更套餐 · 到期回购")).toBeNull();
     expect(screen.queryByText("到期回购", { exact: true })).toBeNull();
     expect(screen.queryByText("续费 · 再次购买")).toBeNull();
     expect(screen.queryByText("变更套餐 · 再次购买")).toBeNull();
     const row = screen.getAllByRole("cell", { name: "再次购买" })[0].closest("tr")!;
+    expect(within(row).getByRole("cell", { name: "新购" })).toBeTruthy();
     fireEvent.click(within(row).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
     expect(await detail.findByText("到期后不足 1 天回购")).toBeTruthy();
     expect(detail.getByText("到期回购", { exact: true })).toBeTruthy();
     expect(detail.getByText("再次购买", { exact: true })).toBeTruthy();
-    expect(detail.queryByText("购买记录")).toBeNull();
+    expect(detail.getByText("购买记录")).toBeTruthy();
     expect(detail.getByText("下单时原周期已到期，依据下单时保存的到期记录确认。")).toBeTruthy();
     fireEvent.click(detail.getByRole("button", { name: "关闭" }));
     fireEvent.click(within(screen.getAllByRole("cell", { name: "续费" })[0].closest("tr")!).getByRole("button", { name: "订单详情" }));
@@ -132,17 +135,20 @@ it.each([
         ? { data: rows, total: rows.length }
         : path.endsWith("order/detail") ? { data: rows.find(row => row.id === params?.id) } : { data: [] });
     render(<OrdersPage />);
-    const repeatOrder = (await screen.findByRole("cell", { name: "再次购买" })).closest("tr")!;
+    const repeats = await screen.findAllByRole("cell", { name: "再次购买" });
+    expect(repeats).toHaveLength(3);
+    const repeatOrder = repeats.map(cell => cell.closest("tr")!)
+        .find(row => within(row).queryByRole("cell", { name: "新购" }))!;
     expect(within(repeatOrder).getByText(statusLabel)).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "新购" })).toBeTruthy();
-    expect(screen.getByRole("cell", { name: "周期购买" })).toBeTruthy();
+    expect(screen.getAllByRole("cell", { name: "新购" })).toHaveLength(3);
+    expect(screen.getByRole("cell", { name: "证据不足" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "续费" })).toBeTruthy();
     expect(screen.getByRole("cell", { name: "变更套餐" })).toBeTruthy();
     fireEvent.click(within(repeatOrder).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
     expect(await detail.findByText("再次购买", { exact: true })).toBeTruthy();
     expect(detail.getByText("这笔订单下单前已有付费周期套餐记录，含余额支付。")).toBeTruthy();
-    expect(detail.queryByText("购买记录")).toBeNull();
+    expect(detail.getByText("购买记录")).toBeTruthy();
     expect(detail.queryByText("回购情况")).toBeNull();
     expect(detail.queryByText("回购间隔")).toBeNull();
     expect(screen.queryByText("首购")).toBeNull();
@@ -164,7 +170,7 @@ it("distinguishes a historical returning customer from their first paid recurrin
     const quotaRow = screen.getByRole("cell", { name: "额度购买" }).closest("tr")!;
     expect(within(quotaRow).getByText("Pro Quota-A")).toBeTruthy();
     expect(within(quotaRow).getByText("CNY 0.00")).toBeTruthy();
-    expect(screen.queryByText("新购", { exact: true })).toBeNull();
+    expect(within(again.closest("tr")!).getByRole("cell", { name: "新购" })).toBeTruthy();
     expect(screen.queryByText("到期回购", { exact: true })).toBeNull();
     fireEvent.click(within(again.closest("tr")!).getByRole("button", { name: "订单详情" }));
     const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
@@ -218,7 +224,7 @@ it("uses purchased products before legacy types or incompatible purchase stages"
         view.unmount();
     }
     // The server's confirmed stage includes wallet payments, even when external payment is zero.
-    render(<>{adminOrderType({ type: 1, period: "month_price", total_amount: 0, balance_amount: 3000, purchase_stage: "first_purchase" })}</>);
+    render(<>{adminOrderPurchaseRecord({ type: 1, period: "month_price", total_amount: 0, balance_amount: 3000, purchase_stage: "first_purchase" })}</>);
     expect(screen.getByTitle("首次有实付的周期套餐订单，含余额支付。免费、额度包和纯折抵订单不计入。").textContent).toBe("首购");
     expect(adminRepurchaseContext({ type: 2, period: "month_price", purchase_stage: "first_purchase", repurchase_expiry_status: "expired" })).toBeUndefined();
     expect(adminRepurchaseGap({ type: 1, period: "month_price", ...stage, repurchase_expiry_status: "unknown" })).toBeUndefined();
@@ -467,21 +473,106 @@ it("keeps order details primary and moves secondary actions into more without en
         expect((screen.getByLabelText("订单查询内容") as HTMLInputElement).value).toBe("order-1");
     } finally { confirm.mockRestore(); }
 });
-it.each([["标记已付款", "order/paid"], ["取消", "order/cancel"]])("preserves confirmation and the existing API for unpaid order action %s", async (label, endpoint) => {
+it("preserves confirmation and the existing API for canceling a pending order", async () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     api.request.mockImplementation(async (path: string) => path.includes("order/fetch") ? { data: [{ ...order, status: 0 }], total: 1 } : { data: true });
     try {
         render(<OrdersPage />);
         fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
-        fireEvent.click(screen.getByRole("button", { name: label }));
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
         expect(confirm).toHaveBeenCalledWith("确认执行此操作？");
-        expect(api.request.mock.calls.some(([path]) => String(path).endsWith(endpoint))).toBe(false);
+        expect(api.request.mock.calls.some(([path]) => String(path).endsWith("order/cancel"))).toBe(false);
         confirm.mockReturnValue(true);
         fireEvent.click(screen.getByRole("button", { name: "更多操作" }));
-        fireEvent.click(screen.getByRole("button", { name: label }));
-        await waitFor(() => expect(api.request).toHaveBeenCalledWith(`test-admin/${endpoint}`, expect.objectContaining({ id: 1, trade_no: "order-1" })));
-        expect(api.request.mock.calls.filter(([path]) => String(path).endsWith(endpoint))).toHaveLength(1);
+        fireEvent.click(screen.getByRole("button", { name: "取消" }));
+        await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/order/cancel", expect.objectContaining({ id: 1, trade_no: "order-1" })));
+        expect(api.request.mock.calls.filter(([path]) => String(path).endsWith("order/cancel"))).toHaveLength(1);
     } finally { confirm.mockRestore(); }
+});
+
+it("requires an explicit confirmation and preserves the legacy mark-paid request without a receipt", async () => {
+    api.request.mockImplementation(async (path: string) => path.includes("order/fetch") ? { data: [{ ...order, status: 0 }], total: 1 } : { data: true });
+    render(<OrdersPage />);
+    const openPayment = async () => {
+        fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
+        fireEvent.click(screen.getByRole("button", { name: "标记已付款" }));
+        return within(await screen.findByRole("dialog", { name: "标记已付款" }));
+    };
+    const first = await openPayment();
+    expect(first.getByText("本次确认将标为「未记录凭据」。")).toBeTruthy();
+    fireEvent.click(first.getByRole("button", { name: "取消" }));
+    expect(api.request.mock.calls.some(([path]) => String(path).endsWith("order/paid"))).toBe(false);
+    const second = await openPayment();
+    fireEvent.click(second.getByRole("button", { name: "确认已付款" }));
+    await waitFor(() => expect(api.request).toHaveBeenCalledWith("test-admin/order/paid", { id: 1, trade_no: "order-1" }));
+    expect(api.request.mock.calls.filter(([path]) => String(path).endsWith("order/paid"))).toHaveLength(1);
+});
+
+it("checks receipt evidence and requires a status check after an ambiguous submission", async () => {
+    const pending = { ...order, status: 0, currency: "USD" };
+    const paidCalls = () => api.request.mock.calls.filter(([path]) => String(path).endsWith("order/paid"));
+    api.request.mockImplementation(async (path: string) => {
+        if (path.includes("order/fetch")) return { data: [pending], total: 1 };
+        if (path.endsWith("order/paid")) {
+            if (paidCalls().length === 1) throw new Error("network failure");
+            return { data: true };
+        }
+        if (path.endsWith("order/detail")) return { data: pending };
+        return { data: [] };
+    });
+    render(<OrdersPage />);
+    fireEvent.click(await screen.findByRole("button", { name: "更多操作" }));
+    fireEvent.click(screen.getByRole("button", { name: "标记已付款" }));
+    const dialog = within(await screen.findByRole("dialog", { name: "标记已付款" }));
+    fireEvent.click(dialog.getByRole("checkbox", { name: "已核对线下实收，登记收款凭据" }));
+    const amount = dialog.getByLabelText("线下实收本金（USD）");
+    expect((amount as HTMLInputElement).value).toBe("10.00");
+    const reference = dialog.getByLabelText("线下收款凭据编号");
+    fireEvent.change(reference, { target: { value: "  receipt-2026-01  " } });
+    fireEvent.change(amount, { target: { value: "9.99" } });
+    fireEvent.click(dialog.getByRole("button", { name: "确认已付款" }));
+    expect(dialog.getByRole("alert").textContent).toContain("与订单外部应付金额一致");
+    expect(paidCalls()).toHaveLength(0);
+    fireEvent.change(amount, { target: { value: "10.00" } });
+    fireEvent.click(dialog.getByRole("button", { name: "确认已付款" }));
+    const check = await dialog.findByRole("button", { name: "核对订单状态" });
+    expect(paidCalls()).toHaveLength(1);
+    expect(paidCalls()[0][1]).toEqual({ id: 1, trade_no: "order-1", manual_payment: { reference: "receipt-2026-01", amount: 1000, currency: "USD" } });
+    expect(dialog.queryByRole("button", { name: "确认已付款" })).toBeNull();
+    fireEvent.click(check);
+    const retry = await dialog.findByRole("button", { name: "确认已付款" });
+    expect((reference as HTMLInputElement).value).toBe("  receipt-2026-01  ");
+    expect(api.request).toHaveBeenCalledWith("test-admin/order/detail", { id: 1 });
+    expect(paidCalls()).toHaveLength(1);
+    fireEvent.click(retry);
+    await waitFor(() => expect(paidCalls()).toHaveLength(2));
+});
+
+it("shows source, purchase stage and receipt verification independently", async () => {
+    const manual = { ...order, type: 1, period: "month_price", callback_no: "manual_operation" };
+    const assigned = { ...manual, id: 1, order_source: "admin", manual_payment_verified: false,
+        purchase_stage: "first_purchase", plan_name: "后台分配套餐" };
+    const verified = { ...manual, id: 2, order_source: "customer", manual_payment_verified: true,
+        purchase_stage: "first_purchase", plan_name: "用户购买套餐" };
+    api.request.mockImplementation(async (path: string) => path.includes("order/fetch")
+        ? { data: [assigned, verified], total: 2 }
+        : path.endsWith("order/detail") ? { data: { ...verified, manual_payment_receipt: {
+            reference: "https://receipt-reference.example", amount: 1000, currency: "CNY", confirmed_at: 1700000000, administrator_id: 8,
+        } } } : { data: [] });
+    render(<OrdersPage />);
+    const first = within((await screen.findByText("后台分配套餐")).closest("tr")!);
+    expect(first.getByRole("cell", { name: "新购" })).toBeTruthy();
+    expect(first.getByRole("cell", { name: "后台分配" })).toBeTruthy();
+    expect(first.getByRole("cell", { name: "实收未核实" })).toBeTruthy();
+    expect(first.getByRole("cell", { name: "人工确认（未记录凭据）" })).toBeTruthy();
+    const second = within(screen.getByText("用户购买套餐").closest("tr")!);
+    expect(second.getByRole("cell", { name: "用户下单" })).toBeTruthy();
+    expect(second.getByRole("cell", { name: "首购" })).toBeTruthy();
+    expect(second.getByRole("cell", { name: "人工确认（已记录凭据）" })).toBeTruthy();
+    fireEvent.click(second.getByRole("button", { name: "订单详情" }));
+    const detail = within(await screen.findByRole("dialog", { name: "订单详情" }));
+    expect(await detail.findByText("https://receipt-reference.example")).toBeTruthy();
+    expect(detail.queryByRole("link", { name: "https://receipt-reference.example" })).toBeNull();
 });
 it("keeps all order actions flat in the context menu", async () => {
     const view = render(<OrdersPage />);
@@ -1642,26 +1733,34 @@ it("keeps ticket replies open and opens the selected user drawer without renderi
     expect(api.request).toHaveBeenCalledWith("test-admin/ticket/close", { id: 42 });
 });
 
-it("shares display preferences across resource lists without leaking selected columns", async () => {
+it("adds the order provenance columns to legacy preferences and preserves later choices", async () => {
     const { ResourcePage } = await import("./ResourcePage");
-    localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
+    const previousKey = `admin.columns.${resources.orders.fetch}`;
+    const currentKey = `${previousKey}:v2`;
+    localStorage.setItem(previousKey, JSON.stringify(["type", "payment_display", "trade_no"]));
+    localStorage.removeItem(currentKey);
     api.request.mockResolvedValue({ data: [], total: 0 });
     const view = render(<ResourcePage resource={resources.orders} />);
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
-    const [key, label] = resources.orders.columns[0];
-    const option = within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label });
+    const options = within(screen.getByLabelText("可选显示列"));
+    expect(options.getByRole("button", { name: "购买记录" }).getAttribute("aria-pressed")).toBe("true");
+    expect(options.getByRole("button", { name: "支付方式" }).getAttribute("aria-pressed")).toBe("true");
+    expect(options.getByRole("button", { name: "创建时间" }).getAttribute("aria-pressed")).toBe("false");
+    const option = options.getByRole("button", { name: "下单来源" });
+    expect(option.getAttribute("aria-pressed")).toBe("true");
     fireEvent.click(option);
     expect(option.getAttribute("aria-pressed")).toBe("false");
-    expect(JSON.parse(localStorage.getItem(`admin.columns.${resources.orders.fetch}`)!).includes(key)).toBe(false);
+    expect(JSON.parse(localStorage.getItem(currentKey)!)).not.toContain("order_source");
     fireEvent.click(screen.getByRole("button", { name: "完成" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     view.unmount();
     render(<ResourcePage resource={resources.orders} />);
     fireEvent.click(screen.getByRole("button", { name: "显示设置" }));
-    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("false");
+    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: "下单来源" }).getAttribute("aria-pressed")).toBe("false");
     fireEvent.click(screen.getByRole("button", { name: "恢复默认展示" }));
-    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: label }).getAttribute("aria-pressed")).toBe("true");
-    localStorage.removeItem(`admin.columns.${resources.orders.fetch}`);
+    expect(within(screen.getByLabelText("可选显示列")).getByRole("button", { name: "下单来源" }).getAttribute("aria-pressed")).toBe("true");
+    localStorage.removeItem(previousKey);
+    localStorage.removeItem(currentKey);
 });
 
 it("supports manual keyboard tabs with linked panels and skips disabled views", async () => {

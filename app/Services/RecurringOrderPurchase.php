@@ -32,6 +32,29 @@ final class RecurringOrderPurchase
             ->whereRaw($alias.'.total_amount + COALESCE('.$alias.'.balance_amount, 0) > 0');
     }
 
+    public static function requiringManualEvidence(Builder $query, string $alias): Builder
+    {
+        return $query->where(function (Builder $payment) use ($alias) {
+            $payment->whereNull($alias.'.callback_no')
+                ->orWhereRaw("CAST($alias.callback_no AS BINARY) <> ?", ['manual_operation'])
+                ->orWhere(function (Builder $manual) use ($alias) {
+                    $evidence = $alias.'.manual_payment_evidence';
+                    $reference = "JSON_EXTRACT($evidence, '$.reference')";
+                    $amount = "JSON_EXTRACT($evidence, '$.amount')";
+                    $currency = "JSON_EXTRACT($evidence, '$.currency')";
+                    $confirmedAt = "JSON_EXTRACT($evidence, '$.confirmed_at')";
+                    $administratorId = "JSON_EXTRACT($evidence, '$.administrator_id')";
+
+                    $manual->where($alias.'.total_amount', '>', 0)
+                        ->whereRaw("JSON_TYPE($reference) = 'STRING' AND JSON_UNQUOTE($reference) REGEXP '[^[:space:]]'")
+                        ->whereRaw("JSON_TYPE($amount) = 'INTEGER' AND CAST(JSON_UNQUOTE($amount) AS SIGNED) = $alias.total_amount")
+                        ->whereRaw("JSON_TYPE($currency) = 'STRING' AND CAST(JSON_UNQUOTE($currency) AS BINARY) = CAST(COALESCE(NULLIF($alias.currency, ''), 'CNY') AS BINARY)")
+                        ->whereRaw("JSON_TYPE($confirmedAt) = 'INTEGER' AND CAST(JSON_UNQUOTE($confirmedAt) AS SIGNED) > 0")
+                        ->whereRaw("JSON_TYPE($administratorId) = 'INTEGER' AND CAST(JSON_UNQUOTE($administratorId) AS SIGNED) > 0");
+                });
+        });
+    }
+
     public static function prior(bool $atCheckout = false): Builder
     {
         return self::valued('p')->whereColumn('p.user_id', 'o.user_id')

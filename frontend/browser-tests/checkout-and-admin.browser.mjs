@@ -1280,6 +1280,61 @@ test.describe("desktop admin frontend", () => {
     });
 });
 
+test("admin records a manual receipt and keeps business type, purchase history and source distinct", async ({ page, context }) => {
+    await context.addInitScript(origin => {
+        if (location.origin !== origin) return;
+        localStorage.setItem("admin.columns.test-admin/order/fetch", JSON.stringify(["user_id", "type", "status", "payment_display"]));
+    }, consoleOrigin);
+    let order = {
+        id: 1, user_id: 7, email: "manual-order@example.test", trade_no: "manual-order-fixture",
+        type: 1, status: 0, period: "month_price", currency: "CNY", plan_id: 1, total_amount: 1230,
+        created_at: 1791849600, order_source: "admin", payment_display: "尚未选择",
+    };
+    const submissions = [];
+    await consoleFixture(context, "admin", (path, request) => {
+        if (path === "/api/v1/test-admin/config/fetch") return {};
+        if (path === "/api/v1/test-admin/plan/fetch") return [{ id: 1, name: "测试套餐" }];
+        if (path === "/api/v1/test-admin/order/fetch") return [order];
+        if (path === "/api/v1/test-admin/order/detail") return order;
+        if (path === "/api/v1/test-admin/order/paid") {
+            const submitted = request.postDataJSON();
+            submissions.push(submitted);
+            order = {
+                ...order, status: 3, paid_at: 1791849640, callback_no: "manual_operation", purchase_stage: "first_purchase",
+                manual_payment_verified: true, payment_display: "人工确认",
+                manual_payment_receipt: { ...submitted.manual_payment, confirmed_at: 1791849640, administrator_id: 7 },
+            };
+            return true;
+        }
+    });
+    await page.goto(`${consoleOrigin}/admin.html#/orders`);
+    const row = page.getByRole("row").filter({ hasText: order.email });
+    await expect(row.getByRole("cell", { name: "新购", exact: true })).toBeVisible();
+    await expect(row.getByRole("cell", { name: "后台分配", exact: true })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: "创建时间" })).toHaveCount(0);
+    const more = row.getByRole("button", { name: "更多操作" });
+    await more.scrollIntoViewIfNeeded();
+    await more.click();
+    await page.getByRole("button", { name: "标记已付款", exact: true }).click();
+    const confirmation = page.getByRole("dialog", { name: "标记已付款" });
+    const record = confirmation.getByRole("checkbox", { name: "已核对线下实收，登记收款凭据" });
+    await expect(record).not.toBeChecked();
+    await record.check();
+    await expect(confirmation.getByLabel("线下实收本金（CNY）")).toHaveValue("12.30");
+    await confirmation.getByLabel("线下收款凭据编号").fill("test-receipt-0123");
+    await confirmation.getByRole("button", { name: "确认已付款" }).click();
+    await expect(confirmation).toHaveCount(0);
+    expect(submissions).toHaveLength(1);
+    expect(submissions[0]).toMatchObject({ trade_no: order.trade_no,
+        manual_payment: { reference: "test-receipt-0123", amount: 1230, currency: "CNY" } });
+    await expect(row.getByRole("cell", { name: "首购", exact: true })).toBeVisible();
+    await expect(row.getByRole("cell", { name: "人工确认（已记录凭据）", exact: true })).toBeVisible();
+    await row.getByRole("button", { name: "订单详情" }).click();
+    const details = page.getByRole("dialog", { name: "订单详情" });
+    await expect(details.getByText("test-receipt-0123", { exact: true })).toBeVisible();
+    await expectPageWidth(page, 390);
+});
+
 test("admin order details adapt to mobile and desktop and keep diagnostics reachable", async ({ page, context }) => {
     const tradeNo = "order-" + "1234567890".repeat(12);
     const email = "account-" + "abcdef".repeat(9) + "@example.test";
@@ -1358,7 +1413,8 @@ test("admin order details adapt to mobile and desktop and keep diagnostics reach
     await expect(repeatType).toHaveAttribute("data-tone", "info");
     await expect(page.getByRole("cell", { name: "额度购买", exact: true }).locator(".admin-order-type"))
         .toHaveClass(/\border-type-traffic\b/);
-    await expect(page.getByRole("cell", { name: "新购", exact: true })).toHaveCount(0);
+    await expect(page.getByRole("columnheader", { name: "购买记录", exact: true })).toBeVisible();
+    await expect(returningRow.getByRole("cell", { name: "新购", exact: true })).toBeVisible();
     const returningColors = await badgeColors(returningType);
     expect(returningColors.backgroundColor).not.toBe((await badgeColors(firstType)).backgroundColor);
     expect(returningColors).toEqual(await badgeColors(repeatType));

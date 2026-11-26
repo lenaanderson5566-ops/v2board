@@ -139,6 +139,7 @@ class OrderActions
             }
             $user = User::find($request->user['id']);
             $order = new Order();
+            $order->order_source = 'customer';
             $orderService = new OrderService($order);
             $order->currency = \App\Services\BillingCurrency::account($user);
             $order->user_id = $request->user['id'];
@@ -253,6 +254,7 @@ class OrderActions
 
 
         $order = new Order();
+        $order->order_source = 'customer';
         $orderService = new OrderService($order);
         $order->user_id = $request->user['id'];
         $order->plan_id = $plan->id;

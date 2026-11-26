@@ -3,7 +3,7 @@ import { adminStatusCell } from "../shared/admin-status";
 import { admin, date, money, type Row } from "../shared/api";
 import { tx } from "../shared/i18n";
 import { Modal, State, Table, useData } from "../shared/ui";
-import { adminOrderPeriod, adminOrderPlan, adminOrderType, adminOrderTypeDescription, adminOrderPurchaseRecord, adminRepurchaseContext, adminRepurchaseGap } from "./admin-order-labels";
+import { adminOrderPayment, adminOrderPeriod, adminOrderPlan, adminOrderSource, adminOrderType, adminOrderTypeDescription, adminOrderPurchaseRecord, adminRepurchaseContext, adminRepurchaseGap } from "./admin-order-labels";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
 import { AdminDetails } from "./admin-section";
 import { adminUserLabel } from "./admin-user-label";
@@ -28,6 +28,7 @@ export function AdminOrderDetails({
     const purchaseRecord = order && adminOrderPurchaseRecord(order);
     const repurchaseContext = order && adminRepurchaseContext(order);
     const typeDescription = order && adminOrderTypeDescription(order);
+    const manualReceipt = order?.manual_payment_verified === true ? order.manual_payment_receipt : null;
     const [copyFeedback, setCopyFeedback] = useState("");
     async function copyOrderNumber(tradeNumber: string) {
         try {
@@ -56,6 +57,7 @@ export function AdminOrderDetails({
                                 { label: "订单状态", value: adminStatusCell("status", "订单状态", order.status) },
                                 { label: "用户（ID / 邮箱）", value: renderUser(order) },
                                 { label: "类型", value: adminOrderType(order) },
+                                { label: "下单来源", value: adminOrderSource(order) },
                                 ...(purchaseRecord ? [{ label: "购买记录", value: purchaseRecord }] : []),
                                 ...(repurchaseContext ? [{ label: "回购情况", value: repurchaseContext }] : []),
                                 ...(repurchaseGap ? [{ label: "回购间隔", value: repurchaseGap }] : []),
@@ -68,8 +70,14 @@ export function AdminOrderDetails({
                         <section className="admin-detail-section">
                             <h3 className="admin-detail-section-head">金额与渠道</h3>
                             <AdminDetails className="admin-detail-grid admin-order-payment" items={[
-                                { label: "支付金额", value: <strong className="admin-order-amount">{money(order.total_amount, order.currency)}</strong> },
-                                { label: "支付方式", value: order.payment_display },
+                                { label: "外部应付", value: <strong className="admin-order-amount">{money(order.total_amount, order.currency)}</strong> },
+                                { label: "支付方式", value: adminOrderPayment(order) },
+                                ...(manualReceipt ? [
+                                    { label: "线下实收本金", value: money(manualReceipt.amount, manualReceipt.currency) },
+                                    { label: "线下收款凭据编号", value: <code>{manualReceipt.reference}</code> },
+                                    { label: "凭据登记时间", value: date(manualReceipt.confirmed_at) },
+                                    { label: "登记管理员 ID", value: manualReceipt.administrator_id },
+                                ] : []),
                                 { label: "余额支付", value: money(order.balance_amount, order.currency) },
                                 { label: "优惠金额", value: money(order.discount_amount, order.currency) },
                                 { label: "退回金额", value: money(order.refund_amount, order.currency) },

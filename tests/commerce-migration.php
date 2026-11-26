@@ -9,6 +9,9 @@ DB::unprepared(file_get_contents(__DIR__.'/../database/install.sql'));
 if (!Schema::hasColumn('v2_order', 'previous_subscription_expires_at')) {
     throw new RuntimeException('Fresh installations require the order subscription expiry snapshot');
 }
+if (!Schema::hasColumns('v2_order', ['order_source', 'manual_payment_evidence'])) {
+    throw new RuntimeException('Fresh installations require the order provenance fields');
+}
 // Reproduce the pre-upgrade schema only inside this verified empty disposable database.
 foreach(['v2_user'=>['currency'],'v2_plan'=>['usd_prices'],'v2_payment'=>['currency'],'v2_order'=>['fx_snapshot'],'v2_coupon'=>['public_claim'],'v2_commission_log'=>['currency','order_currency']] as $table=>$columns) Schema::table($table,fn($t)=>$t->dropColumn($columns));
 Schema::drop('v2_coupon_wallet');Schema::drop('v2_exchange_rate');
@@ -53,6 +56,23 @@ if ((int) $legacyOrder->value('previous_subscription_expires_at') !== $capturedE
     throw new RuntimeException('Repeating the migration replaced a captured snapshot');
 }
 echo "Order subscription expiry upgrade: old order preserved across retries.\n";
+Schema::table('v2_order', fn ($table) => $table->dropColumn(['order_source', 'manual_payment_evidence']));
+$provenanceBefore = (array) $legacyOrder->first();
+$provenanceMigration = require __DIR__.'/../database/migrations/2026_11_26_000001_add_order_provenance.php';
+$provenanceMigration->up();
+$provenanceAfter = (array) $legacyOrder->first();
+foreach (['order_source', 'manual_payment_evidence'] as $column) {
+    if (!array_key_exists($column, $provenanceAfter) || $provenanceAfter[$column] !== null) {
+        throw new RuntimeException('Migration fabricated historical order provenance');
+    }
+    unset($provenanceAfter[$column]);
+}
+if ($provenanceBefore !== $provenanceAfter) throw new RuntimeException('Migration changed legacy order data');
+$legacyOrder->update(['order_source' => 'admin', 'manual_payment_evidence' => '{"reference":"fixture"}']);
+$withReceipt = (array) $legacyOrder->first();
+$provenanceMigration->up();
+if ($withReceipt !== (array) $legacyOrder->first()) throw new RuntimeException('Migration retry changed existing order evidence');
+echo "Order provenance upgrade: nullable history and existing receipts preserved.\n";
 $event = [
     'order_id' => $orderId,
     'provider' => 'EPayQrcode',

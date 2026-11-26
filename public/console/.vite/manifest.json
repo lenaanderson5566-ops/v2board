@@ -2057,16 +2057,16 @@
     "file": "assets/user/zw-xNF_cE0F.svg",
     "src": "src/user/assets/flags/zw.svg"
   },
-  "admin:_AdminApp-DaxZo5DA.css": {
-    "file": "assets/admin/AdminApp-DaxZo5DA.css",
-    "src": "_AdminApp-DaxZo5DA.css"
+  "admin:../../../v2board/frontend/node_modules/ace-builds/src-noconflict/worker-json.js": {
+    "file": "assets/admin/worker-json-DEGsizKa.js",
+    "src": "../../../v2board/frontend/node_modules/ace-builds/src-noconflict/worker-json.js"
   },
-  "admin:_AdminApp-DtIeBNkH.js": {
-    "file": "assets/admin/AdminApp-DtIeBNkH.js",
+  "admin:_AdminApp-BPZLl9ye.js": {
+    "file": "assets/admin/AdminApp-BPZLl9ye.js",
     "name": "AdminApp",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
       "admin.html"
     ],
     "dynamicImports": [
@@ -2104,79 +2104,83 @@
       "assets/admin/AdminApp-DaxZo5DA.css"
     ]
   },
-  "admin:_AdminDisplaySettings-D060gsME.js": {
-    "file": "assets/admin/AdminDisplaySettings-D060gsME.js",
+  "admin:_AdminApp-DaxZo5DA.css": {
+    "file": "assets/admin/AdminApp-DaxZo5DA.css",
+    "src": "_AdminApp-DaxZo5DA.css"
+  },
+  "admin:_AdminDisplaySettings--v9cJYnR.js": {
+    "file": "assets/admin/AdminDisplaySettings--v9cJYnR.js",
     "name": "AdminDisplaySettings",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js"
     ]
   },
-  "admin:_AdminFilterBar-qmofJVKB.js": {
-    "file": "assets/admin/AdminFilterBar-qmofJVKB.js",
+  "admin:_AdminFilterBar-BuNDXmz7.js": {
+    "file": "assets/admin/AdminFilterBar-BuNDXmz7.js",
     "name": "AdminFilterBar",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js"
+    ]
+  },
+  "admin:_AdminMailPreview-B2Li7wnr.js": {
+    "file": "assets/admin/AdminMailPreview-B2Li7wnr.js",
+    "name": "AdminMailPreview",
+    "imports": [
+      "admin:_ErrorBoundary-BzWe6CAS.js"
+    ],
+    "css": [
+      "assets/admin/AdminMailPreview-BRW1BWmu.css"
     ]
   },
   "admin:_AdminMailPreview-BRW1BWmu.css": {
     "file": "assets/admin/AdminMailPreview-BRW1BWmu.css",
     "src": "_AdminMailPreview-BRW1BWmu.css"
   },
-  "admin:_AdminMailPreview-DNozzRd0.js": {
-    "file": "assets/admin/AdminMailPreview-DNozzRd0.js",
-    "name": "AdminMailPreview",
-    "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
-    ],
-    "css": [
-      "assets/admin/AdminMailPreview-BRW1BWmu.css"
-    ]
-  },
-  "admin:_AdminPagedTable-dtBE0IG-.js": {
-    "file": "assets/admin/AdminPagedTable-dtBE0IG-.js",
+  "admin:_AdminPagedTable-D0SzvmGH.js": {
+    "file": "assets/admin/AdminPagedTable-D0SzvmGH.js",
     "name": "AdminPagedTable",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminPager-DyzG9gpC.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminPager-BdI2dMvT.js"
     ]
   },
-  "admin:_AdminPager-DyzG9gpC.js": {
-    "file": "assets/admin/AdminPager-DyzG9gpC.js",
+  "admin:_AdminPager-BdI2dMvT.js": {
+    "file": "assets/admin/AdminPager-BdI2dMvT.js",
     "name": "AdminPager",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js"
     ]
   },
-  "admin:_AdminRowMenu-D_RA8B7K.js": {
-    "file": "assets/admin/AdminRowMenu-D_RA8B7K.js",
+  "admin:_AdminRowMenu-Ces6VBiY.js": {
+    "file": "assets/admin/AdminRowMenu-Ces6VBiY.js",
     "name": "AdminRowMenu",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
-  "admin:_AdminUserActivity-DMzM4rWu.js": {
-    "file": "assets/admin/AdminUserActivity-DMzM4rWu.js",
+  "admin:_AdminUserActivity-h24nsFKX.js": {
+    "file": "assets/admin/AdminUserActivity-h24nsFKX.js",
     "name": "AdminUserActivity",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_data-p0Pr9ZoC.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_data-CDodrr7i.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js"
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js"
     ]
   },
-  "admin:_ErrorBoundary-Dy46JEsW.js": {
-    "file": "assets/admin/ErrorBoundary-Dy46JEsW.js",
+  "admin:_ErrorBoundary-BzWe6CAS.js": {
+    "file": "assets/admin/ErrorBoundary-BzWe6CAS.js",
     "name": "ErrorBoundary",
     "imports": [
       "admin.html"
@@ -2198,26 +2202,26 @@
       "admin:src/locales/th-TH.json"
     ]
   },
-  "admin:_MfaRecovery-DJai-lbq.js": {
-    "file": "assets/admin/MfaRecovery-DJai-lbq.js",
+  "admin:_MfaRecovery-DVPpYvQ-.js": {
+    "file": "assets/admin/MfaRecovery-DVPpYvQ-.js",
     "name": "MfaRecovery",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_copy-Bn05ww1R.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_copy-B_gWHJz1.js"
     ]
   },
-  "admin:_NodeDeployment-CfC3H2M3.js": {
-    "file": "assets/admin/NodeDeployment-CfC3H2M3.js",
+  "admin:_NodeDeployment-B85563t3.js": {
+    "file": "assets/admin/NodeDeployment-B85563t3.js",
     "name": "NodeDeployment",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_admin-switch-B1CGNYeb.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_admin-switch-C7epMC56.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_Table-DHBdqvg4.js",
+      "admin:_Table-Be5uSV8i.js",
       "admin:_domain-status-CL0EbmGE.js"
     ],
     "css": [
@@ -2229,14 +2233,14 @@
     "file": "assets/admin/NodeDeployment-DEGgRm05.css",
     "src": "_NodeDeployment-DEGgRm05.css"
   },
-  "admin:_PaymentCallbackHistory-B1xk4-_K.js": {
-    "file": "assets/admin/PaymentCallbackHistory-B1xk4-_K.js",
+  "admin:_PaymentCallbackHistory-8iJj3Lmh.js": {
+    "file": "assets/admin/PaymentCallbackHistory-8iJj3Lmh.js",
     "name": "PaymentCallbackHistory",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_Table-DHBdqvg4.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_Table-Be5uSV8i.js"
     ],
     "css": [
       "assets/admin/PaymentCallbackHistory-CgLqBSdr.css"
@@ -2246,15 +2250,15 @@
     "file": "assets/admin/PaymentCallbackHistory-CgLqBSdr.css",
     "src": "_PaymentCallbackHistory-CgLqBSdr.css"
   },
-  "admin:_PendingRiskHits-CzRbtyn9.js": {
-    "file": "assets/admin/PendingRiskHits-CzRbtyn9.js",
+  "admin:_PendingRiskHits-D4tygu2s.js": {
+    "file": "assets/admin/PendingRiskHits-D4tygu2s.js",
     "name": "PendingRiskHits",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
-      "admin:_admin-section-Cl8aGs0s.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
+      "admin:_admin-section-D8tprFk3.js"
     ],
     "css": [
       "assets/admin/PendingRiskHits-PMOgKq_v.css"
@@ -2264,43 +2268,43 @@
     "file": "assets/admin/PendingRiskHits-PMOgKq_v.css",
     "src": "_PendingRiskHits-PMOgKq_v.css"
   },
-  "admin:_ReportTable-ChLkv3Pl.js": {
-    "file": "assets/admin/ReportTable-ChLkv3Pl.js",
+  "admin:_ReportTable-DLm1pSpA.js": {
+    "file": "assets/admin/ReportTable-DLm1pSpA.js",
     "name": "ReportTable",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js"
     ]
   },
-  "admin:_ResourcePage-B433ykKs.js": {
-    "file": "assets/admin/ResourcePage-B433ykKs.js",
+  "admin:_ResourcePage-CRhsDDkN.js": {
+    "file": "assets/admin/ResourcePage-CRhsDDkN.js",
     "name": "ResourcePage",
     "imports": [
       "admin.html",
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_plus-bQ832k9O.js"
+      "admin:_plus-CSbr5bMr.js"
     ],
     "dynamicImports": [
       "admin:src/admin/admin-code-editor.tsx",
@@ -2314,49 +2318,49 @@
     "file": "assets/admin/ResourcePage-CfZ5lB3j.css",
     "src": "_ResourcePage-CfZ5lB3j.css"
   },
-  "admin:_Table-DHBdqvg4.js": {
-    "file": "assets/admin/Table-DHBdqvg4.js",
+  "admin:_Table-Be5uSV8i.js": {
+    "file": "assets/admin/Table-Be5uSV8i.js",
     "name": "Table",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js"
     ]
   },
-  "admin:_TableViewport-DK-nhZG1.js": {
-    "file": "assets/admin/TableViewport-DK-nhZG1.js",
+  "admin:_TableViewport-D0b8kxIR.js": {
+    "file": "assets/admin/TableViewport-D0b8kxIR.js",
     "name": "TableViewport",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js"
     ]
   },
-  "admin:_UserFilters-B5GLObO2.js": {
-    "file": "assets/admin/UserFilters-B5GLObO2.js",
+  "admin:_UserFilters-BpIEumTv.js": {
+    "file": "assets/admin/UserFilters-BpIEumTv.js",
     "name": "UserFilters",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
       "admin:_admin-plan-reference-mWhzPNm9.js"
     ]
   },
-  "admin:_admin-fields-Bl7F-5Cw.js": {
-    "file": "assets/admin/admin-fields-Bl7F-5Cw.js",
+  "admin:_admin-fields-BHw5BBBn.js": {
+    "file": "assets/admin/admin-fields-BHw5BBBn.js",
     "name": "admin-fields",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
   "admin:_admin-management-9vXYV3ap.css": {
     "file": "assets/admin/admin-management-9vXYV3ap.css",
     "src": "_admin-management-9vXYV3ap.css"
   },
-  "admin:_admin-operation-CHWgl98f.js": {
-    "file": "assets/admin/admin-operation-CHWgl98f.js",
+  "admin:_admin-operation-BVNvBCMt.js": {
+    "file": "assets/admin/admin-operation-BVNvBCMt.js",
     "name": "admin-operation",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
   "admin:_admin-plan-products-CjXRqNBU.js": {
@@ -2367,55 +2371,55 @@
     "file": "assets/admin/admin-plan-reference-mWhzPNm9.js",
     "name": "admin-plan-reference"
   },
-  "admin:_admin-presentation-BRPGnmYe.js": {
-    "file": "assets/admin/admin-presentation-BRPGnmYe.js",
+  "admin:_admin-presentation-EG9FoCR2.js": {
+    "file": "assets/admin/admin-presentation-EG9FoCR2.js",
     "name": "admin-presentation",
     "imports": [
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_AdminApp-DtIeBNkH.js",
+      "admin:_AdminApp-BPZLl9ye.js",
       "admin:_admin-plan-products-CjXRqNBU.js"
     ]
   },
-  "admin:_admin-resources-D1z4BQtE.js": {
-    "file": "assets/admin/admin-resources-D1z4BQtE.js",
+  "admin:_admin-resources-D_53jnMI.js": {
+    "file": "assets/admin/admin-resources-D_53jnMI.js",
     "name": "admin-resources",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_admin-fields-BHw5BBBn.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
-      "admin:_ResourcePage-B433ykKs.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
       "admin:_admin-plan-products-CjXRqNBU.js"
     ]
   },
-  "admin:_admin-section-Cl8aGs0s.js": {
-    "file": "assets/admin/admin-section-Cl8aGs0s.js",
+  "admin:_admin-section-D8tprFk3.js": {
+    "file": "assets/admin/admin-section-D8tprFk3.js",
     "name": "admin-section",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
-  "admin:_admin-switch-B1CGNYeb.js": {
-    "file": "assets/admin/admin-switch-B1CGNYeb.js",
+  "admin:_admin-switch-C7epMC56.js": {
+    "file": "assets/admin/admin-switch-C7epMC56.js",
     "name": "admin-switch",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
-  "admin:_admin-tools-CPCe3fHb.js": {
-    "file": "assets/admin/admin-tools-CPCe3fHb.js",
+  "admin:_admin-tools-CfnnvkLg.js": {
+    "file": "assets/admin/admin-tools-CfnnvkLg.js",
     "name": "admin-tools",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js"
     ]
   },
   "admin:_analytics-B8-WDon8.css": {
@@ -2426,103 +2430,103 @@
     "file": "assets/admin/anytls-padding-CrV42BNE.js",
     "name": "anytls-padding"
   },
+  "admin:_billing-price-input-DIOlRIaj.js": {
+    "file": "assets/admin/billing-price-input-DIOlRIaj.js",
+    "name": "billing-price-input"
+  },
   "admin:_browser-labels-DmLegWCk.js": {
     "file": "assets/admin/browser-labels-DmLegWCk.js",
     "name": "browser-labels"
   },
-  "admin:_copy-Bn05ww1R.js": {
-    "file": "assets/admin/copy-Bn05ww1R.js",
+  "admin:_copy-B_gWHJz1.js": {
+    "file": "assets/admin/copy-B_gWHJz1.js",
     "name": "copy",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
-  "admin:_data-p0Pr9ZoC.js": {
-    "file": "assets/admin/data-p0Pr9ZoC.js",
+  "admin:_data-CDodrr7i.js": {
+    "file": "assets/admin/data-CDodrr7i.js",
     "name": "data",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js"
     ]
   },
   "admin:_domain-status-CL0EbmGE.js": {
     "file": "assets/admin/domain-status-CL0EbmGE.js",
     "name": "domain-status"
   },
-  "admin:_external-link-BFnyyfIJ.js": {
-    "file": "assets/admin/external-link-BFnyyfIJ.js",
+  "admin:_external-link-Frn-23Yr.js": {
+    "file": "assets/admin/external-link-Frn-23Yr.js",
     "name": "external-link",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
-  "admin:_layout-DZVJixjT.js": {
-    "file": "assets/admin/layout-DZVJixjT.js",
+  "admin:_layout-tQKCfZsZ.js": {
+    "file": "assets/admin/layout-tQKCfZsZ.js",
     "name": "layout",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js"
     ]
   },
-  "admin:_plus-bQ832k9O.js": {
-    "file": "assets/admin/plus-bQ832k9O.js",
+  "admin:_plus-CSbr5bMr.js": {
+    "file": "assets/admin/plus-CSbr5bMr.js",
     "name": "plus",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js"
     ]
   },
-  "admin:_use-admin-log-date-range-COpIvi8Z.js": {
-    "file": "assets/admin/use-admin-log-date-range-COpIvi8Z.js",
+  "admin:_use-admin-log-date-range-CqrWnxI0.js": {
+    "file": "assets/admin/use-admin-log-date-range-CqrWnxI0.js",
     "name": "use-admin-log-date-range",
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js"
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js"
     ]
   },
   "admin.html": {
-    "file": "assets/admin/admin-Cgv9dwBY.js",
+    "file": "assets/admin/admin-Cq9BWtEE.js",
     "name": "admin",
     "src": "admin.html",
     "isEntry": true,
     "dynamicImports": [
-      "admin:_AdminApp-DtIeBNkH.js",
+      "admin:_AdminApp-BPZLl9ye.js",
       "admin:src/shared/render-app.tsx"
     ]
   },
-  "admin:node_modules/ace-builds/src-noconflict/worker-json.js": {
-    "file": "assets/admin/worker-json-DEGsizKa.js",
-    "src": "node_modules/ace-builds/src-noconflict/worker-json.js"
-  },
   "admin:src/admin/AdminAnalytics.tsx": {
-    "file": "assets/admin/AdminAnalytics-iF_zKO1v.js",
+    "file": "assets/admin/AdminAnalytics-D99inbDS.js",
     "name": "AdminAnalytics",
     "src": "src/admin/AdminAnalytics.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_ReportTable-ChLkv3Pl.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_ReportTable-DLm1pSpA.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js"
+      "admin:_AdminPager-BdI2dMvT.js"
     ],
     "css": [
       "assets/admin/analytics-B8-WDon8.css"
     ]
   },
   "admin:src/admin/AdminBanners.tsx": {
-    "file": "assets/admin/AdminBanners-CgQy2F0K.js",
+    "file": "assets/admin/AdminBanners-CMStlzk-.js",
     "name": "AdminBanners",
     "src": "src/admin/AdminBanners.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
       "admin.html"
     ],
     "css": [
@@ -2530,222 +2534,224 @@
     ]
   },
   "admin:src/admin/AdminBillingCurrency.tsx": {
-    "file": "assets/admin/AdminBillingCurrency-CEp80Dv8.js",
+    "file": "assets/admin/AdminBillingCurrency-BZ3smHY1.js",
     "name": "AdminBillingCurrency",
     "src": "src/admin/AdminBillingCurrency.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_admin-operation-CHWgl98f.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_admin-operation-BVNvBCMt.js",
+      "admin:_billing-price-input-DIOlRIaj.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin.html"
     ]
   },
   "admin:src/admin/AdminClientDiagnostics.tsx": {
-    "file": "assets/admin/AdminClientDiagnostics-DLTqONWy.js",
+    "file": "assets/admin/AdminClientDiagnostics-CCxT-AHB.js",
     "name": "AdminClientDiagnostics",
     "src": "src/admin/AdminClientDiagnostics.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_admin-section-Cl8aGs0s.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_admin-section-D8tprFk3.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js"
     ],
     "css": [
       "assets/admin/AdminClientDiagnostics-Di2_pn5Y.css"
     ]
   },
   "admin:src/admin/AdminClients.tsx": {
-    "file": "assets/admin/AdminClients-DAX29fNi.js",
+    "file": "assets/admin/AdminClients-DbX-Pjtn.js",
     "name": "AdminClients",
     "src": "src/admin/AdminClients.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_external-link-BFnyyfIJ.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_admin-resources-D1z4BQtE.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_external-link-Frn-23Yr.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_admin-resources-D_53jnMI.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_admin-fields-Bl7F-5Cw.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_admin-fields-BHw5BBBn.js"
     ]
   },
   "admin:src/admin/AdminCoupons.tsx": {
-    "file": "assets/admin/AdminCoupons-CFgQ9EIl.js",
+    "file": "assets/admin/AdminCoupons-CgmXru54.js",
     "name": "AdminCoupons",
     "src": "src/admin/AdminCoupons.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_admin-operation-CHWgl98f.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_admin-resources-D1z4BQtE.js",
-      "admin:_UserFilters-B5GLObO2.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_admin-operation-BVNvBCMt.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_admin-resources-D_53jnMI.js",
+      "admin:_UserFilters-BpIEumTv.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
       "admin.html",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_admin-fields-Bl7F-5Cw.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_admin-fields-BHw5BBBn.js"
     ]
   },
   "admin:src/admin/AdminDDNS.tsx": {
-    "file": "assets/admin/AdminDDNS-CxhKLyR3.js",
+    "file": "assets/admin/AdminDDNS-BdRL68K7.js",
     "name": "AdminDDNS",
     "src": "src/admin/AdminDDNS.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
       "admin:_domain-status-CL0EbmGE.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
       "admin.html"
     ]
   },
   "admin:src/admin/AdminDictionary.tsx": {
-    "file": "assets/admin/AdminDictionary-DKNceNA0.js",
+    "file": "assets/admin/AdminDictionary-2DLsX_Ja.js",
     "name": "AdminDictionary",
     "src": "src/admin/AdminDictionary.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
       "admin.html"
     ]
   },
   "admin:src/admin/AdminInvitations.tsx": {
-    "file": "assets/admin/AdminInvitations-BskIHMOq.js",
+    "file": "assets/admin/AdminInvitations-Viqs6_xo.js",
     "name": "AdminInvitations",
     "src": "src/admin/AdminInvitations.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_ResourcePage-B433ykKs.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:src/admin/admin-orders.tsx",
       "admin.html",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_admin-resources-D1z4BQtE.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_billing-price-input-DIOlRIaj.js",
+      "admin:_admin-resources-D_53jnMI.js",
+      "admin:_admin-fields-BHw5BBBn.js",
       "admin:src/admin/admin-users.tsx",
-      "admin:_UserFilters-B5GLObO2.js"
+      "admin:_UserFilters-BpIEumTv.js"
     ]
   },
   "admin:src/admin/AdminLogSettings.tsx": {
-    "file": "assets/admin/AdminLogSettings-CgjFkGEd.js",
+    "file": "assets/admin/AdminLogSettings-CDHmXkWs.js",
     "name": "AdminLogSettings",
     "src": "src/admin/AdminLogSettings.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
       "admin:src/admin/AdminTargetStatistics.tsx",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_admin-switch-B1CGNYeb.js"
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_admin-switch-C7epMC56.js"
     ],
     "css": [
       "assets/admin/admin-management-9vXYV3ap.css",
@@ -2753,43 +2759,43 @@
     ]
   },
   "admin:src/admin/AdminMailBlocklist.tsx": {
-    "file": "assets/admin/AdminMailBlocklist-Dhw6EiJD.js",
+    "file": "assets/admin/AdminMailBlocklist-C_6tcFgt.js",
     "name": "AdminMailBlocklist",
     "src": "src/admin/AdminMailBlocklist.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_plus-bQ832k9O.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_plus-CSbr5bMr.js",
       "admin.html"
     ]
   },
   "admin:src/admin/AdminMailLogs.tsx": {
-    "file": "assets/admin/AdminMailLogs-BBhcQjs0.js",
+    "file": "assets/admin/AdminMailLogs-BZmWIgPd.js",
     "name": "AdminMailLogs",
     "src": "src/admin/AdminMailLogs.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
       "admin:src/admin/OperationsAnalytics.tsx",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
       "admin.html",
       "admin:_browser-labels-DmLegWCk.js",
-      "admin:_ReportTable-ChLkv3Pl.js"
+      "admin:_ReportTable-DLm1pSpA.js"
     ],
     "css": [
       "assets/admin/AdminMailLogs-D4njE197.css",
@@ -2797,16 +2803,16 @@
     ]
   },
   "admin:src/admin/AdminPlanTranslationWorkspace.tsx": {
-    "file": "assets/admin/AdminPlanTranslationWorkspace-BxHO2aC1.js",
+    "file": "assets/admin/AdminPlanTranslationWorkspace-Uv33p6Gq.js",
     "name": "AdminPlanTranslationWorkspace",
     "src": "src/admin/AdminPlanTranslationWorkspace.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_admin-fields-BHw5BBBn.js",
       "admin.html"
     ],
     "css": [
@@ -2814,184 +2820,184 @@
     ]
   },
   "admin:src/admin/AdminPlanTranslations.tsx": {
-    "file": "assets/admin/AdminPlanTranslations-lBFADHef.js",
+    "file": "assets/admin/AdminPlanTranslations-C3aTB-Gd.js",
     "name": "AdminPlanTranslations",
     "src": "src/admin/AdminPlanTranslations.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
       "admin:src/admin/AdminPlanTranslationWorkspace.tsx",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin.html",
-      "admin:_admin-fields-Bl7F-5Cw.js"
+      "admin:_admin-fields-BHw5BBBn.js"
     ]
   },
   "admin:src/admin/AdminResourceRoute.tsx": {
-    "file": "assets/admin/AdminResourceRoute-q3dpZqI3.js",
+    "file": "assets/admin/AdminResourceRoute-C_SOzHwm.js",
     "name": "AdminResourceRoute",
     "src": "src/admin/AdminResourceRoute.tsx",
     "isDynamicEntry": true,
     "imports": [
       "admin.html",
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_admin-resources-D1z4BQtE.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_admin-resources-D_53jnMI.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_admin-fields-Bl7F-5Cw.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_admin-fields-BHw5BBBn.js"
     ],
     "dynamicImports": [
       "admin:src/admin/OperationsAnalytics.tsx"
     ]
   },
   "admin:src/admin/AdminRisk.tsx": {
-    "file": "assets/admin/AdminRisk-CLc-zFiD.js",
+    "file": "assets/admin/AdminRisk-D3QrLnhN.js",
     "name": "AdminRisk",
     "src": "src/admin/AdminRisk.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_Table-DHBdqvg4.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_Table-Be5uSV8i.js",
       "admin.html",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js"
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js"
     ]
   },
   "admin:src/admin/AdminSystem.tsx": {
-    "file": "assets/admin/AdminSystem-BQ7QpQQB.js",
+    "file": "assets/admin/AdminSystem-WsUyzwhe.js",
     "name": "AdminSystem",
     "src": "src/admin/AdminSystem.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_AdminApp-DtIeBNkH.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_AdminApp-BPZLl9ye.js",
       "admin:src/admin/OperationsAnalytics.tsx",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-tools-CPCe3fHb.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-tools-CfnnvkLg.js",
       "admin.html",
       "admin:_browser-labels-DmLegWCk.js",
-      "admin:_ReportTable-ChLkv3Pl.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js"
+      "admin:_ReportTable-DLm1pSpA.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js"
     ],
     "css": [
       "assets/admin/analytics-B8-WDon8.css"
     ]
   },
   "admin:src/admin/AdminSystemLogs.tsx": {
-    "file": "assets/admin/AdminSystemLogs-7vOpOJje.js",
+    "file": "assets/admin/AdminSystemLogs-2acSA0Rd.js",
     "name": "AdminSystemLogs",
     "src": "src/admin/AdminSystemLogs.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
       "admin.html"
     ]
   },
   "admin:src/admin/AdminTargetStatistics.tsx": {
-    "file": "assets/admin/AdminTargetStatistics-BqaWP42z.js",
+    "file": "assets/admin/AdminTargetStatistics-B7LuoKWY.js",
     "name": "AdminTargetStatistics",
     "src": "src/admin/AdminTargetStatistics.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_admin-switch-B1CGNYeb.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_admin-switch-C7epMC56.js",
       "admin.html",
-      "admin:_TableViewport-DK-nhZG1.js"
+      "admin:_TableViewport-D0b8kxIR.js"
     ]
   },
   "admin:src/admin/AdminUsageResetHistory.tsx": {
-    "file": "assets/admin/AdminUsageResetHistory-6HrgcCVf.js",
+    "file": "assets/admin/AdminUsageResetHistory-BYpoQpp8.js",
     "name": "AdminUsageResetHistory",
     "src": "src/admin/AdminUsageResetHistory.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
       "admin.html",
-      "admin:_TableViewport-DK-nhZG1.js",
+      "admin:_TableViewport-D0b8kxIR.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js"
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js"
     ]
   },
   "admin:src/admin/Infrastructure.tsx": {
-    "file": "assets/admin/Infrastructure-CnNg9spe.js",
+    "file": "assets/admin/Infrastructure-DyCpIJ5x.js",
     "name": "Infrastructure",
     "src": "src/admin/Infrastructure.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_NodeDeployment-CfC3H2M3.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_Table-DHBdqvg4.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_NodeDeployment-B85563t3.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_Table-Be5uSV8i.js",
       "admin:_domain-status-CL0EbmGE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_admin-section-Cl8aGs0s.js",
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_admin-section-D8tprFk3.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js",
       "admin:_anytls-padding-CrV42BNE.js"
     ],
     "css": [
@@ -2999,32 +3005,32 @@
     ]
   },
   "admin:src/admin/OperationsAnalytics.tsx": {
-    "file": "assets/admin/OperationsAnalytics-C7YQ6oUX.js",
+    "file": "assets/admin/OperationsAnalytics-BxG9Jn7q.js",
     "name": "OperationsAnalytics",
     "src": "src/admin/OperationsAnalytics.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
       "admin:_browser-labels-DmLegWCk.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_ReportTable-ChLkv3Pl.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_ReportTable-DLm1pSpA.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js"
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js"
     ],
     "css": [
       "assets/admin/analytics-B8-WDon8.css"
     ]
   },
   "admin:src/admin/admin-code-editor.tsx": {
-    "file": "assets/admin/admin-code-editor-BVHm-HfM.js",
+    "file": "assets/admin/admin-code-editor-BuEnsQEF.js",
     "name": "admin-code-editor",
     "src": "src/admin/admin-code-editor.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
       "admin.html"
     ],
     "assets": [
@@ -3032,65 +3038,65 @@
     ]
   },
   "admin:src/admin/admin-content.tsx": {
-    "file": "assets/admin/admin-content-D1TqRfW0.js",
+    "file": "assets/admin/admin-content-msxZ_8zg.js",
     "name": "admin-content",
     "src": "src/admin/admin-content.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_admin-resources-D1z4BQtE.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminPager-DyzG9gpC.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_admin-resources-D_53jnMI.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminPager-BdI2dMvT.js",
       "admin.html",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_admin-fields-Bl7F-5Cw.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_admin-fields-BHw5BBBn.js"
     ],
     "css": [
       "assets/admin/admin-content-Bkerugi9.css"
     ]
   },
   "admin:src/admin/admin-dashboard.tsx": {
-    "file": "assets/admin/admin-dashboard-IlYxur-7.js",
+    "file": "assets/admin/admin-dashboard-BQjzqQh0.js",
     "name": "admin-dashboard",
     "src": "src/admin/admin-dashboard.tsx",
     "isDynamicEntry": true,
     "imports": [
       "admin.html",
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
       "admin:src/admin/AdminRisk.tsx",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminPager-DyzG9gpC.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminPager-BdI2dMvT.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js"
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_PendingRiskHits-D4tygu2s.js"
     ],
     "dynamicImports": [
       "admin:src/admin/AdminAnalytics.tsx",
@@ -3101,13 +3107,13 @@
     ]
   },
   "admin:src/admin/admin-markdown.tsx": {
-    "file": "assets/admin/admin-markdown-wH5_tDsb.js",
+    "file": "assets/admin/admin-markdown-Cct8-oUl.js",
     "name": "admin-markdown",
     "src": "src/admin/admin-markdown.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminApp-DtIeBNkH.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminApp-BPZLl9ye.js",
       "admin.html"
     ],
     "css": [
@@ -3115,26 +3121,26 @@
     ]
   },
   "admin:src/admin/admin-nodes.tsx": {
-    "file": "assets/admin/admin-nodes-ISgC1oKG.js",
+    "file": "assets/admin/admin-nodes-br9zc2X7.js",
     "name": "admin-nodes",
     "src": "src/admin/admin-nodes.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_NodeDeployment-CfC3H2M3.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_admin-tools-CPCe3fHb.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_NodeDeployment-B85563t3.js",
+      "admin:_admin-fields-BHw5BBBn.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_admin-tools-CfnnvkLg.js",
       "admin.html",
       "admin:_anytls-padding-CrV42BNE.js",
       "admin:_domain-status-CL0EbmGE.js",
@@ -3145,86 +3151,87 @@
     ]
   },
   "admin:src/admin/admin-orders.tsx": {
-    "file": "assets/admin/admin-orders-CaphdK4f.js",
+    "file": "assets/admin/admin-orders-CkRaIXXU.js",
     "name": "admin-orders",
     "src": "src/admin/admin-orders.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_admin-resources-D1z4BQtE.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
+      "admin:_billing-price-input-DIOlRIaj.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_admin-resources-D_53jnMI.js",
       "admin:src/admin/admin-users.tsx",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
-      "admin:_UserFilters-B5GLObO2.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_admin-fields-BHw5BBBn.js",
+      "admin:_UserFilters-BpIEumTv.js"
     ]
   },
   "admin:src/admin/admin-payments.tsx": {
-    "file": "assets/admin/admin-payments-DmW0v7mH.js",
+    "file": "assets/admin/admin-payments-f0GPEn3Q.js",
     "name": "admin-payments",
     "src": "src/admin/admin-payments.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_admin-fields-BHw5BBBn.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
       "admin.html",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_AdminPager-DyzG9gpC.js"
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_AdminPager-BdI2dMvT.js"
     ]
   },
   "admin:src/admin/admin-settings.tsx": {
-    "file": "assets/admin/admin-settings-DyqRPGbJ.js",
+    "file": "assets/admin/admin-settings-BEpWBgY3.js",
     "name": "admin-settings",
     "src": "src/admin/admin-settings.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
       "admin.html",
       "admin:src/locales/zh-CN.json",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_copy-Bn05ww1R.js",
-      "admin:_external-link-BFnyyfIJ.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_copy-B_gWHJz1.js",
+      "admin:_external-link-Frn-23Yr.js",
       "admin:_browser-labels-DmLegWCk.js",
-      "admin:_layout-DZVJixjT.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_admin-fields-Bl7F-5Cw.js",
+      "admin:_layout-tQKCfZsZ.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_admin-fields-BHw5BBBn.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
-      "admin:_admin-section-Cl8aGs0s.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
+      "admin:_admin-section-D8tprFk3.js",
       "admin:_anytls-padding-CrV42BNE.js",
       "admin:_admin-plan-products-CjXRqNBU.js"
     ],
@@ -3250,40 +3257,40 @@
     ]
   },
   "admin:src/admin/admin-users.tsx": {
-    "file": "assets/admin/admin-users-KSVzxux4.js",
+    "file": "assets/admin/admin-users-DGbDmjT6.js",
     "name": "admin-users",
     "src": "src/admin/admin-users.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_AdminUserActivity-DMzM4rWu.js",
-      "admin:_AdminDisplaySettings-D060gsME.js",
-      "admin:_UserFilters-B5GLObO2.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_AdminUserActivity-h24nsFKX.js",
+      "admin:_AdminDisplaySettings--v9cJYnR.js",
+      "admin:_UserFilters-BpIEumTv.js",
       "admin:_admin-plan-reference-mWhzPNm9.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_ResourcePage-B433ykKs.js",
-      "admin:_data-p0Pr9ZoC.js",
-      "admin:_AdminRowMenu-D_RA8B7K.js",
-      "admin:_admin-resources-D1z4BQtE.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_ResourcePage-CRhsDDkN.js",
+      "admin:_data-CDodrr7i.js",
+      "admin:_AdminRowMenu-Ces6VBiY.js",
+      "admin:_admin-resources-D_53jnMI.js",
       "admin.html",
-      "admin:_AdminPager-DyzG9gpC.js",
-      "admin:_TableViewport-DK-nhZG1.js",
-      "admin:_Table-DHBdqvg4.js",
-      "admin:_layout-DZVJixjT.js",
+      "admin:_AdminPager-BdI2dMvT.js",
+      "admin:_TableViewport-D0b8kxIR.js",
+      "admin:_Table-Be5uSV8i.js",
+      "admin:_layout-tQKCfZsZ.js",
       "admin:_admin-plan-products-CjXRqNBU.js",
-      "admin:_admin-section-Cl8aGs0s.js",
-      "admin:_PaymentCallbackHistory-B1xk4-_K.js",
-      "admin:_AdminFilterBar-qmofJVKB.js",
-      "admin:_use-admin-log-date-range-COpIvi8Z.js",
-      "admin:_PendingRiskHits-CzRbtyn9.js",
-      "admin:_AdminMailPreview-DNozzRd0.js",
-      "admin:_AdminPagedTable-dtBE0IG-.js",
-      "admin:_admin-presentation-BRPGnmYe.js",
+      "admin:_admin-section-D8tprFk3.js",
+      "admin:_PaymentCallbackHistory-8iJj3Lmh.js",
+      "admin:_AdminFilterBar-BuNDXmz7.js",
+      "admin:_use-admin-log-date-range-CqrWnxI0.js",
+      "admin:_PendingRiskHits-D4tygu2s.js",
+      "admin:_AdminMailPreview-B2Li7wnr.js",
+      "admin:_AdminPagedTable-D0SzvmGH.js",
+      "admin:_admin-presentation-EG9FoCR2.js",
       "admin:_anytls-padding-CrV42BNE.js",
-      "admin:_admin-switch-B1CGNYeb.js",
-      "admin:_admin-tools-CPCe3fHb.js",
-      "admin:_plus-bQ832k9O.js",
-      "admin:_admin-fields-Bl7F-5Cw.js"
+      "admin:_admin-switch-C7epMC56.js",
+      "admin:_admin-tools-CfnnvkLg.js",
+      "admin:_plus-CSbr5bMr.js",
+      "admin:_admin-fields-BHw5BBBn.js"
     ]
   },
   "admin:src/locales/de-DE.json": {
@@ -3371,29 +3378,29 @@
     "isDynamicEntry": true
   },
   "admin:src/shared/MfaSecurity.tsx": {
-    "file": "assets/admin/MfaSecurity-BkBjly4J.js",
+    "file": "assets/admin/MfaSecurity-CFFesiU8.js",
     "name": "MfaSecurity",
     "src": "src/shared/MfaSecurity.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_MfaRecovery-DJai-lbq.js",
-      "admin:_AdminApp-DtIeBNkH.js",
-      "admin:_data-p0Pr9ZoC.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_MfaRecovery-DVPpYvQ-.js",
+      "admin:_AdminApp-BPZLl9ye.js",
+      "admin:_data-CDodrr7i.js",
       "admin.html",
-      "admin:_copy-Bn05ww1R.js"
+      "admin:_copy-B_gWHJz1.js"
     ]
   },
   "admin:src/shared/render-app.tsx": {
-    "file": "assets/admin/render-app-x1_SC6Wk.js",
+    "file": "assets/admin/render-app-CAVl2ZnK.js",
     "name": "render-app",
     "src": "src/shared/render-app.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "admin:_ErrorBoundary-Dy46JEsW.js",
-      "admin:_MfaRecovery-DJai-lbq.js",
+      "admin:_ErrorBoundary-BzWe6CAS.js",
+      "admin:_MfaRecovery-DVPpYvQ-.js",
       "admin.html",
-      "admin:_copy-Bn05ww1R.js"
+      "admin:_copy-B_gWHJz1.js"
     ]
   }
 }

@@ -9,6 +9,7 @@ use App\Models\{User,Plan,Order,Payment,Coupon};
 use App\Services\{BillingCurrency,ExchangeRate,CouponWallet,OrderService,PaymentQuote};
 use App\Services\Actions\User\OrderActions;
 use App\Http\Controllers\V1\Admin\OrderController as AdminOrderController;
+use App\Http\Requests\Admin\OrderAssign;
 use App\Http\Requests\Admin\OrderFetch;
 use App\Http\Requests\User\OrderSave;
 use Illuminate\Http\Request;
@@ -113,13 +114,15 @@ try {
     ]);
     $makeStageOrder = static function (User $owner, array $values = []) use ($plan, $stageNow): Order {
         $previousExpiry = $values['previous_subscription_expires_at'] ?? null;
-        unset($values['previous_subscription_expires_at']);
+        $manualEvidence = $values['manual_payment_evidence'] ?? null;
+        unset($values['previous_subscription_expires_at'], $values['manual_payment_evidence']);
         $order = new Order($values + [
             'user_id'=>$owner->id, 'plan_id'=>$plan->id, 'currency'=>$owner->currency,
             'trade_no'=>bin2hex(random_bytes(16)), 'type'=>1, 'period'=>'month_price',
             'status'=>3, 'total_amount'=>500, 'paid_at'=>$stageNow-60*86400, 'created_at'=>$stageNow-60*86400,
         ]);
         $order->previous_subscription_expires_at = $previousExpiry;
+        if ($manualEvidence !== null) $order->manual_payment_evidence = $manualEvidence;
         $order->save();
         return $order;
     };
@@ -131,6 +134,50 @@ try {
         OrderFetch::create('/', 'GET', ['current'=>$page, 'pageSize'=>10,
             'filter'=>[['key'=>'user_id', 'condition'=>'=', 'value'=>$owner->id]]])
     )->getContent(), true, flags: JSON_THROW_ON_ERROR)['data'])->keyBy('id');
+
+    $assignmentPlan = $plan->replicate();
+    $assignmentPlan->name = 'Second plan for admin assignment';
+    $assignmentPlan->save();
+    $assignOrder = static function (User $owner, Plan $target) use ($adminOrders): Order {
+        $request = OrderAssign::create('/', 'POST', [
+            'email' => $owner->email, 'plan_id' => (string)$target->id,
+            'period' => 'month_price', 'total_amount' => 1234,
+        ]);
+        $response = json_decode($adminOrders->assign($request)->getContent(), true, flags: JSON_THROW_ON_ERROR);
+        return Order::where('trade_no', $response['data'])->firstOrFail();
+    };
+
+    $assignmentRenewalOwner = $makeStageBuyer($stageNow + 86400);
+    $assignmentRenewal = $assignOrder($assignmentRenewalOwner, $plan);
+    $assert((int)$assignmentRenewal->type === 2 && (int)$assignmentRenewal->status === 0,
+        'Admin assignment of the same active plan is an unpaid renewal');
+
+    $assignmentSwitchOwner = $makeStageBuyer($stageNow + 86400);
+    $makeStageOrder($assignmentSwitchOwner, ['paid_at' => $stageNow - 86400, 'created_at' => $stageNow - 86400]);
+    $assignmentCheckout = new Order([
+        'plan_id' => $assignmentPlan->id, 'currency' => $assignmentSwitchOwner->currency,
+        'period' => 'month_price', 'total_amount' => 1234,
+    ]);
+    (new OrderService($assignmentCheckout))->setOrderType($assignmentSwitchOwner);
+    $assignmentSwitch = $assignOrder($assignmentSwitchOwner, $assignmentPlan);
+    $assert((int)$assignmentCheckout->surplus_amount > 0 && (int)$assignmentSwitch->type === 3
+        && (int)$assignmentSwitch->total_amount === 1234
+        && (int)$assignmentSwitch->surplus_amount === 0 && (int)$assignmentSwitch->refund_amount === 0,
+        'An active admin plan switch keeps its set amount without checkout proration');
+
+    $assignmentExpiredOwner = $makeStageBuyer($priorExpiry);
+    $assignmentExpiredOwner->update(['u' => 128, 'd' => 256]);
+    $assignmentReopening = $assignOrder($assignmentExpiredOwner, $assignmentPlan);
+    $assert((int)$assignmentReopening->type === 1 && $assignmentReopening->order_source === 'admin'
+        && $assignmentReopening->previous_subscription_expires_at === $priorExpiry
+        && (int)$assignmentReopening->status === 0 && (int)$assignmentExpiredOwner->fresh()->plan_id === (int)$plan->id,
+        'Admin assignment after expiry creates a new unpaid order with the prior expiry and admin source');
+    $assert((new OrderService($assignmentReopening))->paid('manual_operation'), 'Synthetic assigned order is confirmed');
+    (new OrderService($assignmentReopening->fresh()))->open();
+    $assignmentExpiredOwner->refresh();
+    $assert((int)$assignmentReopening->fresh()->status === 3 && (int)$assignmentExpiredOwner->plan_id === (int)$assignmentPlan->id
+        && (int)$assignmentExpiredOwner->u === 0 && (int)$assignmentExpiredOwner->d === 0,
+        'Fulfilling an expired admin reopening activates the target plan and resets previous usage');
 
     $firstBuyer = $makeStageBuyer($stageNow+86400);
     $free = $makeStageOrder($firstBuyer, ['total_amount'=>0, 'paid_at'=>null]);
@@ -306,6 +353,43 @@ try {
             && !isset($orderPage($legacyBuyer, 1)->get($legacyRepurchase->id)['purchase_stage']),
             'A prior valued legacy order without a payment timestamp leaves the purchase stage unknown');
     }
+
+    $manualBuyer = $makeStageBuyer($priorExpiry);
+    $manualTime = $stageNow - 600;
+    $manualEvidence = ['reference' => 'offline-receipt-fixture', 'amount' => 500, 'currency' => $manualBuyer->currency,
+        'confirmed_at' => $manualTime, 'administrator_id' => 1];
+    $manualMarkers = ['callback_no' => 'manual_operation', 'created_at' => $manualTime - 30];
+    $unverifiedManual = $makeStageOrder($manualBuyer, ['paid_at' => $manualTime] + $manualMarkers);
+    $undatedManual = $makeStageOrder($manualBuyer, ['paid_at' => null] + $manualMarkers);
+    foreach ([['reference' => " \t"], ['amount' => 499], ['amount' => '500'], ['currency' => strtolower($manualBuyer->currency)],
+        ['confirmed_at' => 0], ['administrator_id' => 0]] as $invalid) {
+        $invalidManual = $makeStageOrder($manualBuyer, ['paid_at' => $manualTime,
+            'manual_payment_evidence' => $invalid + $manualEvidence] + $manualMarkers);
+        $assert(!isset($orderDetail($invalidManual)['purchase_stage']), 'Incomplete or mismatched offline evidence does not establish a purchase');
+    }
+    $pendingAfterManual = $makeStageOrder($manualBuyer, ['status' => 0, 'paid_at' => null, 'created_at' => $manualTime + 60]);
+    $cancelledAfterManual = $makeStageOrder($manualBuyer, ['status' => 2, 'paid_at' => null, 'created_at' => $manualTime + 120]);
+    $firstAfterManual = $makeStageOrder($manualBuyer, ['paid_at' => $manualTime + 240, 'created_at' => $manualTime + 180]);
+    $manualPage = $orderPage($manualBuyer, 1)->union($orderPage($manualBuyer, 2));
+    $assert($manualPage->has($unverifiedManual->id) && !isset($orderDetail($unverifiedManual)['purchase_stage'])
+        && !isset($manualPage->get($unverifiedManual->id)['purchase_stage'])
+        && !isset($orderDetail($undatedManual)['purchase_stage'])
+        && $orderDetail($pendingAfterManual)['checkout_purchase_context'] === 'new'
+        && $manualPage->get($cancelledAfterManual->id)['checkout_purchase_context'] === 'new'
+        && $orderDetail($firstAfterManual)['purchase_stage'] === 'first_purchase'
+        && $manualPage->get($firstAfterManual->id)['purchase_stage'] === 'first_purchase',
+        'Unverified manual records do not establish a purchase stage or earlier checkout history');
+
+    $offlineBuyer = $makeStageBuyer($priorExpiry);
+    $firstOffline = $makeStageOrder($offlineBuyer, ['paid_at' => $manualTime, 'manual_payment_evidence' => $manualEvidence] + $manualMarkers);
+    $pendingAfterOffline = $makeStageOrder($offlineBuyer, ['status' => 0, 'paid_at' => null, 'created_at' => $manualTime + 60]);
+    $repeatAfterOffline = $makeStageOrder($offlineBuyer, ['paid_at' => $manualTime + 180, 'created_at' => $manualTime + 120]);
+    $offlinePage = $orderPage($offlineBuyer, 1);
+    $assert($orderDetail($firstOffline)['purchase_stage'] === 'first_purchase'
+        && $offlinePage->get($firstOffline->id)['purchase_stage'] === 'first_purchase'
+        && $offlinePage->get($pendingAfterOffline->id)['checkout_purchase_context'] === 'repeat'
+        && $orderDetail($repeatAfterOffline)['purchase_stage'] === 'repeat_purchase',
+        'Matching recorded offline receipt establishes purchases and later history in admin list and detail');
 
     $returningBuyer = $makeStageBuyer($priorExpiry);
     $priorPaid = $makeStageOrder($returningBuyer, ['status'=>4]);

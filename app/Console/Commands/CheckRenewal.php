@@ -69,6 +69,7 @@ class CheckRenewal extends Command
             'period' => $period, 'trade_no' => Helper::generateOrderNo(), 'type' => 2,
             'status' => 3, 'paid_at' => $now, 'total_amount' => $price,
         ]);
+        $order->order_source = 'system';
         (new OrderService($order))->setVipDiscount($user);
         $payable = (int) $order->total_amount;
         if ($user->balance < $payable) {

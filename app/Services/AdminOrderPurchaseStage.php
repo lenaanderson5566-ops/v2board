@@ -24,11 +24,13 @@ final class AdminOrderPurchaseStage
         }
 
         // A legacy completed order without a payment time can make a first purchase uncertain.
-        $undatedPurchases = RecurringOrderPurchase::potentiallyPriorUndated()->selectRaw('1')->limit(1);
-        $purchases = RecurringOrderPurchase::valued()
+        $undatedPurchases = RecurringOrderPurchase::requiringManualEvidence(RecurringOrderPurchase::potentiallyPriorUndated(), 'h')
+            ->selectRaw('1')->limit(1);
+        $prior = RecurringOrderPurchase::requiringManualEvidence(RecurringOrderPurchase::prior(), 'p');
+        $purchases = RecurringOrderPurchase::requiringManualEvidence(RecurringOrderPurchase::valued(), 'o')
             ->whereIn('o.id', $orders->pluck('id'))
             ->select('o.id', 'o.paid_at')
-            ->selectSub(RecurringOrderPurchase::prior()->select('p.paid_at')
+            ->selectSub($prior->select('p.paid_at')
                 ->orderByDesc('p.paid_at')->orderByDesc('p.id')->limit(1), 'prior_paid_at')
             ->selectSub($undatedPurchases, 'has_undated_purchase')
             ->get()->keyBy('id');
@@ -64,11 +66,13 @@ final class AdminOrderPurchaseStage
 
     private static function appendCheckoutContext(Collection $orders): void
     {
-        $checkouts = RecurringOrderPurchase::valuedTerm()
+        $prior = RecurringOrderPurchase::requiringManualEvidence(RecurringOrderPurchase::prior(atCheckout: true), 'p');
+        $undated = RecurringOrderPurchase::requiringManualEvidence(RecurringOrderPurchase::potentiallyPriorUndated(atCheckout: true), 'h');
+        $checkouts = RecurringOrderPurchase::requiringManualEvidence(RecurringOrderPurchase::valuedTerm(), 'o')
             ->whereIn('o.id', $orders->pluck('id'))->whereIn('o.status', self::UNCONFIRMED_STATUSES)->where('o.type', 1)
             ->select('o.id', 'o.user_id', 'o.status', 'o.created_at')
-            ->selectSub(RecurringOrderPurchase::prior(atCheckout: true)->selectRaw('1')->limit(1), 'has_prior_purchase')
-            ->selectSub(RecurringOrderPurchase::potentiallyPriorUndated(atCheckout: true)->selectRaw('1')->limit(1), 'has_undated_purchase')
+            ->selectSub($prior->selectRaw('1')->limit(1), 'has_prior_purchase')
+            ->selectSub($undated->selectRaw('1')->limit(1), 'has_undated_purchase')
             ->get()->keyBy('id');
 
         foreach ($orders as $order) {

@@ -38,4 +38,32 @@ class OrderPaymentHistory {
         if (($snapshot['category'] ?? '') === 'crypto') $name .= ' · ' . ($snapshot['asset'] ?? '') . ' · ' . ($snapshot['network_name'] ?? $snapshot['network'] ?? '');
         return $name . ($historical ? '' : '（当前渠道信息）');
     }
+
+    public static function manualReceipt(Order $order): ?array
+    {
+        $receipt = $order->manual_payment_evidence;
+        if ($order->callback_no !== 'manual_operation' || !is_array($receipt)
+            || !in_array((int)$order->status, RecurringOrderPurchase::CONFIRMED_STATUSES, true) || (int)$order->paid_at <= 0) {
+            return null;
+        }
+
+        $reference = $receipt['reference'] ?? null;
+        $amount = $receipt['amount'] ?? null;
+        $currency = $receipt['currency'] ?? null;
+        $confirmedAt = $receipt['confirmed_at'] ?? null;
+        $administratorId = $receipt['administrator_id'] ?? null;
+        if (!is_string($reference) || !preg_match('/(*UCP)\S/u', $reference) || !is_int($amount) || $amount <= 0
+            || $amount !== (int)$order->total_amount || $currency !== ($order->currency ?: 'CNY')
+            || !is_int($confirmedAt) || $confirmedAt <= 0 || !is_int($administratorId) || $administratorId <= 0) {
+            return null;
+        }
+
+        return [
+            'reference' => $reference,
+            'amount' => $amount,
+            'currency' => $currency,
+            'confirmed_at' => $confirmedAt,
+            'administrator_id' => $administratorId,
+        ];
+    }
 }

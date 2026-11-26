@@ -433,6 +433,7 @@ class UserActions
                 abort(request()->is('api/v10/*') ? 409 : 500, __('Insufficient commission balance'));
             }
             $order = new Order();
+            $order->order_source = 'customer';
             $order->currency = $user->currency ?: 'CNY';
             $orderService = new OrderService($order);
             $order->user_id = $request->user['id'];

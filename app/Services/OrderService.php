@@ -125,31 +125,43 @@ class OrderService
             && TrafficCreditService::hasPeriod($user);
     }
 
+    public static function recurringOrderType(User $user, int $planId, int $at): int
+    {
+        if ($user->plan_id === null) return 1;
+
+        $expiresAt = $user->expired_at;
+        if ((int)$user->plan_id === $planId) {
+            return $expiresAt > $at ? 2 : 1;
+        }
+
+        return $user->transfer_enable > 0 && ($expiresAt === null || $expiresAt > $at) ? 3 : 1;
+    }
+
     public function setOrderType(User $user)
     {
         $order = $this->order;
-        if ($order->period === 'deposit'){
-            $order->type = 9;
-        } else if ($order->credit_bytes !== null) {
-            $order->type = 5;
-        } else if ($order->period === 'reset_price') {
-            $order->type = 4;
-        } else if ($user->transfer_enable > 0 && $user->plan_id !== NULL && $order->plan_id !== $user->plan_id && ($user->expired_at > time() || $user->expired_at === NULL)) {
-            if (!(int)config('fastai.plan_change_enable', 1)) abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
-            $order->type = 3;
-            if ((int)config('fastai.surplus_enable', 1)) {
-                [$order->surplus_amount, $order->surplus_order_ids] = $this->surplusValue($user, $order->created_at ?? time());
-            }
-            if ($order->surplus_amount >= $order->total_amount) {
-                $order->refund_amount = $order->surplus_amount - $order->total_amount;
-                $order->total_amount = 0;
-            } else {
-                $order->total_amount = $order->total_amount - $order->surplus_amount;
-            }
-        } else if ($user->expired_at > time() && $order->plan_id == $user->plan_id) { // 用户订阅未过期且购买订阅与当前订阅相同 === 续费
-            $order->type = 2;
-        } else { // 新购
-            $order->type = 1;
+        $now = time();
+        $type = match (true) {
+            $order->period === 'deposit' => 9,
+            $order->credit_bytes !== null => 5,
+            $order->period === 'reset_price' => 4,
+            default => self::recurringOrderType($user, (int)$order->plan_id, $now),
+        };
+
+        if ($type === 3 && !(int)config('fastai.plan_change_enable', 1)) {
+            abort(500, '目前不允许更改订阅，请联系客服或提交工单操作');
+        }
+        $order->type = $type;
+        if ($type !== 3) return;
+
+        if ((int)config('fastai.surplus_enable', 1)) {
+            [$order->surplus_amount, $order->surplus_order_ids] = $this->surplusValue($user, $order->created_at ?? $now);
+        }
+        if ($order->surplus_amount >= $order->total_amount) {
+            $order->refund_amount = $order->surplus_amount - $order->total_amount;
+            $order->total_amount = 0;
+        } else {
+            $order->total_amount = $order->total_amount - $order->surplus_amount;
         }
     }
 

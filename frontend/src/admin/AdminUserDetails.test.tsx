@@ -308,6 +308,7 @@ it("shows the current valid reset credits and a shortcut alongside daily usage i
 it("distinguishes balance-funded orders from free orders and identifies unpaid repeat checkouts", async () => {
     const base = { type: 1, period: "month_price", currency: "CNY", plan_name: "Basic", status: 3, total_amount: 0 };
     const orders = [
+        { ...base, id: 5, trade_no: "manual-order", total_amount: 2000, order_source: "admin", callback_no: "manual_operation", manual_payment_verified: false },
         { ...base, id: 4, trade_no: "cancelled-repeat", status: 2, total_amount: 1880, balance_amount: 2000, checkout_purchase_context: "repeat" },
         { ...base, id: 3, trade_no: "pending-repeat", status: 0, total_amount: 1912, pending_purchase_context: "repeat" },
         { ...base, id: 2, trade_no: "paid-by-balance", balance_amount: 2390, purchase_stage: "first_purchase" },
@@ -324,6 +325,7 @@ it("distinguishes balance-funded orders from free orders and identifies unpaid r
     const cancelled = within(screen.getByText("cancelled-repeat").closest("tr")!);
     const balance = within(screen.getByText("paid-by-balance").closest("tr")!);
     const free = within(screen.getByText("free-order").closest("tr")!);
+    const manual = within(screen.getByText("manual-order").closest("tr")!);
     expect(screen.getByRole("columnheader", { name: "外部应付" })).toBeTruthy();
     expect(pending.getByText("再次购买")).toBeTruthy();
     expect(pending.getByText("待支付")).toBeTruthy();
@@ -334,4 +336,8 @@ it("distinguishes balance-funded orders from free orders and identifies unpaid r
     expect(balance.getByText("CNY 0.00")).toBeTruthy();
     expect(balance.getByText("余额抵扣 CNY 23.90")).toBeTruthy();
     expect(free.queryByText(/余额抵扣/)).toBeNull();
+    expect(manual.getByRole("cell", { name: "新购" })).toBeTruthy();
+    expect(manual.getByRole("cell", { name: "后台分配" })).toBeTruthy();
+    expect(manual.getByRole("cell", { name: "实收未核实" })).toBeTruthy();
+    expect(manual.getByRole("cell", { name: "人工确认（未记录凭据）" })).toBeTruthy();
 });

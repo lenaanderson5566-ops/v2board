@@ -20,8 +20,8 @@ class Order extends Model
         });
     }
     protected $dateFormat = 'U';
-    protected $guarded = ['id', 'previous_subscription_expires_at'];
-    protected $hidden = ['payment_snapshot', 'fx_snapshot', 'previous_subscription_expires_at'];
+    protected $guarded = ['id', 'previous_subscription_expires_at', 'order_source', 'manual_payment_evidence'];
+    protected $hidden = ['payment_snapshot', 'fx_snapshot', 'previous_subscription_expires_at', 'order_source', 'manual_payment_evidence'];
     protected $casts = [
         'created_at' => 'timestamp',
         'updated_at' => 'timestamp',
@@ -29,6 +29,7 @@ class Order extends Model
         'credit_snapshot' => 'array',
         'payment_snapshot' => 'array',
         'fx_snapshot' => 'array',
+        'manual_payment_evidence' => 'array',
         'credit_bytes' => 'integer',
         'previous_subscription_expires_at' => 'integer',
     ];

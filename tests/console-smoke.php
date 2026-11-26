@@ -258,7 +258,41 @@ try {
     $response = $call('/api/v1/' . $securePath . '/order/detail', ['id' => $order->id], $token);
     $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['data']['trade_no'] === $order->trade_no, 'User order detail failed');
     $response = $call('/api/v1/' . $securePath . '/order/fetch?' . http_build_query(['filter' => [['key' => 'user_id', 'condition' => '=', 'value' => $subject->id]]]), null, $token);
-    $assert(json_decode($response->getContent(), true)['total'] === 1, 'User order scope failed');
+    $assignedList = json_decode($response->getContent(), true);
+    $assert($assignedList['total'] === 1 && $assignedList['data'][0]['order_source'] === 'admin', 'User order scope or assigned provenance failed');
+    $manualPaidPath = '/api/v1/' . $securePath . '/order/paid';
+    $manualOrderInput = ['trade_no' => $order->trade_no];
+    $receipt = ['reference' => 'fixture-receipt-123', 'amount' => 123, 'currency' => 'CNY'];
+    foreach ([['amount' => 122], ['currency' => 'USD'], ['reference' => '　'], ['administrator_id' => $subject->id]] as $invalidReceipt) {
+        $response = $call($manualPaidPath, $manualOrderInput + ['manual_payment' => $invalidReceipt + $receipt], $token);
+        $assert($response->getStatusCode() === 422 && (int)$order->fresh()->status === 0, 'Invalid manual payment evidence cannot open an order');
+    }
+    foreach ([true, false] as $withReceipt) {
+        DB::beginTransaction();
+        try {
+            $input = $withReceipt ? $manualOrderInput + ['manual_payment' => $receipt] : $manualOrderInput;
+            $paid = $call($manualPaidPath, $input, $token);
+            $detail = $call('/api/v1/' . $securePath . '/order/detail', ['id' => $order->id], $token);
+            $data = json_decode($detail->getContent(), true)['data'];
+            $assert($paid->getStatusCode() === 200 && $data['callback_no'] === 'manual_operation'
+                && $data['manual_payment_verified'] === $withReceipt && $data['order_source'] === 'admin'
+                && !array_key_exists('manual_payment_evidence', $data), 'Manual settlement exposes only its admin projection');
+            if ($withReceipt) {
+                $assert($data['purchase_stage'] === 'first_purchase' && $data['manual_payment_receipt']['reference'] === $receipt['reference']
+                    && $data['manual_payment_receipt']['administrator_id'] === $user->id
+                    && $data['manual_payment_receipt']['amount'] === 123 && $data['manual_payment_receipt']['currency'] === 'CNY',
+                    'Receipt admits a first purchase and records the true administrator and principal');
+                $assert($call($manualPaidPath, $manualOrderInput + ['manual_payment' => ['reference' => 'duplicate-attempt'] + $receipt], $token)->getStatusCode() === 409
+                    && $order->fresh()->manual_payment_evidence['reference'] === $receipt['reference'], 'A repeated manual settlement cannot overwrite the receipt');
+                $assert(!array_key_exists('manual_payment_evidence', $order->fresh()->toArray()), 'Raw receipt remains absent from model serialization');
+            } else {
+                $assert($data['manual_payment_receipt'] === null && !isset($data['purchase_stage']),
+                    'Manual confirmation without a receipt remains available without a first purchase claim');
+            }
+        } finally {
+            DB::rollBack();
+        }
+    }
     App\Models\StatUser::create(['user_id' => $subject->id, 'server_rate' => 1, 'u' => 1024, 'd' => 2048, 'record_type' => 'd', 'record_at' => time()]);
     $response = $call('/api/v1/' . $securePath . '/stat/getStatUser?user_id=' . $subject->id, null, $token);
     $assert($response->getStatusCode() === 200 && json_decode($response->getContent(), true)['total'] === 1, 'User traffic records failed');

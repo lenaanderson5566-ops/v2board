@@ -1,6 +1,7 @@
 import { AdminFilterBar } from "./AdminFilterBar";
 import { readListView, saveListView } from "./list-view-state";
 import { AdminOrderDetails } from "./AdminOrderDetails";
+import { AdminManualOrderPayment } from "./AdminManualOrderPayment";
 import { adminUserLabel } from "./admin-user-label";
 import type { AdminPlanDirectory } from "./admin-plan-reference";
 import { adminOrderPlan } from "./admin-order-labels";
@@ -143,6 +144,7 @@ export function OrdersPage({
         [checkFilterDraft, setCheckFilterDraft] = useState(false),
         [selected, setSelected] = useState<Row | null>(null),
         [selectedUser, setSelectedUser] = useState<Row | null>(null),
+        [manualPayment, setManualPayment] = useState<Row | null>(null),
         [assign, setAssign] = useState(false),
         [revision, setRevision] = useState(0),
         [commission, setCommission] = useState<Row | null>(null);
@@ -178,6 +180,7 @@ export function OrdersPage({
                         : ["commission_balance", "commission_status"]
                 }
                 searchable={false}
+                onMarkOrderPaid={setManualPayment}
                 queryParams={{
                     filter,
                     ...(commissionMode ? { is_commission: 1 } : {}),
@@ -578,6 +581,10 @@ export function OrdersPage({
                 />
             )}
             {selectedUser && <AdminUserDetails row={selectedUser} close={() => setSelectedUser(null)} />}
+            {manualPayment && <AdminManualOrderPayment order={manualPayment} close={() => setManualPayment(null)} saved={() => {
+                setManualPayment(null);
+                setRevision(value => value + 1);
+            }} />}
             {assign && (
                 <Modal
                     title="分配订单"

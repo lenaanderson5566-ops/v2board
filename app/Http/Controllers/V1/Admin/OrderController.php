@@ -12,6 +12,7 @@ use App\Models\Plan;
 use App\Models\User;
 use App\Services\AdminOrderPurchaseStage;
 use App\Services\BillingCurrency;
+use App\Services\OrderPaymentHistory;
 use App\Services\OrderService;
 use App\Services\TrafficCreditService;
 use App\Utils\Helper;
@@ -45,7 +46,11 @@ class OrderController extends Controller
         if (!$order) abort(500, '订单不存在');
         \App\Services\AdminUserIdentity::append(collect([$order]));
         AdminOrderPurchaseStage::append(collect([$order]));
-        $order['payment_display'] = \App\Services\OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
+        $order->makeVisible('order_source');
+        $receipt = OrderPaymentHistory::manualReceipt($order);
+        $order['manual_payment_verified'] = $receipt !== null;
+        $order['manual_payment_receipt'] = $receipt;
+        $order['payment_display'] = OrderPaymentHistory::display($order, \App\Models\Payment::find($order->payment_id));
         $order['payment_provider'] = $order->payment_snapshot['provider'] ?? null;
         $order['callback_history'] = \App\Services\PaymentCallbackHistory::forOrder($order);
         $order['payment_attempt_history'] = \App\Services\PaymentAttemptHistory::forOrder($order);
@@ -81,7 +86,9 @@ class OrderController extends Controller
         $plans = Plan::whereIn('id', $res->pluck('plan_id')->filter())->pluck('name', 'id');
         $payments = \App\Models\Payment::whereIn('id', $res->pluck('payment_id')->filter())->get()->keyBy('id');
         for ($i = 0; $i < count($res); $i++) {
-            $res[$i]['payment_display'] = \App\Services\OrderPaymentHistory::display($res[$i], $payments->get($res[$i]->payment_id));
+            $res[$i]->makeVisible('order_source');
+            $res[$i]['manual_payment_verified'] = OrderPaymentHistory::manualReceipt($res[$i]) !== null;
+            $res[$i]['payment_display'] = OrderPaymentHistory::display($res[$i], $payments->get($res[$i]->payment_id));
             if ($plans->has($res[$i]['plan_id'])) $res[$i]['plan_name'] = $plans->get($res[$i]['plan_id']);
         }
         return response([
@@ -92,15 +99,39 @@ class OrderController extends Controller
 
     public function paid(Request $request)
     {
-        $order = Order::where('trade_no', $request->input('trade_no'))
-            ->first();
-        if (!$order) {
-            abort(500, '订单不存在');
+        $input = $request->validate([
+            'trade_no' => ['required', 'string', 'max:36'],
+            'manual_payment' => ['sometimes', 'required', 'array:reference,amount,currency', 'required_array_keys:reference,amount,currency'],
+            'manual_payment.reference' => ['required_with:manual_payment', 'string', 'max:120', 'regex:/(*UCP)\S/u', 'not_regex:/[\x00-\x1F\x7F]/'],
+            'manual_payment.amount' => ['required_with:manual_payment', 'integer', 'min:1', 'max:2147483647'],
+            'manual_payment.currency' => ['required_with:manual_payment', 'string', 'in:CNY,USD'],
+        ]);
+        $order = Order::where('trade_no', $input['trade_no'])->firstOrFail();
+        $receipt = $input['manual_payment'] ?? null;
+        $paymentContext = [];
+        if ($receipt !== null) {
+            $administratorId = (int)$request->input('user.id');
+            abort_unless($administratorId > 0, 403, '无法确认当前管理员身份');
+            $receipt = [
+                'reference' => trim($receipt['reference']),
+                'amount' => (int)$receipt['amount'],
+                'currency' => $receipt['currency'],
+                'confirmed_at' => time(),
+                'administrator_id' => $administratorId,
+            ];
+            $paymentContext['manual_payment_evidence'] = json_encode($receipt, JSON_THROW_ON_ERROR);
         }
-        if ($order->status !== 0) abort(500, '只能对待支付的订单进行操作');
 
-        $orderService = new OrderService($order);
-        if (!$orderService->paid('manual_operation')) {
+        // Check the amount and pending status on the same locked row used to record payment.
+        $checkPendingOrder = static function () use ($order, $receipt): void {
+            $current = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+            abort_unless((int)$current->status === 0, 409, '订单状态已变化，请刷新后查看');
+            if ($receipt !== null) {
+                abort_unless($receipt['amount'] === (int)$current->total_amount
+                    && $receipt['currency'] === ($current->currency ?: 'CNY'), 422, '线下实收金额和币种必须与订单应付本金一致');
+            }
+        };
+        if (!(new OrderService($order))->paid('manual_operation', $paymentContext, $checkPendingOrder)) {
             abort(500, '更新失败');
         }
         return response([
@@ -168,6 +199,7 @@ class OrderController extends Controller
             $order->period = $request->input('period');
             $order->trade_no = Helper::guid();
             $order->total_amount = $request->input('total_amount');
+            $order->order_source = 'admin';
 
             if ($order->period === 'onetime_price') {
                 TrafficCreditService::snapshotPurchase($order, $plan);
@@ -177,12 +209,8 @@ class OrderController extends Controller
                 $price = BillingCurrency::price($plan, $order->period, $order->currency);
                 abort_if($price === null || $price < 0, 422, '该套餐未设置此币种的流量重置价格');
                 $order->type = 4;
-            } elseif ($user->plan_id !== null && $order->plan_id !== $user->plan_id) {
-                $order->type = 3;
-            } elseif ($user->expired_at > time() && $order->plan_id == $user->plan_id) {
-                $order->type = 2;
             } else {
-                $order->type = 1;
+                $order->type = OrderService::recurringOrderType($user, (int)$plan->id, time());
             }
 
             (new OrderService($order))->setInvite($user);

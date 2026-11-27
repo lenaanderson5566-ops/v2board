@@ -116,7 +116,8 @@ try {
      ],
  ];
  $contents = json_encode($batch, JSON_THROW_ON_ERROR);
- $beforeCollision = $user->fresh()->only(['password', 'balance', 'email', 'currency', 'token', 'uuid']);
+ $user->update(['remarks' => 'Existing migration fixture remark']);
+ $beforeCollision = $user->fresh()->only(['password', 'balance', 'email', 'currency', 'token', 'uuid', 'remarks']);
  $adminCurrency = config('fastai.new_user_currency', 'CNY');
  config(['fastai.new_user_currency' => 'USD']);
  try {
@@ -153,7 +154,7 @@ try {
          && !str_contains($response->getContent(), 'private_note_should_not_echo') && User::count() === $beforeImport,
          'Preview is uncacheable, discloses no password material and creates no accounts');
 
-     $apply = ['preview_token' => $preview['preview_token']];
+     $apply = ['preview_token' => $preview['preview_token'], 'remarks' => " \tnowlink 本批导入\u{3000}"];
      $assert($import('importApply', $contents, null, $apply, ['HTTP_AUTHORIZATION' => $adminToken])->getStatusCode() === 403,
          'Administrator Authorization header alone cannot confirm a credential migration');
      $assert($import('importApply', $contents, $adminBrowser, $apply, ['HTTP_X_CSRF_TOKEN' => null])->getStatusCode() === 419,
@@ -164,6 +165,14 @@ try {
          'Apply is bound to the previewing administrator');
      $assert($import('importApply', $contents, $sameAdminBrowser, $apply)->getStatusCode() === 409,
          'Another browser session for the same administrator cannot reuse a preview');
+     $assert($import('importApply', $contents, $adminBrowser, ['remarks' => str_repeat('a', 256)] + $apply)->getStatusCode() === 422
+         && $import('importApply', $contents, $adminBrowser, ['remarks' => ['invalid']] + $apply)->getStatusCode() === 422,
+         'Invalid and oversized batch remarks are rejected before consuming the preview');
+     $remarkColumn = collect(\Illuminate\Support\Facades\Schema::getColumns('v2_user'))->firstWhere('name', 'remarks');
+     if (\Illuminate\Support\Str::startsWith($remarkColumn['collation'] ?? '', ['utf8_', 'utf8mb3_'])) {
+         $assert($import('importApply', $contents, $adminBrowser, ['remarks' => "nowlink \u{1F642}"] + $apply)->getStatusCode() === 422,
+             'Legacy schemas reject unsupported remark characters before consuming the preview');
+     }
 
      $staleResponse = $import('importPreview', $contents, $staleAdminBrowser);
      $stalePreview = json_decode($staleResponse->getContent(), true)['data'] ?? [];
@@ -187,6 +196,7 @@ try {
          && !str_contains($response->getContent(), $preview['preview_token']),
          'Confirmation returns only uncacheable aggregate results');
      $account = User::where('email', $email)->firstOrFail();
+     $assert($account->remarks === 'nowlink 本批导入', 'New accounts receive the trimmed administrator-supplied batch remark');
      $assert($account->password === $passwordHash && $account->currency === 'CNY' && $account->balance === 700
          && !$account->is_admin && !$account->banned && $account->plan_id === null && !$account->transfer_enable,
          'Migration preserves the original bcrypt hash and explicit currency and grants only wallet balance');
@@ -207,6 +217,18 @@ try {
      $response = $import('importPreview', json_encode($batch, JSON_THROW_ON_ERROR), $adminBrowser);
      $assert($response->getStatusCode() === 200 && (json_decode($response->getContent(), true)['data']['already_imported'] ?? null) === 1,
          'Stable source identity prevents a new credit even when the source email changes');
+
+     foreach ([9 => [], 10 => ['remarks' => " \t\u{3000} "]] as $id => $fields) {
+         $blankRemarkEmail = 'migration-blank-'.$id.'-'.$tag.'@example.com';
+         $batch['users'] = [$importRow($id, $blankRemarkEmail)];
+         $blankContents = json_encode($batch, JSON_THROW_ON_ERROR);
+         $response = $import('importPreview', $blankContents, $adminBrowser);
+         $blankPreview = json_decode($response->getContent(), true)['data'];
+         $response = $import('importApply', $blankContents, $adminBrowser, ['preview_token' => $blankPreview['preview_token']] + $fields);
+         $assert($response->getStatusCode() === 200 && (json_decode($response->getContent(), true)['data']['created'] ?? null) === 1
+             && User::where('email', $blankRemarkEmail)->firstOrFail()->remarks === null,
+             'An omitted or whitespace-only batch remark leaves the migrated account remark null');
+     }
 
      $login = $kernel->handle(Request::create('/api/v10/auth/sessions', 'POST', ['email' => $email, 'password' => $password],
          [], [], ['HTTP_ACCEPT' => 'application/json']));

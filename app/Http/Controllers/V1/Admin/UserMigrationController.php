@@ -8,6 +8,8 @@ use App\Services\AuthService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 final class UserMigrationController extends Controller
 {
@@ -30,7 +32,18 @@ final class UserMigrationController extends Controller
         $token = $request->post('preview_token');
         abort_unless(is_string($token) && preg_match('/\A[a-f0-9]{64}\z/', $token), 409, '请先预览迁移文件。');
 
-        return response()->json(['data' => $migration->apply($this->contents($request), $token, $reference['userId'], $session)]);
+        $remarks = $request->post('remarks');
+        abort_unless($remarks === null || (is_string($remarks) && mb_check_encoding($remarks, 'UTF-8')), 422, '请输入有效的导入备注。');
+        $remarks = Str::trim($remarks ?? '');
+        abort_if(mb_strlen($remarks) > 255, 422, '导入备注最多 255 个字符。');
+        if (preg_match('/[\x{10000}-\x{10FFFF}]/u', $remarks)) {
+            $column = collect(Schema::getColumns('v2_user'))->firstWhere('name', 'remarks');
+            abort_if(Str::startsWith($column['collation'] ?? '', ['utf8_', 'utf8mb3_']), 422, '请去掉导入备注中的表情或扩展字符后再试。');
+        }
+
+        return response()->json(['data' => $migration->apply(
+            $this->contents($request), $token, $reference['userId'], $session, $remarks === '' ? null : $remarks
+        )]);
     }
 
     private function session(Request $request): array

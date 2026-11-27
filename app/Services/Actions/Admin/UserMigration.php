@@ -59,7 +59,8 @@ final class UserMigration
         #[\SensitiveParameter] string $contents,
         #[\SensitiveParameter] string $token,
         int $administrator,
-        string $session
+        string $session,
+        ?string $remarks = null
     ): array {
         $approved = $this->claimPreview($token, hash('sha256', $contents), $administrator, $session);
         $manifest = $this->parse($contents);
@@ -68,7 +69,7 @@ final class UserMigration
         $totals = ['CNY' => 0, 'USD' => 0];
         foreach ($rows as $row) {
             if ($row['state'] !== 'ready' || !isset($approved[$row['source_user_id']])) continue;
-            if ($this->createUser($manifest, $row, $administrator) !== 'ready') continue;
+            if ($this->createUser($manifest, $row, $administrator, $remarks) !== 'ready') continue;
 
             $created++;
             $totals[$row['currency']] += $row['balance'];
@@ -200,10 +201,14 @@ final class UserMigration
         return $rows;
     }
 
-    private function createUser(#[\SensitiveParameter] array $manifest, #[\SensitiveParameter] array $row, int $administrator): string
-    {
+    private function createUser(
+        #[\SensitiveParameter] array $manifest,
+        #[\SensitiveParameter] array $row,
+        int $administrator,
+        ?string $remarks
+    ): string {
         try {
-            return DB::transaction(function () use ($manifest, $row, $administrator) {
+            return DB::transaction(function () use ($manifest, $row, $administrator, $remarks) {
                 if ($this->alreadyImported($manifest, $row)) return 'already_imported';
                 $state = $this->storedEmailState($row['email']);
                 if ($state !== 'ready') return $state;
@@ -213,6 +218,7 @@ final class UserMigration
                 $id = DB::table('v2_user')->insertGetId([
                     'email' => $row['email'], 'password' => $row['password_hash'],
                     'currency' => $row['currency'], 'balance' => $row['balance'],
+                    'remarks' => $remarks,
                     'is_admin' => 0, 'banned' => 0, 'uuid' => (string)Str::uuid(),
                     'token' => bin2hex(random_bytes(16)), 'created_at' => $now, 'updated_at' => $now,
                 ]);

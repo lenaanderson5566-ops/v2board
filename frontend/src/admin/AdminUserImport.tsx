@@ -66,6 +66,7 @@ type ImportOutcome = { created: number; skipped: number; totals: ImportTotals };
 
 export function AdminUserImport({ close, onComplete }: { close: () => void; onComplete: () => void }) {
     const [file, setFile] = useState<File | null>(null);
+    const [remarks, setRemarks] = useState("");
     const [preview, setPreview] = useState<ImportPreview | null>(null);
     const [outcome, setOutcome] = useState<ImportOutcome | null>(null);
     const [confirmed, setConfirmed] = useState(false);
@@ -101,6 +102,8 @@ export function AdminUserImport({ close, onComplete }: { close: () => void; onCo
         try {
             if (preview) {
                 body.append("preview_token", preview.preview_token);
+                const trimmedRemarks = remarks.trim();
+                if (trimmedRemarks) body.append("remarks", trimmedRemarks);
                 const { data } = await request<ImportOutcome>(admin("user/importApply"), body, { ...uploadOptions, timeoutMs: 120000 });
                 if (![data?.created, data?.skipped, data?.totals?.CNY, data?.totals?.USD]
                     .every(value => typeof value === "number" && Number.isSafeInteger(value) && value >= 0)) {
@@ -108,6 +111,7 @@ export function AdminUserImport({ close, onComplete }: { close: () => void; onCo
                 }
                 setOutcome({ created: data.created, skipped: data.skipped, totals: data.totals });
                 setFile(null);
+                setRemarks("");
                 setPreview(null);
                 onComplete();
             } else {
@@ -119,7 +123,9 @@ export function AdminUserImport({ close, onComplete }: { close: () => void; onCo
             }
         } catch (cause) {
             const failure = cause as { code?: string; status?: number; message?: string } | null;
-            if (preview) {
+            if (preview && failure?.status === 422) {
+                setError(failure.message || "请检查导入内容后重试。");
+            } else if (preview) {
                 setPreview(null);
                 if (failure?.code === "RECENT_LOGIN_REQUIRED") {
                     setError("请重新登录后台，并在 5 分钟内重新预览并确认导入。");
@@ -153,6 +159,13 @@ export function AdminUserImport({ close, onComplete }: { close: () => void; onCo
             <label>
                 迁移 JSON 文件
                 <input type="file" accept=".json,application/json" disabled={!!busy} onChange={selectFile} />
+            </label>
+            <label>
+                导入备注（选填）
+                <input value={remarks} maxLength={255} placeholder="留空则不填写备注" disabled={!!busy} onChange={event => {
+                    setRemarks(event.target.value);
+                    setConfirmed(false);
+                }} />
             </label>
             <p className="muted">先预览查重和余额，再确认导入。目标站已有邮箱的账号及待复核账号会整笔跳过。</p>
             <p className="muted">请在登录后台后 5 分钟内确认导入。文件含用户邮箱和密码哈希，请在受信任的设备上操作并妥善保管文件。</p>

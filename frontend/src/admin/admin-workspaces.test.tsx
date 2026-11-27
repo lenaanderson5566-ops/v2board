@@ -1915,6 +1915,7 @@ it("previews a user migration file before import and reloads the list on success
         if (path.endsWith("user/importPreview")) {
             expect(payload?.get("file")).toBe(file);
             expect(payload?.has("preview_token")).toBe(false);
+            expect(payload?.has("remarks")).toBe(false);
             expect(options).toEqual({ cache: "no-store", redirect: "error" });
             return { data: {
                 source_site: "legacy-site", snapshot_at: 1786013217, cutoff_at: 1777564800,
@@ -1930,9 +1931,12 @@ it("previews a user migration file before import and reloads the list on success
         if (path.endsWith("user/importApply")) {
             expect(payload?.get("file")).toBe(file);
             expect(options).toEqual({ cache: "no-store", redirect: "error", timeoutMs: 120000 });
-            expect(payload?.get("preview_token")).toBe(`preview-${++imports}`);
+            expect(payload?.get("preview_token")).toBe(`preview-${previews}`);
+            imports++;
+            expect(payload?.get("remarks")).toBe(imports === 3 ? "历史账号迁移" : imports === 4 ? "nowlink" : null);
             if (imports === 1) throw Object.assign(new Error("expired"), { status: 409 });
             if (imports === 2) throw Object.assign(new Error("reauthenticate"), { status: 409, code: "RECENT_LOGIN_REQUIRED" });
+            if (imports === 3) throw Object.assign(new Error("请修改备注"), { status: 422 });
             return { data: { created: 1, skipped: 3, totals: { CNY: 1000, USD: 0 } } };
         }
         return { data: [] };
@@ -1943,6 +1947,8 @@ it("previews a user migration file before import and reloads the list on success
     const preview = () => dialog.getByRole("button", { name: "预览导入" });
     const submit = () => dialog.getByRole("button", { name: "确认导入" }) as HTMLButtonElement;
     const checkbox = () => dialog.getByRole("checkbox", { name: "确认创建可导入账号并按预览金额入账" });
+    const remarks = dialog.getByLabelText("导入备注（选填）") as HTMLInputElement;
+    expect(remarks.maxLength).toBe(255);
     expect((preview() as HTMLButtonElement).disabled).toBe(true);
     fireEvent.change(dialog.getByLabelText("迁移 JSON 文件"), { target: { files: [file] } });
     fireEvent.click(preview());
@@ -1958,6 +1964,7 @@ it("previews a user migration file before import and reloads the list on success
     await dialog.findByRole("alert");
     expect(dialog.getByText("导入预览已失效，请重新预览后确认。")).toBeTruthy();
     expect(dialog.queryByRole("checkbox")).toBeNull();
+    fireEvent.change(remarks, { target: { value: " 　" } });
     fireEvent.click(preview());
     await dialog.findByText("CNY 12.34");
     expect(submit().disabled).toBe(true);
@@ -1969,6 +1976,16 @@ it("previews a user migration file before import and reloads the list on success
     await dialog.findByText("CNY 12.34");
     expect(submit().disabled).toBe(true);
     const beforeRefresh = api.request.mock.calls.filter(([path]) => path.includes("user/fetch")).length;
+    fireEvent.click(checkbox());
+    expect(submit().disabled).toBe(false);
+    fireEvent.change(remarks, { target: { value: "  历史账号迁移  " } });
+    expect(submit().disabled).toBe(true);
+    expect((checkbox() as HTMLInputElement).checked).toBe(false);
+    fireEvent.click(checkbox());
+    fireEvent.click(submit());
+    await dialog.findByText("请修改备注");
+    expect(submit().disabled).toBe(true);
+    fireEvent.change(remarks, { target: { value: "nowlink" } });
     fireEvent.click(checkbox());
     fireEvent.click(submit());
     await dialog.findByText("导入完成。已创建 1 个账号，跳过 3 个账号。");
